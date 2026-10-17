@@ -156,9 +156,30 @@ struct sdfMemHandle_t
     sdfMemHandle_t *prev;
     sdfMemHandle_t *next;
     void *ptr;
-    u16 stat; /* 0 free, 2 end sentinel; sdfMemGetType returns it */
+    u16 stat; /* sdf_mem_stat; sdfMemGetType returns it */
     u16 mlock;
 };
+
+/* sdfMemHandle_t.stat. sdfMemAllocDirect takes the first FREE handle, stops at
+ * the END sentinel, and stamps the one it took USED; sdfMemFreeDirect puts it
+ * back to FREE. */
+enum sdf_mem_stat
+{
+    SDF_MEM_STAT_FREE = 0,
+    SDF_MEM_STAT_USED = 1,
+    SDF_MEM_STAT_END = 2
+};
+
+/* The heap's control block, sdfMemCB. Both guard handles are embedded, which
+ * is what lets the first and last block compute a size the same way; the HD
+ * build holds pointers to them instead. */
+typedef struct
+{
+    sdfMemHandle_t headGuard;
+    sdfMemHandle_t tailGuard;
+    void *allocPtr;
+    s32 allocSize;
+} sdfMemHandleCB_t;
 
 typedef struct sdfMemRecord_t
 {
@@ -201,10 +222,12 @@ struct sdfTexHandle_t
     u32 clutId;       /* unconfirmed */
     sdfTexPacket_t *packet;
     sdfTexPacket_t *packetCtx2; /* unconfirmed */
-    void *clutData;             /* unconfirmed */
-    u32 clutDataSize;           /* unconfirmed */
+    void *clutData;
+    u32 clutDataSize;
     u32 clutColor;
-    u8 monoClutData; /* unconfirmed; 3 bytes of tail padding follow */
+    /* The intensity table sdfTexSetMonoClut derives from the CLUT, allocated
+     * on first use and written a byte per entry. */
+    u8 *monoClutData;
 };
 
 struct sdfTexPacket_t
