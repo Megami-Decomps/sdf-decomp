@@ -1,0 +1,255 @@
+#ifndef DRAW3D_H
+#define DRAW3D_H
+
+/* sdf3D and sdfCoreDraw: the camera, light and fog packets VU1 shades with,
+ * the per-node transform packet, and the generated-geometry path that turns a
+ * mesh into GS primitives on VU0.
+ *
+ * libsdf.h declares sdf3DLightParallelPacket_t and sdf3DFogPacket_t as opaque
+ * so sdfDrawTag_t can point at them; this is where they get bodies.
+ * See include/README.md for the evidence per struct. */
+
+#include "common.h"
+#include "libsdf.h"
+
+typedef struct sdf3DLightParallelPacket_t sdf3DLightParallelPacket_t;
+typedef struct sdf3DFogPacket_t sdf3DFogPacket_t;
+
+/* The camera, as sdf3DMakeScreenParam derives it and sdf3DSetCamera copies it
+ * into the global sdf3DScreenParam. The first twelve fields are the inputs;
+ * TM, scale and trans are what it computes, and cameraPos comes from
+ * sdf3DMakeViewportPacket inverting the camera matrix. */
+typedef struct
+{
+    u32 flags; /* sdf_3d_screen_flag */
+    f32 aspect;
+    f32 projDist; /* unused when FOVY is set */
+    f32 fovy;
+    f32 ox;
+    f32 oy;
+    f32 width;
+    f32 height;
+    f32 zMin;
+    f32 zMax;
+    f32 nearClip;
+    f32 farClip;
+    sdfMatrix4_t TM;
+    sdfVector4_t scale;
+    sdfVector4_t trans;
+    sdfVector4_t cameraPos;
+} sdf3DScreenParam_t;
+
+/* sdf3DScreenParam_t.flags, as sdf3DMakeScreenParam tests them. */
+enum sdf_3d_screen_flag
+{
+    SDF_3D_SCREEN_FLAG_HALFHEIGHT = 1, /* interlaced: halve the Y scale */
+    SDF_3D_SCREEN_FLAG_FOVY = 2        /* derive projDist from fovy */
+};
+
+/* What sdf3DMakeViewportPacket hands VU1: the camera matrix, the projection,
+ * and the clip-space to GS mapping, uploaded by the UNPACK in the DMA tag's
+ * upper words. */
+typedef struct QWORD_ALIGNED
+{
+    sdfDmaTag_t dmatag;
+    sdfMatrix4_t cameraTm;
+    sdfMatrix4_t TM;
+    sdfVector4_t scale;
+    sdfVector4_t trans;
+    sdfVector4_t cameraPos;
+    u32 itop;
+    u32 mscal;
+    u32 pad[2];
+} sdf3DViewportPacket_t;
+
+/* One object's transform for VU1: the world matrix, then the three rows
+ * sdf3DPrimSetTmPacket derives for normals, then the VIF codes that run the
+ * transform. sdfModelNode_t.tmPacket is two of these, one per frame buffer. */
+typedef struct QWORD_ALIGNED
+{
+    sdfVector4_t tm[7];
+    u32 cmd[4];
+} sdf3DTmPacketData_t;
+
+/* The parallel-light packet. normal is the three light directions held as a
+ * matrix's columns, so VU1 gets all three dot products from one multiply;
+ * colorBase is a copy of color[0] and the ambient term lands in both color[3]
+ * and color[4]. TM is the lighting matrix corePktEmitRefMapPass builds its
+ * specular axis from. */
+struct sdf3DLightParallelPacket_t
+{
+    sdfDmaTag_t dmatag;
+    sdfVector4_t normal[3];
+    sdfVector4_t colorBase;
+    sdfVector4_t color[5];
+    sdfMatrix4_t TM;
+};
+
+/* What sdf3DMakeFogPacket is handed: the two fog densities and the two
+ * distances they span, plus the colour. */
+typedef struct
+{
+    f32 fogMax;
+    f32 fogMin;
+    f32 fogNear;
+    f32 fogFar;
+    u32 color;
+} sdf3DFogParam_t;
+
+/* The fog packet: four terms for VU1, then one GIF A+D write that sets FOGCOL
+ * on the GS directly. */
+struct sdf3DFogPacket_t
+{
+    sdfDmaTag_t dmatag;
+    /* Minimum, maximum, the midpoint VU1 works from, and the depth scale. */
+    f32 fogParm[4];
+    sdfGifTag_t giftag;
+    sdfGrTagStdReg_t fogColor;
+    u32 mscal;
+    u32 pad[3];
+};
+
+/* sdf3DLinkInitPacket: a REF to vu1MicroPacket, then the tag that continues
+ * the chain. */
+typedef struct QWORD_ALIGNED
+{
+    sdfDmaTag_t reftag;
+    sdfDmaTag_t linktag;
+} sdf3DInitPacket_t;
+
+/* A polygon handed to sdf3DPrimMakePoly, which derives the VIF packet from it
+ * rather than keeping it. attr is the GS PRIM word; each non-null array below
+ * adds its own bit to it and its own UNPACK to the packet. */
+typedef struct
+{
+    s16 faceCount;
+    s16 pointCount;
+    u16 attr;
+    u16 attrInhibit; /* inverted and ANDed into attr */
+    u32 color;
+    u32 *faceIndex; /* null uses sdf3DPrimDefaultFaceIndex */
+    sdfVector4_t *vertex;
+    sdfVector4_t *normal;
+    sdfVector2_t *uv;
+    sdfVector2_t *multiUv;
+    u32 *vertexColor;
+    void *allocator; /* called instead of sdfGrAllocPacketBuff when set */
+    f32 zBias;
+} sdf3DPrimPolyParm_t;
+
+/* A generated draw packet's header, as sdfModelLinkDrawPacket dispatches on it
+ * and sdfCorePacketGen reads it. Same first eight bytes as
+ * sdfShapePacket_t (model.h); the prim header follows inline. */
+typedef struct
+{
+    u8 packetType; /* sdf_shape_packet_type 4 through 8 */
+    u8 mpgType;    /* unconfirmed */
+    s16 priority;  /* unconfirmed */
+    u16 size;      /* unconfirmed */
+    u16 matIndex;
+    /* extData[0] holds the blend-shape count in its low half and the morph
+     * entry in its high half; nothing reads extData[1]. */
+    u32 extData[2];
+} sdfCorePacketHeader_t;
+
+/* The counts and flags corePktInitCb parses out of a packet. attrBits is the
+ * GS PRIM word with the engine's own pass flags above it; packetBits says
+ * which arrays the body that follows carries. */
+typedef struct
+{
+    u16 faceCount;
+    u16 pointCount;
+    u16 attrBits;
+    u16 packetBits;
+} sdfCorePrimHeader_t;
+
+/* The whole 24-byte header. The mesh body starts straight after it, which is
+ * where corePktInitCb points the draw state's payload. */
+typedef struct
+{
+    sdfCorePacketHeader_t header;
+    sdfCorePrimHeader_t prim;
+} sdfCorePacket_t;
+
+/* sdfCorePrimHeader_t.attrBits. The low bits are PRIM's own; the pass bits are
+ * what corePktEmitAllPasses and corePktOpenAndEmit branch on. */
+enum sdf_core_attr
+{
+    SDF_CORE_ATTR_REFMAPPASS = 0x0001,
+    SDF_CORE_ATTR_SPECULARPASS = 0x0002,
+    SDF_CORE_ATTR_GOURAUD = 0x0008,
+    SDF_CORE_ATTR_TEXTURED = 0x0010,
+    SDF_CORE_ATTR_FOG = 0x0020,
+    SDF_CORE_ATTR_BLEND = 0x0040,
+    SDF_CORE_ATTR_COLOR = 0x0800,
+    SDF_CORE_ATTR_MULTITEXPASS = 0x1000,
+    SDF_CORE_ATTR_TWOSIDED = 0x4000 /* emit the back faces as a second batch */
+};
+
+/* sdfCorePrimHeader_t.packetBits, as sdfCorePacketGen walks the body. */
+enum sdf_core_packet_bit
+{
+    SDF_CORE_PACKET_FACES = 0x0020,
+    SDF_CORE_PACKET_NORMALS = 0x0080,
+    SDF_CORE_PACKET_UV = 0x0100,
+    SDF_CORE_PACKET_WEIGHTS = 0x0800,
+    SDF_CORE_PACKET_BLENDSHAPES = 0x1000
+};
+
+/* The draw state sdfCorePacketGen keeps on its stack and every corePkt*
+ * routine works through. Every offset from tmSave to matPacket2 is proven from
+ * code; the size is not, since no function but sdfCorePacketGen declares one.
+ * See include/README.md. */
+typedef struct QWORD_ALIGNED
+{
+    /* The composed world-to-screen matrix, kept here so corePktBuildFaceList
+     * and corePktEmitTexTris can lq it straight from offset 0. */
+    sdfMatrix4_t tmSave;
+    s16 faceCount;
+    s16 pointCount;
+    s32 attrBits; /* masked by the draw's own attr mask */
+    s32 packetBits;
+    s32 orgAttrBits; /* as the packet carries it, before the mask */
+    s16 drawFaceCount;
+    s16 backfaceCount;
+    sdfMatPacket_t *matPacketPtr;
+    u32 color;
+    f32 fdSoften;
+    f32 fdBias;
+    /* The vertex working set corePktSetupPointBuff lays out from the vertex
+     * count: the VU0 scratchpad up to 128 vertices and a spill in
+     * corePktPointBuff past that. Which of the three pointers and two counts
+     * is which is from the HD names, not from the code. */
+    void *pointBuff;
+    void *freePointBuff;
+    void *extPointBuff;
+    s32 freePointCount;
+    s32 extPointCount;
+    void *extPointTop;
+    void *extPointLink; /* set to &extPointTop */
+    /* The output packet, from sdfGrOpenPacketBuff: where it starts, where the
+     * closing tag goes, and the VU1 address before and after the emit, which
+     * is how corePktClosePacket knows whether anything was emitted. */
+    void *packetOpenPtr;
+    void *packetTopPtr;
+    void *packetStartPtr;
+    void *packetPtr;
+    void *dataPtr; /* the mesh body, straight after sdfCorePacket_t */
+    void *facePtr;
+    void *vertexPtr; /* unconfirmed; the non-skinned path keeps it in a register */
+    void *normalPtr;
+    void *uvPtr;
+    void *uv2Ptr;
+    void *vertColPtr;
+    f32 backfaceSign; /* -1 when the draw is reversed, else 1 */
+    /* Past the HD struct's end. The first is the copy of attrBits
+     * sdfCorePacketGen tests for SDF_CORE_ATTR_TEXTURED, the second a copy of
+     * matPacketPtr it reads texTm through. */
+    u32 savedAttrBits;
+    sdfMatPacket_t *matPacket2;
+} corePktCb_t;
+
+/* sdfCorePacketGen's own threshold for a blend shape being worth applying. */
+#define SDF_CORE_MORPH_EPSILON 0.000001f
+
+#endif /* DRAW3D_H */

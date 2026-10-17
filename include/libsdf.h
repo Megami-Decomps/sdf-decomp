@@ -24,7 +24,7 @@ typedef struct sdfModelPacketHeader_t sdfModelPacketHeader_t;
 typedef struct sdfItemArray_t sdfItemArray_t;
 typedef struct sdfGrOt_t sdfGrOt_t;
 
-/* Bodies not recovered yet: reached only through pointers. */
+/* Bodies in draw3d.h; declared here so sdfDrawTag_t can point at them. */
 struct sdf3DLightParallelPacket_t;
 struct sdf3DFogPacket_t;
 
