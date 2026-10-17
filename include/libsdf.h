@@ -21,6 +21,8 @@ typedef struct sdfMatPacket_t sdfMatPacket_t;
 typedef struct sdfGrPacketHeader_t sdfGrPacketHeader_t;
 typedef struct sdfPreDrawHook_t sdfPreDrawHook_t;
 typedef struct sdfModelPacketHeader_t sdfModelPacketHeader_t;
+typedef struct sdfItemArray_t sdfItemArray_t;
+typedef struct sdfGrOt_t sdfGrOt_t;
 
 /* Bodies not recovered yet: reached only through pointers. */
 struct sdf3DLightParallelPacket_t;
@@ -319,6 +321,35 @@ struct sdfMatPacket_t
     f32 texTm[6];
     /* Unnamed tail. Holds at least the two VIF codes written at 0x98/0x9C. */
     u8 reserved[32];
+};
+
+/* Every growable list in the engine: a 16-byte header plus one element block in
+ * sdfMem. sdfItemArrayNew allocates the header, sdfItemArrayGrow reallocs the
+ * block by growStep elements and relocks it. model.h and motion.h declare the
+ * same six fields per element type, which is how the engine's own headers do it. */
+struct sdfItemArray_t
+{
+    sdfMemHandle_t *memHandle;
+    s16 count;
+    s16 capacity;
+    s16 elemSize;
+    s16 growStep;
+    void *items;
+};
+
+/* One ordering table: the draw tags filed into it this frame, plus the two
+ * callbacks that file and flush them. sdfGrOtTable is 85 of these back to back,
+ * which is what fixes the 32-byte stride. */
+struct sdfGrOt_t
+{
+    sdfGrOt_t *next;
+    sdfDrawTag_t *tagHead;
+    sdfDrawTag_t *tagTail;
+    sdfDrawTag_t *noSortTag; /* name unconfirmed; sdfGrOtInit zeroes it */
+    void *regFunc;
+    void *callbackFunc;
+    void *data; /* name unconfirmed; sdfGrOtInit zeroes it */
+    u32 pad;
 };
 
 /* Four quadwords: colour, direction, position and the falloff parameters. */
