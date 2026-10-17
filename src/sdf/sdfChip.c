@@ -1,23 +1,314 @@
 #include "common.h"
+#include "libsdf.h"
 
-INCLUDE_ASM(const s32, "sdf/sdfChip", sdfChipAllocNextPage);
+/* A free chip carries its free-list link at byte 8. */
+typedef struct sdfChip_t
+{
+    u8 pad00[8];
+    void *nextFree;
+} sdfChip_t;
 
-INCLUDE_ASM(const s32, "sdf/sdfChip", sdfChipAllocGetFree);
+typedef void (*sdfDelayedResrcFreeFunc)();
 
-INCLUDE_ASM(const s32, "sdf/sdfChip", sdfChipAllocPageGrow);
+typedef struct
+{
+    sdfDelayedResrcFreeFunc freeFunc;
+    void *chunk;
+} sdfDelayedResrcCB_t;
 
-INCLUDE_ASM(const s32, "sdf/sdfChip", sdfChipAllocNewPage);
+/* Five totals followed by the seven per-size-class allocation counters. */
+typedef struct
+{
+    s32 total;
+    s32 freeSize;
+    s32 pageCount;
+    s32 freePageCount;
+    s32 fragmentedPageCount;
+    s32 severalAllocCount[7];
+} sdfChipInfo_t;
 
-INCLUDE_ASM(const s32, "sdf/sdfChip", sdfChipAllocDirect);
+#define SDF_CHIP_CLASS_COUNT 7
+#define SDF_CHIP_PAGE_SHIFT 12
+#define SDF_CHIP_PAGE_BYTES (1 << SDF_CHIP_PAGE_SHIFT)
 
-INCLUDE_ASM(const s32, "sdf/sdfChip", sdfChipAllocZeroDirect);
+/* plzcw has no C equivalent: cc1 has no leading-zero builtin. */
+#define SDF_PLZCW(out, in) __asm__ volatile ("plzcw %0, %1" : "=r"(out) : "r"(in))
 
-INCLUDE_ASM(const s32, "sdf/sdfChip", sdfChipFreeDirect);
+extern void *malloc(u32 size);
+extern s32 DIntr(void);
+extern void EIntr(void);
+extern void *sdfZeroMemQuad(void *ptr, s32 quadCount);
+extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *cb, sdfDelayedResrcFreeFunc freeFunc);
+extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *cb, void *ptr);
 
-INCLUDE_ASM(const s32, "sdf/sdfChip", sdfChipFreeDelayedDirect);
+extern sdfDelayedResrcCB_t dds3CleanupList;
+extern sdfChipCB_tag sdfChipCB[SDF_CHIP_CLASS_COUNT];
+extern sdfChipPageInfo_tag *sdfChipPageInfo;
+extern sdfChipPageInfo_tag *sdfChipPageFreeLink;
+extern u8 *sdfChipPageTop;
+extern u8 *sdfChipPageEnd;
+extern s32 sdfChipPageCount;
 
-INCLUDE_ASM(const s32, "sdf/sdfChip", sdfChipCheck);
+void sdfChipAllocNextPage(sdfChipCB_tag *aCB);
+sdfChip_t *sdfChipAllocGetFree(sdfChipCB_tag *aCB, sdfChipPageInfo_tag *aPageInfo);
+sdfChip_t *sdfChipAllocPageGrow(sdfChipCB_tag *aCB, sdfChipPageInfo_tag *aPageInfo);
+void *sdfChipAllocDirect(s32 aSize);
+void sdfChipFreeDirect(void *aPtr);
 
-INCLUDE_ASM(const s32, "sdf/sdfChip", sdfChipInit);
+/* Promote the next page on the partial list to current; an empty list clears it. */
+void sdfChipAllocNextPage(sdfChipCB_tag *aCB)
+{
+    sdfChipPageInfo_tag *nextPage;
 
-INCLUDE_ASM(const s32, "sdf/sdfChip", sdfChipGetInfo);
+    nextPage = aCB->freeLink;
+    if (nextPage != NULL) {
+        aCB->freeLink = nextPage->next;
+    }
+    aCB->currentPage = nextPage;
+}
+
+/* Pop a recycled chip and advance when its page becomes full. */
+sdfChip_t *sdfChipAllocGetFree(sdfChipCB_tag *aCB, sdfChipPageInfo_tag *aPageInfo)
+{
+    sdfChip_t *chip = aPageInfo->freeLink;
+
+    aPageInfo->allocCount++;
+    aPageInfo->freeLink = chip->nextFree;
+    if (aPageInfo->allocCount == aCB->chipsPerPage) {
+        sdfChipAllocNextPage(aCB);
+    }
+    return chip;
+}
+
+/* Hand out the next never-used chip; the last one switches the page to the
+ * free-list handler. */
+sdfChip_t *sdfChipAllocPageGrow(sdfChipCB_tag *aCB, sdfChipPageInfo_tag *aPageInfo)
+{
+    s16 chipsPerPage = aCB->chipsPerPage;
+    s32 allocCount = (u16)aPageInfo->allocCount + 1;
+    s32 growLeft = aPageInfo->growLeft;
+    sdfChip_t *chip;
+
+    aPageInfo->allocCount = allocCount;
+    chip = (sdfChip_t *)((u8 *)aPageInfo->page + (chipsPerPage - growLeft) * aCB->chipSize);
+    aPageInfo->growLeft = growLeft - 1;
+    if (aPageInfo->growLeft == 0) {
+        aPageInfo->alloc = (void *)sdfChipAllocGetFree;
+        if ((s16)allocCount == chipsPerPage) {
+            sdfChipAllocNextPage(aCB);
+        }
+    }
+    return chip;
+}
+
+sdfChip_t *sdfChipAllocNewPage(sdfChipCB_tag *aCB)
+{
+    sdfChipPageInfo_tag *page = sdfChipPageFreeLink;
+
+    sdfChipPageFreeLink = page->next;
+    page->allocCount = 0;
+    page->alloc = (void *)sdfChipAllocPageGrow;
+    aCB->currentPage = page;
+    page->owner = aCB;
+    page->growLeft = aCB->chipsPerPage;
+    return sdfChipAllocPageGrow(aCB, page);
+}
+
+/* Allocate from the size class that covers the request; classes are powers of
+ * two from 16 bytes up, and each page hands out from its own chip list. */
+void *sdfChipAllocDirect(s32 aSize)
+{
+    s32 index = 0;
+    sdfChipCB_tag *cb;
+    sdfChip_t *chip;
+    s32 intrEnabled;
+
+    if (aSize > 16) {
+        SDF_PLZCW(index, aSize - 1);
+        index = 27 - (index & 0xFF);
+    }
+    cb = &sdfChipCB[index];
+    intrEnabled = DIntr();
+    if (cb->currentPage == NULL) {
+        chip = sdfChipAllocNewPage(cb);
+    } else {
+        chip = ((sdfChip_t *(*)(sdfChipCB_tag *, sdfChipPageInfo_tag *))cb->currentPage->alloc)(
+            cb, cb->currentPage);
+    }
+    if (intrEnabled != 0) {
+        EIntr();
+    }
+    return chip;
+}
+
+void *sdfChipAllocZeroDirect(s32 aSize)
+{
+    return sdfZeroMemQuad(sdfChipAllocDirect(aSize), (aSize + 15) >> 4);
+}
+
+void sdfChipFreeDirect(void *aPtr)
+{
+    sdfChipPageInfo_tag *page;
+    sdfChipCB_tag *cb;
+    sdfChip_t *chip = aPtr;
+    sdfChipPageInfo_tag **link;
+    s32 intrEnabled;
+    s16 allocCount;
+    s32 heapByteOffset;
+
+    if (aPtr == NULL) {
+        return;
+    }
+    heapByteOffset = (s32)aPtr - (s32)sdfChipPageTop;
+    if (heapByteOffset < 0) {
+        heapByteOffset += SDF_CHIP_PAGE_BYTES - 1;
+    }
+    page = (sdfChipPageInfo_tag *)((u8 *)sdfChipPageInfo +
+                                   (heapByteOffset >> SDF_CHIP_PAGE_SHIFT) *
+                                       sizeof(sdfChipPageInfo_tag));
+    cb = page->owner;
+    intrEnabled = DIntr();
+    allocCount = page->allocCount;
+    page->allocCount = allocCount - 1;
+    if (page->allocCount == 0) {
+        link = &cb->freeLink;
+        if (cb->currentPage == page) {
+            sdfChipAllocNextPage(cb);
+        } else {
+            while (*link != page) {
+                link = &(*link)->next;
+            }
+            *link = page->next;
+        }
+        page->owner = NULL;
+        page->next = sdfChipPageFreeLink;
+        sdfChipPageFreeLink = page;
+    } else {
+        if (allocCount == cb->chipsPerPage) {
+            page->next = cb->freeLink;
+            cb->freeLink = page;
+        }
+        chip->nextFree = page->freeLink;
+        page->freeLink = chip;
+    }
+    if (intrEnabled != 0) {
+        EIntr();
+    }
+}
+
+void sdfChipFreeDelayedDirect(void *aPtr)
+{
+    sdfDelayedResrcEntry(&dds3CleanupList, aPtr);
+}
+
+s32 sdfChipCheck(s32 aAddr)
+{
+    s32 inRange;
+
+    inRange = 0;
+    if (aAddr >= (s32)sdfChipPageTop) {
+        inRange = aAddr < (s32)sdfChipPageEnd;
+    }
+    return inRange;
+}
+
+/* Allocate the chip heap plus its page records, then build the free page list
+ * and the size classes. */
+void sdfChipInit(u32 aSize)
+{
+    u32 recordBytes;
+    s32 align;
+    s32 remaining;
+    void *allocation;
+    sdfChipPageInfo_tag *record;
+    sdfChipPageInfo_tag *next;
+    u8 *recordEnd;
+    u8 *heapTop;
+    u8 *page;
+    s32 pageCount;
+    sdfChipCB_tag *cb;
+    s32 chipSize;
+    s32 chipsPerPage;
+
+    allocation = malloc(aSize);
+    sdfChipPageInfo = allocation;
+    recordBytes = (aSize / (SDF_CHIP_PAGE_BYTES + sizeof(sdfChipPageInfo_tag))) *
+                  sizeof(sdfChipPageInfo_tag);
+    recordEnd = (u8 *)allocation + recordBytes;
+    record = allocation;
+    sdfChipPageFreeLink = record;
+    align = -(s32)recordEnd & 0x3F;
+    remaining = (aSize - recordBytes) - align;
+    heapTop = recordEnd + align;
+    sdfChipPageTop = heapTop;
+    pageCount = remaining / SDF_CHIP_PAGE_BYTES;
+    sdfChipPageCount = pageCount;
+    sdfChipPageEnd = heapTop + pageCount * SDF_CHIP_PAGE_BYTES;
+    page = heapTop;
+    do {
+        next = record + 1;
+        pageCount--;
+        record->page = page;
+        page += SDF_CHIP_PAGE_BYTES;
+        record->owner = NULL;
+        record->next = next;
+        record = next;
+    } while (pageCount != 0);
+    next[-1].next = NULL;
+
+    cb = sdfChipCB;
+    chipSize = 0x10;
+    chipsPerPage = 0x100;
+    pageCount = SDF_CHIP_CLASS_COUNT;
+    do {
+        pageCount--;
+        cb->chipSize = chipSize;
+        cb->chipsPerPage = chipsPerPage;
+        chipsPerPage >>= 1;
+        cb->currentPage = NULL;
+        chipSize <<= 1;
+        cb->freeLink = NULL;
+        cb++;
+    } while (pageCount != 0);
+    sdfDelayedResrcInitCB(&dds3CleanupList, (sdfDelayedResrcFreeFunc)sdfChipFreeDirect);
+}
+
+void sdfChipGetInfo(sdfChipInfo_t *aInfo)
+{
+    sdfChipPageInfo_tag *page;
+    s32 pagesLeft;
+    s32 index;
+    s32 fragmentedPageCount;
+    s32 freePageCount;
+    s32 freeSize;
+    s32 freeChips;
+
+    pagesLeft = sdfChipPageCount;
+    aInfo->pageCount = pagesLeft;
+    aInfo->total = pagesLeft << SDF_CHIP_PAGE_SHIFT;
+    for (index = 0; index != SDF_CHIP_CLASS_COUNT; index++) {
+        aInfo->severalAllocCount[index] = 0;
+    }
+    page = sdfChipPageInfo;
+    freePageCount = 0;
+    fragmentedPageCount = 0;
+    freeSize = 0;
+    /* This post-tested walk assumes a nonzero page count. */
+    do {
+        if (page->owner == NULL) {
+            freePageCount++;
+            freeSize += SDF_CHIP_PAGE_BYTES;
+        } else {
+            freeChips = page->owner->chipsPerPage - page->allocCount;
+            if (freeChips != 0) {
+                fragmentedPageCount++;
+                freeSize += freeChips * page->owner->chipSize;
+            }
+            aInfo->severalAllocCount[page->owner - sdfChipCB] += page->allocCount;
+        }
+        page++;
+    } while (--pagesLeft != 0);
+    aInfo->freeSize = freeSize;
+    aInfo->freePageCount = freePageCount;
+    aInfo->fragmentedPageCount = fragmentedPageCount;
+}
