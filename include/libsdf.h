@@ -1,0 +1,333 @@
+#ifndef LIBSDF_H
+#define LIBSDF_H
+
+/* sdf engine core: math, the chip and heap allocators, GS memory, textures,
+ * materials and draw tags. Sizes and offsets are verified against SLUS_209.11;
+ * see include/README.md for the evidence per struct. */
+
+#include "common.h"
+
+typedef struct sdfChipPageInfo_tag sdfChipPageInfo_tag;
+typedef struct sdfChipCB_tag sdfChipCB_tag;
+typedef struct sdfMemHandle_t sdfMemHandle_t;
+typedef struct sdfGsMemSlice_t sdfGsMemSlice_t;
+typedef struct sdfTexHandle_t sdfTexHandle_t;
+typedef struct sdfTexPacket_t sdfTexPacket_t;
+typedef struct sdfDrawTag_t sdfDrawTag_t;
+typedef struct sdfPreDrawTag_t sdfPreDrawTag_t;
+typedef struct sdfMat_t sdfMat_t;
+typedef struct sdfMatUvwParm_t sdfMatUvwParm_t;
+typedef struct sdfMatPacket_t sdfMatPacket_t;
+typedef struct sdfGrPacketHeader_t sdfGrPacketHeader_t;
+typedef struct sdfPreDrawHook_t sdfPreDrawHook_t;
+typedef struct sdfModelPacketHeader_t sdfModelPacketHeader_t;
+
+/* Bodies not recovered yet: reached only through pointers. */
+struct sdf3DLightParallelPacket_t;
+struct sdf3DFogPacket_t;
+
+/* The VU0 paths load and store these with lq/sq, so every instance the engine
+ * touches that way sits on a 16-byte boundary by virtue of its offset. ee-gcc
+ * aligns them to 4, which is what reproduces the verified layouts. */
+typedef struct
+{
+    f32 x;
+    f32 y;
+} sdfVector2_t;
+
+typedef struct
+{
+    f32 x;
+    f32 y;
+    f32 z;
+} sdfVector3_t;
+
+typedef struct
+{
+    f32 x;
+    f32 y;
+    f32 z;
+    f32 w;
+} sdfVector4_t;
+
+typedef struct
+{
+    f32 m[16];
+} sdfMatrix4_t;
+
+typedef struct
+{
+    f32 r;
+    f32 g;
+    f32 b;
+    f32 a;
+} sdfColor_t;
+
+typedef struct
+{
+    u8 r;
+    u8 g;
+    u8 b;
+    u8 a;
+} sdfColor32_t;
+
+/* DMAC source-chain tag. id 0x20 is `ref`, written by sdfDrawTagLink. */
+typedef struct QWORD_ALIGNED
+{
+    u16 qwc;
+    u8 pad;
+    u8 id;
+    void *addr;
+    u32 dat0;
+    u32 dat1;
+} sdfDmaTag_t;
+
+typedef struct QWORD_ALIGNED
+{
+    u64 parm;
+    u64 regs;
+} sdfGifTag_t;
+
+/* One GS register write in a GIFtag A+D packet. */
+typedef struct QWORD_ALIGNED
+{
+    u64 data;
+    u64 reg;
+} sdfGrTagStdReg_t;
+
+/* The id nibble of sdfDmaTag_t.id. REFE, REF and REFS name their data at
+ * addr; the rest carry it after the tag. */
+enum sdf_dma_tag_id
+{
+    SDF_DMA_TAG_ID_REFE = 0,
+    SDF_DMA_TAG_ID_CNT = 1,
+    SDF_DMA_TAG_ID_NEXT = 2,
+    SDF_DMA_TAG_ID_REF = 3,
+    SDF_DMA_TAG_ID_REFS = 4,
+    SDF_DMA_TAG_ID_CALL = 5,
+    SDF_DMA_TAG_ID_RET = 6,
+    SDF_DMA_TAG_ID_END = 7
+};
+
+/* A GIF packet's opening: the DMA tag, then the GIF tag. The payload follows
+ * inline as quadwords, so a cast to this type reads only the header. */
+struct sdfGrPacketHeader_t
+{
+    sdfDmaTag_t dmatag;
+    sdfGifTag_t giftag;
+};
+
+/* sdfChip: fixed-size chips carved out of 4KB pages. One control block per
+ * size class, seven of them, selected by plzcw on the request size. */
+struct sdfChipPageInfo_tag
+{
+    sdfChipPageInfo_tag *next;
+    void *page;
+    void *alloc; /* grow or free-list handler, called through +8 */
+    sdfChipCB_tag *owner;
+    void *freeLink;
+    s16 allocCount;
+    s16 growLeft;
+};
+
+struct sdfChipCB_tag
+{
+    sdfChipPageInfo_tag *currentPage;
+    sdfChipPageInfo_tag *freeLink;
+    s16 chipSize;
+    s16 chipsPerPage;
+};
+
+/* Debug record of one chip allocation; names unconfirmed. */
+typedef struct sdfChipRecord_t
+{
+    struct sdfChipRecord_t *next;
+    void *ptr;
+    char *file;
+    s32 line;
+} sdfChipRecord_t;
+
+/* sdfMem: a doubly linked list over one arena. A block's size is the next
+ * handle's ptr minus its own, so the list always ends with a sentinel. */
+struct sdfMemHandle_t
+{
+    sdfMemHandle_t *prev;
+    sdfMemHandle_t *next;
+    void *ptr;
+    u16 stat; /* 0 free, 2 end sentinel; sdfMemGetType returns it */
+    u16 mlock;
+};
+
+typedef struct sdfMemRecord_t
+{
+    struct sdfMemRecord_t *next;
+    sdfMemHandle_t *handle;
+    char *file;
+    s32 line;
+} sdfMemRecord_t;
+
+/* GS local memory, allocated in the same list-of-slices shape as sdfMem. */
+struct sdfGsMemSlice_t
+{
+    sdfGsMemSlice_t *prev;
+    sdfGsMemSlice_t *next;
+    s32 type; /* 0 free */
+    u32 addr;
+    s32 size;
+    s16 w;
+    s16 h;
+    u32 pixelFormat;
+};
+
+struct sdfTexHandle_t
+{
+    sdfTexHandle_t *prev;
+    sdfTexHandle_t *next;
+    sdfTexHandle_t *origin; /* unconfirmed */
+    s16 width;
+    s16 height;
+    sdfGsMemSlice_t *pixelGsHandle;
+    sdfGsMemSlice_t *clutGsHandle;
+    u8 numOfCLUT;
+    u8 CLUTFormat;
+    u8 pixelFormat;
+    u8 numOfMipmap;
+    u16 mipmapParam;  /* unconfirmed */
+    u8 flags;         /* unconfirmed */
+    u8 texWrapMode;   /* unconfirmed */
+    u32 texId;        /* unconfirmed */
+    u32 clutId;       /* unconfirmed */
+    sdfTexPacket_t *packet;
+    sdfTexPacket_t *packetCtx2; /* unconfirmed */
+    void *clutData;             /* unconfirmed */
+    u32 clutDataSize;           /* unconfirmed */
+    u32 clutColor;
+    u8 monoClutData; /* unconfirmed; 3 bytes of tail padding follow */
+};
+
+struct sdfTexPacket_t
+{
+    sdfGifTag_t giftag;
+    sdfGrTagStdReg_t tex1;
+    sdfGrTagStdReg_t tex0;
+    sdfGrTagStdReg_t clamp;
+};
+
+struct sdfDrawTag_t
+{
+    sdfDrawTag_t *next;
+    sdfGrPacketHeader_t *head;
+    sdfGrPacketHeader_t *tail;
+    /* Sort key. sdfDrawTagInit sets it to 0xFFFF as an integer, so f32 is
+     * the one field type here not pinned by the code. */
+    f32 z;
+    struct sdf3DLightParallelPacket_t *lightPacket;
+    struct sdf3DFogPacket_t *fogPacket;
+    void *texPacket[2];
+};
+
+/* A callback sdfGrDrawFrame runs before it sends the chain. */
+struct sdfPreDrawHook_t
+{
+    sdfPreDrawHook_t *next;
+    void *predrawFunc;
+    u32 option0;
+    u32 option1;
+};
+
+struct sdfPreDrawTag_t
+{
+    sdfPreDrawTag_t *next;
+    sdfPreDrawHook_t *head;
+    sdfPreDrawHook_t *tail;
+    u32 pad;
+};
+
+/* One entry of a model's per-ordering-table packet list. */
+struct sdfModelPacketHeader_t
+{
+    sdfModelPacketHeader_t *next;
+    u8 type;
+    u8 otIndex;
+    u16 size;
+    void *dataPtr;
+    sdfMemHandle_t *memHandle;
+};
+
+struct sdfMatUvwParm_t
+{
+    f32 offset[2];
+    f32 tile[2];
+    f32 angle;
+    f32 pad;
+};
+
+/* One material plus its two prebuilt VIF packets, one per texture context.
+ * sdfhook gives this struct a trailing reserved[88] and 160 bytes; sdfMatNew
+ * allocates 0x48, which is where the struct ends here. */
+struct sdfMat_t
+{
+    u32 id;
+    u16 flags;
+    u8 duty;
+    u8 pad;
+    sdfMatPacket_t *packet[2];
+    u32 ambient;
+    u32 diffuse;
+    u32 multiTexDiffuse;
+    f32 constant;
+    u32 specular;
+    u32 specularParm;
+    u32 refmap;
+    sdfTexHandle_t *texHandle;
+    sdfTexHandle_t *multiTexHandle;
+    u32 multiTexMethod;
+    sdfMatUvwParm_t *uvwParm;
+    sdfMatUvwParm_t *multiTexUvwParm;
+    f32 fdBias;
+    f32 fdSoften;
+};
+
+/* The VIF packet a material keeps per context: the GS registers
+ * sdfMatUpdatePacketBasic copies out of the texture handle, interleaved with
+ * the VIF codes that upload them. sdfMatNew allocates 0xA0 for it and writes
+ * VIF codes at 0x98 and 0x9C, which is the tail sdfhook's 128-byte version
+ * does not model. */
+struct sdfMatPacket_t
+{
+    u32 vifcode0;
+    u32 ambient;
+    u32 diffuse;
+    u32 mtexDiffuse;
+    u32 specularColor;
+    u32 refmapColor;
+    u32 vifcode1;
+    f32 constant;
+    u32 mtexAlpha;
+    u32 mtexAlgo;
+    f32 fdBias;
+    f32 fdSoften;
+    u32 pad;
+    u32 vifcode2;
+    u64 tex1Data;
+    u64 tex0Data;
+    u64 clampData;
+    u64 mtexTex1Data;
+    u64 mtexTex0Data;
+    u64 mtexClampData;
+    /* sdfMatSetUvwParm writes six floats here: a 2x2 then a 2-vector offset. */
+    f32 texTm[6];
+    /* Unnamed tail. Holds at least the two VIF codes written at 0x98/0x9C. */
+    u8 reserved[32];
+};
+
+/* Four quadwords: colour, direction, position and the falloff parameters. */
+typedef struct
+{
+    sdfVector4_t color;
+    sdfVector4_t v;
+    sdfVector4_t p;
+    f32 param[4];
+} sdf3DLight_t;
+
+#endif /* LIBSDF_H */
