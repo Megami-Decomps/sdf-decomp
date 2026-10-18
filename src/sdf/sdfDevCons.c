@@ -505,7 +505,7 @@ void *sdfDevVprintf(u32 *inputWords, const char *format, void *arguments) {
     formattedCount = vsprintf(text, format, arguments);
     start = (u8 *)sdfGrOpenPacketBuff();
     if (formattedCount == 0) {
-        *(u128 *)start = 0;
+        QUAD_ZERO(*(u128 *)start);
         cursor = start + 0x10;
     } else {
         header = (sdfDevConsPacketHeader_t *)start;
