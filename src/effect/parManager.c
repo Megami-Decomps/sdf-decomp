@@ -602,10 +602,6 @@ typedef struct effDiscAuxEmitter_t {
     ".set noreorder\n\tsqc2 " "vf12" ", 0(%0)\n\t.set reorder" \
     : : "r" (dst) : "memory")
 
-#define VU0_STORE_VF11_UNCLOBBERED(dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 " "vf11" ", 0(%0)\n\t.set reorder" \
-    : : "r" (dst))
-
 
 enum ParKindStateKind {
     PAR_KIND_STATE_HISTORY = 1,
@@ -1632,7 +1628,7 @@ void dds3Particle_SphereSpiralBuffInit(effBurstEmitter_t *effect, u32 packetInde
     SDF_VU0_LOADMATRIX(effect->head.matrix);
     SDF_VU0_LOADVECTOR(packet->vel);
     SDF_VU0_APPLYMATRIX_XYZ();
-    VU0_STORE_VF10_UNCLOBBERED(packet->vel);
+    VU0_STORE_VF10_NOMEM(packet->vel);
     packet->pos[0] = packet->vel[0] + effect->head.origin[0];
     packet->pos[1] = packet->vel[1] + effect->head.origin[1];
     packet->pos[2] = packet->vel[2] + effect->head.origin[2];
@@ -1720,7 +1716,7 @@ void dds3Particle_SphereSpiralDraw(effBurstEmitter_t *effect) {
             rotationAxis[3] = 0;
             SDF_VU0_LOADVECTOR(rotationAxis);
             SDF_VU0_APPLYMATRIX_XYZ();
-            VU0_STORE_VF10_UNCLOBBERED(rotationAxis);
+            VU0_STORE_VF10_NOMEM(rotationAxis);
             SetRotateMatrixAxis(rotationStep, (const sdfVector3_t *)rotationAxis);
             SDF_VU0_LOADVECTOR(packet->vel);
             SDF_VU0_APPLYMATRIX_XYZ();
@@ -2929,7 +2925,7 @@ void dds3Particle_SphereSpiral2BuffInit(parBurstEmitter_t *effect, u32 particleI
     SDF_VU0_LOADMATRIX(effect->head.matrix);
     SDF_VU0_LOADVECTOR(packet->radialOffset);
     SDF_VU0_APPLYMATRIX_XYZ();
-    VU0_STORE_VF10_UNCLOBBERED(packet->radialOffset);
+    VU0_STORE_VF10_NOMEM(packet->radialOffset);
     packet->position[0] = packet->radialOffset[0] + effect->head.origin[0];
     packet->position[1] = packet->radialOffset[1] + effect->head.origin[1];
     packet->position[2] = packet->radialOffset[2] + effect->head.origin[2];
@@ -3031,7 +3027,7 @@ void dds3Particle_SphereSpiral2Draw(parBurstEmitter_t *effect) {
             rotationAxis[3] = 0;
             SDF_VU0_LOADVECTOR(rotationAxis);
             SDF_VU0_APPLYMATRIX_XYZ();
-            VU0_STORE_VF10_UNCLOBBERED(rotationAxis);
+            VU0_STORE_VF10_NOMEM(rotationAxis);
             SetRotateMatrixAxis(rotationStep, (const sdfVector3_t *)rotationAxis);
             SDF_VU0_LOADVECTOR(packet->radialOffset);
             SDF_VU0_APPLYMATRIX_XYZ();
@@ -3324,10 +3320,10 @@ void dds3Particle_TrackSetExp(parSystem_t *system, s32 index, const f32 *origin,
             VU0_COPY_VF2_TO_VF12();
             SDF_VU0_COPYVECTOR_A_TO_B();
             SDF_VU0_ADDVECTOR_A_C();
-            VU0_STORE_VF10_UNCLOBBERED(vertex);
+            VU0_STORE_VF10_NOMEM(vertex);
             SDF_VU0_COPYVECTOR_C_TO_A();
             SDF_VU0_SUBVECTOR_B_A();
-            VU0_STORE_VF11_UNCLOBBERED(vertex + 1);
+            VU0_STORE_VF11_NOMEM(vertex + 1);
             vertex += 2;
         }
         dds3TrackPolyVCRefresh_ParType1(system, index);
@@ -3377,13 +3373,13 @@ void dds3Particle_Track2SetExp(parSystem_t *system, s32 index, const f32 *origin
             VU0_COPY_VF10_TO_VF2();
             SDF_VU0_COPYVECTOR_C_TO_A();
             VU0_COPY_VF2_TO_VF12();
-            VU0_STORE_VF10_UNCLOBBERED(vertex + 1);
+            VU0_STORE_VF10_NOMEM(vertex + 1);
             SDF_VU0_COPYVECTOR_A_TO_B();
             SDF_VU0_ADDVECTOR_A_C();
-            VU0_STORE_VF10_UNCLOBBERED(vertex);
+            VU0_STORE_VF10_NOMEM(vertex);
             SDF_VU0_COPYVECTOR_C_TO_A();
             SDF_VU0_SUBVECTOR_B_A();
-            VU0_STORE_VF11_UNCLOBBERED(vertex + 2);
+            VU0_STORE_VF11_NOMEM(vertex + 2);
             vertex += 3;
         }
         dds3TrackPolyVCRefresh_ParType2(system, index);
