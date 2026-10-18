@@ -8,16 +8,6 @@
  * vector transfers or the implicit VU matrix-register convention in C. */
 
 
-#define VU0_LOAD_VF_MEMORY(vf, src) __asm__ volatile ( \
-    ".set noreorder\n\tlqc2 " #vf ", 0(%0)\n\t.set reorder" \
-    : : "r" (src) : "memory")
-
-
-#define VU0_SET_ONES_XYZ(vf) __asm__ volatile ( \
-    ".set noreorder\n\tvaddw.xyz " #vf ", vf0, vf0w\n\tvmulx.w " #vf ", vf0, vf0x\n\t.set reorder" \
-    : : : "memory")
-
-
 #define VU0_MUL_MATRIX_ROWS_VF10() __asm__ volatile ( \
     ".set noreorder\n\tvmul.xyz vf28, vf28, vf10\n\tvmul.xyz vf29, vf29, vf10\n\t" \
     "vmul.xyz vf30, vf30, vf10\n\t.set reorder" \
@@ -54,10 +44,6 @@
     "vnop\n\tvnop\n\tvnop\n\tvnop\n\tvnop\n\tcfc2.ni $3, $vi18\n\t" \
     "and %0, $2, $3\n\t.set reorder" \
     : "=r" (flags) : "r" (bounds) : "$2", "$3", "$6", "$7", "memory")
-
-
-#define VU0_NEGATE_XYZ(vf) __asm__ volatile ( \
-    ".set noreorder\n\tvsub.xyz " #vf ", vf0, " #vf "\n\t.set reorder")
 
 
 /* The serialized node-def block has a 16-byte count/padding prefix. */
@@ -166,10 +152,10 @@ sdfModelNode_t *sdfModelNodeNew(void) {
     node->drawAttr = -1;
     node->prev = node;
     node->next = node;
-    VU0_STORE_VF(vf0, &node->rotate);
-    VU0_STORE_VF(vf0, &node->pos);
-    VU0_SET_ONES_XYZ(vf10);
-    VU0_STORE_VF(vf10, &node->scale);
+    VU0_STORE_VF0(&node->rotate);
+    VU0_STORE_VF0(&node->pos);
+    VU0_UNIT_SCALE();
+    VU0_STORE_VF10(&node->scale);
     EE_MMI_UNIT_MATRIX(&node->localNoScaledTm);
     return node;
 }
@@ -224,9 +210,9 @@ sdfModelRootNode_t *sdfModelRootNew(void) {
     slot = sdfChipAllocZeroDirect(sizeof(sdfModelRootNode_t));
     slot->nodeList = (sdfModelNodeList_t *)sdfItemArrayNew(0, 4, 0x20);
     EE_MMI_UNIT_MATRIX(&slot->tm);
-    VU0_STORE_VF(vf0, &slot->rotate);
-    VU0_SET_ONES_XYZ(vf10);
-    VU0_STORE_VF(vf10, &slot->scale);
+    VU0_STORE_VF0(&slot->rotate);
+    VU0_UNIT_SCALE();
+    VU0_STORE_VF10(&slot->scale);
     slot->drawAttr = -1;
     slot->color = 0x80808080;
     return slot;
@@ -518,9 +504,9 @@ INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelLinkDrawPacket);
 
 /* vu0 routine: native SDK vector/matrix operations around model state. */
 void sdfModelMakeLocalTm(sdfModelNode_t *node) {
-    VU0_LOAD_VF(vf10, &node->rotate);
+    VU0_LOAD_VF10(&node->rotate);
     ToMatrix();
-    VU0_LOAD_VF(vf31, &node->pos);
+    VU0_LOAD_VF31(&node->pos);
     VU0_STORE_MATRIX(&node->localNoScaledTm);
 }
 
@@ -674,16 +660,16 @@ void sdfModelEvalNode(sdfModelNode_t *drawNode, const f32 (*parentMatrix)[4], s3
     u8 *workspace;
     sdfModelNode_t *child;
 
-    VU0_LOAD_VF_MEMORY(vf28, xAxis);
+    VU0_LOAD_VF28_BARRIER(xAxis);
     yAxis = &drawNode->localNoScaledTm.m[4];
-    VU0_LOAD_VF_MEMORY(vf29, yAxis);
+    VU0_LOAD_VF29_BARRIER(yAxis);
     zAxis = &drawNode->localNoScaledTm.m[8];
-    VU0_LOAD_VF_MEMORY(vf30, zAxis);
+    VU0_LOAD_VF30_BARRIER(zAxis);
     scale = (f32 *)&drawNode->scale;
-    VU0_LOAD_VF_MEMORY(vf10, scale);
-    VU0_SCALE_MATRIX_ROWS(vf10);
+    VU0_LOAD_VF10_BARRIER(scale);
+    VU0_SCALE_MATRIX_ROWS_VF10();
     translation = (f32 *)&drawNode->pos;
-    VU0_LOAD_VF_MEMORY(vf31, translation);
+    VU0_LOAD_VF31_BARRIER(translation);
     VU0_LOAD_MATRIX_B(parentMatrix);
     MultMatrixRevNoArg();
     transformed = (f32 (*)[4])drawNode->tm.m;
@@ -711,7 +697,7 @@ void sdfModelEvalTm2(sdfModelRootNode_t *model, s32 frame) {
 
     VU0_LOAD_MATRIX(transform);
     scale = (f32 *)&model->scale;
-    VU0_LOAD_VF_MEMORY(vf10, scale);
+    VU0_LOAD_VF10_BARRIER(scale);
     VU0_MUL_MATRIX_ROWS_VF10();
     VU0_STORE_MATRIX_M(rootMatrix[0], rootMatrix[1], rootMatrix[2], rootMatrix[3]);
     list = model->nodeList;
@@ -885,18 +871,18 @@ void sdfModelMakeMarkPosMatrix(sdfModelRootNode_t *model, sdfModelMarkPos_t *rec
     u8 *vector;
 
     vector = (u8 *)&record->dir;
-    VU0_LOAD_VF(vf10, vector);
-    VU0_MOVE_VF(vf30, vf10);
-    VU0_MOVE_VF(vf11, vf10);
+    VU0_LOAD_VF10(vector);
+    VU0_COPY_VF10_TO_VF30();
+    VU0_COPY_VF10_TO_VF11();
     vector = (u8 *)&record->up;
-    VU0_LOAD_VF(vf10, vector);
-    VU0_NEGATE_XYZ(vf10);
-    VU0_MOVE_VF(vf29, vf10);
-    VU0_CROSS_XYZ(vf10, vf10, vf11);
+    VU0_LOAD_VF10(vector);
+    VU0_NEGATE_VF10_XYZ();
+    VU0_COPY_VF10_TO_VF29();
+    VU0_CROSS_VF10_VF11();
     VU0_NORMALIZE_VF10();
-    VU0_MOVE_VF(vf28, vf10);
-    VU0_LOAD_VF(vf31, &record->pos);
-    VU0_SET_W_ONE(vf31);
+    VU0_COPY_VF10_TO_VF28();
+    VU0_LOAD_VF31(&record->pos);
+    VU0_SET_VF31_W_ONE();
     MultMatrixRev(&drawNode->tm);
 }
 
@@ -905,8 +891,8 @@ void sdfModelMakeMarkPos(sdfModelRootNode_t *model, sdfModelMarkPos_t *record) {
     sdfModelNode_t *drawNode = sdfModelSearchNode(model, record->nodeId);
 
     VU0_LOAD_MATRIX(&drawNode->tm);
-    VU0_LOAD_VF(vf10, &record->pos);
-    VU0_TRANSFORM_POINT(vf10, vf10);
+    VU0_LOAD_VF10(&record->pos);
+    VU0_TRANSFORM_POINT_VF10();
 }
 
 sdfModelMarkPos_t *sdfModelSearchMarkPosData(sdfModelRootNode_t *aRoot, s32 aId)
