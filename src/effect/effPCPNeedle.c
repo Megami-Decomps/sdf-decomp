@@ -240,7 +240,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
     VU0_LOAD_VF10(aViewTarget);
     VU0_LOAD_VF11(aViewEye);
     VU0_SUB_VF10_VF11();
-    VU0_STORE_VF_UNCLOBBERED(vf10, viewDirection);
+    VU0_STORE_VF10_NOMEM(viewDirection);
     value = -work->params.viewOffset * 0.75f;
     viewOffset[0] = value;
     viewOffset[1] = value;
@@ -248,7 +248,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
 
     if (effBTLSkillCheckRun() != 0) {
         effBTLModelGetSphereCenter((struct BtlUnit *)effBTLSkillGetInvokeFormation());
-        VU0_STORE_VF_UNCLOBBERED(vf10, position);
+        VU0_STORE_VF10_NOMEM(position);
         LookAtMatrix(work->params.position, position, D_0031F450);
         ReverseMatrix();
         VU0_STORE_MATRIX_UNCLOBBERED(work->resource->matrix);
@@ -261,10 +261,10 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
     axis[1] = 0.0f;
     VU0_LOAD_VF10(axis);
     VU0_ROTATE_VF10();
-    VU0_STORE_VF_UNCLOBBERED(vf10, axis);
+    VU0_STORE_VF10_NOMEM(axis);
     VU0_LOAD_VF11(viewOffset);
     VU0_MUL_VF10_VF11();
-    VU0_STORE_VF_UNCLOBBERED(vf10, viewOffset);
+    VU0_STORE_VF10_NOMEM(viewOffset);
 
     count = work->count;
     i = 0;
@@ -287,7 +287,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
                 position[2] = 0.0f;
                 VU0_LOAD_VF10(position);
                 VU0_ROTATE_VF10();
-                VU0_STORE_VF_UNCLOBBERED(vf10, position);
+                VU0_STORE_VF10_NOMEM(position);
                 slot->direction[0] = position[0];
                 slot->direction[1] = position[1];
                 slot->direction[2] = position[2];
@@ -299,7 +299,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
                 VU0_LOAD_VF10(viewOffset);
                 VU0_LOAD_VF11(resourcePosition);
                 VU0_ADD_VF10_VF11();
-                VU0_STORE_VF_UNCLOBBERED(vf10, resourcePosition);
+                VU0_STORE_VF10_NOMEM(resourcePosition);
 
                 position[0] = slot->direction[0];
                 position[1] = slot->direction[1];
@@ -308,7 +308,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
                 slot->angle += angleStep;
                 VU0_LOAD_VF10(position);
                 VU0_ROTATE_VF10();
-                VU0_STORE_VF_UNCLOBBERED(vf10, position);
+                VU0_STORE_VF10_NOMEM(position);
 
                 {
                     f32 elapsed = (f32)slot->age;
@@ -324,7 +324,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
                 VU0_LOAD_VF10(position);
                 VU0_LOAD_VF11(work->params.position);
                 VU0_ADD_VF10_VF11();
-                VU0_STORE_VF_UNCLOBBERED(vf10, position);
+                VU0_STORE_VF10_NOMEM(position);
                 dds3NeedleModelSetPosition(work->resource, i, position);
 
                 if (age < fadeIn && fadeIn != 0) {
@@ -342,24 +342,24 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
                     VU0_LOAD_VF10(viewOffset);
                     VU0_LOAD_VF11(position);
                     VU0_ADD_VF10_VF11();
-                    VU0_MOVE_VF(vf12, vf10);
+                    VU0_COPY_VF10_TO_VF12();
                     VU0_LOAD_VF10(resourcePosition);
-                    VU0_MOVE_VF(vf11, vf12);
+                    VU0_COPY_VF12_TO_VF11();
                     VU0_SUB_VF10_VF11();
                     VU0_LOAD_VF11(viewDirection);
                     VU0_CROSS_VF10_VF11();
                     VU0_NORMALIZE_VF10();
                     VU0_LOAD_VF11(width);
                     VU0_MUL_VF10_VF11();
-                    VU0_MOVE_VF(vf2, vf10);
-                    VU0_MOVE_VF(vf10, vf12);
-                    VU0_MOVE_VF(vf12, vf2);
-                    VU0_MOVE_VF(vf11, vf10);
+                    VU0_COPY_VF10_TO_VF2();
+                    VU0_COPY_VF12_TO_VF10();
+                    VU0_COPY_VF2_TO_VF12();
+                    VU0_COPY_VF10_TO_VF11();
                     VU0_ADD_VF10_VF12();
-                    VU0_STORE_VF_UNCLOBBERED(vf10, vertices[0]);
-                    VU0_MOVE_VF(vf10, vf12);
+                    VU0_STORE_VF10_NOMEM(vertices[0]);
+                    VU0_COPY_VF12_TO_VF10();
                     VU0_SUB_VF11_VF10();
-                    VU0_STORE_VF_UNCLOBBERED(vf11, vertices[1]);
+                    VU0_STORE_VF11_NOMEM(vertices[1]);
                     dds3TrackPolySet(work->system, i, (const u128 *)vertices);
                     dds3TrackPolyVCRefresh_ParType1(work->system, i);
                     dds3TrackPolyColorSet((u32)work->system, i, (color & 0xFF000000) | 0x808080);
