@@ -54,15 +54,15 @@ void effScreenOffset(void)
 {
     f32 *matrix;
 
-    SDF_VU0__LOADMATRIX(D_002FA240);
+    SDF_VU0_LOADMATRIX(D_002FA240);
     matrix = dds3ScreenParam.matrix;
     MultMatrixRev(matrix);
-    SDF_VU0__APPLYMATRIX_XYZ1();
-    SDF_VU0__PERSVECTOR();
-    SDF_VU0__LOADVECTOR_B(matrix + 16);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__LOADVECTOR_B(&dds3ScreenParam.offset);
-    SDF_VU0__ADDVECTOR();
+    SDF_VU0_APPLYMATRIX_XYZ1();
+    SDF_VU0_PERSVECTOR();
+    SDF_VU0_LOADVECTOR_B(matrix + 16);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_LOADVECTOR_B(&dds3ScreenParam.offset);
+    SDF_VU0_ADDVECTOR();
 }
 
 /* vu0 routine: measure the projected camera-right offset. */
@@ -77,26 +77,26 @@ s32 effPCPBlurScreenOffset(f32 scale) {
 
     VU0_STORE_VF10_UNCLOBBERED(original);
     effScreenOffset();
-    SDF_VU0__STOREVECTOR(projectedStart);
+    SDF_VU0_STOREVECTOR(projectedStart);
 
     scaleVector[0] = scaleVector[1] = scaleVector[2] = scale;
-    SDF_VU0__LOADVECTOR(original);
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__LOADVECTOR_B(&aViewEye);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__LOADVECTOR_B(&aViewDown);
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__NORMALIZE();
+    SDF_VU0_LOADVECTOR(original);
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR_B(&aViewEye);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_LOADVECTOR_B(&aViewDown);
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
     VU0_LOAD_VF11_MEMORY(scaleVector);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__COPYVECTOR_C_TO_B();
-    SDF_VU0__ADDVECTOR();
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_COPYVECTOR_C_TO_B();
+    SDF_VU0_ADDVECTOR();
 
     effScreenOffset();
-    SDF_VU0__STOREVECTOR(projectedEnd);
+    SDF_VU0_STOREVECTOR(projectedEnd);
     dx = projectedEnd[0] - projectedStart[0];
     dy = projectedEnd[1] - projectedStart[1];
-    SDF_VU0__LOADVECTOR(projectedStart);
+    SDF_VU0_LOADVECTOR(projectedStart);
     distance = fsqrtf(dx * dx + dy * dy);
     return (s32)distance;
 }
@@ -114,13 +114,13 @@ u32 effColorBlend(u32 to, u32 from, f32 amount)
     unit = EFF_RGBA_UNIT;
     work[0].word = from;
     MMI_RGBA_UNPACK(&work[0], unit);
-    SDF_VU0__COPYVECTOR_A_TO_B();
+    SDF_VU0_COPYVECTOR_A_TO_B();
     work[1].word = to;
     MMI_RGBA_UNPACK(&work[1], unit);
-    SDF_VU0__SCALEVECTOR(1.0f - amount);
-    SDF_VU0__SCALEVECTOR_B(amount);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__dds3ColorFtoI(blended, 128.0f);
+    SDF_VU0_SCALEVECTOR(1.0f - amount);
+    SDF_VU0_SCALEVECTOR_B(amount);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_dds3ColorFtoI(blended, 128.0f);
     work[2].word = blended;
     return blended;
 }
@@ -134,11 +134,11 @@ u32 effMagaCylinderCalcColor(u32 color, u32 scale)
 
     work[0].word = color;
     MMI_RGBA_UNPACK(&work[0], unit);
-    SDF_VU0__COPYVECTOR_A_TO_B();
+    SDF_VU0_COPYVECTOR_A_TO_B();
     work[1].word = scale;
     MMI_RGBA_UNPACK(&work[1], unit);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__dds3ColorFtoI(out, 128.0f);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_dds3ColorFtoI(out, 128.0f);
     return out;
 }
 
@@ -150,19 +150,19 @@ f32 effLinePointLength(QuadF32 *dir, QuadF32 *from, QuadF32 *to)
     f32 projection;
     f32 length;
 
-    SDF_VU0__LOADVECTOR(to);
-    SDF_VU0__LOADVECTOR_B(from);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(&delta);
-    SDF_VU0__LOADVECTOR_B(dir);
-    SDF_VU0__INNERPRODUCT(projection);
+    SDF_VU0_LOADVECTOR(to);
+    SDF_VU0_LOADVECTOR_B(from);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(&delta);
+    SDF_VU0_LOADVECTOR_B(dir);
+    SDF_VU0_INNERPRODUCT(projection);
     along.components[0] = dir->components[0] * projection;
     along.components[1] = dir->components[1] * projection;
     along.components[2] = dir->components[2] * projection;
-    SDF_VU0__LOADVECTOR(&delta);
-    SDF_VU0__LOADVECTOR_B(&along);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__GETLENGTH(length);
+    SDF_VU0_LOADVECTOR(&delta);
+    SDF_VU0_LOADVECTOR_B(&along);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_GETLENGTH(length);
     return length;
 }
 
