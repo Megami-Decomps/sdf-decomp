@@ -106,30 +106,6 @@ typedef struct EffPacketParams EffPacketParams;
 
 #define EFF_DIRECT_SURFACE_COUNT 4
 
-/*
- * sceVu0UnitMatrix as libvu0 expands it (scratch registers hard-coded by the
- * SDK):
- *     qmfc2.ni $5, vf0            ; (0,0,0,1)
- *     pextuw   $4, $0, $5         ; (0,0,1,0) row 2
- *     pextuw   $2, $0, $4         ; (1,0,0,0) row 0
- *     pextuw   $3, $4, $0         ; (0,1,0,0) row 1
- *     sq $2,0(dst); sq $3,0x10(dst); sq $4,0x20(dst); sq $5,0x30(dst)
- * The four `sq` are part of the idiom: retail stores the identity rows from
- * the registers the shuffle left them in. Tried: sixteen u32 stores of 0/1
- * (gcc 2.96 emits sw of $0 and a constant, never qmfc2/pextuw or sq).
- */
-#define EE_MMI_UNIT_MATRIX(dst) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "qmfc2.ni $5, $vf0\n\t" \
-    "pextuw $4, $0, $5\n\t" \
-    "pextuw $2, $0, $4\n\t" \
-    "pextuw $3, $4, $0\n\t" \
-    "sq $2, 0(%0)\n\t" \
-    "sq $3, 0x10(%0)\n\t" \
-    "sq $4, 0x20(%0)\n\t" \
-    "sq $5, 0x30(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (dst) : "$2", "$3", "$4", "$5", "memory")
 
 /* Four ordered 32-bit words in the shared effect random-number state. */
 struct EffRandState {
@@ -850,27 +826,6 @@ struct sdfGrOt_t {
  */
 #define VEC3_SPLAT(v, x) ((v)[0] = (x), (v)[1] = (x), (v)[2] = (x))
 
-/*
- * 64-byte (4-quadword) copy through vf28-vf31, as the field/effect matrix
- * setters do. COP2 has no plain-C form; .set noreorder keeps ee-as from
- * moving the sqc2 into a delay slot.
- */
-#define VU0_COPY_MATRIX(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "lqc2 vf28, 0(%1)\n\t" \
-    "lqc2 vf29, 16(%1)\n\t" \
-    "lqc2 vf30, 32(%1)\n\t" \
-    "lqc2 vf31, 48(%1)\n\t" \
-    "sqc2 vf28, 0(%0)\n\t" \
-    "sqc2 vf29, 16(%0)\n\t" \
-    "sqc2 vf30, 32(%0)\n\t" \
-    "sqc2 vf31, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (dst), "r" (src) : "memory")
-
-/* vf10 += vf12: the vf12 spare the flash builders park a vector in. */
-#define VU0_ADD_VF10_VF12() __asm__ volatile ( \
-    ".set noreorder\n\tvadd.xyzw vf10, vf10, vf12\n\t.set reorder")
 
 /* Vertex-draw descriptor used by the thunder history and end-cap packets.
  * Both title providers clear the first 0x2C bytes and keep these globals in
