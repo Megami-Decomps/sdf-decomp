@@ -1137,13 +1137,13 @@ void effPCPHamaCardSpiralDraw(PcpScatterRadialWork *work) {
                 SDF_VU0_LOADVECTOR_B(position);
                 SDF_VU0_SUBVECTOR();
                 SDF_VU0_NORMALIZE();
-                VU0_STORE_VF10_NOMEM(direction);
+                SDF_VU0_STOREVECTOR_NOMEM(direction);
                 SDF_VU0_LOADVECTOR_B(halfWidth);
                 SDF_VU0_MULVECTOR();
                 SDF_VU0_ADDVECTOR_A_C();
                 SDF_VU0_COPYVECTOR_A_TO_C();
-                VU0_STORE_VF10_NOMEM(position);
-                VU0_STORE_VF10_NOMEM(radial);
+                SDF_VU0_STOREVECTOR_NOMEM(position);
+                SDF_VU0_STOREVECTOR_NOMEM(radial);
                 radial[1] = 0.0f;
                 SDF_VU0_LOADVECTOR(direction);
                 SDF_VU0_LOADVECTOR_B(radial);
@@ -1151,14 +1151,14 @@ void effPCPHamaCardSpiralDraw(PcpScatterRadialWork *work) {
                 SDF_VU0_NORMALIZE();
                 SDF_VU0_LOADVECTOR_B(halfHeight);
                 SDF_VU0_MULVECTOR();
-                VU0_STORE_VF10_NOMEM(side);
+                SDF_VU0_STOREVECTOR_NOMEM(side);
                 SDF_VU0_LOADVECTOR(position);
                 SDF_VU0_LOADVECTOR_B(side);
                 SDF_VU0_ADDVECTOR();
-                VU0_STORE_VF10_NOMEM(vertices);
+                SDF_VU0_STOREVECTOR_NOMEM(vertices);
                 SDF_VU0_SUBVECTOR();
                 SDF_VU0_SUBVECTOR();
-                VU0_STORE_VF10_NOMEM(vertices + 3);
+                SDF_VU0_STOREVECTOR_NOMEM(vertices + 3);
                 if (j == 1) {
                     SDF_VU0_COPYVECTOR(duplicatePosition, position);
                 }
@@ -1188,7 +1188,7 @@ void effPCPHamaCardSpiralDraw(PcpScatterRadialWork *work) {
             SDF_VU0_LOADVECTOR(work->params.origin);
             SDF_VU0_LOADVECTOR_B(duplicatePosition);
             SDF_VU0_ADDVECTOR();
-            VU0_STORE_VF10_NOMEM(duplicatePosition);
+            SDF_VU0_STOREVECTOR_NOMEM(duplicatePosition);
             dds3EffectPartSetPosition(work->duplicatedHandles[group], duplicatePosition);
             dds3EffectPartDraw(work->duplicatedHandles[group]);
         }
@@ -1440,7 +1440,7 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
             position[2] = 0.0f;
             SDF_VU0_LOADVECTOR(position);
             SDF_VU0_APPLYMATRIX();
-            VU0_STORE_VF10_NOMEM(position);
+            SDF_VU0_STOREVECTOR_NOMEM(position);
             SDF_VU0_COPYVECTOR_A_TO_C();
             for (j = 0; j < 3; j++, vertices++, colors++) {
                 colors[0] = color;
@@ -1452,18 +1452,18 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
                 next[2] = 0.0f;
                 SDF_VU0_LOADVECTOR(next);
                 SDF_VU0_APPLYMATRIX();
-                VU0_STORE_VF10_NOMEM(next);
+                SDF_VU0_STOREVECTOR_NOMEM(next);
                 SDF_VU0_LOADVECTOR(next);
                 SDF_VU0_LOADVECTOR_B(position);
                 SDF_VU0_SUBVECTOR();
                 SDF_VU0_NORMALIZE();
-                VU0_STORE_VF10_NOMEM(direction);
+                SDF_VU0_STOREVECTOR_NOMEM(direction);
                 SDF_VU0_LOADVECTOR_B(halfWidth);
                 SDF_VU0_MULVECTOR();
                 SDF_VU0_ADDVECTOR_A_C();
                 SDF_VU0_COPYVECTOR_A_TO_C();
-                VU0_STORE_VF10_NOMEM(position);
-                VU0_STORE_VF10_NOMEM(radial);
+                SDF_VU0_STOREVECTOR_NOMEM(position);
+                SDF_VU0_STOREVECTOR_NOMEM(radial);
                 radial[1] = 0.0f;
                 SDF_VU0_LOADVECTOR(direction);
                 SDF_VU0_LOADVECTOR_B(radial);
@@ -1471,14 +1471,14 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
                 SDF_VU0_NORMALIZE();
                 SDF_VU0_LOADVECTOR_B(halfHeight);
                 SDF_VU0_MULVECTOR();
-                VU0_STORE_VF10_NOMEM(side);
+                SDF_VU0_STOREVECTOR_NOMEM(side);
                 SDF_VU0_LOADVECTOR(position);
                 SDF_VU0_LOADVECTOR_B(side);
                 SDF_VU0_ADDVECTOR();
-                VU0_STORE_VF10_NOMEM(vertices);
+                SDF_VU0_STOREVECTOR_NOMEM(vertices);
                 SDF_VU0_SUBVECTOR();
                 SDF_VU0_SUBVECTOR();
-                VU0_STORE_VF10_NOMEM(vertices + 3);
+                SDF_VU0_STOREVECTOR_NOMEM(vertices + 3);
                 if (j == 1) {
                     SDF_VU0_COPYVECTOR(duplicatePosition, position);
                 }
@@ -1506,7 +1506,7 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
             SDF_VU0_LOADVECTOR(work->params.origin);
             SDF_VU0_LOADVECTOR_B(duplicatePosition);
             SDF_VU0_ADDVECTOR();
-            VU0_STORE_VF10_NOMEM(duplicatePosition);
+            SDF_VU0_STOREVECTOR_NOMEM(duplicatePosition);
             dds3EffectPartSetPosition(work->duplicatedHandles[group], duplicatePosition);
             dds3EffectPartDraw(work->duplicatedHandles[group]);
         }
