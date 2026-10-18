@@ -1,4 +1,5 @@
 #include "common.h"
+#include "ps2asm.h"
 
 struct EffPacketParams;
 struct EffRandState;
@@ -360,18 +361,6 @@ struct EffRingWork {
     SdfMemBlock *allocationHandle;
     EffRecordPool *recordPool;
 };
-
-/*
- * 128-bit vector copy in the style of libvu0's sceVu0CopyVector, which the
- * Sony SDK implements as an asm statement (`lq` into a scratch register, `sq`
- * out of it). The PCP effect setters compile to exactly `lq $2,0(src);
- * sq $2,0(dst); jr $31; nop`: plain C u128 copies give `lq; jr; sq` (the sq
- * moves into the jr delay slot). `.set noreorder` keeps ee-as from filling
- * the slot too, as for fsqrtf. The destination is operand 0 so its address is formed first.
- */
-#define PCP_COPY_VECTOR(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\tlq $2, 0(%1)\n\tsq $2, 0(%0)\n\t.set reorder" \
-    : : "r" (dst), "r" (src) : "$2", "memory")
 
 typedef struct PcpFlashAccumulatingParticle PcpFlashAccumulatingParticle;
 
@@ -867,9 +856,6 @@ struct SdfPoolNode {
  */
 #define VEC3_SPLAT(v, x) ((v)[0] = (x), (v)[1] = (x), (v)[2] = (x))
 
-#define VU0_ADD(dst, a, b) __asm__ volatile ( \
-    ".set noreorder\n\tvadd.xyzw " #dst ", " #a ", " #b "\n\t.set reorder")
-
 /*
  * 64-byte (4-quadword) copy through vf28-vf31, as the field/effect matrix
  * setters do. COP2 has no plain-C form; .set noreorder keeps ee-as from
@@ -888,55 +874,9 @@ struct SdfPoolNode {
     ".set reorder" \
     : : "r" (dst), "r" (src) : "memory")
 
-/* dst = a x b (xyz cross product): vopmula.xyz ACC,a,b; vopmsub.xyz dst,b,a */
-#define VU0_CROSS_XYZ(dst, a, b) __asm__ volatile ( \
-    ".set noreorder\n\tvopmula.xyz ACC, " #a ", " #b "\n\tvopmsub.xyz " #dst ", " #b ", " #a "\n\t.set reorder")
-
-/* Load the same four quadwords into vf28-vf31 (no store). */
-#define VU0_LOAD_MATRIX(src) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "lqc2 vf28, 0(%0)\n\t" \
-    "lqc2 vf29, 16(%0)\n\t" \
-    "lqc2 vf30, 32(%0)\n\t" \
-    "lqc2 vf31, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (src))
-
-/* One quadword between memory and a named VU0 register. The load has no
- * memory clobber; the store does, matching the standalone COP2 asm idiom. */
-#define VU0_LOAD_VF(vf, src) __asm__ volatile ( \
-    ".set noreorder\n\tlqc2 " #vf ", 0(%0)\n\t.set reorder" \
-    : : "r" (src))
-
-/* Register-to-register vector copy between calls (vmove.xyzw). */
-#define VU0_MOVE_VF(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\tvmove.xyzw " #dst ", " #src "\n\t.set reorder")
-
-#define VU0_MUL(dst, a, b) __asm__ volatile ( \
-    ".set noreorder\n\tvmul.xyzw " #dst ", " #a ", " #b "\n\t.set reorder")
-
-/* vf10 = vf10 / |vf10.xyz| (w untouched):
- *   vmul.xyz vf2,vf10,vf10; vmulax.w ACC,vf0,vf2x; vmadday.w ACC,vf0,vf2y;
- *   vmaddz.w vf2,vf0,vf2z; vrsqrt Q,vf0w,vf2w; vwaitq; vmulq.xyz vf10,vf10,Q */
-#define VU0_NORMALIZE_VF10() __asm__ volatile ( \
-    ".set noreorder\n\tvmul.xyz vf2, vf10, vf10\n\tvmulax.w ACC, vf0, vf2x\n\t" \
-    "vmadday.w ACC, vf0, vf2y\n\tvmaddz.w vf2, vf0, vf2z\n\tvrsqrt Q, vf0w, vf2w\n\t" \
-    "vwaitq\n\tvmulq.xyz vf10, vf10, Q\n\t.set reorder")
-
-/* dst = 3x3 of the primary matrix (vf28-vf30) times src.xyz: a rotation, no
- * translation (the vmaddz form of the apply above). */
-#define VU0_ROTATE_VEC(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\tvmulax.xyzw ACC, vf28, " #src "x\n\tvmadday.xyzw ACC, vf29, " #src "y\n\t" \
-    "vmaddz.xyzw " #dst ", vf30, " #src "z\n\t.set reorder")
-
-#define VU0_STORE_VF(vf, dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 " #vf ", 0(%0)\n\t.set reorder" \
-    : : "r" (dst) : "memory")
-
-/* dst = a - b, dst = a + b, dst = a * b on all four components
- * (vsub/vadd/vmul.xyzw between calls, e.g. the difference of two positions). */
-#define VU0_SUB(dst, a, b) __asm__ volatile ( \
-    ".set noreorder\n\tvsub.xyzw " #dst ", " #a ", " #b "\n\t.set reorder")
+/* vf10 += vf12: the vf12 spare the flash builders park a vector in. */
+#define VU0_ADD_VF10_VF12() __asm__ volatile ( \
+    ".set noreorder\n\tvadd.xyzw vf10, vf10, vf12\n\t.set reorder")
 
 /* Vertex-draw descriptor used by the thunder history and end-cap packets.
  * Both title providers clear the first 0x2C bytes and keep these globals in
@@ -1163,11 +1103,11 @@ void effPCPFlashPolySpherePartInit(PcpFlashStreakWork *work, s32 index, void *or
     direction[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
     /* Two plain quadword loads, no memory clobber: retail keeps `direction`
      * and `orientation` CSE'd across them. */
-    VU0_LOAD_VF(vf10, direction);
-    VU0_LOAD_VF(vf11, orientation);
-    VU0_CROSS_XYZ(vf10, vf10, vf11);
+    VU0_LOAD_VF10(direction);
+    VU0_LOAD_VF11(orientation);
+    VU0_CROSS_VF10_VF11();
         VU0_NORMALIZE_VF10();;
-    VU0_STORE_VF(vf10, direction);
+    VU0_STORE_VF10(direction);
     part->position[0] = direction[0];
     part->position[1] = direction[1];
     part->position[2] = direction[2];
@@ -1192,9 +1132,9 @@ void effPCPFlashPolySpherePartRotate(PcpFlashStreakWork *work, s32 index, void *
     position[1] = part->position[1];
     position[2] = part->position[2];
     SetRotateMatrixAxis(part->rotationStep, (const RwV3d *)orientation);
-    VU0_LOAD_VF(vf10, position);
-    VU0_ROTATE_VEC(vf10, vf10);
-    VU0_STORE_VF(vf10, position);
+    VU0_LOAD_VF10(position);
+    VU0_ROTATE_VF10();
+    VU0_STORE_VF10(position);
     part->position[0] = position[0];
     part->position[1] = position[1];
     part->position[2] = position[2];
@@ -1324,50 +1264,50 @@ void effPCPFlashPolyPipePartSetVertex(PcpFlashAccumulatingWork *work, s32 index)
     effPCPFlashPolyPipeVertex[0] = unit[0] * height;
     effPCPFlashPolyPipeVertex[1] = height + -1.0f;
     effPCPFlashPolyPipeVertex[2] = sinv * height;
-    VU0_LOAD_VF(vf10, effPCPFlashPolyPipeVertex);
+    VU0_LOAD_VF10(effPCPFlashPolyPipeVertex);
     VU0_NORMALIZE_VF10();
-    VU0_MOVE_VF(vf11, vf10);
-    VU0_MOVE_VF(vf12, vf10);
-    VU0_LOAD_VF(vf10, unit);
-    VU0_CROSS_XYZ(vf10, vf10, vf11);
+    VU0_COPY_VF10_TO_VF11();
+    VU0_COPY_VF10_TO_VF12();
+    VU0_LOAD_VF10(unit);
+    VU0_CROSS_VF10_VF11();
     VU0_NORMALIZE_VF10();
-    VU0_MOVE_VF(vf11, vf10);
-    VU0_LOAD_VF(vf10, size);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, size);
-    VU0_MOVE_VF(vf10, vf12);
-    VU0_LOAD_VF(vf11, outer);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, outer);
-    VU0_MOVE_VF(vf10, vf12);
-    VU0_LOAD_VF(vf11, inner);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, inner);
-    VU0_MOVE_VF(vf10, vf12);
-    VU0_LOAD_VF(vf11, middle);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_MOVE_VF(vf12, vf10);
-    VU0_LOAD_VF(vf10, offset);
-    VU0_ADD(vf10, vf10, vf12);
-    VU0_LOAD_VF(vf11, size);
-    VU0_STORE_VF(vf10, quad + 8);
-    VU0_ADD(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, quad + 4);
-    VU0_SUB(vf10, vf10, vf11);
-    VU0_SUB(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, quad + 12);
-    VU0_LOAD_VF(vf10, offset);
-    VU0_LOAD_VF(vf11, outer);
-    VU0_ADD(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, quad);
+    VU0_COPY_VF10_TO_VF11();
+    VU0_LOAD_VF10(size);
+    VU0_MUL_VF10_VF11();
+    VU0_STORE_VF10(size);
+    VU0_COPY_VF12_TO_VF10();
+    VU0_LOAD_VF11(outer);
+    VU0_MUL_VF10_VF11();
+    VU0_STORE_VF10(outer);
+    VU0_COPY_VF12_TO_VF10();
+    VU0_LOAD_VF11(inner);
+    VU0_MUL_VF10_VF11();
+    VU0_STORE_VF10(inner);
+    VU0_COPY_VF12_TO_VF10();
+    VU0_LOAD_VF11(middle);
+    VU0_MUL_VF10_VF11();
+    VU0_COPY_VF10_TO_VF12();
+    VU0_LOAD_VF10(offset);
+    VU0_ADD_VF10_VF12();
+    VU0_LOAD_VF11(size);
+    VU0_STORE_VF10(quad + 8);
+    VU0_ADD_VF10_VF11();
+    VU0_STORE_VF10(quad + 4);
+    VU0_SUB_VF10_VF11();
+    VU0_SUB_VF10_VF11();
+    VU0_STORE_VF10(quad + 12);
+    VU0_LOAD_VF10(offset);
+    VU0_LOAD_VF11(outer);
+    VU0_ADD_VF10_VF11();
+    VU0_STORE_VF10(quad);
     mirror = dds3FlashPolyList3GetVertex(work->resourceHandle, index * 2 + 1);
-    PCP_COPY_VECTOR(mirror + 8, quad + 8);
-    PCP_COPY_VECTOR(mirror + 4, quad + 4);
-    PCP_COPY_VECTOR(mirror + 12, quad + 12);
-    VU0_LOAD_VF(vf10, offset);
-    VU0_LOAD_VF(vf11, inner);
-    VU0_ADD(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, mirror);
+    PS2_COPY_QUAD(mirror + 8, quad + 8);
+    PS2_COPY_QUAD(mirror + 4, quad + 4);
+    PS2_COPY_QUAD(mirror + 12, quad + 12);
+    VU0_LOAD_VF10(offset);
+    VU0_LOAD_VF11(inner);
+    VU0_ADD_VF10_VF11();
+    VU0_STORE_VF10(mirror);
 }
 
 void effPCPFlashPolyPipePartRotate(PcpFlashAccumulatingWork *work, s32 index)
@@ -1443,40 +1383,40 @@ void effPCPFlashPolyRingExpPartSetVertex(PcpFlashOrbitArcWork *work, s32 index)
     effPCPFlashPolyRingExpVertex[0] = unit[0] * height;
     effPCPFlashPolyRingExpVertex[1] = height + -1.0f;
     effPCPFlashPolyRingExpVertex[2] = sinv * height;
-    VU0_LOAD_VF(vf10, effPCPFlashPolyRingExpVertex);
+    VU0_LOAD_VF10(effPCPFlashPolyRingExpVertex);
     VU0_NORMALIZE_VF10();
-    VU0_MOVE_VF(vf11, vf10);
-    VU0_MOVE_VF(vf12, vf10);
-    VU0_LOAD_VF(vf10, unit);
-    VU0_CROSS_XYZ(vf10, vf10, vf11);
+    VU0_COPY_VF10_TO_VF11();
+    VU0_COPY_VF10_TO_VF12();
+    VU0_LOAD_VF10(unit);
+    VU0_CROSS_VF10_VF11();
     VU0_NORMALIZE_VF10();
-    VU0_MOVE_VF(vf11, vf10);
-    VU0_LOAD_VF(vf10, scaleB);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, scaleB);
-    VU0_LOAD_VF(vf10, scaleC);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, scaleC);
-    VU0_MOVE_VF(vf10, vf12);
-    VU0_LOAD_VF(vf11, scaleA);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_MOVE_VF(vf12, vf10);
-    VU0_LOAD_VF(vf10, offset);
-    VU0_LOAD_VF(vf11, scaleC);
-    VU0_STORE_VF(vf10, quad + 12);
-    VU0_ADD(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, quad + 8);
-    VU0_SUB(vf10, vf10, vf11);
-    VU0_SUB(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, quad + 16);
-    VU0_LOAD_VF(vf10, offset);
-    VU0_LOAD_VF(vf11, scaleB);
-    VU0_ADD(vf10, vf10, vf12);
-    VU0_ADD(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, quad);
-    VU0_SUB(vf10, vf10, vf11);
-    VU0_SUB(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, quad + 4);
+    VU0_COPY_VF10_TO_VF11();
+    VU0_LOAD_VF10(scaleB);
+    VU0_MUL_VF10_VF11();
+    VU0_STORE_VF10(scaleB);
+    VU0_LOAD_VF10(scaleC);
+    VU0_MUL_VF10_VF11();
+    VU0_STORE_VF10(scaleC);
+    VU0_COPY_VF12_TO_VF10();
+    VU0_LOAD_VF11(scaleA);
+    VU0_MUL_VF10_VF11();
+    VU0_COPY_VF10_TO_VF12();
+    VU0_LOAD_VF10(offset);
+    VU0_LOAD_VF11(scaleC);
+    VU0_STORE_VF10(quad + 12);
+    VU0_ADD_VF10_VF11();
+    VU0_STORE_VF10(quad + 8);
+    VU0_SUB_VF10_VF11();
+    VU0_SUB_VF10_VF11();
+    VU0_STORE_VF10(quad + 16);
+    VU0_LOAD_VF10(offset);
+    VU0_LOAD_VF11(scaleB);
+    VU0_ADD_VF10_VF12();
+    VU0_ADD_VF10_VF11();
+    VU0_STORE_VF10(quad);
+    VU0_SUB_VF10_VF11();
+    VU0_SUB_VF10_VF11();
+    VU0_STORE_VF10(quad + 4);
 }
 
 void effPCPFlashPolyRingExpPartRotate(PcpFlashOrbitArcWork *work, s32 index)
@@ -1680,50 +1620,50 @@ void effPCPFlashPolySphere3PartSetVertex(PcpFlashRadialStripWork *work, s32 inde
     base[0] = 0;
     base[1] = 1.0f;
     base[2] = 0;
-    VU0_LOAD_VF(vf10, base);
-    VU0_LOAD_VF(vf11, view);
-    VU0_CROSS_XYZ(vf10, vf10, vf11);
+    VU0_LOAD_VF10(base);
+    VU0_LOAD_VF11(view);
+    VU0_CROSS_VF10_VF11();
     VU0_NORMALIZE_VF10();
-    VU0_ROTATE_VEC(vf10, vf10);
-    VU0_MOVE_VF(vf12, vf10);
+    VU0_ROTATE_VF10();
+    VU0_COPY_VF10_TO_VF12();
     /* retail multiplies the (never written) `spare` slot here and stores it back */
-    VU0_LOAD_VF(vf11, spare);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, spare);
-    VU0_MOVE_VF(vf10, vf12);
-    VU0_LOAD_VF(vf11, view);
-    VU0_CROSS_XYZ(vf10, vf10, vf11);
+    VU0_LOAD_VF11(spare);
+    VU0_MUL_VF10_VF11();
+    VU0_STORE_VF10(spare);
+    VU0_COPY_VF12_TO_VF10();
+    VU0_LOAD_VF11(view);
+    VU0_CROSS_VF10_VF11();
     VU0_NORMALIZE_VF10();
-    VU0_MOVE_VF(vf11, vf10);
-    VU0_LOAD_VF(vf10, size);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, size);
-    VU0_MOVE_VF(vf10, vf12);
-    VU0_LOAD_VF(vf11, outer);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, outer);
-    VU0_MOVE_VF(vf10, vf12);
-    VU0_LOAD_VF(vf11, inner);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, inner);
-    VU0_MOVE_VF(vf10, vf12);
-    VU0_LOAD_VF(vf11, middle);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_LOAD_VF(vf11, size);
-    VU0_STORE_VF(vf10, quad + 8);
-    VU0_ADD(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, quad + 4);
-    VU0_SUB(vf10, vf10, vf11);
-    VU0_SUB(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, quad + 12);
-    VU0_LOAD_VF(vf10, outer);
-    VU0_STORE_VF(vf10, quad);
+    VU0_COPY_VF10_TO_VF11();
+    VU0_LOAD_VF10(size);
+    VU0_MUL_VF10_VF11();
+    VU0_STORE_VF10(size);
+    VU0_COPY_VF12_TO_VF10();
+    VU0_LOAD_VF11(outer);
+    VU0_MUL_VF10_VF11();
+    VU0_STORE_VF10(outer);
+    VU0_COPY_VF12_TO_VF10();
+    VU0_LOAD_VF11(inner);
+    VU0_MUL_VF10_VF11();
+    VU0_STORE_VF10(inner);
+    VU0_COPY_VF12_TO_VF10();
+    VU0_LOAD_VF11(middle);
+    VU0_MUL_VF10_VF11();
+    VU0_LOAD_VF11(size);
+    VU0_STORE_VF10(quad + 8);
+    VU0_ADD_VF10_VF11();
+    VU0_STORE_VF10(quad + 4);
+    VU0_SUB_VF10_VF11();
+    VU0_SUB_VF10_VF11();
+    VU0_STORE_VF10(quad + 12);
+    VU0_LOAD_VF10(outer);
+    VU0_STORE_VF10(quad);
     mirror = (f32 *)dds3FlashPolyList3GetVertex(work->resourceHandle, index * 2 + 1);
-    PCP_COPY_VECTOR(mirror + 8, quad + 8);
-    PCP_COPY_VECTOR(mirror + 4, quad + 4);
-    PCP_COPY_VECTOR(mirror + 12, quad + 12);
-    VU0_LOAD_VF(vf10, inner);
-    VU0_STORE_VF(vf10, mirror);
+    PS2_COPY_QUAD(mirror + 8, quad + 8);
+    PS2_COPY_QUAD(mirror + 4, quad + 4);
+    PS2_COPY_QUAD(mirror + 12, quad + 12);
+    VU0_LOAD_VF10(inner);
+    VU0_STORE_VF10(mirror);
 }
 
 void effPCPFlashPolySphere3PartRotate(PcpFlashRadialStripWork *work, s32 index, void *orientation)
@@ -1900,40 +1840,40 @@ void effPCPFlashPolyRingExpHPartSetVertex(EffRingWork *work, s32 index) {
     effPCPFlashPolyRingExpHVertex[0] = radialDirection[0] * basisFactor;
     effPCPFlashPolyRingExpHVertex[1] = basisFactor + -1.0f;
     effPCPFlashPolyRingExpHVertex[2] = sine * basisFactor;
-    VU0_LOAD_VF(vf10, effPCPFlashPolyRingExpHVertex);
+    VU0_LOAD_VF10(effPCPFlashPolyRingExpHVertex);
     VU0_NORMALIZE_VF10();
-    VU0_MOVE_VF(vf11, vf10);
-    VU0_MOVE_VF(vf12, vf10);
-    VU0_LOAD_VF(vf10, radialDirection);
-    VU0_CROSS_XYZ(vf10, vf10, vf11);
+    VU0_COPY_VF10_TO_VF11();
+    VU0_COPY_VF10_TO_VF12();
+    VU0_LOAD_VF10(radialDirection);
+    VU0_CROSS_VF10_VF11();
     VU0_NORMALIZE_VF10();
-    VU0_MOVE_VF(vf11, vf10);
-    VU0_LOAD_VF(vf10, sideOffsetA);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, sideOffsetA);
-    VU0_LOAD_VF(vf10, sideOffsetB);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, sideOffsetB);
-    VU0_MOVE_VF(vf10, vf12);
-    VU0_LOAD_VF(vf11, axisOffset);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_MOVE_VF(vf12, vf10);
-    VU0_LOAD_VF(vf10, orbitOffset);
-    VU0_LOAD_VF(vf11, sideOffsetB);
-    VU0_STORE_VF(vf10, positions + 12);
-    VU0_ADD(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, positions + 8);
-    VU0_SUB(vf10, vf10, vf11);
-    VU0_SUB(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, positions + 16);
-    VU0_LOAD_VF(vf10, orbitOffset);
-    VU0_LOAD_VF(vf11, sideOffsetA);
-    VU0_ADD(vf10, vf10, vf12);
-    VU0_ADD(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, positions);
-    VU0_SUB(vf10, vf10, vf11);
-    VU0_SUB(vf10, vf10, vf11);
-    VU0_STORE_VF(vf10, positions + 4);
+    VU0_COPY_VF10_TO_VF11();
+    VU0_LOAD_VF10(sideOffsetA);
+    VU0_MUL_VF10_VF11();
+    VU0_STORE_VF10(sideOffsetA);
+    VU0_LOAD_VF10(sideOffsetB);
+    VU0_MUL_VF10_VF11();
+    VU0_STORE_VF10(sideOffsetB);
+    VU0_COPY_VF12_TO_VF10();
+    VU0_LOAD_VF11(axisOffset);
+    VU0_MUL_VF10_VF11();
+    VU0_COPY_VF10_TO_VF12();
+    VU0_LOAD_VF10(orbitOffset);
+    VU0_LOAD_VF11(sideOffsetB);
+    VU0_STORE_VF10(positions + 12);
+    VU0_ADD_VF10_VF11();
+    VU0_STORE_VF10(positions + 8);
+    VU0_SUB_VF10_VF11();
+    VU0_SUB_VF10_VF11();
+    VU0_STORE_VF10(positions + 16);
+    VU0_LOAD_VF10(orbitOffset);
+    VU0_LOAD_VF11(sideOffsetA);
+    VU0_ADD_VF10_VF12();
+    VU0_ADD_VF10_VF11();
+    VU0_STORE_VF10(positions);
+    VU0_SUB_VF10_VF11();
+    VU0_SUB_VF10_VF11();
+    VU0_STORE_VF10(positions + 4);
 }
 
 void effPCPFlashPolyRingExpHPartRotate(EffRingWork *work, s32 index) {
