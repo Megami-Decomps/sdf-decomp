@@ -526,3 +526,4 @@ INCLUDE_SDATA(const s32, "sdf/sdfMemory", sdfMemFullCallback);
 INCLUDE_SDATA(const s32, "sdf/sdfMemory", sdfGrDrawFirstFlag);
 
 INCLUDE_SDATA(const s32, "sdf/sdfMemory", sdfFrameEvenOdd);
+
