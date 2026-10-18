@@ -43,6 +43,11 @@ void sdfPacTexListDecoder1(sdfPacState_t *aState);
 void sdfPacTexListDecoder0(sdfPacState_t *aState);
 void sdfPacTexListDecoderInit(sdfPacState_t *aState, sdfPacPacketHeader_t *aPacket);
 
+void func_002C60E0(sdfPacState_t *state);
+void func_002C6D58(sdfPacState_t *state);
+void sdfPacTexListDecoderTmxHeaderEndFunc(sdfPacState_t *state);
+extern void sdfTexListAdd(sdfItemArray_t *list, sdfTexHandle_t *texture);
+
 void sdfPacInit(sdfPacState_t *aState, sdfPacCallbackFunc aCallback)
 {
     memset(aState, 0, sizeof(*aState));
@@ -64,7 +69,17 @@ void sdfPacSetFromTail(sdfPacState_t *aState)
     aState->flags |= SDF_PAC_STATE_FROMTAIL;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfPacDecode", sdfPacFree);
+void sdfPacFree(sdfPacState_t *state)
+{
+    sdfPacWork_t *cursor = state->head;
+    sdfPacWork_t *current = cursor;
+
+    while (cursor != NULL) {
+        cursor = cursor->next;
+        sdfChipFreeDirect(current);
+        current = cursor;
+    }
+}
 
 void func_002C60E0(sdfPacState_t *aState)
 {
@@ -78,9 +93,72 @@ void sdfPacUseSrc(sdfPacState_t *aState, s32 aLen)
     aState->srcUsed += aLen;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfPacDecode", sdfPacNewBlock);
+void sdfPacNewBlock(sdfPacState_t *state)
+{
+    sdfPacPacketHeader_t *packet;
+    u32 alignmentOffset;
+    u32 packetBytes;
+    u32 headerBytes;
+    u32 payloadBytes;
+    s32 (*callback)();
+    s32 result;
 
-INCLUDE_ASM(const s32, "sdf/sdfPacDecode", sdfPacEndBlock);
+    alignmentOffset = state->srcUsed & 0x3F;
+    if (alignmentOffset != 0) {
+        state->phase = 1;
+        state->dstLeft = 0x40 - alignmentOffset;
+        return;
+    }
+    packet = (sdfPacPacketHeader_t *)state->src;
+    sdfPacUseSrc(state, 0x10);
+    packetBytes = packet->size;
+    state->blockId++;
+    headerBytes = (packet->flags & SDF_PAC_EXTRA_MASK) + 0x10;
+    payloadBytes = packetBytes - headerBytes;
+    state->dstLeft = payloadBytes;
+    callback = (s32 (*)())state->callback;
+    result = callback(state, 0, packet, payloadBytes);
+    if (result == 1) {
+        func_002C60E0(state);
+        return;
+    }
+    if (result == 2) {
+        state->phase = 1;
+        state->dstLeft = (state->dstLeft + 0x3F) & ~0x3F;
+    } else {
+        state->phase = 2;
+    }
+}
+
+void sdfPacEndBlock(sdfPacState_t *state)
+{
+    s32 result;
+    sdfPacWork_t *tail;
+    sdfPacWork_t *scan;
+    sdfPacWork_t *next;
+
+    result = state->callback(state, 1, (sdfPacPacketHeader_t *)state->tail->header);
+    if (result == 1) {
+        func_002C60E0(state);
+        return;
+    }
+    if (result == 4) {
+        tail = state->tail;
+        scan = state->head;
+        if (scan == tail) {
+            state->tail = NULL;
+            state->head = NULL;
+        } else {
+            while ((next = scan->next) != tail) {
+                scan = next;
+            }
+            /* Retail clears the link but leaves the multi-item tail unchanged. */
+            scan->next = NULL;
+        }
+        sdfChipFreeDirect(tail);
+    }
+    state->phase = 0;
+}
 
 s32 sdfPacDecode(sdfPacState_t *aState, const u8 *aSrc, s32 aLen)
 {
@@ -130,7 +208,29 @@ sdfPacWork_t *sdfPacNewResrc(sdfPacState_t *aState, const sdfPacPacketHeader_t *
     return work;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfPacDecode", sdfPacFreeResrc);
+sdfPacWork_t *sdfPacFreeResrc(sdfPacWork_t *work)
+{
+    sdfPacState_t *state = work->state;
+    sdfPacWork_t **link = &state->head;
+    sdfPacWork_t *current = state->head;
+    sdfPacWork_t *previous = NULL;
+    sdfPacWork_t *next;
+
+    if (current != work) {
+        do {
+            previous = current;
+            current = previous->next;
+            link = &previous->next;
+        } while (current != work);
+    }
+    next = work->next;
+    *link = next;
+    if (state->tail == work) {
+        state->tail = previous;
+    }
+    sdfChipFreeDirect(work);
+    return next;
+}
 
 s32 sdfPacStdCallback(sdfPacState_t *aState, s32 aStat, sdfPacPacketHeader_t *aPacket)
 {
@@ -160,7 +260,16 @@ s32 sdfPacStdCallback(sdfPacState_t *aState, s32 aStat, sdfPacPacketHeader_t *aP
     return 0;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfPacDecode", sdfPacGetResrcFileName);
+char *sdfPacGetResrcFileName(sdfPacWork_t *work)
+{
+    sdfPacPacketHeader_t *packet = (sdfPacPacketHeader_t *)work->header;
+    s32 extra = packet->flags & SDF_PAC_EXTRA_MASK;
+
+    if (extra <= 0) {
+        return NULL;
+    }
+    return (char *)(packet + 1);
+}
 
 void sdfPacMemDecoderFunc(sdfPacState_t *aState)
 {
@@ -349,7 +458,38 @@ void sdfPacTmxStayDecoderFunc(sdfPacState_t *aState)
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfPacDecode", sdfPacTmxDecoderInitFunc);
+void sdfPacTmxDecoderInitFunc(sdfPacState_t *state, sdfPacPacketHeader_t *packet,
+                             sdfPacBuf_t *buffer)
+{
+    state->buf = buffer;
+    buffer->remain = packet->size - 0x10;
+    if (state->flags & SDF_PAC_STATE_STAY) {
+        state->decodeFunc = sdfPacTmxStayDecoderFunc;
+        buffer->cursor = (u8 *)(state->src - 0x10);
+        return;
+    }
+    if (state->flags & SDF_PAC_STATE_FROMTAIL) {
+        buffer->memHandle = sdfMemAllocFromTailDirect(packet->size);
+    } else {
+        buffer->memHandle = sdfMemAllocDirect(packet->size);
+    }
+    buffer->cursor = sdfMemLock(buffer->memHandle);
+    memcpy(buffer->cursor, packet, 0x10);
+    buffer->cursor += 0x10;
+    switch (packet->flags) {
+    case 0:
+        state->decodeFunc = sdfPacTmxDecoderFunc;
+        break;
+    case 1: {
+        struct sdfDecomp_t *decomp = sdfChipAllocDirect(sizeof(*decomp));
+
+        state->decompBuffer = (u8 *)decomp;
+        sdfDecompInit(decomp, buffer->cursor);
+        state->decodeFunc = sdfPacTmxDecompDecoderFunc;
+        break;
+    }
+    }
+}
 
 void sdfPacTmxDecoderEndFunc(sdfPacState_t *aState)
 {
@@ -375,11 +515,50 @@ void sdfPacTexListDecoderTmxHeaderEndFunc(sdfPacState_t *aState)
     aState->endFunc = sdfPacTexListDecoderTmxBodyEndFunc;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfPacDecode", func_002C6D58);
+void func_002C6D58(sdfPacState_t *state)
+{
+    state->dst = (u8 *)&state->slot.list->header;
+    state->dstLeft = 0x10;
+    state->decodeFunc = sdfPacMemDecoderFunc;
+    state->endFunc = sdfPacTexListDecoderTmxHeaderEndFunc;
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfPacDecode", sdfPacTexListDecoderTmxBodyEndFunc);
+void sdfPacTexListDecoderTmxBodyEndFunc(sdfPacState_t *state)
+{
+    sdfPacList_t *list = state->slot.list;
 
-INCLUDE_ASM(const s32, "sdf/sdfPacDecode", sdfPacTexListDecoder1);
+    sdfTexListAdd(state->tail->resrc, list->buf.tex);
+    {
+        s32 nextIndex = list->index + 1;
+
+        list->index = nextIndex;
+        if (nextIndex == list->count) {
+            sdfChipFreeDirect(list);
+            sdfPacEndBlock(state);
+        } else {
+            func_002C6D58(state);
+        }
+    }
+}
+
+void sdfPacTexListDecoder1(sdfPacState_t *state)
+{
+    s32 skipBytes = state->srcLeft;
+
+    if (state->dstLeft < skipBytes) {
+        skipBytes = state->dstLeft;
+    }
+    sdfPacUseSrc(state, skipBytes);
+    {
+        s32 bytesRemaining = state->dstLeft - skipBytes;
+
+        state->dstLeft = bytesRemaining;
+        if (bytesRemaining != 0) {
+            return;
+        }
+    }
+    func_002C6D58(state);
+}
 
 void sdfPacTexListDecoder0(sdfPacState_t *aState)
 {

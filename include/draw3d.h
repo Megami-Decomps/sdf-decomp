@@ -5,14 +5,14 @@
  * the per-node transform packet, and the generated-geometry path that turns a
  * mesh into GS primitives on VU0.
  *
- * libsdf.h declares sdf3DLightParallelPacket_t and sdf3DFogPacket_t as opaque
- * so sdfDrawTag_t can point at them; this is where they get bodies.
+ * sdf_lighting.h owns the parallel-light packet; sdf3DFogPacket_t is opaque
+ * in libsdf.h so sdfDrawTag_t can point at it.
  * See include/README.md for the evidence per struct. */
 
 #include "common.h"
 #include "libsdf.h"
+#include "sdf_lighting.h"
 
-typedef struct sdf3DLightParallelPacket_t sdf3DLightParallelPacket_t;
 typedef struct sdf3DFogPacket_t sdf3DFogPacket_t;
 
 /* The camera, as sdf3DMakeScreenParam derives it and sdf3DSetCamera copies it
@@ -70,20 +70,6 @@ typedef struct QWORD_ALIGNED
     sdfVector4_t tm[7];
     u32 cmd[4];
 } sdf3DTmPacketData_t;
-
-/* The parallel-light packet. normal is the three light directions held as a
- * matrix's columns, so VU1 gets all three dot products from one multiply;
- * colorBase is a copy of color[0] and the ambient term lands in both color[3]
- * and color[4]. TM is the lighting matrix corePktEmitRefMapPass builds its
- * specular axis from. */
-struct sdf3DLightParallelPacket_t
-{
-    sdfDmaTag_t dmatag;
-    sdfVector4_t normal[3];
-    sdfVector4_t colorBase;
-    sdfVector4_t color[5];
-    sdfMatrix4_t TM;
-};
 
 /* What sdf3DMakeFogPacket is handed: the two fog densities and the two
  * distances they span, plus the colour. */

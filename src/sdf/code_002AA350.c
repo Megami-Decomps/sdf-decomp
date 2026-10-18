@@ -1,5 +1,8 @@
 #include "common.h"
+
 #include "libsdf.h"
+
+extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *cb, void *resource);
 
 /* GS pixel storage modes, the values of sdfGsMemSlice_t.pixelFormat. */
 enum sdf_psm
@@ -159,7 +162,20 @@ s32 sdfGetTexelBitCount(u32 pixelFormat)
     }
 }
 
-INCLUDE_ASM(const s32, "code_002AA350", sdfGsMemCheckHandle);
+s32 sdfGsMemCheckHandle(sdfGsMemSlice_t *target) {
+    sdfGsMemSlice_t *node = gsMemHandleLinkHead;
+
+    if (node == NULL) {
+        return 0;
+    }
+    do {
+        if (node == (void *)target) {
+            return 1;
+        }
+        node = node->next;
+    } while (node != NULL);
+    return 0;
+}
 
 sdfGsMemSlice_t *sdfGsMemAllocFromHead(s32 size, s32 type)
 {
@@ -288,7 +304,18 @@ s32 sdfGsMemCheckMerge(sdfGsMemSlice_t *slice)
     return 1;
 }
 
-INCLUDE_ASM(const s32, "code_002AA350", sdfGsMemCheckLinkConsistence);
+void sdfGsMemCheckLinkConsistence(void) {
+    sdfGsMemSlice_t *node;
+
+    node = gsMemHandleLinkHead;
+    while (node->next != NULL) {
+        node = node->next;
+    }
+    node = gsMemHandleLinkTail;
+    while (node->prev != NULL) {
+        node = node->prev;
+    }
+}
 
 void sdfGsMemFree(sdfGsMemSlice_t *slice)
 {
@@ -310,7 +337,9 @@ void sdfGsMemFree(sdfGsMemSlice_t *slice)
     }
 }
 
-INCLUDE_ASM(const s32, "code_002AA350", sdfGsMemFreeDelayed);
+void sdfGsMemFreeDelayed(sdfGsMemSlice_t *texture) {
+    sdfDelayedResrcEntry(&gsMemDelayedResrcCB, texture);
+}
 
 void sdfGsMemInit(void)
 {
@@ -353,9 +382,13 @@ sdfGsMemSlice_t *sdfGsAllocFrameBuff(s32 w, s32 h, s32 pixelFormat)
     return slice;
 }
 
-INCLUDE_ASM(const s32, "code_002AA350", sdfGsMemGetLinkHead);
+sdfGsMemSlice_t *sdfGsMemGetLinkHead(void) {
+    return gsMemHandleLinkHead;
+}
 
-INCLUDE_ASM(const s32, "code_002AA350", sdfGsMemGetLinkTail);
+sdfGsMemSlice_t *sdfGsMemGetLinkTail(void) {
+    return gsMemHandleLinkTail;
+}
 
 s32 sdfImageDataSize(u32 pixelFormat, s32 w, s32 h)
 {

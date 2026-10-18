@@ -33,6 +33,26 @@ void sdfTexMakeGIFPacket(sdfTexHandle_t *aHandle);
 void sdfTexMakeGIFPacketCtx2(sdfTexHandle_t *aHandle);
 void sdfTexRebuildPacket(sdfTexHandle_t *aHandle);
 
+/* One image transfer request; dimensions and source rectangle are halfwords. */
+typedef struct
+{
+    void *pixels;
+    sdfMemHandle_t *allocation;
+    u8 allocationMode;
+    u8 format;
+    s16 bufferWidth;
+    u32 destination;
+    s16 x;
+    s16 y;
+    s16 width;
+    s16 height;
+} sdfImageUploadRequest_t;
+
+extern s32 sdfImageDataSize(s32 format, s32 width, s32 height);
+extern void sdfImageSetReq(sdfImageUploadRequest_t *request);
+extern sdfMemHandle_t *sdfMemAllocDirect(s32 size);
+extern void *sdfMemLock(sdfMemHandle_t *allocation);
+
 sdfTexPacket_t *sdfTexGetPacket(sdfTexHandle_t *aHandle)
 {
     return aHandle->packet;
@@ -174,7 +194,34 @@ void sdfTexSetWrapMode(sdfTexHandle_t *aHandle, s32 aWrapMode)
     sdfTexRebuildPacket(aHandle);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfTex", sdfTexTransData);
+void *sdfTexTransData(s32 destination, s32 width, s32 height, s32 format, void *pixels, s32 borrowPixels) {
+    sdfImageUploadRequest_t request;
+    s32 imageBytes = sdfImageDataSize(format, width, height) * 16;
+
+    if (borrowPixels == 0) {
+        if (imageBytes > 0x400) {
+            request.allocation = sdfMemAllocDirect(imageBytes);
+            request.pixels = (void *)sdfMemLock(request.allocation);
+            request.allocationMode = 1;
+        } else {
+            request.pixels = sdfChipAllocDirect(imageBytes);
+            request.allocationMode = 2;
+        }
+        memcpy(request.pixels, pixels, imageBytes);
+    } else {
+        request.pixels = pixels;
+        request.allocationMode = 0;
+    }
+    request.format = format;
+    request.destination = destination;
+    request.bufferWidth = width;
+    request.width = width;
+    request.height = height;
+    request.x = 0;
+    request.y = 0;
+    sdfImageSetReq(&request);
+    return (u8 *)pixels + imageBytes;
+}
 
 void *sdfTexTransCLUT(sdfTexHandle_t *aHandle, s32 aGsAddr, void *aData, s32 aMemMode)
 {

@@ -150,7 +150,7 @@ typedef struct movieStream_t
 } movieStream_t;
 
 void puts(const char *aStr);
-void sdfFileCmdRead(void *aHandle, void *aBuffer, s32 aSize);
+s32 sdfFileCmdRead(void *aHandle, void *aBuffer, s32 aSize);
 s32 sdfFileCmdClose(void *aHandle);
 void sdfDummyFunc(void);
 void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
@@ -171,6 +171,8 @@ void *sdfMemLock(sdfMemHandle_t *aHandle);
 void *sdfFileCmdReadOpen(const char *aName, SdfStreamRead aRead, movieStream_t *aContext);
 void movieAttachDecodeTask(sdfIpuDecodeCb_t *aNode, SoundFormat *aFormat, SdfStreamRead aRead, movieStream_t *aContext, s32 aResourceWord);
 s32 sdfCreateSema(s32 aInit, s32 aMax, s32 aAttr);
+s32 WaitSema(s32 sema);
+s32 SignalSema(s32 sema);
 s32 movieReadChunk(void *aHandle, s32 aOp, void *aBuf, s32 aSize, movieStream_t *aMov);
 s32 movieCopyChunk(sdfIpuDecodeCb_t *aNode, movieStream_t *aMov, s32 aOp, void *aBuf, s32 aSize);
 s32 movieParseHeader(sdfIpuDecodeCb_t *aNode, movieStream_t *aMov, s32 aOp, void *aBuf, s32 aSize);
@@ -285,7 +287,123 @@ void movieReadHeaderChunk(movieStream_t *aMov)
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMovie", movieReadChunk);
+s32 movieReadChunk(void *fileHandle, s32 operation, void *readBuffer, s32 bytesRead, movieStream_t *movie) {
+    MovPacStream *stream;
+
+    movie->fileHandle = fileHandle;
+    stream = movie->stream.pac;
+
+    if (movie->stopRequested != 0 &&
+        (movie->state < 6 ||
+         movie->state > 7)) {
+        movie->state = 7;
+        sdfFileCmdClose(fileHandle);
+        return 0;
+    }
+
+    switch (movie->state) {
+    case 0:
+        if (operation == 2) {
+            movie->state = 1;
+            sdfFileCmdFileSize(fileHandle);
+        }
+        break;
+    case 1:
+        if (operation == 4) {
+            movie->totalBytes = bytesRead;
+            movie->remainingBytes = bytesRead;
+            movie->state = 2;
+            sdfFileCmdRead(fileHandle, stream, 0x40);
+        }
+        break;
+    case 2:
+        if (operation == 5) {
+            s32 payloadBytes = stream->chunkSize - 0x40;
+            stream->bitmapHandle = sdfMemAllocDirect(payloadBytes);
+            stream->bitmap = (u8 *)sdfMemLock(stream->bitmapHandle);
+            movie->state = 3;
+            sdfFileCmdRead(fileHandle, stream->bitmap, payloadBytes);
+            movie->remainingBytes -= stream->chunkSize;
+        }
+        break;
+    case 3:
+        if (operation == 5) {
+            movieReadHeaderChunk(movie);
+        }
+        break;
+    case 4: {
+        if (operation == 5) {
+            u8 *source = readBuffer;
+            s32 unitSize = stream->unitSize;
+            s32 blocksRemaining = bytesRead / unitSize;
+            do {
+                s32 blockIndex = stream->bitIndex;
+                s32 byteIndex = blockIndex / 8;
+                s32 bitIndex = blockIndex - byteIndex * 8;
+                s32 blockFlag = 1 << bitIndex;
+                s32 writeOffset;
+                if ((stream->bitmap[byteIndex] & blockFlag) != 0) {
+                    s32 ringFill;
+                    s32 wrappedBytes;
+
+                    WaitSema(movieStreamSema);
+                    ringFill = stream->ringFill;
+                    writeOffset = stream->ringRead + ringFill;
+                    writeOffset += (writeOffset > 0xFFFF) * -0x10000;
+                    wrappedBytes = writeOffset + unitSize - 0x10000;
+                    if (wrappedBytes > 0) {
+                        memcpy(stream->ringBase + writeOffset, source, unitSize - wrappedBytes);
+                        memcpy(stream->ringBase, source + unitSize - wrappedBytes, wrappedBytes);
+                    } else {
+                        memcpy(stream->ringBase + writeOffset, source, unitSize);
+                    }
+                    wrappedBytes = ringFill + unitSize;
+                    if (wrappedBytes > 0x10000) {
+                        stream->ringRead += wrappedBytes - 0x10000;
+                        if (stream->ringRead > 0xFFFF) {
+                            stream->ringRead -= 0x10000;
+                        }
+                        stream->ringFill = 0x10000;
+                    } else {
+                        stream->ringFill = wrappedBytes;
+                    }
+                    SignalSema(movieStreamSema);
+                } else {
+                    s32 restoreInterrupts = DIntr();
+
+                    writeOffset = stream->writeOffset + stream->pending;
+                    writeOffset += (writeOffset > 0xFFFF) * -0x10000;
+                    memcpy(stream->dataBody + writeOffset, source, unitSize);
+                    stream->pending += unitSize;
+                    if (restoreInterrupts != 0) {
+                        EIntr();
+                    }
+                }
+                source += unitSize;
+                stream->bitIndex++;
+            } while (--blocksRemaining != 0);
+
+            movie->remainingBytes -= bytesRead;
+            if (movie->remainingBytes == 0) {
+                movie->state = 7;
+                sdfFileCmdClose(fileHandle);
+            } else {
+                movieReadHeaderChunk(movie);
+            }
+        }
+        break;
+    }
+    case 7:
+        if (operation == 7) {
+            movie->fileHandle = NULL;
+            movie->state = 6;
+            sdfFileCmdFree(fileHandle);
+        }
+        break;
+    }
+
+    return 0;
+}
 
 s32 movieCopyChunk(sdfIpuDecodeCb_t *aNode, movieStream_t *aMov, s32 aOp, void *aBuf, s32 aSize)
 {
@@ -339,6 +457,8 @@ s32 movieCopyChunk(sdfIpuDecodeCb_t *aNode, movieStream_t *aMov, s32 aOp, void *
 
 s32 movieParseHeader(sdfIpuDecodeCb_t *aNode, movieStream_t *aMov, s32 aOp, void *aBuf, s32 aSize)
 {
+    /* Keep the retail helper symbol while retaining GCC's nested static chain. */
+    auto void movieMemcpy(void *, const void *, s32) __asm__("movieMemcpy");
     void movieMemcpy(void *aDst, const void *aSrc, s32 aCount)
     {
         memcpy(aDst, aSrc, aCount);
