@@ -1,6 +1,7 @@
 #include "common.h"
 #include "libsdf.h"
 
+#include "ps2asm.h"
 /* A free chip carries its free-list link at byte 8. */
 typedef struct sdfChip_t
 {
@@ -12,8 +13,6 @@ typedef struct sdfChip_t
 #define SDF_CHIP_PAGE_SHIFT 12
 #define SDF_CHIP_PAGE_BYTES (1 << SDF_CHIP_PAGE_SHIFT)
 
-/* plzcw has no C equivalent: cc1 has no leading-zero builtin. */
-#define SDF_PLZCW(out, in) __asm__ volatile ("plzcw %0, %1" : "=r"(out) : "r"(in))
 
 extern void *malloc(u32 size);
 extern s32 DIntr(void);
@@ -105,7 +104,7 @@ void *sdfChipAllocDirect(s32 aSize)
     s32 intrEnabled;
 
     if (aSize > 16) {
-        SDF_PLZCW(index, aSize - 1);
+        MMI_PLZCW(index, aSize - 1);
         index = 27 - (index & 0xFF);
     }
     cb = &sdfChipCB[index];

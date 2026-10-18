@@ -40,15 +40,6 @@
     ".set reorder" \
     : : "r" (first), "r" (second), "r" (t) : "$2", "$3", "$4", "$5")
 
-#define SDF_VU0_LOADVECTOR_UNALIGN(p) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "ldr $2, 0(%0)\n\t" \
-    "ldl $2, 7(%0)\n\t" \
-    "lw $3, 8(%0)\n\t" \
-    "pcpyld $2, $3, $2\n\t" \
-    "qmtc2.ni $2, " "vf10" "\n\t" \
-    ".set reorder" \
-    : : "r"(p) : "$2", "$3")
 
 #define SDF_VU0_LOADVECTOR_UNALIGN_B(p) __asm__ volatile ( \
     ".set noreorder\n\t" \
@@ -82,9 +73,6 @@
     ".set reorder" \
     : : "r"(p) : "$2")
 
-#define SDF_MOT_STORE_VF10_NOMEM(dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 " "vf10" ", 0(%0)\n\t.set reorder" \
-    : : "r" (dst))
 
 #define SDF_MOT_STORE_VF28_NOMEM(dst) __asm__ volatile ( \
     ".set noreorder\n\tsqc2 " "vf28" ", 0(%0)\n\t.set reorder" \
@@ -577,7 +565,7 @@ void sdfMotCLBK_modelLinerPosSeek(sdfMotNodeModelVec_t *binding, f32 frame) {
     SDF_VU0_LOADVECTOR_UNALIGN(keyInterval.key0);
     SDF_VU0_LOADVECTOR_UNALIGN_B(keyInterval.key1);
     VU0_LERP_VF10_W(keyInterval.rate);
-    SDF_MOT_STORE_VF10_NOMEM(&binding->modelBase.modelNode->pos);
+    VU0_STORE_VF10_NOMEM(&binding->modelBase.modelNode->pos);
 }
 
 /* vu0 routine: sample and blend the channel using the SDK packed operations. */
@@ -590,7 +578,7 @@ void sdfMotCLBK_modelLinerPosBlendSeek(sdfMotNodeModelVec_t *binding, f32 frame,
     VU0_LERP_VF10_COPY(keyInterval.rate);
     SDF_VU0_LOADVECTOR(&binding->blendFrom);
     VU0_LERP_VF10_W(blendWeight);
-    SDF_MOT_STORE_VF10_NOMEM(&binding->modelBase.modelNode->pos);
+    VU0_STORE_VF10_NOMEM(&binding->modelBase.modelNode->pos);
 }
 
 sdfMotionNode_t *sdfMotGenModelLinerRotXYZ(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
@@ -666,7 +654,7 @@ void sdfMotCLBK_modelLerpRotQuatSeek(sdfMotNodeModelVec_t *binding, f32 frame) {
     SDF_VU0_LOADSHORTVECTOR_B(keyData);
     Lerp(keyInterval.rate);
     drawNode = binding->modelBase.modelNode;
-    SDF_MOT_STORE_VF10_NOMEM(&drawNode->rotate);
+    VU0_STORE_VF10_NOMEM(&drawNode->rotate);
     matrix = (f32 (*)[4])drawNode->localNoScaledTm.m;
     ToMatrix();
     SDF_MOT_STORE_VF28_NOMEM(matrix[0]);
@@ -691,7 +679,7 @@ void sdfMotCLBK_modelLerpRotQuatBlendSeek(sdfMotNodeModelVec_t *binding, f32 fra
     SDF_VU0_COPYVECTOR_A_TO_B();
     SDF_VU0_LOADVECTOR(&binding->blendFrom);
     Lerp(blendWeight);
-    SDF_MOT_STORE_VF10_NOMEM(&drawNode->rotate);
+    VU0_STORE_VF10_NOMEM(&drawNode->rotate);
     matrix = (f32 (*)[4])drawNode->localNoScaledTm.m;
     ToMatrix();
     SDF_MOT_STORE_VF28_NOMEM(matrix[0]);
