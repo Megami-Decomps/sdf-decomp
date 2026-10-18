@@ -2,6 +2,7 @@
 #include "libsdf.h"
 #include "draw.h"
 
+#include "ps2asm.h"
 typedef struct
 {
     u64 pmode;
@@ -163,7 +164,7 @@ s32 sdfDrawThIntHandler(s32 channel) {
     if (channel == 1) {
         iWakeupThread(sdfDrawThreadId);
     }
-    __asm__ volatile(".set noreorder\n\tsync\n\tei\n\t.set reorder" : : : "memory");
+    EE_SYNC_EI_BARRIER();
     return 0;
 }
 

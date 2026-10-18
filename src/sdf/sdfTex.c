@@ -1,6 +1,7 @@
 #include "common.h"
 #include "libsdf.h"
 
+#include "ps2asm.h"
 extern sdfTexHandle_t *sdfTexHandleLink;
 extern sdfDelayedResrcCB_t sdfTexDelayedResrcCB;
 
@@ -558,7 +559,7 @@ void sdfTexSetMonoClut(sdfTexHandle_t *aHandle)
             src += 2;
             /* 1555 to 8888: pext5 spreads the five-bit fields, then the top
              * three bits of each are copied down into the low bits. */
-            __asm__ volatile("pext5 %0, %1" : "=r"(color) : "r"(packed));
+            MMI_PEXT5(color, packed);
             color |= (color >> 5) & 0x070707;
         }
         g = (color >> 8) & 0xFF;

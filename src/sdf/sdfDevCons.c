@@ -1,6 +1,7 @@
 #include "common.h"
 #include "libsdf.h"
 
+#include "ps2asm.h"
 typedef struct sdfDevConsCB_t
 {
     struct sdfDevConsCB_t *prev;
@@ -339,7 +340,7 @@ void sdfDevConsDrawFlush(sdfDevConsBuf_t *packetBuffers) {
         channelRegisters = packetBuffers->dmaCh;
         sceDmaSync(channelRegisters, 0, 0);
         *(volatile u32 *)channelRegisters = *(volatile u32 *)channelRegisters | 0x40; /* CHCR bit 6: tag-transfer enable */
-        __asm__ volatile("sync" : : : "memory");
+        EE_SYNC_BARRIER();
         sceDmaSendN(channelRegisters, (void *)((u32)packetBuffers->start & 0x0FFFFFFF), packetBytes >> 4);
         nextBufferIndex = packetBuffers->bufIdx ^ 1;
         packetBuffers->bufIdx = nextBufferIndex;

@@ -2,6 +2,7 @@
 
 #include "libsdf.h"
 
+#include "ps2asm.h"
 extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *cb, void *resource);
 
 /* GS pixel storage modes, the values of sdfGsMemSlice_t.pixelFormat. */
@@ -22,7 +23,6 @@ enum sdf_psm
     SDF_PSMZ16S = 0x3A
 };
 
-#define EE_SYNC_EI() __asm__ volatile("sync\n\tei")
 
 extern s32 DIntr(void);
 extern void EIntr(void);
