@@ -2,6 +2,10 @@
 #include "libsdf.h"
 
 extern sdfTexHandle_t *sdfTexHandleLink;
+extern sdfDelayedResrcCB_t sdfTexDelayedResrcCB;
+
+extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, sdfDelayedResrcFreeFunc aFreeFunc);
+extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aPtr);
 
 extern void *sdfChipAllocDirect(s32 size);
 extern void *sdfChipAllocZeroDirect(s32 size);
@@ -408,7 +412,10 @@ void sdfTexFree(sdfTexHandle_t *aHandle)
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfTex", sdfTexFreeDelayed);
+void sdfTexFreeDelayed(sdfTexHandle_t *aHandle)
+{
+    sdfDelayedResrcEntry(&sdfTexDelayedResrcCB, aHandle);
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfTex", sdfTexSetPacket);
 
@@ -530,7 +537,10 @@ sdfTexHandle_t *sdfTexSearch(u32 aTexId)
     return NULL;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfTex", sdfTexInit);
+void sdfTexInit(void)
+{
+    sdfDelayedResrcInitCB(&sdfTexDelayedResrcCB, (sdfDelayedResrcFreeFunc)sdfTexFree);
+}
 
 INCLUDE_SDATA(const s32, "sdf/sdfTex", sdfTexHandleLink);
 

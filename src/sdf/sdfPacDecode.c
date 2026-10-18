@@ -66,7 +66,10 @@ void sdfPacSetFromTail(sdfPacState_t *aState)
 
 INCLUDE_ASM(const s32, "sdf/sdfPacDecode", sdfPacFree);
 
-INCLUDE_ASM(const s32, "sdf/sdfPacDecode", func_002C60E0);
+void func_002C60E0(sdfPacState_t *aState)
+{
+    aState->phase = -1;
+}
 
 void sdfPacUseSrc(sdfPacState_t *aState, s32 aLen)
 {

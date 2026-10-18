@@ -19,6 +19,22 @@ typedef struct sdfDevConsCB_t
     u8 *bufferPtr;
 } sdfDevConsCB_t;
 
+typedef struct sdfDevConsBuf_t
+{
+    u8 *cur;
+    u8 *start;
+    u8 *tag;
+    u32 *dmaCh;
+    u8 *buf[2];
+    s32 bufSize;
+    u16 bufIdx;
+    u16 rowStep;
+} sdfDevConsBuf_t;
+
+extern void sdfDevConsDrawInit(sdfDevConsBuf_t *aBuf, void *aMem, s32 aSize);
+extern void sdfDevConsDraw(sdfDevConsCB_t *aHndl, sdfDevConsBuf_t *aBuf);
+extern void sdfDevConsDrawFlush(sdfDevConsBuf_t *aBuf);
+
 extern void *memset(void *dst, s32 c, u32 size);
 extern void *memmove(void *dst, const void *src, u32 size);
 extern s32 vsprintf(char *buf, const char *fmt, void *args);
@@ -36,6 +52,9 @@ extern u8 sdfDebugFontTex[];
 extern s16 sdfDevConsFontUvTable[];
 
 extern sdfDevConsCB_t *devConsTop;
+extern u32 sdfDevConsColorTable[];
+
+extern void sdfDevVprintf(u32 *aCB, const char *aFmt, void *aArgs);
 
 void sdfDevConsInit(void)
 {
@@ -188,9 +207,30 @@ void sdfDevConsPutInside(sdfDevConsCB_t *aHndl, s32 aChar, s32 aAttr)
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfDevCons", sdfDevConsPut);
+void sdfDevConsPut(sdfDevConsCB_t *aHndl, s32 aChar, s32 aAttr)
+{
+    sdfDevConsPutInside(aHndl, aChar, aAttr);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfDevCons", sdfDevConsPrintf);
+s32 sdfDevConsPrintf(sdfDevConsCB_t *aHndl, const char *aFmt, ...)
+{
+    char buf[0x200];
+    __builtin_va_list args;
+    s32 count = 0;
+    s32 ch;
+
+    __builtin_stdarg_start(args, aFmt);
+    vsprintf(buf, aFmt, args);
+    ch = buf[0];
+    if (ch != 0) {
+        do {
+            count++;
+            sdfDevConsPutInside(aHndl, ch, aHndl->attr);
+            ch = buf[count];
+        } while (ch != 0);
+    }
+    return count;
+}
 
 void sdfDevConsLocate(sdfDevConsCB_t *aHndl, s32 aX, s32 aY)
 {
@@ -213,7 +253,23 @@ void sdfDevConsSetMode(sdfDevConsCB_t *aHndl, s32 aMode)
     aHndl->mode = aMode;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfDevCons", sdfDevConsTagClose);
+void sdfDevConsTagClose(sdfDevConsBuf_t *aBuf)
+{
+    u8 *cur = aBuf->cur;
+    volatile u64 *tag = (volatile u64 *)aBuf->tag;
+    s32 regCount = ((cur - aBuf->tag) >> 3) - 2;
+
+    if (regCount != 0) {
+        if (regCount & 1) {
+            cur += 8;
+        }
+        regCount /= 5;
+        aBuf->tag = cur;
+        aBuf->cur = cur + 0x10;
+        tag[0] = (s64)regCount | 0x5400000000008000ULL;
+        tag[1] = 0x53531;
+    }
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfDevCons", sdfDevConsDrawFlush);
 
@@ -227,13 +283,36 @@ INCLUDE_ASM(const s32, "sdf/sdfDevCons", sdfDevConsDrawAll);
 
 INCLUDE_ASM(const s32, "sdf/sdfDevCons", sdfDevVprintf);
 
-INCLUDE_ASM(const s32, "sdf/sdfDevCons", sdfDevPrintfEx);
+void sdfDevPrintfEx(u32 *aCB, const char *aFmt, ...)
+{
+    __builtin_va_list args;
 
-INCLUDE_ASM(const s32, "sdf/sdfDevCons", sdfDevPrintf);
+    __builtin_stdarg_start(args, aFmt);
+    sdfDevVprintf(aCB, aFmt, args);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfDevCons", func_002BD300);
+void sdfDevPrintf(u32 aPutFunc, u32 aFlushFunc, u32 aArg, s32 aMode, const char *aFmt, ...)
+{
+    u32 cb[4];
+    __builtin_va_list args;
 
-INCLUDE_ASM(const s32, "sdf/sdfDevCons", sdfDevSetPrintCB);
+    sdfDevSetPrintCB(cb, aPutFunc, aFlushFunc, aArg, aMode);
+    __builtin_stdarg_start(args, aFmt);
+    sdfDevVprintf(cb, aFmt, args);
+}
+
+void func_002BD300(u32 *aCB, s32 aMode)
+{
+    aCB[3] = sdfDevConsColorTable[aMode];
+}
+
+void sdfDevSetPrintCB(u32 *aCB, u32 aPutFunc, u32 aFlushFunc, u32 aArg, s32 aMode)
+{
+    aCB[0] = aPutFunc;
+    aCB[1] = aFlushFunc;
+    aCB[2] = aArg;
+    func_002BD300(aCB, aMode);
+}
 
 INCLUDE_SDATA(const s32, "sdf/sdfDevCons", devConsTop);
 

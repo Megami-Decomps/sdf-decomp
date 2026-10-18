@@ -11,6 +11,7 @@ extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
 extern sdfItemArray_t *sdfItemArrayNew(s32 aCount, s32 aElemSize, s32 aGrowStep);
 extern void sdfItemArrayFree(void *aArray);
 extern void sdfItemArrayGrow(void *aArray);
+extern void func_002BFF98(void *aArray, s32 aCount);
 
 extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, sdfDelayedResrcFreeFunc aFunc);
 extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aChunk);
@@ -22,6 +23,9 @@ extern void sdfMatListCopyStat(void *aDst, void *aSrc);
 extern sdfDmaTag_t *sdfMatMakePacket(sdfMat_t *aMat, sdfDmaTag_t *aTag, s32 aIdx);
 
 extern volatile u8 sdfFrameId;
+extern f32 sdfFaceDivSoften;
+extern f32 sdfFaceDivBias;
+extern const char D_00529428[];
 
 extern void *func_002B2628(void *aData, u32 aTag);
 extern void sdfModelEvalTm2(sdfModelRootNode_t *aRoot, s32 aIdx);
@@ -159,7 +163,10 @@ void sdfModelRootFree(sdfModelRootNode_t *aRoot, s32 aDelayed, s32 aFreeMat)
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelAllocNodeList);
+void sdfModelAllocNodeList(sdfModelRootNode_t *aRoot, s32 aCount)
+{
+    func_002BFF98(aRoot->nodeList, aCount);
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelMakeNodeList);
 
@@ -662,9 +669,21 @@ void sdfModelResetFaceDivParm(sdfModelRootNode_t *aRoot)
     aRoot->flags = aRoot->flags & ~SDF_MODEL_ROOT_FLAG_OWNFACEDIV;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelGetFaceDivSoften);
+f32 sdfModelGetFaceDivSoften(sdfModelRootNode_t *aRoot)
+{
+    if (aRoot->flags & SDF_MODEL_ROOT_FLAG_OWNFACEDIV) {
+        return aRoot->faceDivSoften;
+    }
+    return sdfFaceDivSoften;
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelGetFaceDivBias);
+f32 sdfModelGetFaceDivBias(sdfModelRootNode_t *aRoot)
+{
+    if (aRoot->flags & SDF_MODEL_ROOT_FLAG_OWNFACEDIV) {
+        return aRoot->faceDivBias;
+    }
+    return sdfFaceDivBias;
+}
 INCLUDE_SDATA(const s32, "sdf/sdfModel", sdf3DLightDefault);
 
 INCLUDE_SDATA(const s32, "sdf/sdfModel", sdf3DFogDefault);

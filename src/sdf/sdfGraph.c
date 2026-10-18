@@ -29,6 +29,9 @@ extern u8 sdfGrScreenMode;
 extern u8 sdfGrGsResetDone;
 extern s8 sdfDispFrameId[2];
 extern volatile s8 sdfGrDrawBusy;
+extern s32 sdfGrCaptureReq;
+extern s32 sdfGrCaptureTarget;
+extern s8 sdfGrCaptureBuff;
 
 void sdfGrSetFrameSetMode(sdfGrFrameSet_t *aSet, s32 aMode, s32 aFree);
 void sdfGrFreeFrameSet(sdfGrFrameSet_t *aSet);
@@ -104,7 +107,12 @@ void sdfGrGsReset(void)
 
 INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfDrawThIntHandler);
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrReqCapture);
+void sdfGrReqCapture(s32 aReq, s32 aTarget)
+{
+    sdfGrCaptureReq = aReq;
+    sdfGrCaptureTarget = aTarget;
+    sdfGrCaptureBuff = 1;
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrCapture);
 

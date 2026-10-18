@@ -8,6 +8,7 @@ extern void sdfChipFreeDirect(void *aPtr);
 extern sdfItemArray_t *sdfItemArrayNew(s32 aCount, s32 aElemSize, s32 aGrowStep);
 extern void sdfItemArrayFree(sdfItemArray_t *aArray);
 extern void sdfItemArrayGrow(sdfItemArray_t *aArray);
+extern void func_002BFF98(sdfItemArray_t *aArray, s32 aCapacity);
 
 extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, sdfDelayedResrcFreeFunc aFunc);
 extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aChunk);
@@ -62,7 +63,10 @@ sdfMat_t *sdfMatNew(void);
 u8 *sdfMatSet(sdfMat_t *aMat, sdfItemArray_t *aTexList, u8 *aData);
 void sdfMatListAdd(sdfItemArray_t *aList, sdfMat_t *aMat);
 
-INCLUDE_ASM(const s32, "sdf/sdfMat", sdfTexListNew);
+sdfItemArray_t *sdfTexListNew(s32 aCount)
+{
+    return sdfItemArrayNew(aCount, 4, 4);
+}
 
 void sdfTexListFree(sdfItemArray_t *aList, s32 aFreeTex)
 {
@@ -90,7 +94,23 @@ void sdfTexListAdd(sdfItemArray_t *aList, sdfTexHandle_t *aHandle)
     aList->count++;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMat", sdfTexListSetCapacity);
+void sdfTexListSetCapacity(sdfItemArray_t *aList, s32 aCount, s32 aFreeTex)
+{
+    s32 i;
+    s32 count;
+
+    count = aList->count;
+    if (aCount < count && aFreeTex != 0) {
+        /* Retail only counts down to the new capacity here; the loop body is
+         * empty and ee-gcc pads it to the R5900 short-loop minimum. */
+        i = aCount;
+        do {
+            i++;
+        } while (i != count);
+        aList->count = aCount;
+    }
+    func_002BFF98(aList, aCount);
+}
 
 sdfItemArray_t *sdfTexListDup(sdfItemArray_t *aList)
 {
@@ -134,7 +154,10 @@ void sdfMatInitSystem(void)
     sdfDelayedResrcInitCB(&sdfMatDelayedResrcCB2, (sdfDelayedResrcFreeFunc)sdfMatFree);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMat", sdfMatListNew);
+sdfItemArray_t *sdfMatListNew(s32 aCount)
+{
+    return sdfItemArrayNew(aCount, 4, 8);
+}
 
 void sdfMatListFree(sdfItemArray_t *aList)
 {
@@ -158,7 +181,10 @@ void sdfMatListFreeResrc(void *aList, s32 aDelayed)
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMat", sdfMatListGrow);
+void sdfMatListGrow(sdfItemArray_t *aList)
+{
+    sdfItemArrayGrow(aList);
+}
 
 void sdfMatListAdd(sdfItemArray_t *aList, sdfMat_t *aMat)
 {
@@ -432,7 +458,21 @@ sdfDmaTag_t *sdfMatMakePacket(sdfMat_t *aMat, sdfDmaTag_t *aTag, s32 aIdx)
     return (sdfDmaTag_t *)((u8 *)aTag + 0x10);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMat", sdfMatUpdatePacketBasic);
+void sdfMatUpdatePacketBasic(sdfMat_t *aMat, sdfMatPacket_t *aPacket)
+{
+    sdfTexHandle_t *handle = aMat->texHandle;
+
+    aPacket->ambient = aMat->ambient;
+    aPacket->constant = aMat->constant;
+    aPacket->diffuse = aMat->diffuse;
+    aPacket->specularColor = aMat->specular;
+    aPacket->refmapColor = aMat->refmap;
+    if (handle != NULL) {
+        aPacket->tex1Data = sdfTexGetTex1Reg(handle);
+        aPacket->tex0Data = sdfTexGetTex0Reg(handle);
+        aPacket->clampData = sdfTexGetClampReg(handle);
+    }
+}
 
 void sdfMatSetUvwParm(sdfMatTexTm_t *aTm, const sdfMatUvwParm_t *aParm)
 {
@@ -539,7 +579,16 @@ sdfItemArray_t *sdfMatListMake(sdfItemArray_t *aTexList, u32 *aData)
     return list;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMat", sdfMatListUpdatePacket);
+void sdfMatListUpdatePacket(sdfItemArray_t *aList, s32 aIdx)
+{
+    s32 i;
+    s32 count = aList->count;
+    sdfMat_t **items = (sdfMat_t **)aList->items;
+
+    for (i = 0; i < count; i++) {
+        sdfMatUpdatePacket(items[i], aIdx);
+    }
+}
 
 void sdfMatCopyStat(sdfMat_t *aDst, sdfMat_t *aSrc)
 {

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "ps2asm.h"
 #include "libsdf.h"
 #include "model.h"
 #include "motion.h"
@@ -27,7 +28,8 @@ extern void sdfMatSetTexUvwByPtr(sdfMat_t *aMat, void *aParm);
 extern void sdfMatSetMultiTexUvwByPtr(sdfMat_t *aMat, void *aParm);
 
 extern void sdfMotGetKey(sdfMotionNode_t *aThis, f32 aFrame, sdfMotGetKeyIf_t *aItf);
-extern u32 sdfMotInterpolateKeyColor(sdfMotGetKeyIf_t *aItf);
+extern /* vu0 routine: blend the two colour keys */
+u32 sdfMotInterpolateKeyColor(sdfMotGetKeyIf_t *aItf);
 extern f32 sdfMotInterpolateKeyFloat(sdfMotGetKeyIf_t *aItf);
 extern void sdfMotInterpolateKeyUvw(sdfMotGetKeyIf_t *aItf, void *aDst);
 extern void sdfMotInterpolateKeyUvwSub(f32 *aDst, f32 *aSrc0, f32 *aSrc1, f32 aRate);
@@ -41,6 +43,80 @@ extern sdfMotionNodeVTBL_t D_00529470; /* model liner pos */
 extern sdfMotionNodeVTBL_t sdfMotModelLinerRotXYZTable;
 extern sdfMotionNodeVTBL_t sdfMotModelLinerScaleTable;
 extern sdfMotionNodeVTBL_t sdfMotModelLerpRotQuatTable;
+
+typedef struct
+{
+    sdfMotNodeModelBase_t modelBase;
+    s8 blendFrom;
+} sdfMotNodeModelFlag_t;
+
+typedef struct
+{
+    sdfMotNodeMatBase_t matBase;
+    u32 blendFrom;
+} sdfMotNodeMatColor_t;
+
+typedef struct
+{
+    sdfMotNodeMatBase_t matBase;
+    f32 blendFrom;
+} sdfMotNodeMatFloat_t;
+
+/* Five weights, not the six-word sdfMatUvwParm_t: only offset, tile and angle
+ * are keyed. */
+typedef struct
+{
+    f32 parm[5];
+} sdfMotUvwKey_t;
+
+typedef struct
+{
+    sdfMotNodeMatBase_t matBase;
+    sdfMotUvwKey_t blendFrom;
+} sdfMotNodeMatUvw_t;
+
+/* out = a + (b - a) * t per RGBA byte lane, rounded through vf3x. `half` is
+ * 0.5f in a general register. */
+#define SDF_MOT_RGBA_LERP(out, a, b, t, half) __asm__ volatile ( \
+    ".set noreorder\n\t" \
+    "qmtc2.ni %4, vf3\n\t" \
+    "mfc1 $8, %3\n\t" \
+    "pextlb $4, $0, %1\n\t" \
+    "pextlb $5, $0, %2\n\t" \
+    "vsub.xyzw vf2, vf0, vf0\n\t" \
+    "qmtc2.ni $8, vf4\n\t" \
+    "pextlh $4, $0, $4\n\t" \
+    "pextlh $5, $0, $5\n\t" \
+    "vaddax.xyzw ACC, vf2, vf3x\n\t" \
+    "vsubx.w vf5, vf0, vf4x\n\t" \
+    "qmtc2.ni $4, vf2\n\t" \
+    "qmtc2.ni $5, vf3\n\t" \
+    "vsubx.w vf5, vf0, vf4x\n\t" \
+    "vitof0.xyzw vf2, vf2\n\t" \
+    "vitof0.xyzw vf3, vf3\n\t" \
+    "vmaddaw.xyzw ACC, vf2, vf5w\n\t" \
+    "vmaddx.xyzw vf5, vf3, vf4x\n\t" \
+    "vftoi0.xyzw vf4, vf5\n\t" \
+    "qmfc2.ni $4, vf4\n\t" \
+    "ppach $5, $0, $4\n\t" \
+    "ppacb %0, $0, $5\n\t" \
+    ".set reorder" \
+    : "=r" (out) : "r" (a), "r" (b), "f" (t), "r" (half) : "$4", "$5", "$6", "$7", "$8")
+
+extern sdfMatUvwParm_t *sdfMatGetTexUvwParm(sdfMat_t *aMat);
+extern sdfMatUvwParm_t *sdfMatGetMultiTexUvwParm(sdfMat_t *aMat);
+
+extern sdfMotionNodeVTBL_t sdfMotModelVisibleTable;
+extern sdfMotionNodeVTBL_t sdfMotMatDiffuseTable;
+extern sdfMotionNodeVTBL_t sdfMotMatAmbientTable;
+extern sdfMotionNodeVTBL_t sdfMotMatSpecularTable;
+extern sdfMotionNodeVTBL_t sdfMotMatRefMapTable;
+extern sdfMotionNodeVTBL_t sdfMotMatConstantTable;
+extern sdfMotionNodeVTBL_t sdfMotMatUvwTable;
+extern sdfMotionNodeVTBL_t sdfMotMatMultiUvwTable;
+extern sdfMotionNodeVTBL_t sdfMotMatMultiDiffuseTable;
+extern sdfMotionNodeVTBL_t sdfMotMatUvw2Table;
+extern sdfMotionNodeVTBL_t sdfMotMatMultiUvw2Table;
 
 sdfMotionNode_t *sdfMotionNodeNew(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
 {
@@ -117,7 +193,43 @@ void sdfMotionCtrlrFree(sdfMotionCtrlr_t *aCtrlr)
     sdfChipFreeDirect(aCtrlr);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotionChangeBlend);
+void sdfMotionChangeBlend(sdfMotionCtrlr_t *aCtrlr, s32 aCutNum, s32 aType, f32 aPreFrame,
+                          f32 aBlendLeng)
+{
+    s32 i;
+    sdfMotionCutDef_t *cut;
+    sdfMotionCutChunk_t *chunk;
+    sdfMotionNode_t *node;
+
+    aCtrlr->cutNumber = aCutNum;
+    if (aBlendLeng > 0.0f) {
+        aCtrlr->blendLength = aBlendLeng;
+        aCtrlr->blendPreLength = -aPreFrame;
+        for (i = 0; i < aCtrlr->nodeList->count; i++) {
+            node = aCtrlr->nodeList->items[i];
+            ((void (*)(sdfMotionNode_t *))node->vtbl->initBlend)(node);
+        }
+    } else {
+        aCtrlr->blendLength = 0.0f;
+        aCtrlr->blendPreLength = 0.0f;
+    }
+    aCtrlr->playType = aType;
+    aCtrlr->stat = SDF_MOTION_STAT_SET;
+    cut = aCtrlr->playbook->cutList[aCutNum];
+    aCtrlr->frame = aCtrlr->blendPreLength;
+    if (cut == NULL) {
+        aCtrlr->frameLength = 0;
+        aCtrlr->stat = SDF_MOTION_STAT_NOCUT;
+        return;
+    }
+    aCtrlr->frameLength = cut->frameLength;
+    chunk = cut->chunk;
+    for (i = 0; i < aCtrlr->nodeList->count; i++) {
+        node = aCtrlr->nodeList->items[i];
+        ((void (*)(sdfMotionNode_t *, sdfMotionCutChunk_t *))node->vtbl->setCut)(node, chunk);
+        chunk = (sdfMotionCutChunk_t *)((u8 *)chunk + chunk->size);
+    }
+}
 
 void sdfMotionChange(sdfMotionCtrlr_t *aCtrlr, s32 aCutNum, s32 aType)
 {
@@ -156,7 +268,65 @@ void sdfMotCLBK_SetCut(sdfMotionNode_t *aNode, sdfMotionCutChunk_t *aTable)
     aNode->table = aTable;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotGetKey);
+void sdfMotGetKey(sdfMotionNode_t *aThis, f32 aFrame, sdfMotGetKeyIf_t *aItf)
+{
+    sdfMotionCutChunk_t *chunk;
+    u16 *frameList;
+    u8 *keyData;
+    u8 *key0;
+    s32 frame;
+    s32 numOfKey;
+    s32 elemSize;
+    s32 lo;
+    s32 hi;
+    s32 index;
+    s32 next;
+    s32 frame0;
+    s32 frame1;
+    s32 span;
+
+    frame = aFrame;
+    chunk = aThis->table;
+    numOfKey = chunk->numOfKey;
+    frameList = chunk->keyFrameList;
+    elemSize = chunk->keyElemSize;
+    lo = 0;
+    hi = numOfKey - 1;
+    do {
+        index = (lo + hi + 1) >> 1;
+        frame0 = frameList[index];
+        if (frame < frame0) {
+            index--;
+            hi = index;
+        } else {
+            lo = index;
+        }
+    } while (lo < hi);
+    keyData = (u8 *)&frameList[(numOfKey + 1) & ~1];
+    frame0 = frameList[index];
+    key0 = keyData + index * elemSize;
+    aItf->key0 = key0;
+    next = index + 1;
+    if (next == numOfKey) {
+        if (aThis->owner->playType == 0) {
+            aItf->key1 = key0;
+            frame1 = frame0;
+        } else {
+            aItf->key1 = keyData;
+            frame1 = aThis->owner->frameLength;
+        }
+    } else {
+        aItf->key1 = key0 + elemSize;
+        frame1 = frameList[next];
+    }
+    span = frame1 - frame0;
+    if (span == 0) {
+        aItf->key1 = key0;
+        aItf->rate = 0.0f;
+        return;
+    }
+    aItf->rate = (aFrame - frame0) / span;
+}
 
 f32 sdfMotInterpolateKeyFloat(sdfMotGetKeyIf_t *aItf)
 {
@@ -170,7 +340,18 @@ f32 sdfMotInterpolateKeyFloat(sdfMotGetKeyIf_t *aItf)
 
 INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotInterpolateKeyXYZ);
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotInterpolateKeyColor);
+/* vu0 routine: blend the two colour keys */
+u32 sdfMotInterpolateKeyColor(sdfMotGetKeyIf_t *aItf)
+{
+    u32 *key0;
+    u32 *key1;
+    u32 color;
+
+    key0 = aItf->key0;
+    key1 = aItf->key1;
+    SDF_MOT_RGBA_LERP(color, *key0, *key1, aItf->rate, 0.5f);
+    return color;
+}
 
 void sdfMotInterpolateKeyUvwSub(f32 *aDst, f32 *aSrc0, f32 *aSrc1, f32 aRate)
 {
@@ -249,7 +430,14 @@ INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_modelLerpRotQuatSeek);
 
 INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_modelLerpRotQuatBlendSeek);
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotGenModelVisible);
+sdfMotionNode_t *sdfMotGenModelVisible(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
+{
+    sdfMotNodeModelFlag_t *node;
+
+    node = sdfChipAllocDirect(sizeof(sdfMotNodeModelFlag_t));
+    sdfMotGenModelInit(&node->modelBase, aCtrlr, &sdfMotModelVisibleTable, aNodeId);
+    return &node->modelBase.nodeBase;
+}
 
 void sdfMotCLBK_modelVisibleSeek(sdfMotNodeModelBase_t *aThis, f32 aFrame)
 {
@@ -283,13 +471,25 @@ void sdfMotCLBK_modelVisibleBlendSeek(sdfMotNodeModelBase_t *aThis, f32 aFrame, 
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_modelVisibleInitBlend);
+void sdfMotCLBK_modelVisibleInitBlend(sdfMotNodeModelFlag_t *aThis)
+{
+    aThis->blendFrom = ((aThis->modelBase.modelNode->flags >> 4) ^ 1) & 1;
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_modelPosInitBlend);
+void sdfMotCLBK_modelPosInitBlend(sdfMotNodeModelVec_t *aThis)
+{
+    PS2_COPY_QUAD(&aThis->blendFrom, &aThis->modelBase.modelNode->pos);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_modelRotInitBlend);
+void sdfMotCLBK_modelRotInitBlend(sdfMotNodeModelVec_t *aThis)
+{
+    PS2_COPY_QUAD(&aThis->blendFrom, &aThis->modelBase.modelNode->rotate);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_modelScaleInitBlend);
+void sdfMotCLBK_modelScaleInitBlend(sdfMotNodeModelVec_t *aThis)
+{
+    PS2_COPY_QUAD(&aThis->blendFrom, &aThis->modelBase.modelNode->scale);
+}
 
 sdfMotionNode_t *sdfMotGenMatNode(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
 {
@@ -302,7 +502,14 @@ void sdfMotGenMatInit(sdfMotNodeMatBase_t *aBase, sdfMotionCtrlr_t *aCtrlr, sdfM
     aBase->mat = aCtrlr->rootNode->matList->items[aNodeId];
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotGenMatDiffuse);
+sdfMotionNode_t *sdfMotGenMatDiffuse(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
+{
+    sdfMotNodeMatColor_t *node;
+
+    node = sdfChipAllocDirect(sizeof(sdfMotNodeMatColor_t));
+    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatDiffuseTable, aNodeId);
+    return &node->matBase.nodeBase;
+}
 
 void sdfMotCLBK_matDiffuseSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
 {
@@ -312,11 +519,31 @@ void sdfMotCLBK_matDiffuseSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
     sdfMatSetDiffuse(aThis->mat, sdfMotInterpolateKeyColor(&itf));
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matDiffuseBlendSeek);
+void sdfMotCLBK_matDiffuseBlendSeek(sdfMotNodeMatColor_t *aThis, f32 aFrame, f32 aBlendRate)
+{
+    sdfMotGetKeyIf_t itf;
+    u32 to;
+    u32 color;
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matDiffuseInitBlend);
+    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    to = sdfMotInterpolateKeyColor(&itf);
+    SDF_MOT_RGBA_LERP(color, aThis->blendFrom, to, aBlendRate, 0.5f);
+    sdfMatSetDiffuse(aThis->matBase.mat, color);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotGenMatAmbient);
+void sdfMotCLBK_matDiffuseInitBlend(sdfMotNodeMatColor_t *aThis)
+{
+    aThis->blendFrom = aThis->matBase.mat->diffuse;
+}
+
+sdfMotionNode_t *sdfMotGenMatAmbient(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
+{
+    sdfMotNodeMatColor_t *node;
+
+    node = sdfChipAllocDirect(sizeof(sdfMotNodeMatColor_t));
+    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatAmbientTable, aNodeId);
+    return &node->matBase.nodeBase;
+}
 
 void sdfMotCLBK_matAmbientSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
 {
@@ -326,11 +553,31 @@ void sdfMotCLBK_matAmbientSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
     sdfMatSetAmbient(aThis->mat, sdfMotInterpolateKeyColor(&itf));
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matAmbientBlendSeek);
+void sdfMotCLBK_matAmbientBlendSeek(sdfMotNodeMatColor_t *aThis, f32 aFrame, f32 aBlendRate)
+{
+    sdfMotGetKeyIf_t itf;
+    u32 to;
+    u32 color;
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matAmbientInitBlend);
+    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    to = sdfMotInterpolateKeyColor(&itf);
+    SDF_MOT_RGBA_LERP(color, aThis->blendFrom, to, aBlendRate, 0.5f);
+    sdfMatSetAmbient(aThis->matBase.mat, color);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotGenMatSpecular);
+void sdfMotCLBK_matAmbientInitBlend(sdfMotNodeMatColor_t *aThis)
+{
+    aThis->blendFrom = aThis->matBase.mat->ambient;
+}
+
+sdfMotionNode_t *sdfMotGenMatSpecular(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
+{
+    sdfMotNodeMatColor_t *node;
+
+    node = sdfChipAllocDirect(sizeof(sdfMotNodeMatColor_t));
+    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatSpecularTable, aNodeId);
+    return &node->matBase.nodeBase;
+}
 
 void sdfMotCLBK_matSpecularSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
 {
@@ -340,11 +587,31 @@ void sdfMotCLBK_matSpecularSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
     sdfMatSetSpecular(aThis->mat, sdfMotInterpolateKeyColor(&itf));
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matSpecularBlendSeek);
+void sdfMotCLBK_matSpecularBlendSeek(sdfMotNodeMatColor_t *aThis, f32 aFrame, f32 aBlendRate)
+{
+    sdfMotGetKeyIf_t itf;
+    u32 to;
+    u32 color;
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matSpecularInitBlend);
+    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    to = sdfMotInterpolateKeyColor(&itf);
+    SDF_MOT_RGBA_LERP(color, aThis->blendFrom, to, aBlendRate, 0.5f);
+    sdfMatSetSpecular(aThis->matBase.mat, color);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotGenMatRefMap);
+void sdfMotCLBK_matSpecularInitBlend(sdfMotNodeMatColor_t *aThis)
+{
+    aThis->blendFrom = aThis->matBase.mat->specular;
+}
+
+sdfMotionNode_t *sdfMotGenMatRefMap(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
+{
+    sdfMotNodeMatColor_t *node;
+
+    node = sdfChipAllocDirect(sizeof(sdfMotNodeMatColor_t));
+    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatRefMapTable, aNodeId);
+    return &node->matBase.nodeBase;
+}
 
 void sdfMotCLBK_matRefMapSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
 {
@@ -354,11 +621,31 @@ void sdfMotCLBK_matRefMapSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
     sdfMatSetRefMap(aThis->mat, sdfMotInterpolateKeyColor(&itf));
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matRefMapBlendSeek);
+void sdfMotCLBK_matRefMapBlendSeek(sdfMotNodeMatColor_t *aThis, f32 aFrame, f32 aBlendRate)
+{
+    sdfMotGetKeyIf_t itf;
+    u32 to;
+    u32 color;
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matRefMapInitBlend);
+    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    to = sdfMotInterpolateKeyColor(&itf);
+    SDF_MOT_RGBA_LERP(color, aThis->blendFrom, to, aBlendRate, 0.5f);
+    sdfMatSetRefMap(aThis->matBase.mat, color);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotGenMatConstant);
+void sdfMotCLBK_matRefMapInitBlend(sdfMotNodeMatColor_t *aThis)
+{
+    aThis->blendFrom = aThis->matBase.mat->refmap;
+}
+
+sdfMotionNode_t *sdfMotGenMatConstant(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
+{
+    sdfMotNodeMatFloat_t *node;
+
+    node = sdfChipAllocDirect(sizeof(sdfMotNodeMatFloat_t));
+    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatConstantTable, aNodeId);
+    return &node->matBase.nodeBase;
+}
 
 void sdfMotCLBK_matConstantSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
 {
@@ -368,11 +655,31 @@ void sdfMotCLBK_matConstantSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
     sdfMatSetConstant(aThis->mat, sdfMotInterpolateKeyFloat(&itf));
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matConstantBlendSeek);
+void sdfMotCLBK_matConstantBlendSeek(sdfMotNodeMatFloat_t *aThis, f32 aFrame, f32 aBlendRate)
+{
+    sdfMotGetKeyIf_t itf;
+    f32 to;
+    f32 from;
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matConstantInitBlend);
+    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    to = sdfMotInterpolateKeyFloat(&itf);
+    from = aThis->blendFrom;
+    sdfMatSetConstant(aThis->matBase.mat, from + to * aBlendRate - from * aBlendRate);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotGenMatUvw);
+void sdfMotCLBK_matConstantInitBlend(sdfMotNodeMatFloat_t *aThis)
+{
+    aThis->blendFrom = aThis->matBase.mat->constant;
+}
+
+sdfMotionNode_t *sdfMotGenMatUvw(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
+{
+    sdfMotNodeMatUvw_t *node;
+
+    node = sdfChipAllocDirect(sizeof(sdfMotNodeMatUvw_t));
+    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatUvwTable, aNodeId);
+    return &node->matBase.nodeBase;
+}
 
 void sdfMotCLBK_matUvwSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
 {
@@ -384,11 +691,31 @@ void sdfMotCLBK_matUvwSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
     sdfMatSetTexUvwByPtr(aThis->mat, &uvw);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matUvwBlendSeek);
+void sdfMotCLBK_matUvwBlendSeek(sdfMotNodeMatUvw_t *aThis, f32 aFrame, f32 aBlendRate)
+{
+    sdfMotGetKeyIf_t itf;
+    sdfMotUvwKey_t dst;
+    sdfMotUvwKey_t key;
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matUvwInitBlend);
+    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    sdfMotInterpolateKeyUvw(&itf, &key);
+    sdfMotInterpolateKeyUvwSub(dst.parm, aThis->blendFrom.parm, key.parm, aBlendRate);
+    sdfMatSetTexUvwByPtr(aThis->matBase.mat, &dst);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotGenMatMultiUvw);
+void sdfMotCLBK_matUvwInitBlend(sdfMotNodeMatUvw_t *aThis)
+{
+    aThis->blendFrom = *(sdfMotUvwKey_t *)sdfMatGetTexUvwParm(aThis->matBase.mat);
+}
+
+sdfMotionNode_t *sdfMotGenMatMultiUvw(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
+{
+    sdfMotNodeMatUvw_t *node;
+
+    node = sdfChipAllocDirect(sizeof(sdfMotNodeMatUvw_t));
+    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatMultiUvwTable, aNodeId);
+    return &node->matBase.nodeBase;
+}
 
 void sdfMotCLBK_matMultiUvwSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
 {
@@ -400,11 +727,31 @@ void sdfMotCLBK_matMultiUvwSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
     sdfMatSetMultiTexUvwByPtr(aThis->mat, &uvw);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matMultiUvwBlendSeek);
+void sdfMotCLBK_matMultiUvwBlendSeek(sdfMotNodeMatUvw_t *aThis, f32 aFrame, f32 aBlendRate)
+{
+    sdfMotGetKeyIf_t itf;
+    sdfMotUvwKey_t key;
+    sdfMotUvwKey_t dst;
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matMultiUvwInitBlend);
+    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    sdfMotInterpolateKeyUvw(&itf, &key);
+    sdfMotInterpolateKeyUvwSub(dst.parm, aThis->blendFrom.parm, key.parm, aBlendRate);
+    sdfMatSetMultiTexUvwByPtr(aThis->matBase.mat, &dst);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotGenMatMultiDiffuse);
+void sdfMotCLBK_matMultiUvwInitBlend(sdfMotNodeMatUvw_t *aThis)
+{
+    aThis->blendFrom = *(sdfMotUvwKey_t *)sdfMatGetMultiTexUvwParm(aThis->matBase.mat);
+}
+
+sdfMotionNode_t *sdfMotGenMatMultiDiffuse(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
+{
+    sdfMotNodeMatColor_t *node;
+
+    node = sdfChipAllocDirect(sizeof(sdfMotNodeMatColor_t));
+    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatMultiDiffuseTable, aNodeId);
+    return &node->matBase.nodeBase;
+}
 
 void sdfMotCLBK_matMultiDiffuseSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
 {
@@ -414,11 +761,31 @@ void sdfMotCLBK_matMultiDiffuseSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
     sdfMatSetMultiDiffuse(aThis->mat, sdfMotInterpolateKeyColor(&itf));
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matMultiDiffuseBlendSeek);
+void sdfMotCLBK_matMultiDiffuseBlendSeek(sdfMotNodeMatColor_t *aThis, f32 aFrame, f32 aBlendRate)
+{
+    sdfMotGetKeyIf_t itf;
+    u32 to;
+    u32 color;
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matMultiDiffuseInitBlend);
+    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    to = sdfMotInterpolateKeyColor(&itf);
+    SDF_MOT_RGBA_LERP(color, aThis->blendFrom, to, aBlendRate, 0.5f);
+    sdfMatSetMultiDiffuse(aThis->matBase.mat, color);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotGenMatUvw2);
+void sdfMotCLBK_matMultiDiffuseInitBlend(sdfMotNodeMatColor_t *aThis)
+{
+    aThis->blendFrom = aThis->matBase.mat->multiTexDiffuse;
+}
+
+sdfMotionNode_t *sdfMotGenMatUvw2(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
+{
+    sdfMotNodeMatUvw_t *node;
+
+    node = sdfChipAllocDirect(sizeof(sdfMotNodeMatUvw_t));
+    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatUvw2Table, aNodeId);
+    return &node->matBase.nodeBase;
+}
 
 void sdfMotCLBK_matUvw2Seek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
 {
@@ -428,12 +795,25 @@ void sdfMotCLBK_matUvw2Seek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
     sdfMatSetTexUvwByPtr(aThis->mat, itf.key0);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matUvw2BlendSeek);
+void sdfMotCLBK_matUvw2BlendSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame, f32 aBlendRate)
+{
+    sdfMotGetKeyIf_t itf;
+
+    sdfMotGetKey(&aThis->nodeBase, aFrame, &itf);
+    sdfMatSetTexUvwByPtr(aThis->mat, itf.key0);
+}
 
 void sdfMotCLBK_matUvw2InitBlend(void) {
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotGenMatMultiUvw2);
+sdfMotionNode_t *sdfMotGenMatMultiUvw2(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
+{
+    sdfMotNodeMatUvw_t *node;
+
+    node = sdfChipAllocDirect(sizeof(sdfMotNodeMatUvw_t));
+    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatMultiUvw2Table, aNodeId);
+    return &node->matBase.nodeBase;
+}
 
 void sdfMotCLBK_matMultiUvw2Seek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
 {
@@ -443,7 +823,13 @@ void sdfMotCLBK_matMultiUvw2Seek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
     sdfMatSetMultiTexUvwByPtr(aThis->mat, itf.key0);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_matMultiUvw2BlendSeek);
+void sdfMotCLBK_matMultiUvw2BlendSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame, f32 aBlendRate)
+{
+    sdfMotGetKeyIf_t itf;
+
+    sdfMotGetKey(&aThis->nodeBase, aFrame, &itf);
+    sdfMatSetMultiTexUvwByPtr(aThis->mat, itf.key0);
+}
 
 void sdfMotCLBK_matMultiUvw2InitBlend(void) {
 }
