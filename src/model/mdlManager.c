@@ -164,14 +164,23 @@ void mdlMotion(mdlObj_t *ctx, s32 searchId, s32 motionIndex, s32 loop, f32 blend
 sdfMotionCtrlr_t *mdlGetMotionCtrlr(mdlObj_t *ctx, s32 searchId);
 void mdlSetEffectColor(mdlObj_t *ctx, u32 value);
 
-#define VU0_LOAD_VF_AT(vf, addr) __asm__ volatile ( \
-    ".set noreorder\n\tlqc2 $" #vf ", 0(%0)\n\t.set reorder" \
+#define VU0_LOAD_VF10(addr) __asm__ volatile ( \
+    ".set noreorder\n\tlqc2 $vf10, 0(%0)\n\t.set reorder" \
     : : "r" (addr) : "memory")
-#define VU0_STORE_VF_AT(vf, addr) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 $" #vf ", 0(%0)\n\t.set reorder" \
+#define VU0_STORE_VF10(addr) __asm__ volatile ( \
+    ".set noreorder\n\tsqc2 $vf10, 0(%0)\n\t.set reorder" \
     : : "r" (addr) : "memory")
-#define VU0_SET_W_ONE(vf) __asm__ volatile ( \
-    ".set noreorder\n\tvmove.w $" #vf ", $vf0\n\t.set reorder")
+#define VU0_STORE_VF28(addr) __asm__ volatile ( \
+    ".set noreorder\n\tsqc2 $vf28, 0(%0)\n\t.set reorder" \
+    : : "r" (addr) : "memory")
+#define VU0_STORE_VF29(addr) __asm__ volatile ( \
+    ".set noreorder\n\tsqc2 $vf29, 0(%0)\n\t.set reorder" \
+    : : "r" (addr) : "memory")
+#define VU0_STORE_VF30(addr) __asm__ volatile ( \
+    ".set noreorder\n\tsqc2 $vf30, 0(%0)\n\t.set reorder" \
+    : : "r" (addr) : "memory")
+#define VU0_SET_VF10_W_ONE() __asm__ volatile ( \
+    ".set noreorder\n\tvmove.w $vf10, $vf0\n\t.set reorder")
 
 typedef struct fileRequest_t fileRequest_t;
 
@@ -948,37 +957,37 @@ void mdlSetMotionSpeedEx(mdlObj_t *ctx, s32 searchId, f32 frameStep)
 
 void mdlGetPosition(mdlObj_t *ctx)
 {
-    VU0_LOAD_VF_AT(vf10, &ctx->inner->tm.m[12]);
+    VU0_LOAD_VF10(&ctx->inner->tm.m[12]);
 }
 
 void mdlSetPosition(mdlObj_t *ctx)
 {
-    VU0_SET_W_ONE(vf10);
-    VU0_STORE_VF_AT(vf10, &ctx->inner->tm.m[12]);
+    VU0_SET_VF10_W_ONE();
+    VU0_STORE_VF10(&ctx->inner->tm.m[12]);
 }
 
 void mdlGetRotate(mdlObj_t *ctx)
 {
-    VU0_LOAD_VF_AT(vf10, &ctx->inner->rotate);
+    VU0_LOAD_VF10(&ctx->inner->rotate);
 }
 
 void mdlSetRotate(mdlObj_t *ctx)
 {
-    VU0_STORE_VF_AT(vf10, &ctx->inner->rotate);
+    VU0_STORE_VF10(&ctx->inner->rotate);
     ToMatrix();
-    VU0_STORE_VF_AT(vf28, &ctx->inner->tm.m[0]);
-    VU0_STORE_VF_AT(vf29, &ctx->inner->tm.m[4]);
-    VU0_STORE_VF_AT(vf30, &ctx->inner->tm.m[8]);
+    VU0_STORE_VF28(&ctx->inner->tm.m[0]);
+    VU0_STORE_VF29(&ctx->inner->tm.m[4]);
+    VU0_STORE_VF30(&ctx->inner->tm.m[8]);
 }
 
 void mdlGetScale(mdlObj_t *ctx)
 {
-    VU0_LOAD_VF_AT(vf10, &ctx->inner->scale);
+    VU0_LOAD_VF10(&ctx->inner->scale);
 }
 
 void mdlSetScale(mdlObj_t *ctx)
 {
-    VU0_STORE_VF_AT(vf10, &ctx->inner->scale);
+    VU0_STORE_VF10(&ctx->inner->scale);
 }
 
 u32 mdlGetColor(mdlObj_t *ctx)
