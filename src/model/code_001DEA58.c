@@ -287,12 +287,6 @@ typedef enum MdlViewerRecordKind {
     MDL_VIEWER_RECORD_KIND_STREAM = 4,
     MDL_VIEWER_RECORD_KIND_OBJECT_PART = 5
 } MdlViewerRecordKind;
-#define EE_MMI_LOAD_MATRIX_COLUMN(vf, src) __asm__ volatile ( \
-    ".set noreorder\n\tlw $2, 0(%0)\n\tlw $3, 0x10(%0)\n\t" \
-    "lw $4, 0x20(%0)\n\tlw $5, 0x30(%0)\n\t" \
-    "pextlw $2, $3, $2\n\tpextlw $4, $5, $4\n\t" \
-    "pcpyld $2, $4, $2\n\tqmtc2.ni $2, " #vf "\n\t.set reorder" \
-    : : "r" (src) : "$2", "$3", "$4", "$5", "memory")
 
 extern char D_0054F648[];
 extern char D_0054F650[];
@@ -881,7 +875,7 @@ void mdlSetEffectScaleSub(mdlObj_t *owner, mdlEffectResrc_t *item, float amount)
 void mdlSetDebugMatrix(mdlDebugLight_t *context, f32 *position)
 {
     if (context->pad->stepUpA != 0) {
-        EE_MMI_LOAD_MATRIX_COLUMN(vf10, D_002FA240 + 1);
+        EE_MMI_LOAD_MATRIX_COLUMN_VF10(D_002FA240 + 1);
         FromRotation(2.0f * 3.14159265f / 180.0f);
         ToMatrix();
         VU0_LOAD_VF10( position);
@@ -889,7 +883,7 @@ void mdlSetDebugMatrix(mdlDebugLight_t *context, f32 *position)
         VU0_SET_VF10_W_ONE();
         VU0_STORE_VF10( position);
     } else if (context->pad->stepDownA != 0) {
-        EE_MMI_LOAD_MATRIX_COLUMN(vf10, D_002FA240 + 1);
+        EE_MMI_LOAD_MATRIX_COLUMN_VF10(D_002FA240 + 1);
         FromRotation(-2.0f * 3.14159265f / 180.0f);
         ToMatrix();
         VU0_LOAD_VF10( position);
@@ -898,7 +892,7 @@ void mdlSetDebugMatrix(mdlDebugLight_t *context, f32 *position)
         VU0_STORE_VF10( position);
     }
     if (context->pad->stepUpB != 0) {
-        EE_MMI_LOAD_MATRIX_COLUMN(vf10, D_002FA240);
+        EE_MMI_LOAD_MATRIX_COLUMN_VF10(D_002FA240);
         FromRotation(-2.0f * 3.14159265f / 180.0f);
         ToMatrix();
         VU0_LOAD_VF10( position);
@@ -906,7 +900,7 @@ void mdlSetDebugMatrix(mdlDebugLight_t *context, f32 *position)
         VU0_SET_VF10_W_ONE();
         VU0_STORE_VF10( position);
     } else if (context->pad->stepDownB != 0) {
-        EE_MMI_LOAD_MATRIX_COLUMN(vf10, D_002FA240);
+        EE_MMI_LOAD_MATRIX_COLUMN_VF10(D_002FA240);
         FromRotation(2.0f * 3.14159265f / 180.0f);
         ToMatrix();
         VU0_LOAD_VF10( position);

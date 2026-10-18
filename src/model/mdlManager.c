@@ -285,12 +285,6 @@ static inline s32 mdlFileUpper(s32 c)
 }
 
 
-#define VU0_MOVE_VF_EXTENDED(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\tvmove.xyzw " #dst ", " #src "\n\t.set reorder" : :)
-
-#define VU0_SUB_EXTENDED(dst, a, b) __asm__ volatile ( \
-    ".set noreorder\n\tvsub.xyzw " #dst ", " #a ", " #b "\n\t.set reorder" : :)
-
 /* A C float broadcast through vf2.x, then the one operation that uses it.
  * Kept local: retail carries the bits through $2 here, not through
  * a register cc1 picks. */
@@ -817,13 +811,13 @@ void mdlSetBlur(mdlObj_t *ctx, s32 stride, s32 capacity,
         inverseSpan = 1.0f / deviceList->byteCount;
         startCarrier[0] = startColor;
         EE_MMI_RGBA_UNPACK(startCarrier, 0.0078125f);
-        VU0_STORE_VF(vf10, deviceList->color);
-        VU0_MOVE_VF_EXTENDED(vf11, vf10);
+        VU0_STORE_VF10(deviceList->color);
+        VU0_COPY_VF10_TO_VF11_EXTENDED();
         endCarrier[0] = endColor;
         EE_MMI_RGBA_UNPACK(endCarrier, 0.0078125f);
-        VU0_SUB_EXTENDED(vf10, vf10, vf11);
+        VU0_SUB_VF10_VF11_EXTENDED();
         VU0_SCALE_VF10(inverseSpan);
-        VU0_STORE_VF(vf10, deviceList->colorStep);
+        VU0_STORE_VF10(deviceList->colorStep);
     }
 }
 
@@ -872,7 +866,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
         list->first = slot;
     }
     eeUnpackRGBAWordFloat(original->color, 1.0f / 128.0f);
-    VU0_STORE_VF(vf10, tint);
+    VU0_STORE_VF10(tint);
     slot = list->first;
     while (slot != NULL) {
         remaining = slot->remaining;
@@ -886,9 +880,9 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
         }
         /* Both callbacks complete before the countdown is published. */
         slot->remaining = remaining;
-        VU0_LOAD_VF(vf10, list->color);
-        VU0_LOAD_VF(vf11, list->colorStep);
-        VU0_LOAD_VF(vf12, tint);
+        VU0_LOAD_VF10(list->color);
+        VU0_LOAD_VF11(list->colorStep);
+        VU0_LOAD_VF12(tint);
         color = mdlPackDevSlotColor(remaining - 1, 128.0f);
         model->color = color;
         sdfModelLinkOt(surfaces, model);
@@ -1230,20 +1224,20 @@ void mdlGetScreenOffset(mdlObj_t *ctx, void *point)
 {
     VU0_LOAD_MATRIX(&D_002FA240);
     MultMatrixRev(&dds3ScreenParam.TM);
-    VU0_MOVE_VF(vf24, vf28);
-    VU0_MOVE_VF(vf25, vf29);
-    VU0_MOVE_VF(vf26, vf30);
-    VU0_MOVE_VF(vf27, vf31);
+    VU0_COPY_VF28_TO_VF24();
+    VU0_COPY_VF29_TO_VF25();
+    VU0_COPY_VF30_TO_VF26();
+    VU0_COPY_VF31_TO_VF27();
     VU0_LOAD_MATRIX(&ctx->inner->tm);
-    VU0_SCALE_MATRIX_ROWS(vf10);
+    VU0_SCALE_MATRIX_ROWS_VF10();
     MultMatrixRevNoArg();
-    VU0_LOAD_VF(vf10, point);
-    VU0_TRANSFORM_POINT(vf10, vf10);
+    VU0_LOAD_VF10(point);
+    VU0_TRANSFORM_POINT_VF10();
     VU0_PERSPECTIVE_DIVIDE_VF10();
-    VU0_LOAD_VF(vf11, &dds3ScreenParam.scale);
-    VU0_MUL(vf10, vf10, vf11);
-    VU0_LOAD_VF(vf11, &dds3ScreenParam.trans);
-    VU0_ADD(vf10, vf10, vf11);
+    VU0_LOAD_VF11(&dds3ScreenParam.scale);
+    VU0_MUL_VF10_VF11();
+    VU0_LOAD_VF11(&dds3ScreenParam.trans);
+    VU0_ADD_VF10_VF11();
 }
 
 /* vu0 routine: project an array of points and store their screen coordinates. */
@@ -1252,19 +1246,19 @@ void mdl_1DD9C0(mdlObj_t *ctx, f32 (*inputPoints)[4], f32 (*outputPoints)[4], s3
     s32 pointIndex;
 
     VU0_LOAD_MATRIX(&ctx->inner->tm);
-    VU0_LOAD_VF(vf10, &ctx->inner->scale);
-    VU0_SCALE_MATRIX_ROWS(vf10);
+    VU0_LOAD_VF10(&ctx->inner->scale);
+    VU0_SCALE_MATRIX_ROWS_VF10();
     MultMatrixRev(&D_002FA240);
     MultMatrixRev(&dds3ScreenParam.TM);
     for (pointIndex = 0; pointIndex < pointCount; pointIndex++) {
-        VU0_LOAD_VF(vf10, inputPoints[pointIndex]);
-        VU0_TRANSFORM_POINT(vf10, vf10);
+        VU0_LOAD_VF10(inputPoints[pointIndex]);
+        VU0_TRANSFORM_POINT_VF10();
         VU0_PERSPECTIVE_DIVIDE_VF10();
-        VU0_LOAD_VF(vf11, &dds3ScreenParam.scale);
-        VU0_MUL(vf10, vf10, vf11);
-        VU0_LOAD_VF(vf11, &dds3ScreenParam.trans);
-        VU0_ADD(vf10, vf10, vf11);
-        VU0_STORE_VF(vf10, outputPoints[pointIndex]);
+        VU0_LOAD_VF11(&dds3ScreenParam.scale);
+        VU0_MUL_VF10_VF11();
+        VU0_LOAD_VF11(&dds3ScreenParam.trans);
+        VU0_ADD_VF10_VF11();
+        VU0_STORE_VF10(outputPoints[pointIndex]);
     }
 }
 
