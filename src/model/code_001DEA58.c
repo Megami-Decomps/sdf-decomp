@@ -266,8 +266,6 @@ extern void evtDisableMoonCalc(void);
 void evtBitAllOff(void);
 void evtBitOff(s32 flag);
 
-#define SDF_VU0_SUBVECTOR_A_C() __asm__ volatile ( \
-    ".set noreorder\n\tvsub.xyzw vf10, vf10, vf12\n\t.set reorder")
 /* SDK matrix-column gather: EE GCC cannot express the MMI pack from C. */
 typedef enum MdlResourceKind {
     MDL_RESOURCE_BILLBOARD = 0,
