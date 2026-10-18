@@ -16,7 +16,7 @@
 static inline f32 ffabsf(f32 x)
 {
     f32 r;
-    __asm__(".set noreorder\n\tabs.s %0, %1\n\t.set reorder" : "=f"(r) : "f"(x));
+    EE_ABS_F32(r, x);
     return r;
 }
 
