@@ -742,14 +742,6 @@ struct TMX_HEADER_t {
 };
 
 
-/* Load-normalize-store of one packed vector in a single block ("+m" operand
- * with a memory clobber). */
-#define VU0_NORMALIZE_PACKED_VECTOR(v) __asm__ volatile ( \
-    ".set noreorder\n\tlqc2 vf10, %0\n\tvmul.xyz vf2, vf10, vf10\n\tvmulax.w ACC, vf0, vf2x\n\t" \
-    "vmadday.w ACC, vf0, vf2y\n\tvmaddz.w vf2, vf0, vf2z\n\tvrsqrt Q, vf0w, vf2w\n\t" \
-    "vwaitq\n\tvmulq.xyz vf10, vf10, Q\n\tsqc2 vf10, %0\n\t.set reorder" \
-    : "+m" (v) :: "memory")
-
 extern void *effPkt3DPrimMakePoly(EffPacketParams *params);
 
 /* Four ordered 32-bit words in the shared effect random-number state. */
