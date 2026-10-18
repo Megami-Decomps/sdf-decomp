@@ -266,13 +266,8 @@ extern void evtDisableMoonCalc(void);
 void evtBitAllOff(void);
 void evtBitOff(s32 flag);
 
-#define MDL_LOAD_EYE(src) __asm__ volatile ( \
-    ".set noreorder\n\tlqc2 vf12, 0(%0)\n\t.set reorder" : : "r" (src))
-#define MDL_SUB_EYE() __asm__ volatile ( \
+#define SDF_VU0_SUBVECTOR_A_C() __asm__ volatile ( \
     ".set noreorder\n\tvsub.xyzw vf10, vf10, vf12\n\t.set reorder")
-/* The native SDK anchor pipeline has an input-address-only SQc2 operand. */
-#define MDL_STORE_ANCHOR(dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 vf10, 0(%0)\n\t.set reorder" : : "r" (dst))
 /* SDK matrix-column gather: EE GCC cannot express the MMI pack from C. */
 typedef enum MdlResourceKind {
     MDL_RESOURCE_BILLBOARD = 0,
@@ -811,12 +806,12 @@ void mdlEffect_P2A_D3P_GetPos(sdfModelRootNode_t *model, mdlEffectResrc_t *ancho
         SDF_VU0_LOADVECTOR( &mapPosition->position);
     SDF_VU0_APPLYMATRIX_XYZ1();
     SDF_VU0_COPYVECTOR_A_TO_B();
-        MDL_LOAD_EYE( aViewEye);
-    MDL_SUB_EYE();
+        SDF_VU0_LOADVECTOR_C( aViewEye);
+    SDF_VU0_SUBVECTOR_A_C();
     SDF_VU0_NORMALIZE();
     VU0_SCALE_VF10_BITS(scale);
     SDF_VU0_ADDVECTOR();
-    MDL_STORE_ANCHOR( positionOut);
+    VU0_STORE_VF10_NOMEM( positionOut);
 }
 
 /* Update anchored billboard/effect positions, tracked polygons, or deferred object initialization by type. */

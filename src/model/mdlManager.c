@@ -77,11 +77,6 @@ void mdlMotion(mdlObj_t *ctx, s32 searchId, s32 motionIndex, s32 loop, f32 blend
 sdfMotionCtrlr_t *mdlGetMotionCtrlr(mdlObj_t *ctx, s32 searchId);
 void mdlSetEffectColor(mdlObj_t *ctx, u32 value);
 
-/* Kept local: this unit needs the load to act as a memory barrier. */
-#undef SDF_VU0_LOADVECTOR
-#define SDF_VU0_LOADVECTOR(addr) __asm__ volatile ( \
-    ".set noreorder\n\tlqc2 $vf10, 0(%0)\n\t.set reorder" \
-    : : "r" (addr) : "memory")
 
 typedef struct fileRequest_t fileRequest_t;
 
@@ -95,9 +90,6 @@ extern sdfMotionPlayBook_t *sdfFixupMotionBinary(void *data);
 void TbMbAbLoadEnd(mdlLoadRequest_t *request);
 void mdlFreeBlur(mdlObj_t *ctx);
 
-#define MDL_COPY_VECTOR(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\tlq $2, 0(%1)\n\tsq $2, 0(%0)\n\t.set reorder" \
-    : : "r" (dst), "r" (src) : "$2", "memory")
 
 extern mdlResrc_t *mdlLoadPrepare(u32 group, u32 id);
 extern void mdlGenEffect(mdlObj_t *ctx, s32 a, s32 b);
@@ -880,7 +872,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
         }
         /* Both callbacks complete before the countdown is published. */
         slot->remaining = remaining;
-        SDF_VU0_LOADVECTOR(list->color);
+        VU0_LOAD_VF10_BARRIER(list->color);
         SDF_VU0_LOADVECTOR_B(list->colorStep);
         SDF_VU0_LOADVECTOR_C(tint);
         color = mdlPackDevSlotColor(remaining - 1, 128.0f);
@@ -917,7 +909,7 @@ mdlObj_t *mdlLoad(u32 group, u32 id)
     scale[1] = modelScale;
     scale[2] = modelScale;
     scale[3] = 1.0f;
-    MDL_COPY_VECTOR(&inner->scale, scale);
+    SDF_VU0_COPYVECTOR(&inner->scale, scale);
     ctx->objectRadius = node->objectRadius;
     ctx->current.h.id = -1;
     ctx->current.h.motionIndex = -1;
@@ -1149,7 +1141,7 @@ void mdlSetMotionSpeedEx(mdlObj_t *ctx, s32 searchId, f32 frameStep)
 
 void mdlGetPosition(mdlObj_t *ctx)
 {
-    SDF_VU0_LOADVECTOR(&ctx->inner->tm.m[12]);
+    VU0_LOAD_VF10_BARRIER(&ctx->inner->tm.m[12]);
 }
 
 void mdlSetPosition(mdlObj_t *ctx)
@@ -1160,7 +1152,7 @@ void mdlSetPosition(mdlObj_t *ctx)
 
 void mdlGetRotate(mdlObj_t *ctx)
 {
-    SDF_VU0_LOADVECTOR(&ctx->inner->rotate);
+    VU0_LOAD_VF10_BARRIER(&ctx->inner->rotate);
 }
 
 void mdlSetRotate(mdlObj_t *ctx)
@@ -1174,7 +1166,7 @@ void mdlSetRotate(mdlObj_t *ctx)
 
 void mdlGetScale(mdlObj_t *ctx)
 {
-    SDF_VU0_LOADVECTOR(&ctx->inner->scale);
+    VU0_LOAD_VF10_BARRIER(&ctx->inner->scale);
 }
 
 void mdlSetScale(mdlObj_t *ctx)
@@ -1231,7 +1223,7 @@ void mdlGetScreenOffset(mdlObj_t *ctx, void *point)
     SDF_VU0_LOADMATRIX(&ctx->inner->tm);
     VU0_SCALE_MATRIX_ROWS_VF10();
     MultMatrixRevNoArg();
-    SDF_VU0_LOADVECTOR(point);
+    VU0_LOAD_VF10_BARRIER(point);
     SDF_VU0_APPLYMATRIX_XYZ1();
     SDF_VU0_PERSVECTOR();
     SDF_VU0_LOADVECTOR_B(&dds3ScreenParam.scale);
@@ -1246,12 +1238,12 @@ void mdl_1DD9C0(mdlObj_t *ctx, f32 (*inputPoints)[4], f32 (*outputPoints)[4], s3
     s32 pointIndex;
 
     SDF_VU0_LOADMATRIX(&ctx->inner->tm);
-    SDF_VU0_LOADVECTOR(&ctx->inner->scale);
+    VU0_LOAD_VF10_BARRIER(&ctx->inner->scale);
     VU0_SCALE_MATRIX_ROWS_VF10();
     MultMatrixRev(&D_002FA240);
     MultMatrixRev(&dds3ScreenParam.TM);
     for (pointIndex = 0; pointIndex < pointCount; pointIndex++) {
-        SDF_VU0_LOADVECTOR(inputPoints[pointIndex]);
+        VU0_LOAD_VF10_BARRIER(inputPoints[pointIndex]);
         SDF_VU0_APPLYMATRIX_XYZ1();
         SDF_VU0_PERSVECTOR();
         SDF_VU0_LOADVECTOR_B(&dds3ScreenParam.scale);
