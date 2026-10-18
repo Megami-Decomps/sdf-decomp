@@ -40,7 +40,7 @@
     ".set reorder" \
     : : "r" (first), "r" (second), "r" (t) : "$2", "$3", "$4", "$5")
 
-#define SDF_VU0__LOADVECTOR_UNALIGN(p) __asm__ volatile ( \
+#define SDF_VU0_LOADVECTOR_UNALIGN(p) __asm__ volatile ( \
     ".set noreorder\n\t" \
     "ldr $2, 0(%0)\n\t" \
     "ldl $2, 7(%0)\n\t" \
@@ -50,7 +50,7 @@
     ".set reorder" \
     : : "r"(p) : "$2", "$3")
 
-#define SDF_VU0__LOADVECTOR_UNALIGN_B(p) __asm__ volatile ( \
+#define SDF_VU0_LOADVECTOR_UNALIGN_B(p) __asm__ volatile ( \
     ".set noreorder\n\t" \
     "ldr $2, 0(%0)\n\t" \
     "ldl $2, 7(%0)\n\t" \
@@ -60,7 +60,7 @@
     ".set reorder" \
     : : "r"(p) : "$2", "$3")
 
-#define SDF_VU0__LOADSHORTVECTOR(p) __asm__ volatile ( \
+#define SDF_VU0_LOADSHORTVECTOR(p) __asm__ volatile ( \
     ".set noreorder\n\t" \
     "ldr $2, 0(%0)\n\t" \
     "ldl $2, 7(%0)\n\t" \
@@ -71,7 +71,7 @@
     ".set reorder" \
     : : "r"(p) : "$2")
 
-#define SDF_VU0__LOADSHORTVECTOR_B(p) __asm__ volatile ( \
+#define SDF_VU0_LOADSHORTVECTOR_B(p) __asm__ volatile ( \
     ".set noreorder\n\t" \
     "ldr $2, 0(%0)\n\t" \
     "ldl $2, 7(%0)\n\t" \
@@ -574,8 +574,8 @@ void sdfMotCLBK_modelLinerPosSeek(sdfMotNodeModelVec_t *binding, f32 frame) {
     sdfMotGetKeyIf_t keyInterval;
 
     sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
-    SDF_VU0__LOADVECTOR_UNALIGN(keyInterval.key0);
-    SDF_VU0__LOADVECTOR_UNALIGN_B(keyInterval.key1);
+    SDF_VU0_LOADVECTOR_UNALIGN(keyInterval.key0);
+    SDF_VU0_LOADVECTOR_UNALIGN_B(keyInterval.key1);
     VU0_LERP_VF10_W(keyInterval.rate);
     SDF_MOT_STORE_VF10_NOMEM(&binding->modelBase.modelNode->pos);
 }
@@ -585,10 +585,10 @@ void sdfMotCLBK_modelLinerPosBlendSeek(sdfMotNodeModelVec_t *binding, f32 frame,
     sdfMotGetKeyIf_t keyInterval;
 
     sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
-    SDF_VU0__LOADVECTOR_UNALIGN(keyInterval.key0);
-    SDF_VU0__LOADVECTOR_UNALIGN_B(keyInterval.key1);
+    SDF_VU0_LOADVECTOR_UNALIGN(keyInterval.key0);
+    SDF_VU0_LOADVECTOR_UNALIGN_B(keyInterval.key1);
     VU0_LERP_VF10_COPY(keyInterval.rate);
-    SDF_VU0__LOADVECTOR(&binding->blendFrom);
+    SDF_VU0_LOADVECTOR(&binding->blendFrom);
     VU0_LERP_VF10_W(blendWeight);
     SDF_MOT_STORE_VF10_NOMEM(&binding->modelBase.modelNode->pos);
 }
@@ -624,10 +624,10 @@ void sdfMotCLBK_modelLinerScaleSeek(sdfMotNodeModelVec_t *binding, f32 frame) {
     sdfMotGetKeyIf_t keyInterval;
 
     sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
-    SDF_VU0__LOADVECTOR_UNALIGN(keyInterval.key0);
-    SDF_VU0__LOADVECTOR_UNALIGN_B(keyInterval.key1);
+    SDF_VU0_LOADVECTOR_UNALIGN(keyInterval.key0);
+    SDF_VU0_LOADVECTOR_UNALIGN_B(keyInterval.key1);
     VU0_LERP_VF10_W(keyInterval.rate);
-    SDF_VU0__STOREVECTOR(&binding->modelBase.modelNode->scale);
+    SDF_VU0_STOREVECTOR(&binding->modelBase.modelNode->scale);
 }
 
 /* vu0 routine: sample and blend the channel using the SDK packed operations. */
@@ -635,12 +635,12 @@ void sdfMotCLBK_modelLinerScaleBlendSeek(sdfMotNodeModelVec_t *binding, f32 fram
     sdfMotGetKeyIf_t keyInterval;
 
     sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
-    SDF_VU0__LOADVECTOR_UNALIGN(keyInterval.key0);
-    SDF_VU0__LOADVECTOR_UNALIGN_B(keyInterval.key1);
+    SDF_VU0_LOADVECTOR_UNALIGN(keyInterval.key0);
+    SDF_VU0_LOADVECTOR_UNALIGN_B(keyInterval.key1);
     VU0_LERP_VF10_COPY(keyInterval.rate);
-    SDF_VU0__LOADVECTOR(&binding->blendFrom);
+    SDF_VU0_LOADVECTOR(&binding->blendFrom);
     VU0_LERP_VF10_W(blendWeight);
-    SDF_VU0__STOREVECTOR(&binding->modelBase.modelNode->scale);
+    SDF_VU0_STOREVECTOR(&binding->modelBase.modelNode->scale);
 }
 
 sdfMotionNode_t *sdfMotGenModelLerpRotQuat(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
@@ -661,9 +661,9 @@ void sdfMotCLBK_modelLerpRotQuatSeek(sdfMotNodeModelVec_t *binding, f32 frame) {
 
     sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
     keyData = keyInterval.key0;
-    SDF_VU0__LOADSHORTVECTOR(keyData);
+    SDF_VU0_LOADSHORTVECTOR(keyData);
     keyData = keyInterval.key1;
-    SDF_VU0__LOADSHORTVECTOR_B(keyData);
+    SDF_VU0_LOADSHORTVECTOR_B(keyData);
     Lerp(keyInterval.rate);
     drawNode = binding->modelBase.modelNode;
     SDF_MOT_STORE_VF10_NOMEM(&drawNode->rotate);
@@ -683,13 +683,13 @@ void sdfMotCLBK_modelLerpRotQuatBlendSeek(sdfMotNodeModelVec_t *binding, f32 fra
 
     sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
     keyData = keyInterval.key0;
-    SDF_VU0__LOADSHORTVECTOR(keyData);
+    SDF_VU0_LOADSHORTVECTOR(keyData);
     keyData = keyInterval.key1;
-    SDF_VU0__LOADSHORTVECTOR_B(keyData);
+    SDF_VU0_LOADSHORTVECTOR_B(keyData);
     Lerp(keyInterval.rate);
     drawNode = binding->modelBase.modelNode;
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__LOADVECTOR(&binding->blendFrom);
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(&binding->blendFrom);
     Lerp(blendWeight);
     SDF_MOT_STORE_VF10_NOMEM(&drawNode->rotate);
     matrix = (f32 (*)[4])drawNode->localNoScaledTm.m;
@@ -747,17 +747,17 @@ void sdfMotCLBK_modelVisibleInitBlend(sdfMotNodeModelFlag_t *aThis)
 
 void sdfMotCLBK_modelPosInitBlend(sdfMotNodeModelVec_t *aThis)
 {
-    SDF_VU0__COPYVECTOR(&aThis->blendFrom, &aThis->modelBase.modelNode->pos);
+    SDF_VU0_COPYVECTOR(&aThis->blendFrom, &aThis->modelBase.modelNode->pos);
 }
 
 void sdfMotCLBK_modelRotInitBlend(sdfMotNodeModelVec_t *aThis)
 {
-    SDF_VU0__COPYVECTOR(&aThis->blendFrom, &aThis->modelBase.modelNode->rotate);
+    SDF_VU0_COPYVECTOR(&aThis->blendFrom, &aThis->modelBase.modelNode->rotate);
 }
 
 void sdfMotCLBK_modelScaleInitBlend(sdfMotNodeModelVec_t *aThis)
 {
-    SDF_VU0__COPYVECTOR(&aThis->blendFrom, &aThis->modelBase.modelNode->scale);
+    SDF_VU0_COPYVECTOR(&aThis->blendFrom, &aThis->modelBase.modelNode->scale);
 }
 
 sdfMotionNode_t *sdfMotGenMatNode(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
