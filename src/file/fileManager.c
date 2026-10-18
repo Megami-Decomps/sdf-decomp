@@ -70,32 +70,6 @@ INCLUDE_ASM(const s32, "file/fileManager", fileManagerProc);
 
 INCLUDE_ASM(const s32, "file/fileManager", fileSysInit);
 
-INCLUDE_ASM(const s32, "file/fileManager", nmeCharToIndex);
-
-INCLUDE_ASM(const s32, "file/fileManager", nmeDecodeChar);
-
-INCLUDE_ASM(const s32, "file/fileManager", frAllocNameData);
-
-INCLUDE_ASM(const s32, "file/fileManager", nmeStartFadeOut);
-
-INCLUDE_ASM(const s32, "file/fileManager", nmeGetInputMode);
-
-INCLUDE_ASM(const s32, "file/fileManager", nmeGetMaxNameLen);
-
-INCLUDE_ASM(const s32, "file/fileManager", nmeGetModeFlag);
-
-INCLUDE_ASM(const s32, "file/fileManager", nmeInitNameRow);
-
-INCLUDE_ASM(const s32, "file/fileManager", nmeInitNameRows);
-
-INCLUDE_ASM(const s32, "file/fileManager", nmeGetRowCount);
-
-INCLUDE_ASM(const s32, "file/fileManager", nmeInitNameBuffer);
-
-INCLUDE_ASM(const s32, "file/fileManager", nmeInitNameCursor);
-
-INCLUDE_ASM(const s32, "file/fileManager", nmeInitCursor);
-
 INCLUDE_RODATA(const s32, "file/fileManager", D_00546900);
 
 INCLUDE_RODATA(const s32, "file/fileManager", D_00546918);
@@ -115,8 +89,6 @@ INCLUDE_RODATA(const s32, "file/fileManager", D_005485C8);
 INCLUDE_RODATA(const s32, "file/fileManager", D_00548690);
 
 INCLUDE_RODATA(const s32, "file/fileManager", D_00548758);
-
-INCLUDE_RODATA(const s32, "file/fileManager", D_00548768);
 
 INCLUDE_SDATA(const s32, "file/fileManager", fileCallbackStatus);
 
