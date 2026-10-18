@@ -78,8 +78,8 @@ sdfMotionCtrlr_t *mdlGetMotionCtrlr(mdlObj_t *ctx, s32 searchId);
 void mdlSetEffectColor(mdlObj_t *ctx, u32 value);
 
 /* Kept local: this unit needs the load to act as a memory barrier. */
-#undef VU0_LOAD_VF10
-#define VU0_LOAD_VF10(addr) __asm__ volatile ( \
+#undef SDF_VU0__LOADVECTOR
+#define SDF_VU0__LOADVECTOR(addr) __asm__ volatile ( \
     ".set noreorder\n\tlqc2 $vf10, 0(%0)\n\t.set reorder" \
     : : "r" (addr) : "memory")
 
@@ -288,8 +288,8 @@ static inline s32 mdlFileUpper(s32 c)
 /* A C float broadcast through vf2.x, then the one operation that uses it.
  * Kept local: retail carries the bits through $2 here, not through
  * a register cc1 picks. */
-#undef VU0_SCALE_VF10
-#define VU0_SCALE_VF10(f) __asm__ volatile ( \
+#undef SDF_VU0__SCALEVECTOR
+#define SDF_VU0__SCALEVECTOR(f) __asm__ volatile ( \
     ".set noreorder\n\tmfc1 $2, %0\n\tqmtc2.ni $2, vf2\n\t" \
     "vmulx.xyzw vf10, vf10, vf2x\n\t.set reorder" \
     : : "f" (f))
@@ -811,13 +811,13 @@ void mdlSetBlur(mdlObj_t *ctx, s32 stride, s32 capacity,
         inverseSpan = 1.0f / deviceList->byteCount;
         startCarrier[0] = startColor;
         EE_MMI_RGBA_UNPACK(startCarrier, 0.0078125f);
-        VU0_STORE_VF10(deviceList->color);
+        SDF_VU0__STOREVECTOR(deviceList->color);
         VU0_COPY_VF10_TO_VF11_EXTENDED();
         endCarrier[0] = endColor;
         EE_MMI_RGBA_UNPACK(endCarrier, 0.0078125f);
         VU0_SUB_VF10_VF11_EXTENDED();
-        VU0_SCALE_VF10(inverseSpan);
-        VU0_STORE_VF10(deviceList->colorStep);
+        SDF_VU0__SCALEVECTOR(inverseSpan);
+        SDF_VU0__STOREVECTOR(deviceList->colorStep);
     }
 }
 
@@ -866,7 +866,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
         list->first = slot;
     }
     eeUnpackRGBAWordFloat(original->color, 1.0f / 128.0f);
-    VU0_STORE_VF10(tint);
+    SDF_VU0__STOREVECTOR(tint);
     slot = list->first;
     while (slot != NULL) {
         remaining = slot->remaining;
@@ -880,9 +880,9 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
         }
         /* Both callbacks complete before the countdown is published. */
         slot->remaining = remaining;
-        VU0_LOAD_VF10(list->color);
-        VU0_LOAD_VF11(list->colorStep);
-        VU0_LOAD_VF12(tint);
+        SDF_VU0__LOADVECTOR(list->color);
+        SDF_VU0__LOADVECTOR_B(list->colorStep);
+        SDF_VU0__LOADVECTOR_C(tint);
         color = mdlPackDevSlotColor(remaining - 1, 128.0f);
         model->color = color;
         sdfModelLinkOt(surfaces, model);
@@ -1149,23 +1149,23 @@ void mdlSetMotionSpeedEx(mdlObj_t *ctx, s32 searchId, f32 frameStep)
 
 void mdlGetPosition(mdlObj_t *ctx)
 {
-    VU0_LOAD_VF10(&ctx->inner->tm.m[12]);
+    SDF_VU0__LOADVECTOR(&ctx->inner->tm.m[12]);
 }
 
 void mdlSetPosition(mdlObj_t *ctx)
 {
-    VU0_SET_VF10_W_ONE();
-    VU0_STORE_VF10(&ctx->inner->tm.m[12]);
+    SDF_VU0__VECTOR_W_SET_ONE();
+    SDF_VU0__STOREVECTOR(&ctx->inner->tm.m[12]);
 }
 
 void mdlGetRotate(mdlObj_t *ctx)
 {
-    VU0_LOAD_VF10(&ctx->inner->rotate);
+    SDF_VU0__LOADVECTOR(&ctx->inner->rotate);
 }
 
 void mdlSetRotate(mdlObj_t *ctx)
 {
-    VU0_STORE_VF10(&ctx->inner->rotate);
+    SDF_VU0__STOREVECTOR(&ctx->inner->rotate);
     ToMatrix();
     VU0_STORE_VF28(&ctx->inner->tm.m[0]);
     VU0_STORE_VF29(&ctx->inner->tm.m[4]);
@@ -1174,12 +1174,12 @@ void mdlSetRotate(mdlObj_t *ctx)
 
 void mdlGetScale(mdlObj_t *ctx)
 {
-    VU0_LOAD_VF10(&ctx->inner->scale);
+    SDF_VU0__LOADVECTOR(&ctx->inner->scale);
 }
 
 void mdlSetScale(mdlObj_t *ctx)
 {
-    VU0_STORE_VF10(&ctx->inner->scale);
+    SDF_VU0__STOREVECTOR(&ctx->inner->scale);
 }
 
 u32 mdlGetColor(mdlObj_t *ctx)
@@ -1222,22 +1222,22 @@ void mdlSetEffectScale(mdlObj_t *ctx, f32 amount)
 /* vu0 routine: project the point through the view and model matrices into vf10. */
 void mdlGetScreenOffset(mdlObj_t *ctx, void *point)
 {
-    VU0_LOAD_MATRIX(&D_002FA240);
+    SDF_VU0__LOADMATRIX(&D_002FA240);
     MultMatrixRev(&dds3ScreenParam.TM);
     VU0_COPY_VF28_TO_VF24();
     VU0_COPY_VF29_TO_VF25();
     VU0_COPY_VF30_TO_VF26();
     VU0_COPY_VF31_TO_VF27();
-    VU0_LOAD_MATRIX(&ctx->inner->tm);
+    SDF_VU0__LOADMATRIX(&ctx->inner->tm);
     VU0_SCALE_MATRIX_ROWS_VF10();
     MultMatrixRevNoArg();
-    VU0_LOAD_VF10(point);
-    VU0_TRANSFORM_POINT_VF10();
-    VU0_PERSPECTIVE_DIVIDE_VF10();
-    VU0_LOAD_VF11(&dds3ScreenParam.scale);
-    VU0_MUL_VF10_VF11();
-    VU0_LOAD_VF11(&dds3ScreenParam.trans);
-    VU0_ADD_VF10_VF11();
+    SDF_VU0__LOADVECTOR(point);
+    SDF_VU0__APPLYMATRIX_XYZ1();
+    SDF_VU0__PERSVECTOR();
+    SDF_VU0__LOADVECTOR_B(&dds3ScreenParam.scale);
+    SDF_VU0__MULVECTOR();
+    SDF_VU0__LOADVECTOR_B(&dds3ScreenParam.trans);
+    SDF_VU0__ADDVECTOR();
 }
 
 /* vu0 routine: project an array of points and store their screen coordinates. */
@@ -1245,20 +1245,20 @@ void mdl_1DD9C0(mdlObj_t *ctx, f32 (*inputPoints)[4], f32 (*outputPoints)[4], s3
 {
     s32 pointIndex;
 
-    VU0_LOAD_MATRIX(&ctx->inner->tm);
-    VU0_LOAD_VF10(&ctx->inner->scale);
+    SDF_VU0__LOADMATRIX(&ctx->inner->tm);
+    SDF_VU0__LOADVECTOR(&ctx->inner->scale);
     VU0_SCALE_MATRIX_ROWS_VF10();
     MultMatrixRev(&D_002FA240);
     MultMatrixRev(&dds3ScreenParam.TM);
     for (pointIndex = 0; pointIndex < pointCount; pointIndex++) {
-        VU0_LOAD_VF10(inputPoints[pointIndex]);
-        VU0_TRANSFORM_POINT_VF10();
-        VU0_PERSPECTIVE_DIVIDE_VF10();
-        VU0_LOAD_VF11(&dds3ScreenParam.scale);
-        VU0_MUL_VF10_VF11();
-        VU0_LOAD_VF11(&dds3ScreenParam.trans);
-        VU0_ADD_VF10_VF11();
-        VU0_STORE_VF10(outputPoints[pointIndex]);
+        SDF_VU0__LOADVECTOR(inputPoints[pointIndex]);
+        SDF_VU0__APPLYMATRIX_XYZ1();
+        SDF_VU0__PERSVECTOR();
+        SDF_VU0__LOADVECTOR_B(&dds3ScreenParam.scale);
+        SDF_VU0__MULVECTOR();
+        SDF_VU0__LOADVECTOR_B(&dds3ScreenParam.trans);
+        SDF_VU0__ADDVECTOR();
+        SDF_VU0__STOREVECTOR(outputPoints[pointIndex]);
     }
 }
 
