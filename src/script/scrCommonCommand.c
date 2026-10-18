@@ -3,15 +3,6 @@
 #include "scr.h"
 #include "ps2asm.h"
 
-#define VU0_SET_VF10_X_BITS(r) __asm__ volatile ( \
-    ".set noreorder\n\tqmtc2 %0, $vf2\n\tvaddx.x $vf10, $vf0, $vf2x\n\t.set reorder" \
-    : : "r" (r))
-#define VU0_SET_VF10_Y_BITS(r) __asm__ volatile ( \
-    ".set noreorder\n\tqmtc2 %0, $vf2\n\tvaddx.y $vf10, $vf0, $vf2x\n\t.set reorder" \
-    : : "r" (r))
-#define VU0_SET_VF10_Z_BITS(r) __asm__ volatile ( \
-    ".set noreorder\n\tqmtc2 %0, $vf2\n\tvaddx.z $vf10, $vf0, $vf2x\n\t.set reorder" \
-    : : "r" (r))
 
 static inline f32 ffabsf(f32 x)
 {
