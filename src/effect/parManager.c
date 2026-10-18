@@ -598,7 +598,7 @@ typedef struct effDiscAuxEmitter_t {
 #define VU0_COPY_VF27_TO_VF31() __asm__ volatile ( \
     ".set noreorder\n\tvmove.xyzw " "vf31" ", " "vf27" "\n\t.set reorder")
 
-#define VU0_STORE_VF12(dst) __asm__ volatile ( \
+#define SDF_VU0__STOREVECTOR_C(dst) __asm__ volatile ( \
     ".set noreorder\n\tsqc2 " "vf12" ", 0(%0)\n\t.set reorder" \
     : : "r" (dst) : "memory")
 
@@ -904,8 +904,8 @@ void dds3Particle_BasicCreate(void *effect) {
         break;
     }
     owner->pendingRestartSteps = owner->restartStepCount;
-    VU0_LOAD_MATRIX(owner->matrix);
-    VU0_STORE_MATRIX(owner->backupMatrix);
+    SDF_VU0__LOADMATRIX(owner->matrix);
+    SDF_VU0__STOREMATRIX(owner->backupMatrix);
     owner->active = 1;
     owner->colorMask = 0x80808080;
 }
@@ -1008,10 +1008,10 @@ void dds3Particle_SpiralBuffInit(effRingEmitter_t *effect, u32 packetIndex) {
     packet->pos[0] = sdfCos(phase) * effect->radius;
     packet->pos[1] = 0;
     packet->pos[2] = sdfSin(phase) * effect->radius;
-    VU0_LOAD_MATRIX(effect->head.matrix);
-    VU0_LOAD_VF10(packet->pos);
-    VU0_APPLY_MATRIX_VF10();
-    VU0_STORE_VF10(packet->pos);
+    SDF_VU0__LOADMATRIX(effect->head.matrix);
+    SDF_VU0__LOADVECTOR(packet->pos);
+    SDF_VU0__APPLYMATRIX();
+    SDF_VU0__STOREVECTOR(packet->pos);
     packet->verticalOffset = 0;
     packet->pos[0] += effect->head.origin[0];
     packet->pos[1] += effect->head.origin[1];
@@ -1045,14 +1045,14 @@ void dds3Particle_SpiralDraw(effRingEmitter_t *effect) {
     s32 packetIndex;
 
     dds3Particle_EffectInit(&effect->head.sub);
-    VU0_LOAD_MATRIX(effect->head.matrix);
+    SDF_VU0__LOADMATRIX(effect->head.matrix);
     phaseStep = effect->rotationStepDegrees * (3.14159265f / 180.0f);
     verticalScale = effect->verticalAccelerationPct / 100.0f + 1.0f;
     completedCount = 0;
     packetCount = effect->head.particleCount;
     lifetimeFrames = effect->head.lifetimeFrames;
     repeatEnabled = effect->loop;
-    PS2_COPY_QUAD(origin, effect->head.origin);
+    SDF_VU0__COPYVECTOR(origin, effect->head.origin);
     for (packetIndex = 0; packetIndex < packetCount; packetIndex++, packet++) {
         s32 age = packet->age;
 
@@ -1068,7 +1068,7 @@ void dds3Particle_SpiralDraw(effRingEmitter_t *effect) {
             packet->color = dds3ParticleColorAnim(&effect->head.fade, packet->color, age);
             packet->color = dds3ParticleColorBlend(packet->color, effect->head.colorMask);
             if (subeffectKind != 0) {
-                VU0_LOAD_VF12(packet);
+                SDF_VU0__LOADVECTOR_C(packet);
             }
             packet->radialDistance += (packet->vel[0] - effect->radius) / lifetimeFrames;
             packet->phase += phaseStep;
@@ -1081,15 +1081,15 @@ void dds3Particle_SpiralDraw(effRingEmitter_t *effect) {
             offset[0] = sdfCos(theta) * radius;
             offset[1] = packet->verticalOffset;
             offset[2] = sdfSin(theta) * radius;
-            VU0_LOAD_VF10(offset);
-            VU0_APPLY_MATRIX_VF10();
-            VU0_STORE_VF10(offset);
+            SDF_VU0__LOADVECTOR(offset);
+            SDF_VU0__APPLYMATRIX();
+            SDF_VU0__STOREVECTOR(offset);
             packet->pos[0] = origin[0] + offset[0];
             packet->pos[1] = origin[1] + offset[1];
             packet->pos[2] = origin[2] + offset[2];
             packet->verticalSpeed *= verticalScale;
             if (subeffectKind != 0) {
-                VU0_LOAD_VF10(packet);
+                SDF_VU0__LOADVECTOR(packet);
                 dds3Particle_EffectSet(&effect->head.sub, packetIndex, packet->color, packet->billboardScale);
             }
         }
@@ -1165,25 +1165,25 @@ void dds3Particle_SmokeBuffInit(effDiscEmitter_t *effect, u32 packetIndex) {
     directionVector[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
     directionVector[1] = 0;
     directionVector[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
-    VU0_LOAD_VF10(directionVector);
-    VU0_NORMALIZE_VF10();
-    VU0_STORE_VF10(directionVector);
+    SDF_VU0__LOADVECTOR(directionVector);
+    SDF_VU0__NORMALIZE();
+    SDF_VU0__STOREVECTOR(directionVector);
     packet->pos[0] = directionVector[0] * radialDistance;
     packet->pos[1] = 0;
     packet->pos[2] = directionVector[2] * radialDistance;
-    VU0_LOAD_MATRIX(effect->head.matrix);
-    VU0_LOAD_VF10(packet->pos);
-    VU0_APPLY_MATRIX_VF10();
-    VU0_STORE_VF10(packet->pos);
+    SDF_VU0__LOADMATRIX(effect->head.matrix);
+    SDF_VU0__LOADVECTOR(packet->pos);
+    SDF_VU0__APPLYMATRIX();
+    SDF_VU0__STOREVECTOR(packet->pos);
     packet->pos[0] += effect->head.origin[0];
     packet->pos[1] += effect->head.origin[1];
     packet->pos[2] += effect->head.origin[2];
     directionVector[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
     directionVector[1] = 0;
     directionVector[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
-    VU0_LOAD_VF10(directionVector);
-    VU0_NORMALIZE_VF10();
-    VU0_STORE_VF10(packet->vel);
+    SDF_VU0__LOADVECTOR(directionVector);
+    SDF_VU0__NORMALIZE();
+    SDF_VU0__STOREVECTOR(packet->vel);
     packet->waveAmplitude = effect->waveAmplitude * (dds3GetRandFloatA(dds3EffectBase) * effect->waveAmplitudeJitter + (1.0f - effect->waveAmplitudeJitter));
     packet->wavePhase = 0;
     packet->previousWaveValue = 0;
@@ -1216,7 +1216,7 @@ void dds3Particle_SmokeDraw(effDiscEmitter_t *effect) {
     u32 repeatEnabled;
 
     dds3Particle_EffectInit(&effect->head.sub);
-    VU0_LOAD_MATRIX(effect->head.matrix);
+    SDF_VU0__LOADMATRIX(effect->head.matrix);
     phaseStep = effect->phaseStepDegrees * (3.14159265f / 180.0f);
     verticalScale = effect->verticalAccelerationPct / 100.0f + 1.0f;
     lifetimeFrames = effect->head.lifetimeFrames;
@@ -1239,7 +1239,7 @@ void dds3Particle_SmokeDraw(effDiscEmitter_t *effect) {
             packet->color = dds3ParticleColorAnim(&effect->head.fade, packet->color, age);
             packet->color = dds3ParticleColorBlend(packet->color, effect->head.colorMask);
             if (subeffectKind != 0) {
-                VU0_LOAD_VF12(packet);
+                SDF_VU0__LOADVECTOR_C(packet);
             }
             packet->waveAmplitude += waveRate;
             verticalStep = packet->verticalVelocity;
@@ -1251,15 +1251,15 @@ void dds3Particle_SmokeDraw(effDiscEmitter_t *effect) {
             positionDelta[0] = packet->vel[0] * factor;
             positionDelta[1] = verticalStep;
             positionDelta[2] = packet->vel[2] * factor;
-            VU0_LOAD_VF10(positionDelta);
-            VU0_APPLY_MATRIX_VF10();
-            VU0_STORE_VF10(positionDelta);
+            SDF_VU0__LOADVECTOR(positionDelta);
+            SDF_VU0__APPLYMATRIX();
+            SDF_VU0__STOREVECTOR(positionDelta);
             packet->pos[0] += positionDelta[0];
             packet->pos[1] += positionDelta[1];
             packet->pos[2] += positionDelta[2];
             packet->verticalVelocity = verticalStep * verticalScale;
             if (subeffectKind != 0) {
-                VU0_LOAD_VF10(packet);
+                SDF_VU0__LOADVECTOR(packet);
                 dds3Particle_EffectSet(&effect->head.sub, packetIndex, packet->color, packet->billboardScale);
             }
         }
@@ -1344,7 +1344,7 @@ void dds3Particle_SparkDraw(effBallisticEmitter_t *effect) {
     dds3Particle_EffectInit(&effect->head.sub);
     mode = effect->mode;
     if (mode == 0) {
-        VU0_LOAD_MATRIX(effect->head.matrix);
+        SDF_VU0__LOADMATRIX(effect->head.matrix);
     }
     velocityScale = effect->decayPct / 100.0f + 1.0f;
     completedCount = 0;
@@ -1362,21 +1362,21 @@ void dds3Particle_SparkDraw(effBallisticEmitter_t *effect) {
             packet->color = dds3ParticleColorAnim(&effect->head.fade, packet->color, age);
             packet->color = dds3ParticleColorBlend(packet->color, effect->head.colorMask);
             if (subeffectKind != 0) {
-                VU0_LOAD_VF12(packet);
+                SDF_VU0__LOADVECTOR_C(packet);
             }
             packet->vel[1] = packet->vel[1] * velocityScale + packet->verticalAcceleration;
             packet->vel[0] *= velocityScale;
             packet->vel[2] *= velocityScale;
-            VU0_LOAD_VF10(packet->vel);
+            SDF_VU0__LOADVECTOR(packet->vel);
             if (mode == 0) {
-                VU0_APPLY_MATRIX_VF10();
+                SDF_VU0__APPLYMATRIX();
             }
-            VU0_STORE_VF10(positionDelta);
+            SDF_VU0__STOREVECTOR(positionDelta);
             packet->pos[0] += positionDelta[0];
             packet->pos[1] += positionDelta[1];
             packet->pos[2] += positionDelta[2];
             if (subeffectKind != 0) {
-                VU0_LOAD_VF10(packet);
+                SDF_VU0__LOADVECTOR(packet);
                 dds3Particle_EffectSet(&effect->head.sub, packetIndex, packet->color, packet->billboardScale);
             }
         }
@@ -1458,15 +1458,15 @@ void dds3Particle_RadiateBuffInit(effLookAtRingEmitter_t *effect, u32 packetInde
     LookAtMatrix(aViewTarget, aViewEye, aViewDown);
     ReverseMatrix();
     if (effect->mode == 0) {
-        PS2_COPY_QUAD(packet, effect->head.origin);
+        SDF_VU0__COPYVECTOR(packet, effect->head.origin);
         period = effect->period;
         angle = (3.14159265f * 2.0f) / period * (packetIndex % period);
         packet->vel[0] = sdfCos(angle);
         packet->vel[1] = sdfSin(angle);
         packet->vel[2] = 0;
-        VU0_LOAD_VF10(packet->vel);
-        VU0_ROTATE_VF10();
-        VU0_STORE_VF10(packet->vel);
+        SDF_VU0__LOADVECTOR(packet->vel);
+        SDF_VU0__APPLYMATRIX_XYZ();
+        SDF_VU0__STOREVECTOR(packet->vel);
         packet->phaseAngle = angle;
         packet->age = 0;
         packet->color = 0;
@@ -1527,7 +1527,7 @@ void dds3Particle_RadiateDraw(effLookAtRingEmitter_t *effect) {
             packet->color = dds3ParticleColorAnim(&effect->head.fade, packet->color, age);
             packet->color = dds3ParticleColorBlend(packet->color, effect->head.colorMask);
             if (subeffectKind != 0) {
-                VU0_LOAD_VF12(packet);
+                SDF_VU0__LOADVECTOR_C(packet);
             }
             packet->pos[0] += packet->vel[0] * stepScale;
             packet->pos[1] += packet->vel[1] * stepScale;
@@ -1536,12 +1536,12 @@ void dds3Particle_RadiateDraw(effLookAtRingEmitter_t *effect) {
             packet->vel[0] = sdfCos(angle);
             packet->vel[1] = sdfSin(angle);
             packet->vel[2] = 0;
-            VU0_LOAD_VF10(packet->vel);
-            VU0_ROTATE_VF10();
-            VU0_STORE_VF10(packet->vel);
+            SDF_VU0__LOADVECTOR(packet->vel);
+            SDF_VU0__APPLYMATRIX_XYZ();
+            SDF_VU0__STOREVECTOR(packet->vel);
             packet->phaseAngle += phaseStep;
             if (subeffectKind != 0) {
-                VU0_LOAD_VF10(packet);
+                SDF_VU0__LOADVECTOR(packet);
                 dds3Particle_EffectSet(&effect->head.sub, packetIndex, packet->color, packet->billboardScale);
             }
         }
@@ -1621,17 +1621,17 @@ void dds3Particle_SphereSpiralBuffInit(effBurstEmitter_t *effect, u32 packetInde
     directionVector[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
     directionVector[1] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
     directionVector[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
-    VU0_LOAD_VF10(directionVector);
-    VU0_NORMALIZE_VF10();
-    VU0_STORE_VF10(directionVector);
+    SDF_VU0__LOADVECTOR(directionVector);
+    SDF_VU0__NORMALIZE();
+    SDF_VU0__STOREVECTOR(directionVector);
     packet->vel[0] = speed * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) * directionVector[0];
     packet->vel[1] = speed * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) * directionVector[1];
     packet->vel[2] = speed * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) * directionVector[2];
-    VU0_LOAD_VF10(packet->vel);
-    VU0_LENGTH_VF10(velocityLength);
-    VU0_LOAD_MATRIX(effect->head.matrix);
-    VU0_LOAD_VF10(packet->vel);
-    VU0_ROTATE_VF10();
+    SDF_VU0__LOADVECTOR(packet->vel);
+    SDF_VU0__GETLENGTH(velocityLength);
+    SDF_VU0__LOADMATRIX(effect->head.matrix);
+    SDF_VU0__LOADVECTOR(packet->vel);
+    SDF_VU0__APPLYMATRIX_XYZ();
     VU0_STORE_VF10_UNCLOBBERED(packet->vel);
     packet->pos[0] = packet->vel[0] + effect->head.origin[0];
     packet->pos[1] = packet->vel[1] + effect->head.origin[1];
@@ -1640,9 +1640,9 @@ void dds3Particle_SphereSpiralBuffInit(effBurstEmitter_t *effect, u32 packetInde
         directionVector[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
         directionVector[1] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
         directionVector[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
-        VU0_LOAD_VF10(directionVector);
-        VU0_NORMALIZE_VF10();
-        VU0_STORE_VF10(directionVector);
+        SDF_VU0__LOADVECTOR(directionVector);
+        SDF_VU0__NORMALIZE();
+        SDF_VU0__STOREVECTOR(directionVector);
         packet->axisX = directionVector[0];
         packet->axisY = directionVector[1];
         packet->axisZ = directionVector[2];
@@ -1680,13 +1680,13 @@ void dds3Particle_SphereSpiralDraw(effBurstEmitter_t *effect) {
     s32 packetIndex;
 
     dds3Particle_EffectInit(&effect->head.sub);
-    VU0_LOAD_MATRIX_B(effect->head.matrix);
+    SDF_VU0__LOADMATRIX_B(effect->head.matrix);
     packetCount = effect->head.particleCount;
     lifetimeFrames = effect->head.lifetimeFrames;
     completedCount = 0;
     rotationStep = effect->spinRate * (3.14159265f / 180.0f);
     repeatEnabled = effect->loop;
-    PS2_COPY_QUAD(origin, effect->head.origin);
+    SDF_VU0__COPYVECTOR(origin, effect->head.origin);
     for (packetIndex = 0; packetIndex < packetCount; packetIndex++, packet++) {
         s32 age = packet->age;
 
@@ -1698,18 +1698,18 @@ void dds3Particle_SphereSpiralDraw(effBurstEmitter_t *effect) {
             packet->color = dds3ParticleColorAnim(&effect->head.fade, packet->color, age);
             packet->color = dds3ParticleColorBlend(packet->color, effect->head.colorMask);
             if (subeffectKind != 0) {
-                VU0_LOAD_VF12(packet);
+                SDF_VU0__LOADVECTOR_C(packet);
             }
-            VU0_LOAD_VF10(packet->vel);
-            VU0_LENGTH_VF10(velocityLength);
+            SDF_VU0__LOADVECTOR(packet->vel);
+            SDF_VU0__GETLENGTH(velocityLength);
             velocityLength += packet->radiusStep;
             scaleVector[0] = velocityLength;
             scaleVector[1] = velocityLength;
             scaleVector[2] = velocityLength;
-            VU0_NORMALIZE_VF10();
-            VU0_LOAD_VF11(scaleVector);
-            VU0_MUL_VF10_VF11();
-            VU0_STORE_VF10(packet->vel);
+            SDF_VU0__NORMALIZE();
+            SDF_VU0__LOADVECTOR_B(scaleVector);
+            SDF_VU0__MULVECTOR();
+            SDF_VU0__STOREVECTOR(packet->vel);
             VU0_COPY_VF24_TO_VF28();
             VU0_COPY_VF25_TO_VF29();
             VU0_COPY_VF26_TO_VF30();
@@ -1718,18 +1718,18 @@ void dds3Particle_SphereSpiralDraw(effBurstEmitter_t *effect) {
             rotationAxis[1] = packet->axisY;
             rotationAxis[2] = packet->axisZ;
             rotationAxis[3] = 0;
-            VU0_LOAD_VF10(rotationAxis);
-            VU0_ROTATE_VF10();
+            SDF_VU0__LOADVECTOR(rotationAxis);
+            SDF_VU0__APPLYMATRIX_XYZ();
             VU0_STORE_VF10_UNCLOBBERED(rotationAxis);
             SetRotateMatrixAxis(rotationStep, (const sdfVector3_t *)rotationAxis);
-            VU0_LOAD_VF10(packet->vel);
-            VU0_ROTATE_VF10();
-            VU0_LOAD_VF11(origin);
-            VU0_STORE_VF10(packet->vel);
-            VU0_ADD_VF10_VF11();
-            VU0_STORE_VF10(packet);
+            SDF_VU0__LOADVECTOR(packet->vel);
+            SDF_VU0__APPLYMATRIX_XYZ();
+            SDF_VU0__LOADVECTOR_B(origin);
+            SDF_VU0__STOREVECTOR(packet->vel);
+            SDF_VU0__ADDVECTOR();
+            SDF_VU0__STOREVECTOR(packet);
             if (subeffectKind != 0) {
-                VU0_LOAD_VF10(packet);
+                SDF_VU0__LOADVECTOR(packet);
                 dds3Particle_EffectSet(&effect->head.sub, packetIndex, packet->color, packet->billboardScale);
             }
         }
@@ -1807,25 +1807,25 @@ void dds3Particle_SphereSmokeBuffInit(effSphereEmitter_t *effect, u32 packetInde
     directionVector[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
     directionVector[1] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
     directionVector[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
-    VU0_LOAD_VF10(directionVector);
-    VU0_NORMALIZE_VF10();
-    VU0_STORE_VF10(directionVector);
+    SDF_VU0__LOADVECTOR(directionVector);
+    SDF_VU0__NORMALIZE();
+    SDF_VU0__STOREVECTOR(directionVector);
     packet->pos[0] = radius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) * directionVector[0];
     packet->pos[1] = radius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) * directionVector[1];
     packet->pos[2] = radius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) * directionVector[2];
-    VU0_LOAD_MATRIX(effect->head.matrix);
-    VU0_LOAD_VF10(packet->pos);
-    VU0_APPLY_MATRIX_VF10();
-    VU0_STORE_VF10(packet->pos);
+    SDF_VU0__LOADMATRIX(effect->head.matrix);
+    SDF_VU0__LOADVECTOR(packet->pos);
+    SDF_VU0__APPLYMATRIX();
+    SDF_VU0__STOREVECTOR(packet->pos);
     packet->pos[0] += effect->head.origin[0];
     packet->pos[1] += effect->head.origin[1];
     packet->pos[2] += effect->head.origin[2];
     packet->vel[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
     packet->vel[1] = 0;
     packet->vel[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
-    VU0_LOAD_VF10(packet->vel);
-    VU0_NORMALIZE_VF10();
-    VU0_STORE_VF10(packet->vel);
+    SDF_VU0__LOADVECTOR(packet->vel);
+    SDF_VU0__NORMALIZE();
+    SDF_VU0__STOREVECTOR(packet->vel);
     packet->waveAmplitude = effect->waveAmplitude * (dds3GetRandFloatA(dds3EffectBase) * effect->waveAmplitudeJitter + (1.0f - effect->waveAmplitudeJitter));
     packet->wavePhase = 0;
     packet->previousWaveValue = 0;
@@ -1858,7 +1858,7 @@ void dds3Particle_SphereSmokeDraw(effSphereEmitter_t *effect) {
     u32 repeatEnabled;
 
     dds3Particle_EffectInit(&effect->head.sub);
-    VU0_LOAD_MATRIX(effect->head.matrix);
+    SDF_VU0__LOADMATRIX(effect->head.matrix);
     phaseStep = effect->phaseStepDegrees * (3.14159265f / 180.0f);
     verticalScale = effect->verticalAccelerationPct / 100.0f + 1.0f;
     lifetimeFrames = effect->head.lifetimeFrames;
@@ -1881,7 +1881,7 @@ void dds3Particle_SphereSmokeDraw(effSphereEmitter_t *effect) {
             packet->color = dds3ParticleColorAnim(&effect->head.fade, packet->color, age);
             packet->color = dds3ParticleColorBlend(packet->color, effect->head.colorMask);
             if (subeffectKind != 0) {
-                VU0_LOAD_VF12(packet);
+                SDF_VU0__LOADVECTOR_C(packet);
             }
             packet->waveAmplitude += waveRate;
             verticalStep = packet->verticalVelocity;
@@ -1893,15 +1893,15 @@ void dds3Particle_SphereSmokeDraw(effSphereEmitter_t *effect) {
             positionDelta[0] = packet->vel[0] * factor;
             positionDelta[1] = verticalStep;
             positionDelta[2] = packet->vel[2] * factor;
-            VU0_LOAD_VF10(positionDelta);
-            VU0_APPLY_MATRIX_VF10();
-            VU0_STORE_VF10(positionDelta);
+            SDF_VU0__LOADVECTOR(positionDelta);
+            SDF_VU0__APPLYMATRIX();
+            SDF_VU0__STOREVECTOR(positionDelta);
             packet->pos[0] += positionDelta[0];
             packet->pos[1] += positionDelta[1];
             packet->pos[2] += positionDelta[2];
             packet->verticalVelocity = verticalStep * verticalScale;
             if (subeffectKind != 0) {
-                VU0_LOAD_VF10(packet);
+                SDF_VU0__LOADVECTOR(packet);
                 dds3Particle_EffectSet(&effect->head.sub, packetIndex, packet->color, packet->billboardScale);
             }
         }
@@ -1988,15 +1988,15 @@ void dds3Particle_SphereRingBuffInit(effExpandingRingEmitter_t *effect, u32 pack
     packet->vel[0] = sdfCos(angle);
     packet->vel[1] = 0;
     packet->vel[2] = sdfSin(angle);
-    VU0_LOAD_MATRIX(effect->head.matrix);
+    SDF_VU0__LOADMATRIX(effect->head.matrix);
     offsetVector[1] = radius;
     offsetVector[0] = 0;
     offsetVector[2] = 0;
-    VU0_LOAD_VF10(offsetVector);
-    VU0_ROTATE_VF10();
-    VU0_LOAD_VF11(effect->head.origin);
-    VU0_ADD_VF10_VF11();
-    VU0_STORE_VF10(packet);
+    SDF_VU0__LOADVECTOR(offsetVector);
+    SDF_VU0__APPLYMATRIX_XYZ();
+    SDF_VU0__LOADVECTOR_B(effect->head.origin);
+    SDF_VU0__ADDVECTOR();
+    SDF_VU0__STOREVECTOR(packet);
     jitter = effect->head.speedJitter;
     packet->billboardScale = effect->head.scale[0] * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     jitter = effect->head.spinJitter;
@@ -2025,7 +2025,7 @@ void dds3Particle_SphereRingDraw(effExpandingRingEmitter_t *effect) {
     s32 packetIndex;
 
     dds3Particle_EffectInit(&effect->head.sub);
-    VU0_LOAD_MATRIX(effect->head.matrix);
+    SDF_VU0__LOADMATRIX(effect->head.matrix);
     rotationStep = effect->spinRate * (3.14159265f / 180.0f);
     completedCount = 0;
     packetCount = effect->head.particleCount;
@@ -2033,7 +2033,7 @@ void dds3Particle_SphereRingDraw(effExpandingRingEmitter_t *effect) {
     repeatEnabled = effect->loop;
     rotationCos = sdfCos(rotationStep);
     rotationSin = sdfSin(rotationStep);
-    PS2_COPY_QUAD(origin, effect->head.origin);
+    SDF_VU0__COPYVECTOR(origin, effect->head.origin);
     for (packetIndex = 0; packetIndex < packetCount; packetIndex++, packet++) {
         s32 age = packet->age;
 
@@ -2050,7 +2050,7 @@ void dds3Particle_SphereRingDraw(effExpandingRingEmitter_t *effect) {
             packet->color = dds3ParticleColorAnim(&effect->head.fade, packet->color, age);
             packet->color = dds3ParticleColorBlend(packet->color, effect->head.colorMask);
             if (subeffectKind != 0) {
-                VU0_LOAD_VF12(packet);
+                SDF_VU0__LOADVECTOR_C(packet);
             }
             angle = (f32)age / (f32)lifetimeFrames * 3.14159265f;
             radius = packet->radius;
@@ -2059,17 +2059,17 @@ void dds3Particle_SphereRingDraw(effExpandingRingEmitter_t *effect) {
             vector[0] = packet->vel[0] * (radius * phaseSin);
             vector[1] = radius * phaseCos;
             vector[2] = packet->vel[2] * (radius * phaseSin);
-            VU0_LOAD_VF10(vector);
-            VU0_APPLY_MATRIX_VF10();
-            VU0_LOAD_VF11(origin);
-            VU0_ADD_VF10_VF11();
-            VU0_STORE_VF10(packet);
+            SDF_VU0__LOADVECTOR(vector);
+            SDF_VU0__APPLYMATRIX();
+            SDF_VU0__LOADVECTOR_B(origin);
+            SDF_VU0__ADDVECTOR();
+            SDF_VU0__STOREVECTOR(packet);
             vector[0] = packet->vel[0];
             vector[2] = packet->vel[2];
             packet->vel[0] = rotationCos * vector[0] + rotationSin * vector[2];
             packet->vel[2] = rotationCos * vector[2] - rotationSin * vector[0];
             if (subeffectKind != 0) {
-                VU0_LOAD_VF10(packet);
+                SDF_VU0__LOADVECTOR(packet);
                 dds3Particle_EffectSet(&effect->head.sub, packetIndex, packet->color, packet->billboardScale);
             }
         }
@@ -2159,10 +2159,10 @@ void dds3Particle_Spark2BuffInit(effConeEmitter_t *effect, s32 packetIndex) {
         packet->pos[0] = angleCos * radius;
         packet->pos[1] = 0;
         packet->pos[2] = angleSin * radius;
-        VU0_LOAD_MATRIX(effect->head.matrix);
-        VU0_LOAD_VF10(packet->pos);
-        VU0_APPLY_MATRIX_VF10();
-        VU0_STORE_VF10(packet->pos);
+        SDF_VU0__LOADMATRIX(effect->head.matrix);
+        SDF_VU0__LOADVECTOR(packet->pos);
+        SDF_VU0__APPLYMATRIX();
+        SDF_VU0__STOREVECTOR(packet->pos);
         packet->pos[0] += effect->head.origin[0];
         packet->pos[1] += effect->head.origin[1];
         packet->pos[2] += effect->head.origin[2];
@@ -2197,7 +2197,7 @@ void dds3Particle_Spark2Draw(effConeEmitter_t *effect) {
     s32 packetIndex;
 
     dds3Particle_EffectInit(&effect->head.sub);
-    VU0_LOAD_MATRIX(effect->head.matrix);
+    SDF_VU0__LOADMATRIX(effect->head.matrix);
     velocityScale = effect->decayPct / 100.0f + 1.0f;
     completedCount = 0;
     lifetimeFrames = effect->head.lifetimeFrames;
@@ -2214,19 +2214,19 @@ void dds3Particle_Spark2Draw(effConeEmitter_t *effect) {
             packet->color = dds3ParticleColorAnim(&effect->head.fade, packet->color, age);
             packet->color = dds3ParticleColorBlend(packet->color, effect->head.colorMask);
             if (subeffectKind != 0) {
-                VU0_LOAD_VF12(packet);
+                SDF_VU0__LOADVECTOR_C(packet);
             }
             packet->vel[0] *= velocityScale;
             packet->vel[1] = packet->vel[1] * velocityScale + packet->verticalAcceleration;
             packet->vel[2] *= velocityScale;
-            VU0_LOAD_VF10(packet->vel);
-            VU0_APPLY_MATRIX_VF10();
-            VU0_STORE_VF10(positionDelta);
+            SDF_VU0__LOADVECTOR(packet->vel);
+            SDF_VU0__APPLYMATRIX();
+            SDF_VU0__STOREVECTOR(positionDelta);
             packet->pos[0] += positionDelta[0];
             packet->pos[1] += positionDelta[1];
             packet->pos[2] += positionDelta[2];
             if (subeffectKind != 0) {
-                VU0_LOAD_VF10(packet);
+                SDF_VU0__LOADVECTOR(packet);
                 dds3Particle_EffectSet(&effect->head.sub, packetIndex, packet->color, packet->billboardScale);
             }
         }
@@ -2301,35 +2301,35 @@ void dds3Particle_SphereAtomBuffInit(effTemplatePacketList_t *effect, s32 index)
         direction[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
         direction[1] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
         direction[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
-        VU0_LOAD_VF10(direction);
-        VU0_NORMALIZE_VF10();
-        VU0_STORE_VF10(direction);
+        SDF_VU0__LOADVECTOR(direction);
+        SDF_VU0__NORMALIZE();
+        SDF_VU0__STOREVECTOR(direction);
         packet->position[0] = radius * dds3GetRandFloatA(dds3EffectBase) * direction[0];
         packet->position[1] = radius * dds3GetRandFloatA(dds3EffectBase) * direction[1];
         packet->position[2] = radius * dds3GetRandFloatA(dds3EffectBase) * direction[2];
-        VU0_LOAD_MATRIX(effect->head.matrix);
-        VU0_LOAD_VF10(packet->position);
-        VU0_APPLY_MATRIX_VF10();
-        VU0_STORE_VF10(packet->position);
+        SDF_VU0__LOADMATRIX(effect->head.matrix);
+        SDF_VU0__LOADVECTOR(packet->position);
+        SDF_VU0__APPLYMATRIX();
+        SDF_VU0__STOREVECTOR(packet->position);
         packet->position[0] += effect->head.origin[0];
         packet->position[1] += effect->head.origin[1];
         packet->position[2] += effect->head.origin[2];
         direction[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
         direction[1] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
         direction[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
-        VU0_LOAD_VF10(direction);
-        VU0_NORMALIZE_VF10();
-        VU0_STORE_VF10(packet->velocity);
+        SDF_VU0__LOADVECTOR(direction);
+        SDF_VU0__NORMALIZE();
+        SDF_VU0__STOREVECTOR(packet->velocity);
         packet->age = -(dds3GetRandA((effRandState_t *)ParRand) % (effect->delayRange + 1));
     } else {
-        PS2_COPY_QUAD(packet->position, effect->head.origin);
+        SDF_VU0__COPYVECTOR(packet->position, effect->head.origin);
         value = (3.14159265f * 2.0f) / effect->head.particleCount * index;
         direction[0] = sdfCos(value);
         direction[1] = sdfSin(value);
         direction[2] = 0;
-        VU0_LOAD_VF10(direction);
-        VU0_NORMALIZE_VF10();
-        VU0_STORE_VF10(packet->velocity);
+        SDF_VU0__LOADVECTOR(direction);
+        SDF_VU0__NORMALIZE();
+        SDF_VU0__STOREVECTOR(packet->velocity);
         packet->age = -(dds3GetRandA((effRandState_t *)ParRand) % (effect->delayRange + 1));
     }
     packet->motionMagnitude = effect->motionMagnitude;
@@ -2390,7 +2390,7 @@ void dds3Particle_SphereAtomDraw(effTemplatePacketList_t *effect) {
             }
         }
     }
-    PS2_COPY_QUAD(origin, effect->head.origin);
+    SDF_VU0__COPYVECTOR(origin, effect->head.origin);
     for (index = 0; index < packetCount; index++, packet++) {
         s32 age = packet->age;
         f32 distance;
@@ -2406,7 +2406,7 @@ void dds3Particle_SphereAtomDraw(effTemplatePacketList_t *effect) {
             packet->color = dds3ParticleColorAnim(&effect->head.fade, packet->color, age);
             packet->color = dds3ParticleColorBlend(packet->color, effect->head.colorMask);
             if (subeffectKind != 0) {
-                PS2_COPY_QUAD(previousPosition, packet->pos);
+                SDF_VU0__COPYVECTOR(previousPosition, packet->pos);
             }
             magnitude = packet->motionMagnitude;
             dx = packet->vel[0] * magnitude;
@@ -2417,49 +2417,49 @@ void dds3Particle_SphereAtomDraw(effTemplatePacketList_t *effect) {
             packet->pos[2] += dz;
             magnitude *= velocityScale;
             packet->motionMagnitude = magnitude;
-            VU0_LOAD_VF10(packet->pos);
-            VU0_LOAD_VF11(origin);
-            VU0_SUB_VF10_VF11();
-            VU0_COPY_VF10_TO_VF12();
-            VU0_LENGTH_VF10(distance);
-            VU0_COPY_VF12_TO_VF10();
-            VU0_NORMALIZE_VF10();
-            VU0_STORE_VF10(normal);
+            SDF_VU0__LOADVECTOR(packet->pos);
+            SDF_VU0__LOADVECTOR_B(origin);
+            SDF_VU0__SUBVECTOR();
+            SDF_VU0__COPYVECTOR_A_TO_C();
+            SDF_VU0__GETLENGTH(distance);
+            SDF_VU0__COPYVECTOR_C_TO_A();
+            SDF_VU0__NORMALIZE();
+            SDF_VU0__STOREVECTOR(normal);
             if (distance > radius) {
-                VU0_LOAD_VF10(packet->vel);
-                VU0_LOAD_VF11(D_003171A0);
-                VU0_MUL_VF10_VF11();
-                VU0_COPY_VF10_TO_VF12();
-                VU0_LOAD_VF10(origin);
-                VU0_LOAD_VF11(packet->pos);
-                VU0_SUB_VF10_VF11();
-                VU0_NORMALIZE_VF10();
-                VU0_COPY_VF12_TO_VF11();
-                VU0_COPY_VF10_TO_VF12();
-                VU0_DOT_VF10_VF11(dot);
+                SDF_VU0__LOADVECTOR(packet->vel);
+                SDF_VU0__LOADVECTOR_B(D_003171A0);
+                SDF_VU0__MULVECTOR();
+                SDF_VU0__COPYVECTOR_A_TO_C();
+                SDF_VU0__LOADVECTOR(origin);
+                SDF_VU0__LOADVECTOR_B(packet->pos);
+                SDF_VU0__SUBVECTOR();
+                SDF_VU0__NORMALIZE();
+                SDF_VU0__COPYVECTOR_C_TO_B();
+                SDF_VU0__COPYVECTOR_A_TO_C();
+                SDF_VU0__INNERPRODUCT(dot);
                 reflectionScale[0] = dot * 2.0f;
                 reflectionScale[1] = dot * 2.0f;
                 reflectionScale[2] = dot * 2.0f;
-                VU0_LOAD_VF10(reflectionScale);
-                VU0_COPY_VF12_TO_VF11();
-                VU0_MUL_VF10_VF11();
-                VU0_LOAD_VF11(packet->vel);
-                VU0_ADD_VF10_VF11();
-                VU0_NORMALIZE_VF10();
-                VU0_STORE_VF10(packet->vel);
+                SDF_VU0__LOADVECTOR(reflectionScale);
+                SDF_VU0__COPYVECTOR_C_TO_B();
+                SDF_VU0__MULVECTOR();
+                SDF_VU0__LOADVECTOR_B(packet->vel);
+                SDF_VU0__ADDVECTOR();
+                SDF_VU0__NORMALIZE();
+                SDF_VU0__STOREVECTOR(packet->vel);
                 boundaryScale[0] = radius;
                 boundaryScale[1] = radius;
                 boundaryScale[2] = radius;
-                VU0_LOAD_VF10(normal);
-                VU0_LOAD_VF11(boundaryScale);
-                VU0_MUL_VF10_VF11();
-                VU0_LOAD_VF11(origin);
-                VU0_ADD_VF10_VF11();
-                VU0_STORE_VF10(packet->pos);
+                SDF_VU0__LOADVECTOR(normal);
+                SDF_VU0__LOADVECTOR_B(boundaryScale);
+                SDF_VU0__MULVECTOR();
+                SDF_VU0__LOADVECTOR_B(origin);
+                SDF_VU0__ADDVECTOR();
+                SDF_VU0__STOREVECTOR(packet->pos);
             }
             if (subeffectKind != 0) {
-                VU0_LOAD_VF12(previousPosition);
-                VU0_LOAD_VF10(packet->pos);
+                SDF_VU0__LOADVECTOR_C(previousPosition);
+                SDF_VU0__LOADVECTOR(packet->pos);
                 dds3Particle_EffectSet(&effect->head.sub, index, packet->color, packet->billboardScale);
             }
         }
@@ -2566,14 +2566,14 @@ void dds3Particle_SparkOffsetDraw(effOffsetGravityEmitter_t *effect) {
     dds3Particle_EffectInit(&effect->head.sub);
     mode = effect->mode;
     if (mode == 0) {
-        VU0_LOAD_MATRIX(effect->head.matrix);
+        SDF_VU0__LOADMATRIX(effect->head.matrix);
     }
     velocityScale = effect->decayPct / 100.0f + 1.0f;
     completedCount = 0;
     packetCount = effect->head.particleCount;
     lifetimeFrames = effect->head.lifetimeFrames;
     repeatEnabled = effect->loop;
-    PS2_COPY_QUAD(origin, effect->head.origin);
+    SDF_VU0__COPYVECTOR(origin, effect->head.origin);
     for (packetIndex = 0; packetIndex < packetCount; packetIndex++, packet++) {
         s32 age = packet->age;
 
@@ -2585,25 +2585,25 @@ void dds3Particle_SparkOffsetDraw(effOffsetGravityEmitter_t *effect) {
             packet->color = dds3ParticleColorAnim(&effect->head.fade, packet->color, age);
             packet->color = dds3ParticleColorBlend(packet->color, effect->head.colorMask);
             if (subeffectKind != 0) {
-                VU0_LOAD_VF12(packet);
+                SDF_VU0__LOADVECTOR_C(packet);
             }
             packet->vel[1] = packet->vel[1] * velocityScale + packet->offsetAcceleration;
             packet->vel[0] *= velocityScale;
             packet->vel[2] *= velocityScale;
-            VU0_LOAD_VF10(packet->vel);
+            SDF_VU0__LOADVECTOR(packet->vel);
             if (mode == 0) {
-                VU0_APPLY_MATRIX_VF10();
+                SDF_VU0__APPLYMATRIX();
             }
-            VU0_STORE_VF10(positionDelta);
+            SDF_VU0__STOREVECTOR(positionDelta);
             packet->offsetX += positionDelta[0];
             packet->offsetY += positionDelta[1];
             packet->offsetZ += positionDelta[2];
-            VU0_LOAD_VF10(&packet->offsetX);
-            VU0_LOAD_VF11(origin);
-            VU0_ADD_VF10_VF11();
-            VU0_STORE_VF10(packet);
+            SDF_VU0__LOADVECTOR(&packet->offsetX);
+            SDF_VU0__LOADVECTOR_B(origin);
+            SDF_VU0__ADDVECTOR();
+            SDF_VU0__STOREVECTOR(packet);
             if (subeffectKind != 0) {
-                VU0_LOAD_VF10(packet);
+                SDF_VU0__LOADVECTOR(packet);
                 dds3Particle_EffectSet(&effect->head.sub, packetIndex, packet->color, packet->billboardScale);
             }
         }
@@ -2686,29 +2686,29 @@ void dds3Particle_SmokeOffsetBuffInit(effDiscAuxEmitter_t *effect, u32 packetInd
     directionVector[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
     directionVector[1] = 0;
     directionVector[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
-    VU0_LOAD_VF10(directionVector);
-    VU0_NORMALIZE_VF10();
-    VU0_STORE_VF10(directionVector);
+    SDF_VU0__LOADVECTOR(directionVector);
+    SDF_VU0__NORMALIZE();
+    SDF_VU0__STOREVECTOR(directionVector);
     (*auxiliaryCursor)[0] = directionVector[0] * radialDistance;
     (*auxiliaryCursor)[1] = 0;
     (*auxiliaryCursor)[2] = directionVector[2] * radialDistance;
-    VU0_LOAD_MATRIX(effect->head.matrix);
-    VU0_LOAD_VF10(*auxiliaryCursor);
-    VU0_APPLY_MATRIX_VF10();
-    VU0_STORE_VF10(*auxiliaryCursor);
+    SDF_VU0__LOADMATRIX(effect->head.matrix);
+    SDF_VU0__LOADVECTOR(*auxiliaryCursor);
+    SDF_VU0__APPLYMATRIX();
+    SDF_VU0__STOREVECTOR(*auxiliaryCursor);
     directionVector[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
     directionVector[1] = 0;
     directionVector[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
-    VU0_LOAD_VF10(directionVector);
-    VU0_NORMALIZE_VF10();
-    VU0_STORE_VF10(packet->vel);
+    SDF_VU0__LOADVECTOR(directionVector);
+    SDF_VU0__NORMALIZE();
+    SDF_VU0__STOREVECTOR(packet->vel);
     packet->waveAmplitude = effect->waveAmplitude * (dds3GetRandFloatA(dds3EffectBase) * effect->waveAmplitudeJitter + (1.0f - effect->waveAmplitudeJitter));
     packet->wavePhase = 0;
     packet->previousWaveValue = 0;
     packet->verticalVelocity = effect->verticalSpeed * (dds3GetRandFloatA(dds3EffectBase) * effect->verticalSpeedJitter + (1.0f - effect->verticalSpeedJitter));
     packet->age = -(dds3GetRandA((effRandState_t *)ParRand) % (effect->spread + 1));
     packet->color = 0;
-    PS2_COPY_QUAD(packet, effect->head.origin);
+    SDF_VU0__COPYVECTOR(packet, effect->head.origin);
     jitter = effect->head.speedJitter;
     packet->billboardScale = effect->head.scale[0] * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     jitter = effect->head.spinJitter;
@@ -2738,7 +2738,7 @@ void dds3Particle_SmokeOffsetDraw(effDiscAuxEmitter_t *effect) {
     u32 repeatEnabled;
 
     dds3Particle_EffectInit(&effect->head.sub);
-    VU0_LOAD_MATRIX(effect->head.matrix);
+    SDF_VU0__LOADMATRIX(effect->head.matrix);
     phaseStep = effect->phaseStepDegrees * (3.14159265f / 180.0f);
     verticalScale = effect->verticalAccelerationPct / 100.0f + 1.0f;
     completedCount = 0;
@@ -2746,7 +2746,7 @@ void dds3Particle_SmokeOffsetDraw(effDiscAuxEmitter_t *effect) {
     lifetimeFrames = effect->head.lifetimeFrames;
     repeatEnabled = effect->loop;
     waveRate = effect->waveGrowth;
-    PS2_COPY_QUAD(origin, effect->head.origin);
+    SDF_VU0__COPYVECTOR(origin, effect->head.origin);
     for (packetIndex = 0; packetIndex < packetCount; packetIndex++, packet++, auxiliaryCursor++) {
         s32 age = packet->age;
 
@@ -2762,7 +2762,7 @@ void dds3Particle_SmokeOffsetDraw(effDiscAuxEmitter_t *effect) {
             packet->color = dds3ParticleColorAnim(&effect->head.fade, packet->color, age);
             packet->color = dds3ParticleColorBlend(packet->color, effect->head.colorMask);
             if (subeffectKind != 0) {
-                VU0_LOAD_VF12(packet);
+                SDF_VU0__LOADVECTOR_C(packet);
             }
             packet->waveAmplitude += waveRate;
             verticalStep = packet->verticalVelocity;
@@ -2774,15 +2774,15 @@ void dds3Particle_SmokeOffsetDraw(effDiscAuxEmitter_t *effect) {
             positionVector[0] = (*auxiliaryCursor)[0] + packet->vel[0] * factor;
             positionVector[1] = (*auxiliaryCursor)[1] + verticalStep;
             positionVector[2] = (*auxiliaryCursor)[2] + packet->vel[2] * factor;
-            VU0_LOAD_VF10(positionVector);
-            VU0_STORE_VF10(*auxiliaryCursor);
-            VU0_APPLY_MATRIX_VF10();
-            VU0_LOAD_VF11(origin);
-            VU0_ADD_VF10_VF11();
-            VU0_STORE_VF10(packet);
+            SDF_VU0__LOADVECTOR(positionVector);
+            SDF_VU0__STOREVECTOR(*auxiliaryCursor);
+            SDF_VU0__APPLYMATRIX();
+            SDF_VU0__LOADVECTOR_B(origin);
+            SDF_VU0__ADDVECTOR();
+            SDF_VU0__STOREVECTOR(packet);
             packet->verticalVelocity = verticalStep * verticalScale;
             if (subeffectKind != 0) {
-                VU0_LOAD_VF10(packet);
+                SDF_VU0__LOADVECTOR(packet);
                 dds3Particle_EffectSet(&effect->head.sub, packetIndex, packet->color, packet->billboardScale);
             }
         }
@@ -2917,18 +2917,18 @@ void dds3Particle_SphereSpiral2BuffInit(parBurstEmitter_t *effect, u32 particleI
     direction[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
     direction[1] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
     direction[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
-    VU0_LOAD_VF10(direction);
-    VU0_NORMALIZE_VF10();
-    VU0_STORE_VF10(direction);
+    SDF_VU0__LOADVECTOR(direction);
+    SDF_VU0__NORMALIZE();
+    SDF_VU0__STOREVECTOR(direction);
     /* Each component gets a separate jitter sample, not one shared radius draw. */
     packet->radialOffset[0] = initialRadius * (dds3GetRandFloatA(dds3EffectBase) * jitterFactor + (1.0f - jitterFactor)) * direction[0];
     packet->radialOffset[1] = initialRadius * (dds3GetRandFloatA(dds3EffectBase) * jitterFactor + (1.0f - jitterFactor)) * direction[1];
     packet->radialOffset[2] = initialRadius * (dds3GetRandFloatA(dds3EffectBase) * jitterFactor + (1.0f - jitterFactor)) * direction[2];
-    VU0_LOAD_VF10(packet->radialOffset);
-    VU0_LENGTH_VF10(initialRadiusLength);
-    VU0_LOAD_MATRIX(effect->head.matrix);
-    VU0_LOAD_VF10(packet->radialOffset);
-    VU0_ROTATE_VF10();
+    SDF_VU0__LOADVECTOR(packet->radialOffset);
+    SDF_VU0__GETLENGTH(initialRadiusLength);
+    SDF_VU0__LOADMATRIX(effect->head.matrix);
+    SDF_VU0__LOADVECTOR(packet->radialOffset);
+    SDF_VU0__APPLYMATRIX_XYZ();
     VU0_STORE_VF10_UNCLOBBERED(packet->radialOffset);
     packet->position[0] = packet->radialOffset[0] + effect->head.origin[0];
     packet->position[1] = packet->radialOffset[1] + effect->head.origin[1];
@@ -2937,9 +2937,9 @@ void dds3Particle_SphereSpiral2BuffInit(parBurstEmitter_t *effect, u32 particleI
         direction[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
         direction[1] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
         direction[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
-        VU0_LOAD_VF10(direction);
-        VU0_NORMALIZE_VF10();
-        VU0_STORE_VF10(direction);
+        SDF_VU0__LOADVECTOR(direction);
+        SDF_VU0__NORMALIZE();
+        SDF_VU0__STOREVECTOR(direction);
         packet->rotationAxis[0] = direction[0];
         packet->rotationAxis[1] = direction[1];
         packet->rotationAxis[2] = direction[2];
@@ -2987,13 +2987,13 @@ void dds3Particle_SphereSpiral2Draw(parBurstEmitter_t *effect) {
     capacity = effect->history.capacity;
     kind = effect->head.kindState.kind;
     dds3Particle_EffectInit(&effect->head.kindState);
-    VU0_LOAD_MATRIX_B(effect->head.matrix);
+    SDF_VU0__LOADMATRIX_B(effect->head.matrix);
     packetCount = effect->head.particleCount;
     lifetimeFrames = effect->head.lifetimeFrames;
     completedCount = 0;
     rotationStep = effect->rotationStepDegrees * (3.14159265f / 180.0f);
     repeatEnabled = effect->loop;
-    PS2_COPY_QUAD(origin, effect->head.origin);
+    SDF_VU0__COPYVECTOR(origin, effect->head.origin);
     previousOrigin[0] = effect->previousOrigin[0];
     previousOrigin[1] = effect->previousOrigin[1];
     previousOrigin[2] = effect->previousOrigin[2];
@@ -3009,18 +3009,18 @@ void dds3Particle_SphereSpiral2Draw(parBurstEmitter_t *effect) {
             packet->color = dds3ParticleColorAnim(&effect->head.colorRamp, packet->color, age);
             packet->color = dds3ParticleColorBlend(packet->color, effect->head.parameterWord);
             if (kind != 0) {
-                VU0_LOAD_VF12(packet->radialOffset);
+                SDF_VU0__LOADVECTOR_C(packet->radialOffset);
             }
-            VU0_LOAD_VF10(packet->radialOffset);
-            VU0_LENGTH_VF10(radius);
+            SDF_VU0__LOADVECTOR(packet->radialOffset);
+            SDF_VU0__GETLENGTH(radius);
             radius += packet->radiusStep;
             scaleVector[0] = radius;
             scaleVector[1] = radius;
             scaleVector[2] = radius;
-            VU0_NORMALIZE_VF10();
-            VU0_LOAD_VF11(scaleVector);
-            VU0_MUL_VF10_VF11();
-            VU0_STORE_VF10(packet->radialOffset);
+            SDF_VU0__NORMALIZE();
+            SDF_VU0__LOADVECTOR_B(scaleVector);
+            SDF_VU0__MULVECTOR();
+            SDF_VU0__STOREVECTOR(packet->radialOffset);
             VU0_COPY_VF24_TO_VF28();
             VU0_COPY_VF25_TO_VF29();
             VU0_COPY_VF26_TO_VF30();
@@ -3029,16 +3029,16 @@ void dds3Particle_SphereSpiral2Draw(parBurstEmitter_t *effect) {
             rotationAxis[1] = packet->rotationAxis[1];
             rotationAxis[2] = packet->rotationAxis[2];
             rotationAxis[3] = 0;
-            VU0_LOAD_VF10(rotationAxis);
-            VU0_ROTATE_VF10();
+            SDF_VU0__LOADVECTOR(rotationAxis);
+            SDF_VU0__APPLYMATRIX_XYZ();
             VU0_STORE_VF10_UNCLOBBERED(rotationAxis);
             SetRotateMatrixAxis(rotationStep, (const sdfVector3_t *)rotationAxis);
-            VU0_LOAD_VF10(packet->radialOffset);
-            VU0_ROTATE_VF10();
-            VU0_LOAD_VF11(origin);
-            VU0_STORE_VF10(packet->radialOffset);
-            VU0_ADD_VF10_VF11();
-            VU0_STORE_VF10(packet->position);
+            SDF_VU0__LOADVECTOR(packet->radialOffset);
+            SDF_VU0__APPLYMATRIX_XYZ();
+            SDF_VU0__LOADVECTOR_B(origin);
+            SDF_VU0__STOREVECTOR(packet->radialOffset);
+            SDF_VU0__ADDVECTOR();
+            SDF_VU0__STOREVECTOR(packet->position);
             if (kind != 0) {
                 u32 color;
 
@@ -3184,12 +3184,12 @@ void dds3Particle_BlurSet(parTable_t *table, s32 slotIndex, u32 color, f32 billb
 
     for (i = 0; i < last; i++) {
         point--;
-        PS2_COPY_QUAD(point + 1, point);
+        SDF_VU0__COPYVECTOR(point + 1, point);
     }
     if (slot->pointCount <= last) {
         slot->pointCount++;
     }
-    VU0_STORE_VF12(point);
+    SDF_VU0__STOREVECTOR_C(point);
     slot->color = color;
     slot->billboardScale = billboardScale;
 }
@@ -3204,7 +3204,7 @@ void dds3Particle_BlurSetExp(parTable_t *table, s32 slotIndex, const f32 *origin
     s32 pointCapacity;
     s32 pointIndex;
 
-    PS2_COPY_QUAD(localOrigin, origin);
+    SDF_VU0__COPYVECTOR(localOrigin, origin);
     history = &source->records[slotIndex];
     slot = &table->slots[slotIndex];
     pointCount = history->count;
@@ -3259,7 +3259,7 @@ void dds3Particle_BlurDraw(parTable_t *table) {
             if (pointCount != 0) {
                 remainingPoints = pointCount;
                 do {
-                    PS2_COPY_QUAD(billboard, point);
+                    SDF_VU0__COPYVECTOR(billboard, point);
                     alpha -= alphaStep;
                     --remainingPoints;
                     billboard->childParam = color | (alpha & 0xFF000000);
@@ -3295,7 +3295,7 @@ void dds3Particle_TrackSetExp(parSystem_t *system, s32 index, const f32 *origin,
         s32 lastIndex;
         s32 ring;
 
-        PS2_COPY_QUAD(localOrigin, origin);
+        SDF_VU0__COPYVECTOR(localOrigin, origin);
         segments = count - 1;
         cell->vertexCount = segments * 2;
         ring = history->nextIndex;
@@ -3306,27 +3306,27 @@ void dds3Particle_TrackSetExp(parSystem_t *system, s32 index, const f32 *origin,
         point[2] = localOrigin[2] + history->points[ring][2];
         point[3] = 0;
         for (segmentIndex = 0; segmentIndex < segments; segmentIndex++) {
-            VU0_LOAD_VF10(point);
+            SDF_VU0__LOADVECTOR(point);
             ring = ring == 0 ? lastIndex : ring - 1;
             point[0] = localOrigin[0] + history->points[ring][0];
             point[1] = localOrigin[1] + history->points[ring][1];
             point[2] = localOrigin[2] + history->points[ring][2];
-            VU0_LOAD_VF12(point);
-            VU0_COPY_VF12_TO_VF11();
-            VU0_SUB_VF10_VF11();
-            VU0_LOAD_VF11(parLook);
-            VU0_CROSS_VF10_VF11();
-            VU0_NORMALIZE_VF10();
-            VU0_LOAD_VF11(parTrack_w);
-            VU0_MUL_VF10_VF11();
+            SDF_VU0__LOADVECTOR_C(point);
+            SDF_VU0__COPYVECTOR_C_TO_B();
+            SDF_VU0__SUBVECTOR();
+            SDF_VU0__LOADVECTOR_B(parLook);
+            SDF_VU0__OUTERPRODUCT();
+            SDF_VU0__NORMALIZE();
+            SDF_VU0__LOADVECTOR_B(parTrack_w);
+            SDF_VU0__MULVECTOR();
             VU0_COPY_VF10_TO_VF2();
-            VU0_COPY_VF12_TO_VF10();
+            SDF_VU0__COPYVECTOR_C_TO_A();
             VU0_COPY_VF2_TO_VF12();
-            VU0_COPY_VF10_TO_VF11();
-            VU0_ADD_VF10_VF12();
+            SDF_VU0__COPYVECTOR_A_TO_B();
+            SDF_VU0__ADDVECTOR_A_C();
             VU0_STORE_VF10_UNCLOBBERED(vertex);
-            VU0_COPY_VF12_TO_VF10();
-            VU0_SUB_VF11_VF10();
+            SDF_VU0__COPYVECTOR_C_TO_A();
+            SDF_VU0__SUBVECTOR_B_A();
             VU0_STORE_VF11_UNCLOBBERED(vertex + 1);
             vertex += 2;
         }
@@ -3350,7 +3350,7 @@ void dds3Particle_Track2SetExp(parSystem_t *system, s32 index, const f32 *origin
         s32 lastIndex;
         s32 ring;
 
-        PS2_COPY_QUAD(localOrigin, origin);
+        SDF_VU0__COPYVECTOR(localOrigin, origin);
         segments = count - 1;
         cell->vertexCount = segments * 3;
         ring = history->nextIndex;
@@ -3361,28 +3361,28 @@ void dds3Particle_Track2SetExp(parSystem_t *system, s32 index, const f32 *origin
         point[2] = localOrigin[2] + history->points[ring][2];
         point[3] = 0;
         for (segmentIndex = 0; segmentIndex < segments; segmentIndex++) {
-            VU0_LOAD_VF10(point);
+            SDF_VU0__LOADVECTOR(point);
             ring = ring == 0 ? lastIndex : ring - 1;
             point[0] = localOrigin[0] + history->points[ring][0];
             point[1] = localOrigin[1] + history->points[ring][1];
             point[2] = localOrigin[2] + history->points[ring][2];
-            VU0_LOAD_VF12(point);
-            VU0_COPY_VF12_TO_VF11();
-            VU0_SUB_VF10_VF11();
-            VU0_LOAD_VF11(parLook);
-            VU0_CROSS_VF10_VF11();
-            VU0_NORMALIZE_VF10();
-            VU0_LOAD_VF11(parTrack_w);
-            VU0_MUL_VF10_VF11();
+            SDF_VU0__LOADVECTOR_C(point);
+            SDF_VU0__COPYVECTOR_C_TO_B();
+            SDF_VU0__SUBVECTOR();
+            SDF_VU0__LOADVECTOR_B(parLook);
+            SDF_VU0__OUTERPRODUCT();
+            SDF_VU0__NORMALIZE();
+            SDF_VU0__LOADVECTOR_B(parTrack_w);
+            SDF_VU0__MULVECTOR();
             VU0_COPY_VF10_TO_VF2();
-            VU0_COPY_VF12_TO_VF10();
+            SDF_VU0__COPYVECTOR_C_TO_A();
             VU0_COPY_VF2_TO_VF12();
             VU0_STORE_VF10_UNCLOBBERED(vertex + 1);
-            VU0_COPY_VF10_TO_VF11();
-            VU0_ADD_VF10_VF12();
+            SDF_VU0__COPYVECTOR_A_TO_B();
+            SDF_VU0__ADDVECTOR_A_C();
             VU0_STORE_VF10_UNCLOBBERED(vertex);
-            VU0_COPY_VF12_TO_VF10();
-            VU0_SUB_VF11_VF10();
+            SDF_VU0__COPYVECTOR_C_TO_A();
+            SDF_VU0__SUBVECTOR_B_A();
             VU0_STORE_VF11_UNCLOBBERED(vertex + 2);
             vertex += 3;
         }
@@ -3436,7 +3436,7 @@ void dds3ParticleDraw(parObj_t *effect) {
             s32 age = record->age;
 
             if (age < lifetime && age >= 0) {
-                PS2_COPY_QUAD(billboard, record->position);
+                SDF_VU0__COPYVECTOR(billboard, record->position);
                 billboard->childParam = record->color;
                 dds3BillboardDraw(billboard);
             }
@@ -3487,15 +3487,15 @@ u16 dds3ParticleGetState(parObj_t *obj) {
 
 /* Copy one 16-byte vector with the existing EE/VU copy primitive. */
 void dds3ParticleSetPosition(void *destination, void *source) {
-    PS2_COPY_QUAD(destination, source);
+    SDF_VU0__COPYVECTOR(destination, source);
 }
 
 /* vu0 routine: compose the supplied matrix with the emitter's source matrix. */
 void dds3ParticleSetRotateMatrix(parObj_t *effect, void *matrix) {
-    VU0_LOAD_MATRIX(matrix);
-    VU0_LOAD_MATRIX_B(effect->sourceMatrix);
+    SDF_VU0__LOADMATRIX(matrix);
+    SDF_VU0__LOADMATRIX_B(effect->sourceMatrix);
     MultMatrixNoArg();
-    VU0_STORE_MATRIX(effect->matrix);
+    SDF_VU0__STOREMATRIX(effect->matrix);
 }
 
 void dds3ParticleSetRGBA(parObj_t *work, u32 parameterWord) {
@@ -3639,7 +3639,7 @@ void dds3ParticleExpDraw(parObj_t *effect) {
             s32 age = record->age;
 
             if (age < lifetime && age >= 0) {
-                PS2_COPY_QUAD(billboard, record->position);
+                SDF_VU0__COPYVECTOR(billboard, record->position);
                 billboard->rotationAngle = record->spin;
                 billboard->childParam = record->color;
                 billboard->childScaleX = billboard->childScaleY = record->scale;
@@ -3674,7 +3674,7 @@ u16 dds3ParticleExpGetState(parObj_t *obj) {
 }
 
 void dds3ParticleExpSetPosition(void *dst, void *src) {
-    PS2_COPY_QUAD(dst, src);
+    SDF_VU0__COPYVECTOR(dst, src);
 }
 
 void dds3ParticleExpSetRotateMatrix(parObj_t *effect, void *matrix) {
@@ -3718,10 +3718,10 @@ void dds3Particle_EffectInit(parKindState_t *obj) {
     default:
         return;
     }
-    VU0_LOAD_VF10(aViewTarget);
-    VU0_LOAD_VF11(aViewEye);
-    VU0_SUB_VF10_VF11();
-    VU0_STORE_VF10(parLook);
+    SDF_VU0__LOADVECTOR(aViewTarget);
+    SDF_VU0__LOADVECTOR_B(aViewEye);
+    SDF_VU0__SUBVECTOR();
+    SDF_VU0__STOREVECTOR(parLook);
 }
 
 void dds3Particle_EffectSet(parKindState_t *work, s32 index, u32 color, f32 speed) {
@@ -3760,22 +3760,22 @@ void dds3Particle_EffectReset(parKindState_t *work, s32 index) {
 
 void dds3Particle_TrackSet(parSystem_t *system, s32 index, u32 color) {
     u128 axis[2];
-    VU0_COPY_VF12_TO_VF11();
-    VU0_SUB_VF10_VF11();
-    VU0_LOAD_VF11(parLook);
-    VU0_CROSS_VF10_VF11();
-    VU0_NORMALIZE_VF10();
-    VU0_LOAD_VF11(parTrack_w);
-    VU0_MUL_VF10_VF11();
+    SDF_VU0__COPYVECTOR_C_TO_B();
+    SDF_VU0__SUBVECTOR();
+    SDF_VU0__LOADVECTOR_B(parLook);
+    SDF_VU0__OUTERPRODUCT();
+    SDF_VU0__NORMALIZE();
+    SDF_VU0__LOADVECTOR_B(parTrack_w);
+    SDF_VU0__MULVECTOR();
     VU0_COPY_VF10_TO_VF2();
-    VU0_COPY_VF12_TO_VF10();
+    SDF_VU0__COPYVECTOR_C_TO_A();
     VU0_COPY_VF2_TO_VF12();
-    VU0_COPY_VF10_TO_VF11();
-    VU0_ADD_VF10_VF12();
-    VU0_STORE_VF10(&axis[0]);
-    VU0_COPY_VF12_TO_VF10();
-    VU0_SUB_VF11_VF10();
-    VU0_STORE_VF11(&axis[1]);
+    SDF_VU0__COPYVECTOR_A_TO_B();
+    SDF_VU0__ADDVECTOR_A_C();
+    SDF_VU0__STOREVECTOR(&axis[0]);
+    SDF_VU0__COPYVECTOR_C_TO_A();
+    SDF_VU0__SUBVECTOR_B_A();
+    SDF_VU0__STOREVECTOR_B(&axis[1]);
     dds3TrackPolySet(system, index, axis);
     dds3TrackPolyVCRefresh_ParType1(system, index);
     dds3TrackPolyColorSet(system, index, (color & 0xFF000000) | 0x808080);
@@ -3783,23 +3783,23 @@ void dds3Particle_TrackSet(parSystem_t *system, s32 index, u32 color) {
 
 void dds3Particle_Track2Set(parSystem_t *system, s32 index, u32 color) {
     u128 axis[3];
-    VU0_COPY_VF12_TO_VF11();
-    VU0_SUB_VF10_VF11();
-    VU0_LOAD_VF11(parLook);
-    VU0_CROSS_VF10_VF11();
-    VU0_NORMALIZE_VF10();
-    VU0_LOAD_VF11(parTrack_w);
-    VU0_MUL_VF10_VF11();
+    SDF_VU0__COPYVECTOR_C_TO_B();
+    SDF_VU0__SUBVECTOR();
+    SDF_VU0__LOADVECTOR_B(parLook);
+    SDF_VU0__OUTERPRODUCT();
+    SDF_VU0__NORMALIZE();
+    SDF_VU0__LOADVECTOR_B(parTrack_w);
+    SDF_VU0__MULVECTOR();
     VU0_COPY_VF10_TO_VF2();
-    VU0_COPY_VF12_TO_VF10();
+    SDF_VU0__COPYVECTOR_C_TO_A();
     VU0_COPY_VF2_TO_VF12();
-    VU0_STORE_VF10(&axis[1]);
-    VU0_COPY_VF10_TO_VF11();
-    VU0_ADD_VF10_VF12();
-    VU0_STORE_VF10(&axis[0]);
-    VU0_COPY_VF12_TO_VF10();
-    VU0_SUB_VF11_VF10();
-    VU0_STORE_VF11(&axis[2]);
+    SDF_VU0__STOREVECTOR(&axis[1]);
+    SDF_VU0__COPYVECTOR_A_TO_B();
+    SDF_VU0__ADDVECTOR_A_C();
+    SDF_VU0__STOREVECTOR(&axis[0]);
+    SDF_VU0__COPYVECTOR_C_TO_A();
+    SDF_VU0__SUBVECTOR_B_A();
+    SDF_VU0__STOREVECTOR_B(&axis[2]);
     dds3TrackPolySet2(system, index, axis);
     dds3TrackPolyVCRefresh_ParType2(system, index);
     dds3TrackPolyColorSet(system, index, (color & 0xFF000000) | 0x808080);
@@ -3807,22 +3807,22 @@ void dds3Particle_Track2Set(parSystem_t *system, s32 index, u32 color) {
 
 void dds3Particle_Track3Set(effTrackPolyList_t *list, s32 index, u32 color) {
     u128 axis[2];
-    VU0_COPY_VF12_TO_VF11();
-    VU0_SUB_VF10_VF11();
-    VU0_LOAD_VF11(parLook);
-    VU0_CROSS_VF10_VF11();
-    VU0_NORMALIZE_VF10();
-    VU0_LOAD_VF11(parTrack_w);
-    VU0_MUL_VF10_VF11();
+    SDF_VU0__COPYVECTOR_C_TO_B();
+    SDF_VU0__SUBVECTOR();
+    SDF_VU0__LOADVECTOR_B(parLook);
+    SDF_VU0__OUTERPRODUCT();
+    SDF_VU0__NORMALIZE();
+    SDF_VU0__LOADVECTOR_B(parTrack_w);
+    SDF_VU0__MULVECTOR();
     VU0_COPY_VF10_TO_VF2();
-    VU0_COPY_VF12_TO_VF10();
+    SDF_VU0__COPYVECTOR_C_TO_A();
     VU0_COPY_VF2_TO_VF12();
-    VU0_COPY_VF10_TO_VF11();
-    VU0_ADD_VF10_VF12();
-    VU0_STORE_VF10(&axis[0]);
-    VU0_COPY_VF12_TO_VF10();
-    VU0_SUB_VF11_VF10();
-    VU0_STORE_VF11(&axis[1]);
+    SDF_VU0__COPYVECTOR_A_TO_B();
+    SDF_VU0__ADDVECTOR_A_C();
+    SDF_VU0__STOREVECTOR(&axis[0]);
+    SDF_VU0__COPYVECTOR_C_TO_A();
+    SDF_VU0__SUBVECTOR_B_A();
+    SDF_VU0__STOREVECTOR_B(&axis[1]);
     Eff_ModelTrackPolyListVertexSet(list, index, axis);
     Eff_ModelTrackPolyListColorSet(list, index, (color & 0xFF000000) | 0x808080);
 }
