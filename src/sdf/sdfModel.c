@@ -628,7 +628,7 @@ void sdfModelEvalNode(sdfModelNode_t *drawNode, const f32 (*parentMatrix)[4], s3
     zAxis = &drawNode->localNoScaledTm.m[8];
     VU0_LOAD_VF30_BARRIER(zAxis);
     scale = (f32 *)&drawNode->scale;
-    VU0_LOAD_VF10_BARRIER(scale);
+    SDF_VU0_LOADVECTOR_BARRIER(scale);
     VU0_SCALE_MATRIX_ROWS_VF10();
     translation = (f32 *)&drawNode->pos;
     VU0_LOAD_VF31_BARRIER(translation);
@@ -659,7 +659,7 @@ void sdfModelEvalTm2(sdfModelRootNode_t *model, s32 frame) {
 
     SDF_VU0_LOADMATRIX(transform);
     scale = (f32 *)&model->scale;
-    VU0_LOAD_VF10_BARRIER(scale);
+    SDF_VU0_LOADVECTOR_BARRIER(scale);
     VU0_MUL_MATRIX_ROWS_VF10();
     VU0_STORE_MATRIX_M(rootMatrix[0], rootMatrix[1], rootMatrix[2], rootMatrix[3]);
     list = model->nodeList;
