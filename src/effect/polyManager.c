@@ -542,7 +542,7 @@ void dds3TrackPolyMove(dds3TrackPoly_t *system, s32 cellIndex, const u128 *delta
     s32 count = system->face;
     u128 *vertex = cell->pVertex;
     s32 i;
-    VU0_LOAD_VF11_BARRIER(delta);
+    SDF_VU0_LOADVECTOR_B_BARRIER(delta);
     if (count > 0) {
         i = count;
         do {
