@@ -155,8 +155,8 @@ sdfModelNode_t *sdfModelNodeNew(void) {
     VU0_STORE_VF0(&node->rotate);
     VU0_STORE_VF0(&node->pos);
     VU0_UNIT_SCALE();
-    VU0_STORE_VF10(&node->scale);
-    EE_MMI_UNIT_MATRIX(&node->localNoScaledTm);
+    SDF_VU0__STOREVECTOR(&node->scale);
+    SDF_VU0__STOREIDENTITY(&node->localNoScaledTm);
     return node;
 }
 
@@ -209,10 +209,10 @@ sdfModelRootNode_t *sdfModelRootNew(void) {
 
     slot = sdfChipAllocZeroDirect(sizeof(sdfModelRootNode_t));
     slot->nodeList = (sdfModelNodeList_t *)sdfItemArrayNew(0, 4, 0x20);
-    EE_MMI_UNIT_MATRIX(&slot->tm);
+    SDF_VU0__STOREIDENTITY(&slot->tm);
     VU0_STORE_VF0(&slot->rotate);
     VU0_UNIT_SCALE();
-    VU0_STORE_VF10(&slot->scale);
+    SDF_VU0__STOREVECTOR(&slot->scale);
     slot->drawAttr = -1;
     slot->color = 0x80808080;
     return slot;
@@ -504,10 +504,10 @@ INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelLinkDrawPacket);
 
 /* vu0 routine: native SDK vector/matrix operations around model state. */
 void sdfModelMakeLocalTm(sdfModelNode_t *node) {
-    VU0_LOAD_VF10(&node->rotate);
+    SDF_VU0__LOADVECTOR(&node->rotate);
     ToMatrix();
     VU0_LOAD_VF31(&node->pos);
-    VU0_STORE_MATRIX(&node->localNoScaledTm);
+    SDF_VU0__STOREMATRIX(&node->localNoScaledTm);
 }
 
 INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelNodeBaseSet);
@@ -670,10 +670,10 @@ void sdfModelEvalNode(sdfModelNode_t *drawNode, const f32 (*parentMatrix)[4], s3
     VU0_SCALE_MATRIX_ROWS_VF10();
     translation = (f32 *)&drawNode->pos;
     VU0_LOAD_VF31_BARRIER(translation);
-    VU0_LOAD_MATRIX_B(parentMatrix);
+    SDF_VU0__LOADMATRIX_B(parentMatrix);
     MultMatrixRevNoArg();
     transformed = (f32 (*)[4])drawNode->tm.m;
-    VU0_STORE_MATRIX(transformed);
+    SDF_VU0__STOREMATRIX(transformed);
     workspace = drawNode->tmPacket;
     if (workspace != NULL) {
         sdf3DPrimSetTmPacket((void *)(workspace + (frame << 7)));
@@ -695,7 +695,7 @@ void sdfModelEvalTm2(sdfModelRootNode_t *model, s32 frame) {
     f32 *scale;
     sdfModelNodeList_t *list;
 
-    VU0_LOAD_MATRIX(transform);
+    SDF_VU0__LOADMATRIX(transform);
     scale = (f32 *)&model->scale;
     VU0_LOAD_VF10_BARRIER(scale);
     VU0_MUL_MATRIX_ROWS_VF10();
@@ -871,15 +871,15 @@ void sdfModelMakeMarkPosMatrix(sdfModelRootNode_t *model, sdfModelMarkPos_t *rec
     u8 *vector;
 
     vector = (u8 *)&record->dir;
-    VU0_LOAD_VF10(vector);
+    SDF_VU0__LOADVECTOR(vector);
     VU0_COPY_VF10_TO_VF30();
-    VU0_COPY_VF10_TO_VF11();
+    SDF_VU0__COPYVECTOR_A_TO_B();
     vector = (u8 *)&record->up;
-    VU0_LOAD_VF10(vector);
-    VU0_NEGATE_VF10_XYZ();
+    SDF_VU0__LOADVECTOR(vector);
+    SDF_VU0__NEGVECTOR_XYZ();
     VU0_COPY_VF10_TO_VF29();
-    VU0_CROSS_VF10_VF11();
-    VU0_NORMALIZE_VF10();
+    SDF_VU0__OUTERPRODUCT();
+    SDF_VU0__NORMALIZE();
     VU0_COPY_VF10_TO_VF28();
     VU0_LOAD_VF31(&record->pos);
     VU0_SET_VF31_W_ONE();
@@ -890,9 +890,9 @@ void sdfModelMakeMarkPosMatrix(sdfModelRootNode_t *model, sdfModelMarkPos_t *rec
 void sdfModelMakeMarkPos(sdfModelRootNode_t *model, sdfModelMarkPos_t *record) {
     sdfModelNode_t *drawNode = sdfModelSearchNode(model, record->nodeId);
 
-    VU0_LOAD_MATRIX(&drawNode->tm);
-    VU0_LOAD_VF10(&record->pos);
-    VU0_TRANSFORM_POINT_VF10();
+    SDF_VU0__LOADMATRIX(&drawNode->tm);
+    SDF_VU0__LOADVECTOR(&record->pos);
+    SDF_VU0__APPLYMATRIX_XYZ1();
 }
 
 sdfModelMarkPos_t *sdfModelSearchMarkPosData(sdfModelRootNode_t *aRoot, s32 aId)
