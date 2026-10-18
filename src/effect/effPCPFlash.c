@@ -31,24 +31,22 @@ struct PcpFlashStreakParams;
 struct PcpFlashStreakWork;
 struct PcpFlashTrianglePulseParams;
 struct PcpFlashTrianglePulseWork;
-struct RwV3d;
-struct SdfAssetEntry;
+struct sdfVector3_t;
+struct sdfMatPacket_t;
 union SdfDrawTransform;
 struct SdfGsTextureStateValues;
-struct SdfTexRef;
-struct SdfTexResource;
+struct sdfGsMemSlice_t;
 
 typedef struct EffRandState EffRandState;
 typedef union SdfDrawTransform SdfDrawTransform;
 typedef struct SdfGsTextureStateValues SdfGsTextureStateValues;
-typedef struct SdfAssetEntry SdfAssetEntry;
-typedef union SdfSubParam SdfSubParam;
-typedef struct SdfTexBuf SdfTexBuf;
-typedef struct SdfTexRef SdfTexRef;
-typedef struct SdfTexResource SdfTexResource;
-typedef struct SdfTex SdfTex;
-typedef struct SdfAsset SdfAsset;
-typedef struct SdfMemBlock SdfMemBlock;
+typedef struct sdfMatPacket_t sdfMatPacket_t;
+typedef union sdfMatUvwParm_t sdfMatUvwParm_t;
+typedef struct sdfTexPacket_t sdfTexPacket_t;
+typedef struct sdfGsMemSlice_t sdfGsMemSlice_t;
+typedef struct sdfTexHandle_t sdfTexHandle_t;
+typedef struct sdfMat_t sdfMat_t;
+typedef struct sdfMemHandle_t sdfMemHandle_t;
 typedef struct EffRingColorSlot EffRingColorSlot;
 typedef struct EffRingParticle EffRingParticle;
 typedef struct EffRingWork EffRingWork;
@@ -60,9 +58,9 @@ typedef struct PcpFlashRadialTriangleParams PcpFlashRadialTriangleParams;
 typedef struct PcpFlashStreakParams PcpFlashStreakParams;
 typedef struct PcpFlashTrianglePulseParams PcpFlashTrianglePulseParams;
 typedef struct PcpFlashTrianglePulseWork PcpFlashTrianglePulseWork;
-typedef struct RwV3d RwV3d;
-typedef struct SdfListHead SdfListHead;
-typedef struct SdfPoolNode SdfPoolNode;
+typedef struct sdfVector3_t sdfVector3_t;
+typedef struct sdfDrawTag_t sdfDrawTag_t;
+typedef struct sdfGrOt_t sdfGrOt_t;
 typedef struct EffThunderDrawParams EffThunderDrawParams;
 typedef struct EffPacketParams EffPacketParams;
 
@@ -140,7 +138,7 @@ struct EffRandState {
 
 typedef struct EffRecordPool EffRecordPool;
 
-struct SdfAsset;
+struct sdfMat_t;
 
 /* Draw entries store six transform floats and expose the same bytes as three qwords. */
 union SdfDrawTransform {
@@ -156,7 +154,7 @@ struct SdfGsTextureStateValues {
 };
 
 /* Native 0xA0-byte draw-entry block allocated by SDF_ASSET_DRAW_ENTRY_BYTES. */
-struct SdfAssetEntry {
+struct sdfMatPacket_t {
     u32 pad00;             /* 0x00 */
     u32 unk04;             /* 0x04 */
     u32 unk08;             /* 0x08 */
@@ -177,10 +175,10 @@ struct SdfAssetEntry {
     u32 vifMscalCommand;   /* 0x9C: VIF MSCAL with microprogram index zero */
 };
 
-union SdfSubParam;
+union sdfMatUvwParm_t;
 
 /* Optional packed or five-float state block owned by an SdfAsset. */
-union SdfSubParam {
+union sdfMatUvwParm_t {
     struct {
         u64 unk0;
         u64 unk8;
@@ -202,11 +200,11 @@ union SdfSubParam {
     } transformInputs;
 };
 
-struct SdfTex;
+struct sdfTexHandle_t;
 
-struct SdfTexBuf;
+struct sdfTexPacket_t;
 
-struct SdfTexBuf {
+struct sdfTexPacket_t {
     s32 gifTagWord; /* Low GIFtag word; NLOOP occupies bits 0-14. */
     u32 gifTagControl; /* High GIFtag control word; one packed register. */
     u64 gifTagRegisters; /* Packed register list: A+D. */
@@ -219,15 +217,11 @@ struct SdfTexBuf {
 };
 
 /* Per-texture reference count and non-owning clone source (0x8). */
-struct SdfTexRef {
-    struct SdfTex *cloneSource; /* Borrowed source pointer; marks the shared-primary clone path. */
-    s32 refCount;
-};
 
 /* Native VRAM range descriptor (0x1C), shared by textures, graph buffers and streams. */
-struct SdfTexResource {
-    struct SdfTexResource *next; /* 0x00 */
-    struct SdfTexResource *prev; /* 0x04 */
+struct sdfGsMemSlice_t {
+    struct sdfGsMemSlice_t *prev; /* 0x00 */
+    struct sdfGsMemSlice_t *next; /* 0x04 */
     u32 allocationMode;         /* 0x08: known categories above; unknown values remain valid */
     u32 word;                   /* 0x0C: VRAM offset in 32-bit words */
     s32 size;                   /* 0x10: range length in 32-bit words */
@@ -239,14 +233,14 @@ struct SdfTexResource {
 /* Serialized byte consumed by the GS texture-state packet builder. */
 typedef u8 SdfTextureClampMode;
 
-struct SdfTex {
-    struct SdfTex *next;
-    struct SdfTex *prev;
-    SdfTexRef *reference;
+struct sdfTexHandle_t {
+    struct sdfTexHandle_t *prev;
+    struct sdfTexHandle_t *next;
+    struct sdfTexHandle_t *origin;
     s16 width;
     s16 height;
-    SdfTexResource *primaryResource;
-    SdfTexResource *secondaryResource;
+    sdfGsMemSlice_t *primaryResource;
+    sdfGsMemSlice_t *secondaryResource;
     u8 paletteCount;
     u8 clutFormat;
     u8 pixelFormat;
@@ -256,20 +250,20 @@ struct SdfTex {
     SdfTextureClampMode clampMode; /* 0x1F: 0xFF leaves GS CLAMP state zero; otherwise low nibble is copied. */
     s32 resourceKey;
     s32 battleTextureSlot;
-    SdfTexBuf *primaryBuffer;
-    SdfTexBuf *secondaryBuffer;
+    sdfTexPacket_t *primaryBuffer;
+    sdfTexPacket_t *secondaryBuffer;
     u8 *paletteData; /* 0x30: retained copy of the texture's palette colors. */
     s32 paletteDataSize; /* 0x34: palette byte count from sdfTexGetClutDataSize. */
     s32 unk38;
     u8 *intensityMap; /* 0x3C: lazily generated weighted-RGB intensity bytes. */
 };
 
-struct SdfAsset {
+struct sdfMat_t {
     u32 unk00; /* Word from the serialized asset-parameter header. */
     u16 unk04; /* Halfword from the serialized asset-parameter header. */
     u8 dirtyFlags; /* 0x06: pending state-group changes for the two draw entries */
     u8 pad07;
-    struct SdfAssetEntry *drawEntries[2]; /* 0x08: owned 0xA0-byte draw entries */
+    struct sdfMatPacket_t *drawEntries[2]; /* 0x08: owned 0xA0-byte draw entries */
     u32 primaryStateWordFirst; /* 0x10: first word set by primary-state updates */
     u32 primaryStateWordSecond; /* 0x14: second word set by primary-state updates */
     u32 secondaryColor; /* 0x18 */
@@ -277,25 +271,25 @@ struct SdfAsset {
     u32 primaryStateWordThird; /* 0x20 */
     u32 unk24;
     u32 primaryStateWordFourth; /* 0x28: retained as raw bits */
-    SdfTex *texture;
-    SdfTex *secondaryTexture; /* 0x30 */
+    sdfTexHandle_t *texture;
+    sdfTexHandle_t *secondaryTexture; /* 0x30 */
     u32 secondaryMode;       /* 0x34: secondary packet and palette selector */
-    SdfSubParam *primarySubParam; /* 0x38 */
-    SdfSubParam *secondarySubParam; /* 0x3C */
+    sdfMatUvwParm_t *primarySubParam; /* 0x38 */
+    sdfMatUvwParm_t *secondarySubParam; /* 0x3C */
     f32 scalarPairFirst; /* 0x40 */
     f32 scalarPairSecond; /* 0x44 */
 };
 
-struct SdfMemBlock;
+struct sdfMemHandle_t;
 
 /* Embedded command work at actor +0x20. Neither record is the whole owning
  * actor. */
-struct SdfMemBlock;
+struct sdfMemHandle_t;
 
 /* General-heap allocation descriptor (0x10); links bound the represented span. */
-struct SdfMemBlock {
-    struct SdfMemBlock *prev; /* 0x00 */
-    struct SdfMemBlock *next; /* 0x04 */
+struct sdfMemHandle_t {
+    struct sdfMemHandle_t *prev; /* 0x00 */
+    struct sdfMemHandle_t *next; /* 0x04 */
     s32 address;              /* 0x08: start of represented span */
     u16 state;                /* 0x0C: free, used, or end sentinel */
     s16 referenceCount;       /* 0x0E: -1 for sentinels */
@@ -312,8 +306,8 @@ typedef struct EffRecordPool {
     f32 scale;
     u8 *recordBase;
     u8 *auxRecordBase;
-    SdfAsset *resource;
-    SdfMemBlock *buffer;
+    sdfMat_t *resource;
+    sdfMemHandle_t *buffer;
 } EffRecordPool; /* 0x70 */
 
 struct EffRingColorSlot {
@@ -358,7 +352,7 @@ struct EffRingWork {
     f32 currentAxisOffset;
     f32 currentSideOffsetB;
     f32 currentSideOffsetA;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
     EffRecordPool *recordPool;
 };
 
@@ -400,7 +394,7 @@ struct PcpFlashAccumulatingWork {
     u32 updateCount;
     u32 tintColor;
     f32 renderScale;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
     EffRecordPool *resourceHandle;
 };
 
@@ -449,7 +443,7 @@ struct PcpFlashFadingOrbitWork {
     u32 updateCount;
     u32 tintColor;
     f32 renderScale;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
     EffRecordPool *resourceHandle;
 };
 
@@ -505,7 +499,7 @@ struct PcpFlashOffsetRadialWork {
     s32 updateCount;
     u32 tintColor;
     f32 renderScale;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
     EffRecordPool *resourceHandle;
 };
 
@@ -544,7 +538,7 @@ struct PcpFlashOrbitArcWork {
     f32 normalSpan;
     f32 upSpan;
     f32 acrossSpan;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
     EffRecordPool *resourceHandle;
 };
 
@@ -599,7 +593,7 @@ struct PcpFlashRadialStripWork {
     u32 updateCount;
     u32 tintColor;
     f32 renderScale;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
     EffRecordPool *resourceHandle;
 };
 
@@ -641,7 +635,7 @@ struct PcpFlashRadialTriangleWork {
     s32 updateCount;
     u32 tintColor;
     f32 renderScale;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
     EffRecordPool *resourceHandle;
 };
 
@@ -697,7 +691,7 @@ struct PcpFlashRotatingQuadWork {
     u32 updateCount;
     u32 tintColor;
     f32 renderScale;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
     EffRecordPool *resourceHandle;
 };
 
@@ -725,7 +719,7 @@ struct PcpFlashScalingOrbitWork {
     u32 updateCount;
     u32 tintColor;
     f32 renderScale;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
     EffRecordPool *resourceHandle;
 };
 
@@ -773,7 +767,7 @@ struct PcpFlashStreakWork {
     s32 updateCount;
     u32 tintColor;
     f32 renderScale;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
     EffRecordPool *resourceHandle;
 };
 
@@ -811,21 +805,21 @@ struct PcpFlashTrianglePulseWork {
     s32 updateCount;
     u32 tintColor;
     f32 renderScale;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
     EffRecordPool *resourceHandle;
 };
 
-/* RenderWare XYZ axis used by the native SDF matrix builders. */
-struct RwV3d {
+/* Three-component vector; the VU0 loaders read it as the xyz of a quadword. */
+struct sdfVector3_t {
     f32 x;
     f32 y;
     f32 z;
 };
 
-struct SdfListHead;
+struct sdfDrawTag_t;
 
-struct SdfListHead {
-    struct SdfListHead *nextList; /* CPU link between lists; first/last are DMA addresses. */
+struct sdfDrawTag_t {
+    struct sdfDrawTag_t *nextList; /* CPU link between lists; first/last are DMA addresses. */
     u32 first;
     u32 last;
     u32 unkC;
@@ -835,16 +829,16 @@ struct SdfListHead {
     u32 unk1C;
 };
 
-struct SdfPoolNode;
+struct sdfGrOt_t;
 
 /* Draw-surface pool entry (0x20); the SDK initializes and flushes this owner. */
-struct SdfPoolNode {
-    struct SdfPoolNode *next; /* 0x00 */
-    SdfListHead *first;       /* 0x04 */
-    SdfListHead *last;        /* 0x08 */
+struct sdfGrOt_t {
+    struct sdfGrOt_t *next; /* 0x00 */
+    sdfDrawTag_t *first;       /* 0x04 */
+    sdfDrawTag_t *last;        /* 0x08 */
     u32 unkC;
-    void (*append)(struct SdfPoolNode *, SdfListHead *);      /* 0x10 */
-    s32 (*prepend)(struct SdfPoolNode *, s32, SdfListHead *); /* 0x14 */
+    void (*append)(struct sdfGrOt_t *, sdfDrawTag_t *);      /* 0x10 */
+    s32 (*prepend)(struct sdfGrOt_t *, s32, sdfDrawTag_t *); /* 0x14 */
     u32 unk18;
     u32 unk1C;
 };
@@ -913,7 +907,7 @@ f32 dds3GetRandFloatA(EffRandState *state);
 
 extern u32 effMagaCylinderCalcColor(u32 color, u32 colorB);
 
-extern SdfPoolNode *D_0031F298[];
+extern sdfGrOt_t *D_0031F298[];
 
 extern u32 D_0031F250[];
 
@@ -937,52 +931,52 @@ extern EffPacketParams D_0056ACF8[];
 
 extern f32 effPCPFlashPolyRingExpHVertex[];
 
-extern SdfPoolNode *D_0031F228[];
+extern sdfGrOt_t *D_0031F228[];
 
-extern SdfPoolNode *D_0031F2A8[];
+extern sdfGrOt_t *D_0031F2A8[];
 
-extern SdfPoolNode *D_0031F238[];
+extern sdfGrOt_t *D_0031F238[];
 
 extern void *memcpy(void *dst, const void *src, u32 n);
 
 extern void *memset(void *, s32, u32);
 
-struct SdfMemBlock *sdfMemAllocDirect(s32 requestedBytes);
+struct sdfMemHandle_t *sdfMemAllocDirect(s32 requestedBytes);
 
 /* Reserve size bytes from the active packet buffer, rounded up to 16 bytes.
  * Returns the prior cursor as a 32-bit address; the buffer owns this storage. */
 s32 sdfGrAllocPacketBuff(s32 size);
 
-void sdfDrawTagLink(struct SdfListHead *list, u32 packetAddress);
+void sdfDrawTagLink(struct sdfDrawTag_t *list, u32 packetAddress);
 
 /* Load axis-angle rotation into VU0 vf28-vf31. */
-void SetRotateMatrixAxis(f32 angle, const RwV3d *axis);
+void SetRotateMatrixAxis(f32 angle, const sdfVector3_t *axis);
 
-void sdf3DPrimLinkMat(SdfListHead *packetList, SdfAsset *asset,
+void sdf3DPrimLinkMat(sdfDrawTag_t *packetList, sdfMat_t *asset,
                               s32 (*allocatePacket)(s32));
 
-void sdf3DPrimLinkTm(SdfListHead *packetList,
+void sdf3DPrimLinkTm(sdfDrawTag_t *packetList,
                            s32 (*allocatePacket)(s32));
 
-struct SdfAsset *sdfMatNew(void);
+struct sdfMat_t *sdfMatNew(void);
 
 f32 sdfCos(f32 angle);
 
-void sdfDrawTagInit(struct SdfListHead *list);
+void sdfDrawTagInit(struct sdfDrawTag_t *list);
 
-u32 sdfMemLock(struct SdfMemBlock *allocation);
+u32 sdfMemLock(struct sdfMemHandle_t *allocation);
 
-void sdfMatSetConstant(struct SdfAsset *asset, f32 value);
+void sdfMatSetConstant(struct sdfMat_t *asset, f32 value);
 
 f32 sdfSin(f32 angle);
 
-extern SdfPoolNode sdfGrOtTable[85];
+extern sdfGrOt_t sdfGrOtTable[85];
 
-#define effFlashOtNode ((SdfPoolNode *)&sdfGrOtTable[45])
+#define effFlashOtNode ((sdfGrOt_t *)&sdfGrOtTable[45])
 
 PcpFlashTrianglePulseWork *effPCPFlashPolySphere2Create(PcpFlashTrianglePulseParams *params)
 {
-    SdfMemBlock *allocation = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashPulseParticle) + sizeof(PcpFlashTrianglePulseWork));
+    sdfMemHandle_t *allocation = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashPulseParticle) + sizeof(PcpFlashTrianglePulseWork));
     PcpFlashTrianglePulseWork *work = (PcpFlashTrianglePulseWork *)sdfMemLock(allocation);
     EffRecordPool *record;
     u32 i;
@@ -1033,7 +1027,7 @@ INCLUDE_ASM(const s32, "effect/effPCPFlash", effPCPFlashPolySphere2PartSetVertex
 INCLUDE_ASM(const s32, "effect/effPCPFlash", effPCPFlashPolySphere2Draw);
 
 PcpFlashStreakWork *effPCPFlashPolySphereCreate(PcpFlashStreakParams *src) {
-    SdfMemBlock *handle = sdfMemAllocDirect(src->particleCount * sizeof(PcpFlashRotatingParticle) + sizeof(PcpFlashStreakWork));
+    sdfMemHandle_t *handle = sdfMemAllocDirect(src->particleCount * sizeof(PcpFlashRotatingParticle) + sizeof(PcpFlashStreakWork));
     PcpFlashStreakWork *work = (PcpFlashStreakWork *)sdfMemLock(handle);
     EffRecordPool *record;
     u32 range;
@@ -1131,7 +1125,7 @@ void effPCPFlashPolySpherePartRotate(PcpFlashStreakWork *work, s32 index, void *
     position[0] = part->position[0];
     position[1] = part->position[1];
     position[2] = part->position[2];
-    SetRotateMatrixAxis(part->rotationStep, (const RwV3d *)orientation);
+    SetRotateMatrixAxis(part->rotationStep, (const sdfVector3_t *)orientation);
     VU0_LOAD_VF10(position);
     VU0_ROTATE_VF10();
     VU0_STORE_VF10(position);
@@ -1495,7 +1489,7 @@ INCLUDE_ASM(const s32, "effect/effPCPFlash", effPCPFlashPolySphereExpDraw);
 
 PcpFlashRadialTriangleWork *effPCPFlashPolySphere2ExpCreate(PcpFlashRadialTriangleParams *params)
 {
-    SdfMemBlock *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashMotionParticle) + sizeof(PcpFlashRadialTriangleWork));
+    sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashMotionParticle) + sizeof(PcpFlashRadialTriangleWork));
     PcpFlashRadialTriangleWork *work = (PcpFlashRadialTriangleWork *)sdfMemLock(handle);
     EffRecordPool *record;
     u32 i;
@@ -1616,7 +1610,7 @@ void effPCPFlashPolySphere3PartSetVertex(PcpFlashRadialStripWork *work, s32 inde
     VEC3_SPLAT(inner, innerEdge);
     span = part->span;
     VEC3_SPLAT(size, span);
-    SetRotateMatrixAxis(part->angle, (const RwV3d *)view);
+    SetRotateMatrixAxis(part->angle, (const sdfVector3_t *)view);
     base[0] = 0;
     base[1] = 1.0f;
     base[2] = 0;
@@ -1726,7 +1720,7 @@ INCLUDE_ASM(const s32, "effect/effPCPFlash", effPCPFlashPolyRingExp2Draw);
 
 PcpFlashOffsetRadialWork *effPCPFlashPolyCircleCreate(PcpFlashOffsetRadialParams *params)
 {
-    SdfMemBlock *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashMotionParticle) + sizeof(PcpFlashOffsetRadialWork));
+    sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashMotionParticle) + sizeof(PcpFlashOffsetRadialWork));
     PcpFlashOffsetRadialWork *work = (PcpFlashOffsetRadialWork *)sdfMemLock(handle);
     EffRecordPool *record;
     u32 i;
@@ -1887,7 +1881,7 @@ INCLUDE_ASM(const s32, "effect/effPCPFlash", effPCPFlashPolyRingExpHDraw);
 
 EffRecordPool *dds3FlashPolyListCreate(u32 count) {
     EffRecordPool *pool;
-    SdfMemBlock *handle;
+    sdfMemHandle_t *handle;
     u8 *block;
     s32 vertexCount;
     s32 recordBytes;
@@ -1922,13 +1916,13 @@ INCLUDE_ASM(const s32, "effect/effPCPFlash", dds3FlashPolyListDelete);
 void dds3FlashPolyListDraw(EffRecordPool *work)
 {
     f32 matrix[EFF_MATRIX_WORD_COUNT] __attribute__((aligned(16)));
-    SdfListHead *list;
+    sdfDrawTag_t *list;
     s32 remaining;
     s32 fanCount;
     u64 *packet;
-    SdfListHead *stateList;
+    sdfDrawTag_t *stateList;
 
-    list = (SdfListHead *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
+    list = (sdfDrawTag_t *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
     sdfDrawTagInit(list);
     EE_MMI_UNIT_MATRIX(matrix);
     matrix[0] = work->scale;
@@ -1962,7 +1956,7 @@ void dds3FlashPolyListDraw(EffRecordPool *work)
     if (work->drawMode < EFF_DIRECT_SURFACE_COUNT) {
         D_0031F228[work->drawMode]->append(D_0031F228[work->drawMode], list);
     } else {
-        stateList = (SdfListHead *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
+        stateList = (sdfDrawTag_t *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
         sdfDrawTagInit(stateList);
         packet = (u64 *)sdfGrAllocPacketBuff(EFF_STATE_PACKET_BYTES);
         packet[4] = 6;
@@ -2001,7 +1995,7 @@ INCLUDE_ASM(const s32, "effect/effPCPFlash", dds3FlashPolyListSetScale);
 
 EffRecordPool *dds3FlashPolyList2Create(s32 triangleCount) {
     EffRecordPool *pool;
-    SdfMemBlock *handle;
+    sdfMemHandle_t *handle;
     u32 *block;
     s32 vertexCount;
     s32 positionWordCount;
@@ -2035,9 +2029,9 @@ INCLUDE_ASM(const s32, "effect/effPCPFlash", dds3FlashPolyList2Delete);
 void dds3FlashPolyList2Draw(EffRecordPool *pool)
 {
     f32 matrix[EFF_MATRIX_WORD_COUNT];
-    SdfListHead *packet = (SdfListHead *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
+    sdfDrawTag_t *packet = (sdfDrawTag_t *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
     s32 remainingVertices;
-    SdfPoolNode *surface;
+    sdfGrOt_t *surface;
 
     sdfDrawTagInit(packet);
     EE_MMI_UNIT_MATRIX(matrix);
@@ -2082,7 +2076,7 @@ void *dds3FlashPolyList2GetVC(EffRecordPool *group, s32 groupIndex) {
 
 EffRecordPool *dds3FlashPolyList3Create(s32 quadCount) {
     EffRecordPool *pool;
-    SdfMemBlock *handle;
+    sdfMemHandle_t *handle;
     u32 *block;
     s32 positionWordCount;
     s32 colorWordCount;
@@ -2114,9 +2108,9 @@ INCLUDE_ASM(const s32, "effect/effPCPFlash", dds3FlashPolyList3Delete);
 void dds3FlashPolyList3Draw(EffRecordPool *pool)
 {
     f32 matrix[EFF_MATRIX_WORD_COUNT];
-    SdfListHead *packet = (SdfListHead *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
+    sdfDrawTag_t *packet = (sdfDrawTag_t *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
     s32 remainingVertices;
-    SdfPoolNode *surface;
+    sdfGrOt_t *surface;
 
     sdfDrawTagInit(packet);
     EE_MMI_UNIT_MATRIX(matrix);
@@ -2171,13 +2165,13 @@ INCLUDE_ASM(const s32, "effect/effPCPFlash", dds3FlashPolyListHDelete);
 void dds3FlashPolyListHDraw(EffRecordPool *work)
 {
     f32 matrix[EFF_MATRIX_WORD_COUNT] __attribute__((aligned(16)));
-    SdfListHead *list;
+    sdfDrawTag_t *list;
     s32 remaining;
     s32 fanCount;
     u64 *packet;
-    SdfListHead *stateList;
+    sdfDrawTag_t *stateList;
 
-    list = (SdfListHead *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
+    list = (sdfDrawTag_t *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
     sdfDrawTagInit(list);
     VU0_COPY_MATRIX(matrix, work->matrix);
     matrix[12] = work->origin[0];
@@ -2208,7 +2202,7 @@ void dds3FlashPolyListHDraw(EffRecordPool *work)
     if (work->drawMode < EFF_DIRECT_SURFACE_COUNT) {
         D_0031F2A8[work->drawMode]->append(D_0031F2A8[work->drawMode], list);
     } else {
-        stateList = (SdfListHead *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
+        stateList = (sdfDrawTag_t *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
         sdfDrawTagInit(stateList);
         packet = (u64 *)sdfGrAllocPacketBuff(EFF_STATE_PACKET_BYTES);
         packet[4] = 6;
