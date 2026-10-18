@@ -70,6 +70,12 @@ INCLUDE_ASM(const s32, "file/fileManager", fileManagerProc);
 
 INCLUDE_ASM(const s32, "file/fileManager", fileSysInit);
 
+INCLUDE_SDATA(const s32, "file/fileManager", fileCallbackStatus);
+
+INCLUDE_SDATA(const s32, "file/fileManager", D_0055164C);
+
+INCLUDE_SDATA(const s32, "file/fileManager", D_00551650);
+
 INCLUDE_RODATA(const s32, "file/fileManager", D_00546900);
 
 INCLUDE_RODATA(const s32, "file/fileManager", D_00546918);
@@ -89,10 +95,4 @@ INCLUDE_RODATA(const s32, "file/fileManager", D_005485C8);
 INCLUDE_RODATA(const s32, "file/fileManager", D_00548690);
 
 INCLUDE_RODATA(const s32, "file/fileManager", D_00548758);
-
-INCLUDE_SDATA(const s32, "file/fileManager", fileCallbackStatus);
-
-INCLUDE_SDATA(const s32, "file/fileManager", D_0055164C);
-
-INCLUDE_SDATA(const s32, "file/fileManager", D_00551650);
 
