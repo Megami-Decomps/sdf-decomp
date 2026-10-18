@@ -1,39 +1,218 @@
 #include "common.h"
+#include "scr.h"
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrLoadScriptFile);
+extern s32 scrHandleCount;
+extern scrProcessWork_s *scrHandleFirst;
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrStartScriptProcess);
+extern s32 strcmp(const char *s1, const char *s2);
+
+extern dds3ProcessID_t *dds3StartProcess(char *name, s32 priority, s32 flag, s32 runtime,
+                                         s32 (*processfunc)(dds3ProcessID_t *id),
+                                         void (*shutdownfunc)(dds3ProcessID_t *id),
+                                         void *workdata);
+extern void *dds3GetProcessData(dds3ProcessID_t *id);
+extern void dds3SetProcessData(dds3ProcessID_t *id, void *data);
+
+extern sdfMemHandle_t *sdfDevLoadFileEx(char *name, void *topPtr, s32 *sizePtr);
+
+extern scrProcessWork_s *fldFlowParse(void *data, s32 messageHandle);
+extern scrProcessWork_s *scrPrintProcedureStart(scrHeader_t *header, scrTypeTable_t *typeTable,
+                                                scrProcTable_t *procTable,
+                                                scrLabelTable_t *labelTable, scrCode_u *code,
+                                                u8 *messageData, u8 *stringData, s32 procNo);
+extern void scrUnlinkHandle(scrProcessWork_s *pw);
+extern void sdfChipFreeDirect(void *ptr);
+extern void sdfMemFreeDirect(sdfMemHandle_t *handle);
+extern void itfMesMngRelease(s32 id);
+extern s32 dds3KillProcess(dds3ProcessID_t *id, s32 shutdowntimer);
+extern s32 printf(const char *fmt, ...);
+extern void datDebugPrintf(const char *fmt, ...);
+extern s32 scrTraceCode(scrProcessWork_s *pw);
+
+extern s32 scrScriptProcess(dds3ProcessID_t *id);
+void scrScriptShutdown(dds3ProcessID_t *id);
+
+scrProcessWork_s *scrLoadScriptFile(char *name, s32 messageHandle)
+{
+    sdfMemHandle_t *mem;
+    void *data;
+    scrProcessWork_s *pw;
+
+    mem = sdfDevLoadFileEx(name, &data, NULL);
+    if (data == NULL) {
+        return NULL;
+    }
+
+    pw = fldFlowParse(data, messageHandle);
+    if (pw != NULL) {
+        pw->MemHandle = mem;
+    }
+    return pw;
+}
+
+void scrStartScriptProcess(s32 priority, scrProcessWork_s *pw)
+{
+    pw->ProcessID = dds3StartProcess((char *)pw->ProcTable[pw->StartProc].Name, priority, 1, 1,
+                                     scrScriptProcess, scrScriptShutdown, pw);
+}
 
 INCLUDE_ASM(const s32, "script/scrScriptProcess", dds3GlobalWorkClearFlags);
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrStartScriptByName);
+void scrStartScriptByName(s32 priority, char *name, s32 messageHandle)
+{
+    scrStartScriptProcess(priority, scrLoadScriptFile(name, messageHandle));
+}
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scr_109D80);
+scrProcessWork_s *scr_109D80(char *name)
+{
+    return scrLoadScriptFile(name, 0);
+}
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrStartScript2);
+void scrStartScript2(s32 priority, void *data, s32 messageHandle)
+{
+    scrStartScriptProcess(priority, fldFlowParse(data, messageHandle));
+}
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scr_109DD0);
+scrProcessWork_s *scr_109DD0(void *data)
+{
+    return fldFlowParse(data, 0);
+}
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrRunScriptEx);
+void scrRunScriptEx(s32 priority, scrHeader_t *header, scrTypeTable_t *typeTable,
+                    scrProcTable_t *procTable, scrLabelTable_t *labelTable, scrCode_u *code,
+                    u8 *messageData, u8 *stringData, s32 procNo)
+{
+    scrStartScriptProcess(priority, scrPrintProcedureStart(header, typeTable, procTable, labelTable,
+                                                           code, messageData, stringData, procNo));
+}
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scr_109E38);
+scrProcessWork_s *scr_109E38(scrHeader_t *header, scrTypeTable_t *typeTable,
+                             scrProcTable_t *procTable, scrLabelTable_t *labelTable,
+                             scrCode_u *code, u8 *messageData, u8 *stringData)
+{
+    return scrPrintProcedureStart(header, typeTable, procTable, labelTable, code, messageData,
+                                  stringData, 0);
+}
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrPrintProcedureEnd);
+void scrPrintProcedureEnd(scrProcessWork_s *pw)
+{
+    printf("procedure end <%s>\n", pw->ProcTable[pw->StartProc].Name);
+    datDebugPrintf("end <%s>\n", pw->ProcTable[pw->StartProc].Name);
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrAllReleaseScript);
+    if (pw->LocalInt != NULL) {
+        sdfChipFreeDirect(pw->LocalInt);
+    }
+    if (pw->LocalFloat != NULL) {
+        sdfChipFreeDirect(pw->LocalFloat);
+    }
+    if (pw->MesHandle >= 0) {
+        itfMesMngRelease(pw->MesHandle);
+    }
+    if (pw->MemHandle != NULL) {
+        sdfMemFreeDirect(pw->MemHandle);
+    }
+
+    scrUnlinkHandle(pw);
+    sdfChipFreeDirect(pw);
+}
+
+void scrAllReleaseScript(void)
+{
+    scrProcessWork_s *pw;
+    scrProcessWork_s *next;
+
+    printf("before = %d\n", scrHandleCount);
+
+    pw = scrHandleFirst;
+    while (pw != NULL) {
+        printf("scrAllReleaseScript <%s>\n", pw->Name);
+        next = pw->next;
+        if (pw->ProcessID != NULL) {
+            printf("dds3KillProcess\n");
+            dds3KillProcess(pw->ProcessID, 0);
+        } else {
+            printf("scrReleaseScript\n");
+            scrPrintProcedureEnd(pw);
+        }
+        pw = next;
+    }
+
+    printf("after = %d\n", scrHandleCount);
+}
 
 INCLUDE_ASM(const s32, "script/scrScriptProcess", func_00109FD0);
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrSearchScriptName);
+scrProcessWork_s *scrSearchScriptName(char *name)
+{
+    scrProcessWork_s *pw;
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrSearchProcedureName);
+    for (pw = scrHandleFirst; pw != NULL; pw = pw->next) {
+        if (strcmp(name, (char *)pw->Name) == 0) {
+            return pw;
+        }
+    }
+    return NULL;
+}
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrSetUserData);
+s32 scrSearchProcedureName(void *scrdata, char *procName)
+{
+    scrHeader_t *header = scrdata;
+    scrTypeTable_t *typeTable;
+    scrProcTable_t *procTable = NULL;
+    s32 i;
+    s32 no;
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrGetUserData);
+    if (header == NULL) {
+        return -1;
+    }
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrScriptShutdown);
+    typeTable = (scrTypeTable_t *)(header + 1);
+    for (i = 0; i < header->TypeTableCount; i++) {
+        if (typeTable[i].Type == SCR_DATATYPE_PROCTABLE) {
+            procTable = (scrProcTable_t *)((u8 *)header + typeTable[i].ItemAddress);
+            break;
+        }
+    }
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrRunScript);
+    if (procTable == NULL) {
+        return -1;
+    }
+
+    for (no = 0; no < typeTable[i].ItemCount; no++) {
+        if (strcmp((char *)procTable[no].Name, procName) == 0) {
+            return no;
+        }
+    }
+    return -1;
+}
+
+void scrSetUserData(dds3ProcessID_t *id, void *data)
+{
+    scrProcessWork_s *pw = dds3GetProcessData(id);
+
+    pw->data = data;
+}
+
+void *scrGetUserData(dds3ProcessID_t *id)
+{
+    scrProcessWork_s *pw = dds3GetProcessData(id);
+
+    return pw->data;
+}
+
+void scrScriptShutdown(dds3ProcessID_t *id)
+{
+    scrProcessWork_s *pw = dds3GetProcessData(id);
+
+    if (pw != NULL) {
+        scrPrintProcedureEnd(pw);
+    }
+    dds3SetProcessData(id, NULL);
+}
+
+s32 scrRunScript(scrProcessWork_s *pw)
+{
+    return scrTraceCode(pw);
+}
 
 INCLUDE_ASM(const s32, "script/scrScriptProcess", scrScriptProcess);
