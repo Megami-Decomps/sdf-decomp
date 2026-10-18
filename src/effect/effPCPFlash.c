@@ -1149,7 +1149,7 @@ void effPCPFlashPolySphere2Delete(PcpFlashTrianglePulseWork *work)
 }
 
 void effPCPFlashPolySphere2SetPosition(void *dst, void *src) {
-    SDF_VU0__COPYVECTOR(dst, src);
+    SDF_VU0_COPYVECTOR(dst, src);
 }
 
 void effPCPFlashPolySphere2SetColor(PcpFlashTrianglePulseWork *work, u32 value)
@@ -1193,28 +1193,28 @@ void effPCPFlashPolySphere2PartSetVertex(PcpFlashTrianglePulseWork *work, s32 in
     base[0] = 0;
     base[1] = 1.0f;
     base[2] = 0;
-    SDF_VU0__LOADVECTOR(base);
-    SDF_VU0__LOADVECTOR_B(view);
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__STOREVECTOR(base);
+    SDF_VU0_LOADVECTOR(base);
+    SDF_VU0_LOADVECTOR_B(view);
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_STOREVECTOR(base);
     SetRotateMatrixAxis(angle, (const sdfVector3_t *)view);
-    SDF_VU0__LOADVECTOR(base);
-    SDF_VU0__APPLYMATRIX_XYZ();
-    SDF_VU0__LOADVECTOR_B(size);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__LOADVECTOR(effPCPFlashPolySphere2Vertex);
-    SDF_VU0__STOREVECTOR(quad + 8);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad);
+    SDF_VU0_LOADVECTOR(base);
+    SDF_VU0_APPLYMATRIX_XYZ();
+    SDF_VU0_LOADVECTOR_B(size);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(effPCPFlashPolySphere2Vertex);
+    SDF_VU0_STOREVECTOR(quad + 8);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad);
     SetRotateMatrixAxis(angle + step, (const sdfVector3_t *)view);
-    SDF_VU0__LOADVECTOR(base);
-    SDF_VU0__APPLYMATRIX_XYZ();
-    SDF_VU0__LOADVECTOR_B(size);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__LOADVECTOR_B(effPCPFlashPolySphere2Vertex);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 4);
+    SDF_VU0_LOADVECTOR(base);
+    SDF_VU0_APPLYMATRIX_XYZ();
+    SDF_VU0_LOADVECTOR_B(size);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_LOADVECTOR_B(effPCPFlashPolySphere2Vertex);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 4);
 }
 
 void effPCPFlashPolySphere2Draw(PcpFlashTrianglePulseWork *work) {
@@ -1230,11 +1230,11 @@ void effPCPFlashPolySphere2Draw(PcpFlashTrianglePulseWork *work) {
     PcpFlashPulseParticle *part;
     EffRecordPool *handle;
 
-    SDF_VU0__LOADVECTOR(aViewTarget);
-    SDF_VU0__LOADVECTOR_B(aViewEye);
-        SDF_VU0__SUBVECTOR();
-        SDF_VU0__NORMALIZE();
-    SDF_VU0__STOREVECTOR(axis);
+    SDF_VU0_LOADVECTOR(aViewTarget);
+    SDF_VU0_LOADVECTOR_B(aViewEye);
+        SDF_VU0_SUBVECTOR();
+        SDF_VU0_NORMALIZE();
+    SDF_VU0_STOREVECTOR(axis);
     lifetime = work->lifetime;
     particleCount = work->particleCount;
     part = work->parts;
@@ -1337,7 +1337,7 @@ void effPCPFlashPolySphereDelete(PcpFlashStreakWork *work)
 }
 
 void effPCPFlashPolySphereSetPosition(void *dst, void *src) {
-    SDF_VU0__COPYVECTOR(dst, src);
+    SDF_VU0_COPYVECTOR(dst, src);
 }
 
 void effPCPFlashPolySphereSetColor(PcpFlashStreakWork *work, u32 value)
@@ -1383,11 +1383,11 @@ void effPCPFlashPolySpherePartInit(PcpFlashStreakWork *work, s32 index, void *or
     direction[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
     /* Two plain quadword loads, no memory clobber: retail keeps `direction`
      * and `orientation` CSE'd across them. */
-    SDF_VU0__LOADVECTOR(direction);
-    SDF_VU0__LOADVECTOR_B(orientation);
-    SDF_VU0__OUTERPRODUCT();
-        SDF_VU0__NORMALIZE();;
-    SDF_VU0__STOREVECTOR(direction);
+    SDF_VU0_LOADVECTOR(direction);
+    SDF_VU0_LOADVECTOR_B(orientation);
+    SDF_VU0_OUTERPRODUCT();
+        SDF_VU0_NORMALIZE();;
+    SDF_VU0_STOREVECTOR(direction);
     part->position[0] = direction[0];
     part->position[1] = direction[1];
     part->position[2] = direction[2];
@@ -1424,38 +1424,38 @@ void effPCPFlashPolySpherePartSetVertex(PcpFlashStreakWork *work, s32 index, voi
     center[0] = part->position[0];
     center[1] = part->position[1];
     center[2] = part->position[2];
-    SDF_VU0__LOADVECTOR(center);
-    SDF_VU0__LOADVECTOR_B(view);
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__LOADVECTOR(across);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(across);
-    SDF_VU0__LOADVECTOR(up);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(up);
-    SDF_VU0__COPYVECTOR_C_TO_A();
-    SDF_VU0__LOADVECTOR_B(scale);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__LOADVECTOR(effPCPFlashPolySphereVertex);
-    SDF_VU0__LOADVECTOR_B(up);
-    SDF_VU0__STOREVECTOR(quad + 12);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 8);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 16);
-    SDF_VU0__LOADVECTOR(effPCPFlashPolySphereVertex);
-    SDF_VU0__LOADVECTOR_B(across);
-    SDF_VU0__ADDVECTOR_A_C();
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 4);
+    SDF_VU0_LOADVECTOR(center);
+    SDF_VU0_LOADVECTOR_B(view);
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(across);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(across);
+    SDF_VU0_LOADVECTOR(up);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(up);
+    SDF_VU0_COPYVECTOR_C_TO_A();
+    SDF_VU0_LOADVECTOR_B(scale);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR(effPCPFlashPolySphereVertex);
+    SDF_VU0_LOADVECTOR_B(up);
+    SDF_VU0_STOREVECTOR(quad + 12);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 8);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 16);
+    SDF_VU0_LOADVECTOR(effPCPFlashPolySphereVertex);
+    SDF_VU0_LOADVECTOR_B(across);
+    SDF_VU0_ADDVECTOR_A_C();
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 4);
 }
 
 void effPCPFlashPolySpherePartRotate(PcpFlashStreakWork *work, s32 index, void *orientation)
@@ -1467,9 +1467,9 @@ void effPCPFlashPolySpherePartRotate(PcpFlashStreakWork *work, s32 index, void *
     position[1] = part->position[1];
     position[2] = part->position[2];
     SetRotateMatrixAxis(part->rotationStep, (const sdfVector3_t *)orientation);
-    SDF_VU0__LOADVECTOR(position);
-    SDF_VU0__APPLYMATRIX_XYZ();
-    SDF_VU0__STOREVECTOR(position);
+    SDF_VU0_LOADVECTOR(position);
+    SDF_VU0_APPLYMATRIX_XYZ();
+    SDF_VU0_STOREVECTOR(position);
     part->position[0] = position[0];
     part->position[1] = position[1];
     part->position[2] = position[2];
@@ -1489,10 +1489,10 @@ void effPCPFlashPolySphereDraw(PcpFlashStreakWork *work) {
     PcpFlashRotatingParticle *part;
     EffRecordPool *handle;
 
-    SDF_VU0__LOADVECTOR(aViewTarget);
-    SDF_VU0__LOADVECTOR_B(aViewEye);
-        SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(&axis);
+    SDF_VU0_LOADVECTOR(aViewTarget);
+    SDF_VU0_LOADVECTOR_B(aViewEye);
+        SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(&axis);
     lifetime = work->lifetime;
     count = work->particleCount;
     part = work->parts;
@@ -1606,7 +1606,7 @@ void effPCPFlashPolyRingDelete(PcpFlashScalingOrbitWork *work)
 }
 
 void effPCPFlashPolyRingSetPosition(void *dst, void *src) {
-    SDF_VU0__COPYVECTOR(dst, src);
+    SDF_VU0_COPYVECTOR(dst, src);
 }
 
 void effPCPFlashPolyRingSetColor(PcpFlashScalingOrbitWork *work, u32 value)
@@ -1675,40 +1675,40 @@ void effPCPFlashPolyRingPartSetVertex(PcpFlashScalingOrbitWork *work, s32 index)
     effPCPFlashPolyRingVertex[0] = unit[0] * height;
     effPCPFlashPolyRingVertex[1] = height + -1.0f;
     effPCPFlashPolyRingVertex[2] = sinv * height;
-    SDF_VU0__LOADVECTOR(effPCPFlashPolyRingVertex);
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__LOADVECTOR(unit);
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__LOADVECTOR(scaleB);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(scaleB);
-    SDF_VU0__LOADVECTOR(scaleC);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(scaleC);
-    SDF_VU0__COPYVECTOR_C_TO_A();
-    SDF_VU0__LOADVECTOR_B(scaleA);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__LOADVECTOR(offset);
-    SDF_VU0__LOADVECTOR_B(scaleC);
-    SDF_VU0__STOREVECTOR(quad + 12);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 8);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 16);
-    SDF_VU0__LOADVECTOR(offset);
-    SDF_VU0__LOADVECTOR_B(scaleB);
-    SDF_VU0__ADDVECTOR_A_C();
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 4);
+    SDF_VU0_LOADVECTOR(effPCPFlashPolyRingVertex);
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR(unit);
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(scaleB);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(scaleB);
+    SDF_VU0_LOADVECTOR(scaleC);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(scaleC);
+    SDF_VU0_COPYVECTOR_C_TO_A();
+    SDF_VU0_LOADVECTOR_B(scaleA);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR(offset);
+    SDF_VU0_LOADVECTOR_B(scaleC);
+    SDF_VU0_STOREVECTOR(quad + 12);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 8);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 16);
+    SDF_VU0_LOADVECTOR(offset);
+    SDF_VU0_LOADVECTOR_B(scaleB);
+    SDF_VU0_ADDVECTOR_A_C();
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 4);
 }
 
 void effPCPFlashPolyRingPartRotate(PcpFlashScalingOrbitWork *work, s32 index)
@@ -1845,7 +1845,7 @@ void effPCPFlashPolyPipeDelete(PcpFlashAccumulatingWork *work)
 }
 
 void effPCPFlashPolyPipeSetPosition(void *dst, void *src) {
-    SDF_VU0__COPYVECTOR(dst, src);
+    SDF_VU0_COPYVECTOR(dst, src);
 }
 
 void effPCPFlashPolyPipeSetColor(PcpFlashAccumulatingWork *work, u32 value)
@@ -1918,50 +1918,50 @@ void effPCPFlashPolyPipePartSetVertex(PcpFlashAccumulatingWork *work, s32 index)
     effPCPFlashPolyPipeVertex[0] = unit[0] * height;
     effPCPFlashPolyPipeVertex[1] = height + -1.0f;
     effPCPFlashPolyPipeVertex[2] = sinv * height;
-    SDF_VU0__LOADVECTOR(effPCPFlashPolyPipeVertex);
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__LOADVECTOR(unit);
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__LOADVECTOR(size);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(size);
-    SDF_VU0__COPYVECTOR_C_TO_A();
-    SDF_VU0__LOADVECTOR_B(outer);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(outer);
-    SDF_VU0__COPYVECTOR_C_TO_A();
-    SDF_VU0__LOADVECTOR_B(inner);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(inner);
-    SDF_VU0__COPYVECTOR_C_TO_A();
-    SDF_VU0__LOADVECTOR_B(middle);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__LOADVECTOR(offset);
-    SDF_VU0__ADDVECTOR_A_C();
-    SDF_VU0__LOADVECTOR_B(size);
-    SDF_VU0__STOREVECTOR(quad + 8);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 4);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 12);
-    SDF_VU0__LOADVECTOR(offset);
-    SDF_VU0__LOADVECTOR_B(outer);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad);
+    SDF_VU0_LOADVECTOR(effPCPFlashPolyPipeVertex);
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR(unit);
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(size);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(size);
+    SDF_VU0_COPYVECTOR_C_TO_A();
+    SDF_VU0_LOADVECTOR_B(outer);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(outer);
+    SDF_VU0_COPYVECTOR_C_TO_A();
+    SDF_VU0_LOADVECTOR_B(inner);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(inner);
+    SDF_VU0_COPYVECTOR_C_TO_A();
+    SDF_VU0_LOADVECTOR_B(middle);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR(offset);
+    SDF_VU0_ADDVECTOR_A_C();
+    SDF_VU0_LOADVECTOR_B(size);
+    SDF_VU0_STOREVECTOR(quad + 8);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 4);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 12);
+    SDF_VU0_LOADVECTOR(offset);
+    SDF_VU0_LOADVECTOR_B(outer);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad);
     mirror = dds3FlashPolyList3GetVertex(work->resourceHandle, index * 2 + 1);
-    SDF_VU0__COPYVECTOR(mirror + 8, quad + 8);
-    SDF_VU0__COPYVECTOR(mirror + 4, quad + 4);
-    SDF_VU0__COPYVECTOR(mirror + 12, quad + 12);
-    SDF_VU0__LOADVECTOR(offset);
-    SDF_VU0__LOADVECTOR_B(inner);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(mirror);
+    SDF_VU0_COPYVECTOR(mirror + 8, quad + 8);
+    SDF_VU0_COPYVECTOR(mirror + 4, quad + 4);
+    SDF_VU0_COPYVECTOR(mirror + 12, quad + 12);
+    SDF_VU0_LOADVECTOR(offset);
+    SDF_VU0_LOADVECTOR_B(inner);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(mirror);
 }
 
 void effPCPFlashPolyPipePartRotate(PcpFlashAccumulatingWork *work, s32 index)
@@ -2096,7 +2096,7 @@ void effPCPFlashPolyRingExpDelete(PcpFlashOrbitArcWork *work)
 }
 
 void effPCPFlashPolyRingExpSetPosition(void *dst, void *src) {
-    SDF_VU0__COPYVECTOR(dst, src);
+    SDF_VU0_COPYVECTOR(dst, src);
 }
 
 void effPCPFlashPolyRingExpSetColor(PcpFlashOrbitArcWork *work, u32 value)
@@ -2158,40 +2158,40 @@ void effPCPFlashPolyRingExpPartSetVertex(PcpFlashOrbitArcWork *work, s32 index)
     effPCPFlashPolyRingExpVertex[0] = unit[0] * height;
     effPCPFlashPolyRingExpVertex[1] = height + -1.0f;
     effPCPFlashPolyRingExpVertex[2] = sinv * height;
-    SDF_VU0__LOADVECTOR(effPCPFlashPolyRingExpVertex);
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__LOADVECTOR(unit);
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__LOADVECTOR(scaleB);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(scaleB);
-    SDF_VU0__LOADVECTOR(scaleC);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(scaleC);
-    SDF_VU0__COPYVECTOR_C_TO_A();
-    SDF_VU0__LOADVECTOR_B(scaleA);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__LOADVECTOR(offset);
-    SDF_VU0__LOADVECTOR_B(scaleC);
-    SDF_VU0__STOREVECTOR(quad + 12);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 8);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 16);
-    SDF_VU0__LOADVECTOR(offset);
-    SDF_VU0__LOADVECTOR_B(scaleB);
-    SDF_VU0__ADDVECTOR_A_C();
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 4);
+    SDF_VU0_LOADVECTOR(effPCPFlashPolyRingExpVertex);
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR(unit);
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(scaleB);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(scaleB);
+    SDF_VU0_LOADVECTOR(scaleC);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(scaleC);
+    SDF_VU0_COPYVECTOR_C_TO_A();
+    SDF_VU0_LOADVECTOR_B(scaleA);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR(offset);
+    SDF_VU0_LOADVECTOR_B(scaleC);
+    SDF_VU0_STOREVECTOR(quad + 12);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 8);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 16);
+    SDF_VU0_LOADVECTOR(offset);
+    SDF_VU0_LOADVECTOR_B(scaleB);
+    SDF_VU0_ADDVECTOR_A_C();
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 4);
 }
 
 void effPCPFlashPolyRingExpPartRotate(PcpFlashOrbitArcWork *work, s32 index)
@@ -2350,7 +2350,7 @@ void effPCPFlashPolySphereExpDelete(PcpFlashRotatingQuadWork *work)
 }
 
 void effPCPFlashPolySphereExpSetPosition(void *dst, void *src) {
-    SDF_VU0__COPYVECTOR(dst, src);
+    SDF_VU0_COPYVECTOR(dst, src);
 }
 
 void effPCPFlashPolySphereExpSetColor(PcpFlashRotatingQuadWork *work, u32 value)
@@ -2425,42 +2425,42 @@ void effPCPFlashPolySphereExpPartSetVertex(PcpFlashRotatingQuadWork *work, s32 i
     base[0] = 0;
     base[1] = 1.0f;
     base[2] = 0;
-    SDF_VU0__LOADVECTOR(base);
-    SDF_VU0__LOADVECTOR_B(view);
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__APPLYMATRIX_XYZ();
-    SDF_VU0__LOADVECTOR_B(view);
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__LOADVECTOR(across);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(across);
-    SDF_VU0__LOADVECTOR(up);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(up);
-    SDF_VU0__COPYVECTOR_C_TO_A();
-    SDF_VU0__LOADVECTOR_B(scale);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__LOADVECTOR(effPCPFlashPolySphereExpVertex);
-    SDF_VU0__LOADVECTOR_B(up);
-    SDF_VU0__STOREVECTOR(quad + 12);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 8);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 16);
-    SDF_VU0__LOADVECTOR(effPCPFlashPolySphereExpVertex);
-    SDF_VU0__LOADVECTOR_B(across);
-    SDF_VU0__ADDVECTOR_A_C();
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 4);
+    SDF_VU0_LOADVECTOR(base);
+    SDF_VU0_LOADVECTOR_B(view);
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_APPLYMATRIX_XYZ();
+    SDF_VU0_LOADVECTOR_B(view);
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(across);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(across);
+    SDF_VU0_LOADVECTOR(up);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(up);
+    SDF_VU0_COPYVECTOR_C_TO_A();
+    SDF_VU0_LOADVECTOR_B(scale);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR(effPCPFlashPolySphereExpVertex);
+    SDF_VU0_LOADVECTOR_B(up);
+    SDF_VU0_STOREVECTOR(quad + 12);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 8);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 16);
+    SDF_VU0_LOADVECTOR(effPCPFlashPolySphereExpVertex);
+    SDF_VU0_LOADVECTOR_B(across);
+    SDF_VU0_ADDVECTOR_A_C();
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 4);
 }
 
 void effPCPFlashPolySphereExpPartRotate(PcpFlashRotatingQuadWork *work, s32 index, void *orientation)
@@ -2486,10 +2486,10 @@ void effPCPFlashPolySphereExpDraw(PcpFlashRotatingQuadWork *work) {
     PcpFlashRotatingQuadParticle *part;
     EffRecordPool *handle;
 
-    SDF_VU0__LOADVECTOR(aViewTarget);
-    SDF_VU0__LOADVECTOR_B(aViewEye);
-        SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(&axis);
+    SDF_VU0_LOADVECTOR(aViewTarget);
+    SDF_VU0_LOADVECTOR_B(aViewEye);
+        SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(&axis);
     count = work->particleCount;
     part = work->parts;
     lifetime = work->lifetime;
@@ -2600,7 +2600,7 @@ void effPCPFlashPolySphere2ExpDelete(PcpFlashRadialTriangleWork *work)
 }
 
 void effPCPFlashPolySphere2ExpSetPosition(void *dst, void *src) {
-    SDF_VU0__COPYVECTOR(dst, src);
+    SDF_VU0_COPYVECTOR(dst, src);
 }
 
 void effPCPFlashPolySphere2ExpSetColor(PcpFlashRadialTriangleWork *work, u32 value)
@@ -2645,27 +2645,27 @@ void effPCPFlashPolySphere2ExpPartSetVertex(PcpFlashRadialTriangleWork *work, s3
     base[0] = 0;
     base[1] = 1.0f;
     base[2] = 0;
-    SDF_VU0__LOADVECTOR(base);
-    SDF_VU0__LOADVECTOR_B(view);
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__STOREVECTOR(base);
-    SDF_VU0__APPLYMATRIX_XYZ();
-    SDF_VU0__LOADVECTOR_B(size);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__LOADVECTOR(def_dir);
-    SDF_VU0__STOREVECTOR(quad + 8);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad);
+    SDF_VU0_LOADVECTOR(base);
+    SDF_VU0_LOADVECTOR_B(view);
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_STOREVECTOR(base);
+    SDF_VU0_APPLYMATRIX_XYZ();
+    SDF_VU0_LOADVECTOR_B(size);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(def_dir);
+    SDF_VU0_STOREVECTOR(quad + 8);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad);
     SetRotateMatrixAxis(angle + step, (const sdfVector3_t *)view);
-    SDF_VU0__LOADVECTOR(base);
-    SDF_VU0__APPLYMATRIX_XYZ();
-    SDF_VU0__LOADVECTOR_B(size);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__LOADVECTOR_B(def_dir);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 4);
+    SDF_VU0_LOADVECTOR(base);
+    SDF_VU0_APPLYMATRIX_XYZ();
+    SDF_VU0_LOADVECTOR_B(size);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_LOADVECTOR_B(def_dir);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 4);
 }
 
 void effPCPFlashPolySphere2ExpDraw(PcpFlashRadialTriangleWork *work) {
@@ -2684,11 +2684,11 @@ void effPCPFlashPolySphere2ExpDraw(PcpFlashRadialTriangleWork *work) {
     PcpFlashMotionParticle *part;
     EffRecordPool *handle;
 
-    SDF_VU0__LOADVECTOR(aViewTarget);
-    SDF_VU0__LOADVECTOR_B(aViewEye);
-        SDF_VU0__SUBVECTOR();
-        SDF_VU0__NORMALIZE();
-    SDF_VU0__STOREVECTOR(&axis);
+    SDF_VU0_LOADVECTOR(aViewTarget);
+    SDF_VU0_LOADVECTOR_B(aViewEye);
+        SDF_VU0_SUBVECTOR();
+        SDF_VU0_NORMALIZE();
+    SDF_VU0_STOREVECTOR(&axis);
     count = work->particleCount;
     part = work->parts;
     lifetime = work->lifetime;
@@ -2796,7 +2796,7 @@ void effPCPFlashPolySphere3Delete(PcpFlashRadialStripWork *work)
 }
 
 void effPCPFlashPolySphere3SetPosition(void *dst, void *src) {
-    SDF_VU0__COPYVECTOR(dst, src);
+    SDF_VU0_COPYVECTOR(dst, src);
 }
 
 void effPCPFlashPolySphere3SetColor(PcpFlashRadialStripWork *work, u32 value)
@@ -2870,50 +2870,50 @@ void effPCPFlashPolySphere3PartSetVertex(PcpFlashRadialStripWork *work, s32 inde
     base[0] = 0;
     base[1] = 1.0f;
     base[2] = 0;
-    SDF_VU0__LOADVECTOR(base);
-    SDF_VU0__LOADVECTOR_B(view);
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__APPLYMATRIX_XYZ();
-    SDF_VU0__COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR(base);
+    SDF_VU0_LOADVECTOR_B(view);
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_APPLYMATRIX_XYZ();
+    SDF_VU0_COPYVECTOR_A_TO_C();
     /* retail multiplies the (never written) `spare` slot here and stores it back */
-    SDF_VU0__LOADVECTOR_B(spare);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(spare);
-    SDF_VU0__COPYVECTOR_C_TO_A();
-    SDF_VU0__LOADVECTOR_B(view);
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__LOADVECTOR(size);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(size);
-    SDF_VU0__COPYVECTOR_C_TO_A();
-    SDF_VU0__LOADVECTOR_B(outer);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(outer);
-    SDF_VU0__COPYVECTOR_C_TO_A();
-    SDF_VU0__LOADVECTOR_B(inner);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(inner);
-    SDF_VU0__COPYVECTOR_C_TO_A();
-    SDF_VU0__LOADVECTOR_B(middle);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__LOADVECTOR_B(size);
-    SDF_VU0__STOREVECTOR(quad + 8);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 4);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 12);
-    SDF_VU0__LOADVECTOR(outer);
-    SDF_VU0__STOREVECTOR(quad);
+    SDF_VU0_LOADVECTOR_B(spare);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(spare);
+    SDF_VU0_COPYVECTOR_C_TO_A();
+    SDF_VU0_LOADVECTOR_B(view);
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(size);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(size);
+    SDF_VU0_COPYVECTOR_C_TO_A();
+    SDF_VU0_LOADVECTOR_B(outer);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(outer);
+    SDF_VU0_COPYVECTOR_C_TO_A();
+    SDF_VU0_LOADVECTOR_B(inner);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(inner);
+    SDF_VU0_COPYVECTOR_C_TO_A();
+    SDF_VU0_LOADVECTOR_B(middle);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_LOADVECTOR_B(size);
+    SDF_VU0_STOREVECTOR(quad + 8);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 4);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 12);
+    SDF_VU0_LOADVECTOR(outer);
+    SDF_VU0_STOREVECTOR(quad);
     mirror = (f32 *)dds3FlashPolyList3GetVertex(work->resourceHandle, index * 2 + 1);
-    SDF_VU0__COPYVECTOR(mirror + 8, quad + 8);
-    SDF_VU0__COPYVECTOR(mirror + 4, quad + 4);
-    SDF_VU0__COPYVECTOR(mirror + 12, quad + 12);
-    SDF_VU0__LOADVECTOR(inner);
-    SDF_VU0__STOREVECTOR(mirror);
+    SDF_VU0_COPYVECTOR(mirror + 8, quad + 8);
+    SDF_VU0_COPYVECTOR(mirror + 4, quad + 4);
+    SDF_VU0_COPYVECTOR(mirror + 12, quad + 12);
+    SDF_VU0_LOADVECTOR(inner);
+    SDF_VU0_STOREVECTOR(mirror);
 }
 
 void effPCPFlashPolySphere3PartRotate(PcpFlashRadialStripWork *work, s32 index, void *orientation)
@@ -2941,10 +2941,10 @@ void effPCPFlashPolySphere3Draw(PcpFlashRadialStripWork *work) {
     PcpFlashRadialStripParticle *part;
     EffRecordPool *handle;
 
-    SDF_VU0__LOADVECTOR(aViewTarget);
-    SDF_VU0__LOADVECTOR_B(aViewEye);
-        SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(&axis);
+    SDF_VU0_LOADVECTOR(aViewTarget);
+    SDF_VU0_LOADVECTOR_B(aViewEye);
+        SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(&axis);
     count = work->particleCount;
     part = work->parts;
     lifetime = work->lifetime;
@@ -3061,7 +3061,7 @@ void effPCPFlashPolyRingExp2Delete(PcpFlashFadingOrbitWork *work)
 }
 
 void effPCPFlashPolyRingExp2SetPosition(void *dst, void *src) {
-    SDF_VU0__COPYVECTOR(dst, src);
+    SDF_VU0_COPYVECTOR(dst, src);
 }
 
 void effPCPFlashPolyRingExp2SetColor(PcpFlashFadingOrbitWork *work, u32 value)
@@ -3130,40 +3130,40 @@ void effPCPFlashPolyRingExp2PartSetVertex(PcpFlashFadingOrbitWork *work, s32 ind
     effPCPFlashPolyRingExp2Vertex[0] = unit[0] * height;
     effPCPFlashPolyRingExp2Vertex[1] = height + -1.0f;
     effPCPFlashPolyRingExp2Vertex[2] = sinv * height;
-    SDF_VU0__LOADVECTOR(effPCPFlashPolyRingExp2Vertex);
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__LOADVECTOR(unit);
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__LOADVECTOR(scaleB);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(scaleB);
-    SDF_VU0__LOADVECTOR(scaleC);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(scaleC);
-    SDF_VU0__COPYVECTOR_C_TO_A();
-    SDF_VU0__LOADVECTOR_B(scaleA);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__LOADVECTOR(offset);
-    SDF_VU0__LOADVECTOR_B(scaleC);
-    SDF_VU0__STOREVECTOR(quad + 12);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 8);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 16);
-    SDF_VU0__LOADVECTOR(offset);
-    SDF_VU0__LOADVECTOR_B(scaleB);
-    SDF_VU0__ADDVECTOR_A_C();
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 4);
+    SDF_VU0_LOADVECTOR(effPCPFlashPolyRingExp2Vertex);
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR(unit);
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(scaleB);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(scaleB);
+    SDF_VU0_LOADVECTOR(scaleC);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(scaleC);
+    SDF_VU0_COPYVECTOR_C_TO_A();
+    SDF_VU0_LOADVECTOR_B(scaleA);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR(offset);
+    SDF_VU0_LOADVECTOR_B(scaleC);
+    SDF_VU0_STOREVECTOR(quad + 12);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 8);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 16);
+    SDF_VU0_LOADVECTOR(offset);
+    SDF_VU0_LOADVECTOR_B(scaleB);
+    SDF_VU0_ADDVECTOR_A_C();
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 4);
 }
 
 void effPCPFlashPolyRingExp2PartRotate(PcpFlashFadingOrbitWork *work, s32 index)
@@ -3296,7 +3296,7 @@ void effPCPFlashPolyCircleDelete(PcpFlashOffsetRadialWork *work)
 }
 
 void effPCPFlashPolyCircleSetPosition(void *dst, void *src) {
-    SDF_VU0__COPYVECTOR(dst, src);
+    SDF_VU0_COPYVECTOR(dst, src);
 }
 
 void effPCPFlashPolyCircleSetColor(PcpFlashOffsetRadialWork *work, u32 value)
@@ -3341,27 +3341,27 @@ void effPCPFlashPolyCirclePartSetVertex(PcpFlashOffsetRadialWork *work, s32 inde
     base[0] = 0;
     base[1] = 1.0f;
     base[2] = 0;
-    SDF_VU0__LOADVECTOR(base);
-    SDF_VU0__LOADVECTOR_B(view);
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__STOREVECTOR(base);
-    SDF_VU0__APPLYMATRIX_XYZ();
-    SDF_VU0__LOADVECTOR_B(size);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__LOADVECTOR(effPCPFlashPolyCircleVertex);
-    SDF_VU0__STOREVECTOR(quad + 8);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad);
+    SDF_VU0_LOADVECTOR(base);
+    SDF_VU0_LOADVECTOR_B(view);
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_STOREVECTOR(base);
+    SDF_VU0_APPLYMATRIX_XYZ();
+    SDF_VU0_LOADVECTOR_B(size);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(effPCPFlashPolyCircleVertex);
+    SDF_VU0_STOREVECTOR(quad + 8);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad);
     SetRotateMatrixAxis(angle + step, (const sdfVector3_t *)view);
-    SDF_VU0__LOADVECTOR(base);
-    SDF_VU0__APPLYMATRIX_XYZ();
-    SDF_VU0__LOADVECTOR_B(size);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__LOADVECTOR_B(effPCPFlashPolyCircleVertex);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(quad + 4);
+    SDF_VU0_LOADVECTOR(base);
+    SDF_VU0_APPLYMATRIX_XYZ();
+    SDF_VU0_LOADVECTOR_B(size);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_LOADVECTOR_B(effPCPFlashPolyCircleVertex);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(quad + 4);
 }
 
 void effPCPFlashPolyCircleDraw(PcpFlashOffsetRadialWork *work) {
@@ -3381,11 +3381,11 @@ void effPCPFlashPolyCircleDraw(PcpFlashOffsetRadialWork *work) {
     PcpFlashMotionParticle *part;
     EffRecordPool *handle;
 
-    SDF_VU0__LOADVECTOR(aViewTarget);
-    SDF_VU0__LOADVECTOR_B(aViewEye);
-        SDF_VU0__SUBVECTOR();
-        SDF_VU0__NORMALIZE();
-    SDF_VU0__STOREVECTOR(axis);
+    SDF_VU0_LOADVECTOR(aViewTarget);
+    SDF_VU0_LOADVECTOR_B(aViewEye);
+        SDF_VU0_SUBVECTOR();
+        SDF_VU0_NORMALIZE();
+    SDF_VU0_STOREVECTOR(axis);
     count = work->particleCount;
     part = work->parts;
     lifetime = work->lifetime;
@@ -3507,7 +3507,7 @@ void effPCPFlashPolyRingExpHDelete(EffRingWork *work)
 }
 
 void effPCPFlashPolyRingExpHSetPosition(void *dst, void *src) {
-    SDF_VU0__COPYVECTOR(dst, src);
+    SDF_VU0_COPYVECTOR(dst, src);
 }
 
 void effPCPFlashPolyRingExpHSetColor(EffRingWork *ring, u32 color) {
@@ -3520,8 +3520,8 @@ void effPCPFlashPolyRingExpHSetScale(EffRingWork *work, f32 scale) {
 
 /* vu0 routine: copy the four matrix rows through vf28-vf31. */
 void effPCPFlashPolyRingExpHSetRotateMatrix(EffRingWork *work, void *matrixSource) {
-    SDF_VU0__LOADMATRIX(matrixSource);
-    SDF_VU0__STOREMATRIX(work->recordPool->matrix);
+    SDF_VU0_LOADMATRIX(matrixSource);
+    SDF_VU0_STOREMATRIX(work->recordPool->matrix);
 }
 
 void effPCPFlashPolyRingExpHPartSetVC(EffRingWork *work, s32 index, s32 modulationColor) {
@@ -3572,40 +3572,40 @@ void effPCPFlashPolyRingExpHPartSetVertex(EffRingWork *work, s32 index) {
     effPCPFlashPolyRingExpHVertex[0] = radialDirection[0] * basisFactor;
     effPCPFlashPolyRingExpHVertex[1] = basisFactor + -1.0f;
     effPCPFlashPolyRingExpHVertex[2] = sine * basisFactor;
-    SDF_VU0__LOADVECTOR(effPCPFlashPolyRingExpHVertex);
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__LOADVECTOR(radialDirection);
-    SDF_VU0__OUTERPRODUCT();
-    SDF_VU0__NORMALIZE();
-    SDF_VU0__COPYVECTOR_A_TO_B();
-    SDF_VU0__LOADVECTOR(sideOffsetA);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(sideOffsetA);
-    SDF_VU0__LOADVECTOR(sideOffsetB);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__STOREVECTOR(sideOffsetB);
-    SDF_VU0__COPYVECTOR_C_TO_A();
-    SDF_VU0__LOADVECTOR_B(axisOffset);
-    SDF_VU0__MULVECTOR();
-    SDF_VU0__COPYVECTOR_A_TO_C();
-    SDF_VU0__LOADVECTOR(orbitOffset);
-    SDF_VU0__LOADVECTOR_B(sideOffsetB);
-    SDF_VU0__STOREVECTOR(positions + 12);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(positions + 8);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(positions + 16);
-    SDF_VU0__LOADVECTOR(orbitOffset);
-    SDF_VU0__LOADVECTOR_B(sideOffsetA);
-    SDF_VU0__ADDVECTOR_A_C();
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__STOREVECTOR(positions);
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__SUBVECTOR();
-    SDF_VU0__STOREVECTOR(positions + 4);
+    SDF_VU0_LOADVECTOR(effPCPFlashPolyRingExpHVertex);
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR(radialDirection);
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(sideOffsetA);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(sideOffsetA);
+    SDF_VU0_LOADVECTOR(sideOffsetB);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_STOREVECTOR(sideOffsetB);
+    SDF_VU0_COPYVECTOR_C_TO_A();
+    SDF_VU0_LOADVECTOR_B(axisOffset);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    SDF_VU0_LOADVECTOR(orbitOffset);
+    SDF_VU0_LOADVECTOR_B(sideOffsetB);
+    SDF_VU0_STOREVECTOR(positions + 12);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(positions + 8);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(positions + 16);
+    SDF_VU0_LOADVECTOR(orbitOffset);
+    SDF_VU0_LOADVECTOR_B(sideOffsetA);
+    SDF_VU0_ADDVECTOR_A_C();
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_STOREVECTOR(positions);
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_SUBVECTOR();
+    SDF_VU0_STOREVECTOR(positions + 4);
 }
 
 void effPCPFlashPolyRingExpHPartRotate(EffRingWork *work, s32 index) {
@@ -3767,14 +3767,14 @@ void dds3FlashPolyListDraw(EffRecordPool *work)
 
     list = (sdfDrawTag_t *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
     sdfDrawTagInit(list);
-    SDF_VU0__STOREIDENTITY(matrix);
+    SDF_VU0_STOREIDENTITY(matrix);
     matrix[0] = work->scale;
     matrix[5] = work->scale;
     matrix[10] = work->scale;
     matrix[12] = work->origin[0];
     matrix[13] = work->origin[1];
     matrix[14] = work->origin[2];
-    SDF_VU0__LOADMATRIX(matrix);
+    SDF_VU0_LOADMATRIX(matrix);
     sdf3DPrimLinkTm(list, 0);
     sdf3DPrimLinkMat(list, work->resource, 0);
     remaining = work->vertexCount;
@@ -3886,14 +3886,14 @@ void dds3FlashPolyList2Draw(EffRecordPool *pool)
     sdfGrOt_t *surface;
 
     sdfDrawTagInit(packet);
-    SDF_VU0__STOREIDENTITY(matrix);
+    SDF_VU0_STOREIDENTITY(matrix);
     matrix[0] = pool->scale;
     matrix[5] = pool->scale;
     matrix[10] = pool->scale;
     matrix[12] = pool->origin[0];
     matrix[13] = pool->origin[1];
     matrix[14] = pool->origin[2];
-    SDF_VU0__LOADMATRIX(matrix);
+    SDF_VU0_LOADMATRIX(matrix);
     sdf3DPrimLinkTm(packet, 0);
     sdf3DPrimLinkMat(packet, pool->resource, 0);
     remainingVertices = pool->vertexCount;
@@ -3968,14 +3968,14 @@ void dds3FlashPolyList3Draw(EffRecordPool *pool)
     sdfGrOt_t *surface;
 
     sdfDrawTagInit(packet);
-    SDF_VU0__STOREIDENTITY(matrix);
+    SDF_VU0_STOREIDENTITY(matrix);
     matrix[0] = pool->scale;
     matrix[5] = pool->scale;
     matrix[10] = pool->scale;
     matrix[12] = pool->origin[0];
     matrix[13] = pool->origin[1];
     matrix[14] = pool->origin[2];
-    SDF_VU0__LOADMATRIX(matrix);
+    SDF_VU0_LOADMATRIX(matrix);
     sdf3DPrimLinkTm(packet, 0);
     sdf3DPrimLinkMat(packet, pool->resource, 0);
     remainingVertices = pool->vertexCount;
@@ -4011,7 +4011,7 @@ void *dds3FlashPolyList3GetVC(EffRecordPool *group, s32 groupIndex) {
 EffRecordPool *dds3FlashPolyListHCreate(u32 fanCount) {
     EffRecordPool *pool = dds3FlashPolyListCreate(fanCount);
 
-    SDF_VU0__STOREIDENTITY(pool->matrix);
+    SDF_VU0_STOREIDENTITY(pool->matrix);
     return pool;
 }
 
@@ -4034,7 +4034,7 @@ void dds3FlashPolyListHDraw(EffRecordPool *work)
     matrix[12] = work->origin[0];
     matrix[13] = work->origin[1];
     matrix[14] = work->origin[2];
-    SDF_VU0__LOADMATRIX(matrix);
+    SDF_VU0_LOADMATRIX(matrix);
     sdf3DPrimLinkTm(list, 0);
     sdf3DPrimLinkMat(list, work->resource, 0);
     remaining = work->vertexCount;
