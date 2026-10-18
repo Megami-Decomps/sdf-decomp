@@ -1689,10 +1689,7 @@ void dds3Particle_SphereSpiralDraw(effBurstEmitter_t *effect) {
             SDF_VU0_LOADVECTOR_B(scaleVector);
             SDF_VU0_MULVECTOR();
             SDF_VU0_STOREVECTOR(packet->vel);
-            VU0_COPY_VF24_TO_VF28();
-            VU0_COPY_VF25_TO_VF29();
-            VU0_COPY_VF26_TO_VF30();
-            VU0_COPY_VF27_TO_VF31();
+            SDF_VU0_COPYMATRIX_B_TO_A();
             rotationAxis[0] = packet->axisX;
             rotationAxis[1] = packet->axisY;
             rotationAxis[2] = packet->axisZ;
@@ -3000,10 +2997,7 @@ void dds3Particle_SphereSpiral2Draw(parBurstEmitter_t *effect) {
             SDF_VU0_LOADVECTOR_B(scaleVector);
             SDF_VU0_MULVECTOR();
             SDF_VU0_STOREVECTOR(packet->radialOffset);
-            VU0_COPY_VF24_TO_VF28();
-            VU0_COPY_VF25_TO_VF29();
-            VU0_COPY_VF26_TO_VF30();
-            VU0_COPY_VF27_TO_VF31();
+            SDF_VU0_COPYMATRIX_B_TO_A();
             rotationAxis[0] = packet->rotationAxis[0];
             rotationAxis[1] = packet->rotationAxis[1];
             rotationAxis[2] = packet->rotationAxis[2];
@@ -3298,9 +3292,7 @@ void dds3Particle_TrackSetExp(parSystem_t *system, s32 index, const f32 *origin,
             SDF_VU0_NORMALIZE();
             SDF_VU0_LOADVECTOR_B(parTrack_w);
             SDF_VU0_MULVECTOR();
-            VU0_COPY_VF10_TO_VF2();
-            SDF_VU0_COPYVECTOR_C_TO_A();
-            VU0_COPY_VF2_TO_VF12();
+            SDF_VU0_SWAPVECTOR_A_C();
             SDF_VU0_COPYVECTOR_A_TO_B();
             SDF_VU0_ADDVECTOR_A_C();
             SDF_VU0_STOREVECTOR_NOMEM(vertex);
@@ -3353,9 +3345,7 @@ void dds3Particle_Track2SetExp(parSystem_t *system, s32 index, const f32 *origin
             SDF_VU0_NORMALIZE();
             SDF_VU0_LOADVECTOR_B(parTrack_w);
             SDF_VU0_MULVECTOR();
-            VU0_COPY_VF10_TO_VF2();
-            SDF_VU0_COPYVECTOR_C_TO_A();
-            VU0_COPY_VF2_TO_VF12();
+            SDF_VU0_SWAPVECTOR_A_C();
             SDF_VU0_STOREVECTOR_NOMEM(vertex + 1);
             SDF_VU0_COPYVECTOR_A_TO_B();
             SDF_VU0_ADDVECTOR_A_C();
@@ -3746,9 +3736,7 @@ void dds3Particle_TrackSet(parSystem_t *system, s32 index, u32 color) {
     SDF_VU0_NORMALIZE();
     SDF_VU0_LOADVECTOR_B(parTrack_w);
     SDF_VU0_MULVECTOR();
-    VU0_COPY_VF10_TO_VF2();
-    SDF_VU0_COPYVECTOR_C_TO_A();
-    VU0_COPY_VF2_TO_VF12();
+    SDF_VU0_SWAPVECTOR_A_C();
     SDF_VU0_COPYVECTOR_A_TO_B();
     SDF_VU0_ADDVECTOR_A_C();
     SDF_VU0_STOREVECTOR(&axis[0]);
@@ -3769,9 +3757,7 @@ void dds3Particle_Track2Set(parSystem_t *system, s32 index, u32 color) {
     SDF_VU0_NORMALIZE();
     SDF_VU0_LOADVECTOR_B(parTrack_w);
     SDF_VU0_MULVECTOR();
-    VU0_COPY_VF10_TO_VF2();
-    SDF_VU0_COPYVECTOR_C_TO_A();
-    VU0_COPY_VF2_TO_VF12();
+    SDF_VU0_SWAPVECTOR_A_C();
     SDF_VU0_STOREVECTOR(&axis[1]);
     SDF_VU0_COPYVECTOR_A_TO_B();
     SDF_VU0_ADDVECTOR_A_C();
@@ -3793,9 +3779,7 @@ void dds3Particle_Track3Set(effTrackPolyList_t *list, s32 index, u32 color) {
     SDF_VU0_NORMALIZE();
     SDF_VU0_LOADVECTOR_B(parTrack_w);
     SDF_VU0_MULVECTOR();
-    VU0_COPY_VF10_TO_VF2();
-    SDF_VU0_COPYVECTOR_C_TO_A();
-    VU0_COPY_VF2_TO_VF12();
+    SDF_VU0_SWAPVECTOR_A_C();
     SDF_VU0_COPYVECTOR_A_TO_B();
     SDF_VU0_ADDVECTOR_A_C();
     SDF_VU0_STOREVECTOR(&axis[0]);
