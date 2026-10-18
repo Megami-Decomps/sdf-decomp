@@ -794,11 +794,11 @@ void mdlSetBlur(mdlObj_t *ctx, s32 stride, s32 capacity,
         startCarrier[0] = startColor;
         EE_MMI_RGBA_UNPACK(startCarrier, 0.0078125f);
         SDF_VU0_STOREVECTOR(deviceList->color);
-        VU0_COPY_VF10_TO_VF11_EXTENDED();
+        SDF_VU0_COPYVECTOR_A_TO_B_EXTENDED();
         endCarrier[0] = endColor;
         EE_MMI_RGBA_UNPACK(endCarrier, 0.0078125f);
-        VU0_SUB_VF10_VF11_EXTENDED();
-        VU0_SCALEVECTOR_V0(inverseSpan);
+        SDF_VU0_SUBVECTOR_EXTENDED();
+        SDF_VU0_SCALEVECTOR_V0(inverseSpan);
         SDF_VU0_STOREVECTOR(deviceList->colorStep);
     }
 }
@@ -862,7 +862,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
         }
         /* Both callbacks complete before the countdown is published. */
         slot->remaining = remaining;
-        VU0_LOAD_VF10_BARRIER(list->color);
+        SDF_VU0_LOADVECTOR_BARRIER(list->color);
         SDF_VU0_LOADVECTOR_B(list->colorStep);
         SDF_VU0_LOADVECTOR_C(tint);
         color = mdlPackDevSlotColor(remaining - 1, 128.0f);
@@ -1131,7 +1131,7 @@ void mdlSetMotionSpeedEx(mdlObj_t *ctx, s32 searchId, f32 frameStep)
 
 void mdlGetPosition(mdlObj_t *ctx)
 {
-    VU0_LOAD_VF10_BARRIER(&ctx->inner->tm.m[12]);
+    SDF_VU0_LOADVECTOR_BARRIER(&ctx->inner->tm.m[12]);
 }
 
 void mdlSetPosition(mdlObj_t *ctx)
@@ -1142,21 +1142,21 @@ void mdlSetPosition(mdlObj_t *ctx)
 
 void mdlGetRotate(mdlObj_t *ctx)
 {
-    VU0_LOAD_VF10_BARRIER(&ctx->inner->rotate);
+    SDF_VU0_LOADVECTOR_BARRIER(&ctx->inner->rotate);
 }
 
 void mdlSetRotate(mdlObj_t *ctx)
 {
     SDF_VU0_STOREVECTOR(&ctx->inner->rotate);
     ToMatrix();
-    VU0_STORE_VF28(&ctx->inner->tm.m[0]);
-    VU0_STORE_VF29(&ctx->inner->tm.m[4]);
-    VU0_STORE_VF30(&ctx->inner->tm.m[8]);
+    SDF_MOT_STORE_VF28(&ctx->inner->tm.m[0]);
+    SDF_MOT_STORE_VF29(&ctx->inner->tm.m[4]);
+    SDF_MOT_STORE_VF30(&ctx->inner->tm.m[8]);
 }
 
 void mdlGetScale(mdlObj_t *ctx)
 {
-    VU0_LOAD_VF10_BARRIER(&ctx->inner->scale);
+    SDF_VU0_LOADVECTOR_BARRIER(&ctx->inner->scale);
 }
 
 void mdlSetScale(mdlObj_t *ctx)
@@ -1213,7 +1213,7 @@ void mdlGetScreenOffset(mdlObj_t *ctx, void *point)
     SDF_VU0_LOADMATRIX(&ctx->inner->tm);
     VU0_SCALE_MATRIX_ROWS_VF10();
     MultMatrixRevNoArg();
-    VU0_LOAD_VF10_BARRIER(point);
+    SDF_VU0_LOADVECTOR_BARRIER(point);
     SDF_VU0_APPLYMATRIX_XYZ1();
     SDF_VU0_PERSVECTOR();
     SDF_VU0_LOADVECTOR_B(&dds3ScreenParam.scale);
@@ -1228,12 +1228,12 @@ void mdl_1DD9C0(mdlObj_t *ctx, f32 (*inputPoints)[4], f32 (*outputPoints)[4], s3
     s32 pointIndex;
 
     SDF_VU0_LOADMATRIX(&ctx->inner->tm);
-    VU0_LOAD_VF10_BARRIER(&ctx->inner->scale);
+    SDF_VU0_LOADVECTOR_BARRIER(&ctx->inner->scale);
     VU0_SCALE_MATRIX_ROWS_VF10();
     MultMatrixRev(&D_002FA240);
     MultMatrixRev(&dds3ScreenParam.TM);
     for (pointIndex = 0; pointIndex < pointCount; pointIndex++) {
-        VU0_LOAD_VF10_BARRIER(inputPoints[pointIndex]);
+        SDF_VU0_LOADVECTOR_BARRIER(inputPoints[pointIndex]);
         SDF_VU0_APPLYMATRIX_XYZ1();
         SDF_VU0_PERSVECTOR();
         SDF_VU0_LOADVECTOR_B(&dds3ScreenParam.scale);
