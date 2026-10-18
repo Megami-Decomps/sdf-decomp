@@ -36,6 +36,60 @@ extern s8 sdfGrCaptureBuff;
 void sdfGrSetFrameSetMode(sdfGrFrameSet_t *aSet, s32 aMode, s32 aFree);
 void sdfGrFreeFrameSet(sdfGrFrameSet_t *aSet);
 
+/* GS store-image packet and tracked-thread node are only passed to the SDK. */
+typedef struct sceGsStoreImage sceGsStoreImage;
+extern sceGsStoreImage D_00577F80;
+extern sdfThCB_t D_00552080;
+extern u8 D_00578FF0[0x8000];
+extern u8 D_00577FF0[0x1000];
+extern volatile u8 sdfDispThreadFlag;
+extern volatile u8 sdfFrameId;
+extern s8 reqGsReset;
+extern volatile s32 dds3GsSema;
+extern s32 dds3GsThreadId;
+extern s32 sdfDrawThreadId;
+extern volatile u8 sdfDrawSyncFlag;
+extern volatile u8 sdfDrawFrameFlag;
+extern u16 sdfDrawFrameCounter;
+extern s32 iWakeupThread(s32 thread);
+extern s32 DmacAddHandler(s32 type, s32 channel, s32 (*callback)(s32), s32 priority, s32 options);
+extern s32 EnableDmac(s32 channel);
+extern s32 GetThreadId(void);
+extern s32 CancelWakeupThread(s32 thread);
+extern s32 SleepThread(void);
+extern s32 WaitSema(s32 sema);
+extern s32 SignalSema(s32 sema);
+extern u32 sdfGetRunTimeCountBase(void);
+extern u32 sdfGetRunTimeCount(u32 startTicks);
+extern sdfMemHandle_t *sdfMemAllocDirect(s32 size);
+extern void *sdfMemLock(sdfMemHandle_t *allocation);
+extern void sdfMemFreeDirect(sdfMemHandle_t *allocation);
+extern s32 sceGsSetDefStoreImage(sceGsStoreImage *, s16, s16, s16, s16, s16, s16, s16);
+extern s32 sceGsExecStoreImage(sceGsStoreImage *, void *);
+extern s32 sceGsSyncPath(s32 mode, s32 timeout);
+extern void sceGsResetPath(void);
+extern void *memcpy(void *dst, const void *src, u32 size);
+extern void sdfGrDrawFrame(void);
+extern void sdfGrMakePacketBuff(s32 size);
+extern void sdfGrInitDraw(void);
+extern void sdfTexInit(void);
+extern s32 sdfCreateSema(s32 initial, s32 maximum, s32 options);
+extern s32 CreateThreadSimple(void *entry, void *stack, s32 stackSize, s32 priority);
+extern s32 StartThread(s32 thread, s32 arg);
+extern void sdfStartThreadAndWait(sdfThCB_t *thread, void (*entry)(void), void *stack,
+                                  s32 stackSize, s32 priority, s32 arg);
+extern void sdfDispThread(void);
+extern void sdfGrSetupPacketBuff(s32 buffer);
+extern void sdfCoreDrawReset(void);
+
+#define D_ENABLER ((volatile u32 *)0x1000F520)
+#define D_ENABLEW ((volatile u32 *)0x1000F590)
+#define D1_CHCR ((volatile u32 *)0x10009000)
+#define GS_BUSDIR ((volatile u64 *)0x12001040)
+#define HW_READ(reg) (*(reg))
+#define HW_WRITE(reg, value) (*(reg) = (value))
+
+
 INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrSetFrameSetMode);
 
 void sdfGrSetScreen(s32 aMode)
@@ -105,7 +159,13 @@ void sdfGrGsReset(void)
     sdfGrGsResetDone = 1;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfDrawThIntHandler);
+s32 sdfDrawThIntHandler(s32 channel) {
+    if (channel == 1) {
+        iWakeupThread(sdfDrawThreadId);
+    }
+    __asm__ volatile(".set noreorder\n\tsync\n\tei\n\t.set reorder" : : : "memory");
+    return 0;
+}
 
 void sdfGrReqCapture(s32 aReq, s32 aTarget)
 {
@@ -114,7 +174,67 @@ void sdfGrReqCapture(s32 aReq, s32 aTarget)
     sdfGrCaptureBuff = 1;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrCapture);
+void sdfGrCapture(void) {
+    s32 width;
+    s32 height;
+    s32 format;
+    s32 pixelBytes;
+    s32 rowBytes;
+    s32 stride;
+    sdfMemHandle_t *allocation;
+    s32 rows;
+    u8 *pixels;
+    u8 *source;
+    u8 *destination;
+
+    if (*(u8 *)&sdfGrCaptureBuff) {
+        width = D_00529388.w;
+        height = D_00529388.buffH;
+        format = D_00529388.pixelFormat;
+        pixelBytes = 4;
+        if (format == 2) {
+            pixelBytes = 2;
+        }
+        rowBytes = pixelBytes * width;
+        stride = rowBytes * 2;
+        sdfDispThreadFlag = 5;
+        allocation = sdfMemAllocDirect(rowBytes * height);
+        pixels = (u8 *)sdfMemLock(allocation);
+        sceGsSetDefStoreImage(
+            (sceGsStoreImage *)(((u32)&D_00577F80 & 0x0FFFFFFF) | 0x20000000),
+            D_00529388.frameHandle[1]->addr >> 6,
+            width / 64, format, 0, 0, width, height);
+        sceGsExecStoreImage(&D_00577F80, pixels);
+        sceGsSyncPath(0, 0);
+        destination = (u8 *)sdfGrCaptureReq;
+        source = pixels;
+        rows = height;
+        do {
+            memcpy(destination, source, rowBytes);
+            destination += stride;
+            source += rowBytes;
+        } while (--rows != 0);
+        sceGsSetDefStoreImage(
+            (sceGsStoreImage *)(((u32)&D_00577F80 & 0x0FFFFFFF) | 0x20000000),
+            D_00529388.frameHandle[0]->addr >> 6,
+            width / 64, format, 0, 0, width, height);
+        sceGsExecStoreImage(&D_00577F80, pixels);
+        sceGsSyncPath(0, 0);
+        destination = (u8 *)sdfGrCaptureReq + rowBytes;
+        source = pixels;
+        rows = height;
+        do {
+            memcpy(destination, source, rowBytes);
+            destination += stride;
+            source += rowBytes;
+        } while (--rows != 0);
+        sdfMemFreeDirect(allocation);
+        sdfGrCaptureBuff = 0;
+        if (sdfGrCaptureTarget) {
+            ((void (*)(u8 *))sdfGrCaptureTarget)((u8 *)sdfGrCaptureReq);
+        }
+    }
+}
 
 void sdfDeliverDrawStart(s32 aOldBuffId, s32 aNextBuffId)
 {
@@ -127,15 +247,92 @@ void sdfDeliverDrawStart(s32 aOldBuffId, s32 aNextBuffId)
     sdfGrDrawBusy = aNextBuffId;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfDeliverDrawEnd);
+void sdfDeliverDrawEnd(s32 updateSingleSlot, s32 bufferIndex, s32 slotIndex) {
+    if (updateSingleSlot == 0) {
+        sdfDispFrameId[0] = bufferIndex;
+        sdfDispFrameId[1] = bufferIndex;
+    } else {
+        sdfDispFrameId[slotIndex] = bufferIndex;
+    }
+    sdfGrDrawBusy = -1;
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfDrawThread);
+void sdfDrawThread(void) {
+    u32 startTicks;
+
+    sdfDispThreadFlag = 0;
+    DmacAddHandler(1, 1, sdfDrawThIntHandler, -1, 0);
+    EnableDmac(1);
+    for (;;) {
+        CancelWakeupThread(GetThreadId());
+        sdfDispThreadFlag = 1;
+        SleepThread();
+        startTicks = sdfGetRunTimeCountBase();
+        WaitSema(dds3GsSema);
+        if (*(s8 *)&reqMakeFrameBuff != 0) {
+            reqMakeFrameBuff = 0;
+            sdfGrMakeFrameSet(&D_00529388);
+        }
+        if (reqGsReset != 0) {
+            reqGsReset = 0;
+            sdfGrGsReset();
+        }
+        sdfDrawSyncFlag = 1;
+        sdfGrDrawFrame();
+        sdfDrawSyncFlag = 0;
+        if (sdfDrawFrameFlag != 0) {
+            /* Preserve the controller enable state while stopping VIF1. */
+            u32 enabledChannels = HW_READ(D_ENABLER);
+            HW_WRITE(D_ENABLEW, 0x10000);
+            HW_WRITE(D1_CHCR, 0);
+            HW_WRITE(D_ENABLEW, enabledChannels);
+            sceGsResetPath();
+            HW_WRITE(GS_BUSDIR, 0);
+            sdfDrawFrameFlag = 1;
+        } else {
+            sdfGrCapture();
+        }
+        SignalSema(dds3GsSema);
+        sdfDrawFrameCounter = sdfGetRunTimeCount(startTicks);
+    }
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfDispThread);
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrInit);
+void sdfGrInit(s32 packetBufferBytes) {
+    s32 thread;
+    sdfGrFrameSet_t *graph = &D_00529388;
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrInitNewFrame);
+    sceGsResetPath();
+    sdfGrScreenMode = 1;
+    sdfGrSetFrameSetMode(graph, 1, 1);
+    sdfGrMakeFrameSet(graph);
+    sdfGrGsResetDone = 0;
+    sdfDispFrameId[0] = sdfDispFrameId[1] = -1;
+    sdfGrDrawBusy = -1;
+    reqGsReset = 1;
+    sdfGrMakePacketBuff(packetBufferBytes);
+    sdfGrInitDraw();
+    sdfTexInit();
+    dds3GsSema = sdfCreateSema(1, 0x20, 0);
+    dds3GsThreadId = sdfCreateSema(0, 0x20, 0);
+    thread = CreateThreadSimple((void *)sdfDrawThread, D_00578FF0, 0x8000, 0x44);
+    sdfDrawThreadId = thread;
+    StartThread(thread, 0);
+    sdfStartThreadAndWait(&D_00552080, sdfDispThread, D_00577FF0,
+                          0x1000, 0x40, 0);
+}
+
+void sdfGrInitNewFrame(void) {
+    s8 nextBuffer = sdfFrameId ^ 1;
+
+    /* Do not select a buffer while its index is the busy-buffer status. */
+    while (sdfGrDrawBusy == nextBuffer) {
+    }
+    sdfFrameId = nextBuffer;
+    sdfGrSetupPacketBuff((s8)sdfFrameId);
+    sdfCoreDrawReset();
+}
 INCLUDE_SDATA(const s32, "sdf/sdfGraph", sdfGrScreenMode);
 
 INCLUDE_SDATA(const s32, "sdf/sdfGraph", sdfGrGsResetDone);

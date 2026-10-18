@@ -6,6 +6,7 @@
  * see include/README.md for the evidence per struct. */
 
 #include "common.h"
+#include "sdf_types.h"
 
 typedef struct sdfChipPageInfo_tag sdfChipPageInfo_tag;
 typedef struct sdfChipCB_tag sdfChipCB_tag;
@@ -18,45 +19,15 @@ typedef struct sdfPreDrawTag_t sdfPreDrawTag_t;
 typedef struct sdfMat_t sdfMat_t;
 typedef struct sdfMatUvwParm_t sdfMatUvwParm_t;
 typedef struct sdfMatPacket_t sdfMatPacket_t;
-typedef struct sdfGrPacketHeader_t sdfGrPacketHeader_t;
 typedef struct sdfPreDrawHook_t sdfPreDrawHook_t;
 typedef struct sdfModelPacketHeader_t sdfModelPacketHeader_t;
 typedef struct sdfItemArray_t sdfItemArray_t;
 typedef struct sdfGrOt_t sdfGrOt_t;
 typedef struct sdfPacState_t sdfPacState_t;
 
-/* Bodies in draw3d.h; declared here so sdfDrawTag_t can point at them. */
+/* Bodies in sdf_lighting.h and draw3d.h; draw tags only need pointers here. */
 struct sdf3DLightParallelPacket_t;
 struct sdf3DFogPacket_t;
-
-/* The VU0 paths load and store these with lq/sq, so every instance the engine
- * touches that way sits on a 16-byte boundary by virtue of its offset. ee-gcc
- * aligns them to 4, which is what reproduces the verified layouts. */
-typedef struct
-{
-    f32 x;
-    f32 y;
-} sdfVector2_t;
-
-typedef struct
-{
-    f32 x;
-    f32 y;
-    f32 z;
-} sdfVector3_t;
-
-typedef struct
-{
-    f32 x;
-    f32 y;
-    f32 z;
-    f32 w;
-} sdfVector4_t;
-
-typedef struct
-{
-    f32 m[16];
-} sdfMatrix4_t;
 
 typedef struct
 {
@@ -74,29 +45,6 @@ typedef struct
     u8 a;
 } sdfColor32_t;
 
-/* DMAC source-chain tag. id 0x20 is `ref`, written by sdfDrawTagLink. */
-typedef struct QWORD_ALIGNED
-{
-    u16 qwc;
-    u8 pad;
-    u8 id;
-    void *addr;
-    u32 dat0;
-    u32 dat1;
-} sdfDmaTag_t;
-
-typedef struct QWORD_ALIGNED
-{
-    u64 parm;
-    u64 regs;
-} sdfGifTag_t;
-
-/* One GS register write in a GIFtag A+D packet. */
-typedef struct QWORD_ALIGNED
-{
-    u64 data;
-    u64 reg;
-} sdfGrTagStdReg_t;
 
 /* The id nibble of sdfDmaTag_t.id. REFE, REF and REFS name their data at
  * addr; the rest carry it after the tag. */
@@ -112,13 +60,6 @@ enum sdf_dma_tag_id
     SDF_DMA_TAG_ID_END = 7
 };
 
-/* A GIF packet's opening: the DMA tag, then the GIF tag. The payload follows
- * inline as quadwords, so a cast to this type reads only the header. */
-struct sdfGrPacketHeader_t
-{
-    sdfDmaTag_t dmatag;
-    sdfGifTag_t giftag;
-};
 
 /* A resource whose free is deferred to the end of the frame: the free function
  * plus the head of the list of blocks waiting for it. */
@@ -411,7 +352,7 @@ struct sdfGrOt_t
     sdfDrawTag_t *tagHead;
     sdfDrawTag_t *tagTail;
     sdfDrawTag_t *noSortTag; /* name unconfirmed; sdfGrOtInit zeroes it */
-    void *regFunc;
+    void (*regFunc)(sdfGrOt_t *ot, sdfDrawTag_t *tag);
     void *callbackFunc;
     void *data; /* name unconfirmed; sdfGrOtInit zeroes it */
     u32 pad;
@@ -436,9 +377,9 @@ typedef struct
 {
     u8 command;
     u8 flags;
-    u16 pad;
+    u16 kind;
     s32 size;
-    u32 pad2;
+    u32 tag;
     s32 decodedSize;
 } sdfPacPacketHeader_t;
 
@@ -526,7 +467,11 @@ struct sdfPacState_t
     s32 srcUsed;
     u8 *dst;
     s32 dstLeft;
-    struct sdfDecomp_t *decomp;
+    union
+    {
+        struct sdfDecomp_t *decomp;
+        u8 *decompBuffer;
+    };
     sdfPacBuf_t *buf;
     union
     {
@@ -545,5 +490,62 @@ struct sdfDecomp_t
     s32 remain;
     u32 pad2[4];
 };
+
+/* File-command prefix shared by the queue and device helpers. */
+typedef struct sdfFileCmd_t
+{
+    u8 unk00[0x10];
+    char *path;
+    u8 unk14[2];
+    s8 stat;
+    u8 unk17[0x11];
+    s32 fd;
+    s32 error;
+} sdfFileCmd_t;
+
+/* Command header shared by sdfPktInit and SIF packet formatting. */
+typedef struct sifCommand_t
+{
+    s32 source;
+    s32 end;
+    s32 argument;
+    u32 command;
+} sifCommand_t;
+
+/* SDK thread registration node shared by graph and system management. */
+typedef struct sdfThCB_t
+{
+    struct sdfThCB_t *next;
+    s32 threadId;
+} sdfThCB_t;
+
+typedef u8 sdfTextureClampMode_t;
+
+/* Native 0x40-byte TMX header; sdfTexSetEx and resource loaders consume it. */
+typedef struct TMX_HEADER_t
+{
+    u8 unk00;
+    u8 payloadOffsetFlags;
+    u8 pad02[2];
+    u32 byteCount;
+    u32 magic;
+    u8 pad0C[4];
+    u8 paletteCount;
+    u8 clutFormat;
+    s16 width;
+    s16 height;
+    u8 pixelFormat;
+    u8 maxMipLevel;
+    u16 lodParameters;
+    u8 unk1A;
+    sdfTextureClampMode_t clampMode;
+    s32 resourceKey;
+    s32 battleTextureSlot;
+    u8 pad24[0x1C];
+} TMX_HEADER_t;
+
+/* Serialized texture-offset table passed with an in-memory scene resource.
+ * Event loading only forwards this pointer; its contents remain opaque here. */
+typedef struct sdfTextureOffsetListHeader_t sdfTextureOffsetListHeader_t;
 
 #endif /* LIBSDF_H */

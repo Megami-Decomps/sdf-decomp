@@ -3,6 +3,142 @@
 #include "model.h"
 #include "draw.h"
 
+/* Audited SDK COP2/MMI operations: ee-gcc cannot express packed
+ * vector transfers or the implicit VU matrix-register convention in C. */
+
+#define VU0_LOAD_VF(vf, src) __asm__ volatile ( \
+    ".set noreorder\n\tlqc2 " #vf ", 0(%0)\n\t.set reorder" \
+    : : "r" (src))
+
+#define VU0_LOAD_VF_MEMORY(vf, src) __asm__ volatile ( \
+    ".set noreorder\n\tlqc2 " #vf ", 0(%0)\n\t.set reorder" \
+    : : "r" (src) : "memory")
+
+#define VU0_STORE_VF(vf, dst) __asm__ volatile ( \
+    ".set noreorder\n\tsqc2 " #vf ", 0(%0)\n\t.set reorder" \
+    : : "r" (dst) : "memory")
+
+#define VU0_SET_ONES_XYZ(vf) __asm__ volatile ( \
+    ".set noreorder\n\tvaddw.xyz " #vf ", vf0, vf0w\n\tvmulx.w " #vf ", vf0, vf0x\n\t.set reorder" \
+    : : : "memory")
+
+#define VU0_LOAD_MATRIX(src) __asm__ volatile ( \
+    ".set noreorder\n\t" \
+    "lqc2 vf28, 0(%0)\n\t" \
+    "lqc2 vf29, 16(%0)\n\t" \
+    "lqc2 vf30, 32(%0)\n\t" \
+    "lqc2 vf31, 48(%0)\n\t" \
+    ".set reorder" \
+    : : "r" (src))
+
+#define VU0_STORE_MATRIX(dst) __asm__ volatile ( \
+    ".set noreorder\n\t" \
+    "sqc2 vf28, 0(%0)\n\t" \
+    "sqc2 vf29, 16(%0)\n\t" \
+    "sqc2 vf30, 32(%0)\n\t" \
+    "sqc2 vf31, 48(%0)\n\t" \
+    ".set reorder" \
+    : : "r" (dst) : "memory")
+
+#define VU0_LOAD_MATRIX_B(src) __asm__ volatile ( \
+    ".set noreorder\n\t" \
+    "lqc2 vf24, 0(%0)\n\t" \
+    "lqc2 vf25, 16(%0)\n\t" \
+    "lqc2 vf26, 32(%0)\n\t" \
+    "lqc2 vf27, 48(%0)\n\t" \
+    ".set reorder" \
+    : : "r" (src) : "memory")
+
+#define VU0_SCALE_MATRIX_ROWS(src) __asm__ volatile ( \
+    ".set noreorder\n\tvmulx.xyzw vf28, vf28, " #src "x\n\tvmuly.xyzw vf29, vf29, " #src "y\n\t" \
+    "vmulz.xyzw vf30, vf30, " #src "z\n\t.set reorder")
+
+#define VU0_MUL_MATRIX_ROWS_VF10() __asm__ volatile ( \
+    ".set noreorder\n\tvmul.xyz vf28, vf28, vf10\n\tvmul.xyz vf29, vf29, vf10\n\t" \
+    "vmul.xyz vf30, vf30, vf10\n\t.set reorder" \
+    : : : "memory")
+
+#define VU0_STORE_MATRIX_M(a, b, c, d) __asm__ volatile ( \
+    ".set noreorder\n\tsqc2 vf28, %0\n\tsqc2 vf29, %1\n\tsqc2 vf30, %2\n\tsqc2 vf31, %3\n\t" \
+    ".set reorder" \
+    : : "m" (a), "m" (b), "m" (c), "m" (d) : "memory")
+
+#define VU0_CLIP_TEST_BOX_CORNERS(flags, bounds) __asm__ volatile ( \
+    ".set noreorder\n\t" \
+    "ldr $2, 0(%1)\n\tldl $2, 7(%1)\n\tlw $3, 8(%1)\n\t" \
+    "ldr $6, 0xC(%1)\n\tldl $6, 0x13(%1)\n\tlw $7, 0x14(%1)\n\t" \
+    "pcpyld $2, $3, $2\n\tpcpyld $6, $7, $6\n\tqmtc2.ni $2, vf2\n\tqmtc2.ni $6, vf3\n\t" \
+    "vmulax.xyzw ACC, vf28, vf2x\n\tvmadday.xyzw ACC, vf29, vf2y\n\tvmaddaz.xyzw ACC, vf30, vf2z\n\tvmaddw.xyzw vf4, vf31, vf0w\n\t" \
+    "vmulax.xyzw ACC, vf28, vf3x\n\tvmadday.xyzw ACC, vf29, vf2y\n\tvmaddaz.xyzw ACC, vf30, vf2z\n\tvmaddw.xyzw vf5, vf31, vf0w\n\t" \
+    "vclipw.xyz vf4, vf4w\n\t" \
+    "vmulax.xyzw ACC, vf28, vf2x\n\tvmadday.xyzw ACC, vf29, vf3y\n\tvmaddaz.xyzw ACC, vf30, vf2z\n\tvmaddw.xyzw vf4, vf31, vf0w\n\t" \
+    "vclipw.xyz vf5, vf5w\n\t" \
+    "vmulax.xyzw ACC, vf28, vf3x\n\tvmadday.xyzw ACC, vf29, vf3y\n\tvmaddaz.xyzw ACC, vf30, vf2z\n\tvmaddw.xyzw vf5, vf31, vf0w\n\t" \
+    "vclipw.xyz vf4, vf4w\n\t" \
+    "vmulax.xyzw ACC, vf28, vf2x\n\tvmadday.xyzw ACC, vf29, vf2y\n\tvmaddaz.xyzw ACC, vf30, vf3z\n\tvmaddw.xyzw vf4, vf31, vf0w\n\t" \
+    "vclipw.xyz vf5, vf5w\n\t" \
+    "vmulax.xyzw ACC, vf28, vf3x\n\tvmadday.xyzw ACC, vf29, vf2y\n\tvmaddaz.xyzw ACC, vf30, vf3z\n\tvmaddw.xyzw vf5, vf31, vf0w\n\t" \
+    "vnop\n\tcfc2.ni $2, $vi18\n\t" \
+    "vclipw.xyz vf4, vf4w\n\t" \
+    "vmulax.xyzw ACC, vf28, vf2x\n\tvmadday.xyzw ACC, vf29, vf3y\n\tvmaddaz.xyzw ACC, vf30, vf3z\n\tvmaddw.xyzw vf4, vf31, vf0w\n\t" \
+    "vclipw.xyz vf5, vf5w\n\t" \
+    "vmulax.xyzw ACC, vf28, vf3x\n\tvmadday.xyzw ACC, vf29, vf3y\n\tvmaddaz.xyzw ACC, vf30, vf3z\n\tvmaddw.xyzw vf5, vf31, vf0w\n\t" \
+    "vclipw.xyz vf4, vf4w\n\t" \
+    "vnop\n\tvnop\n\t" \
+    "vclipw.xyz vf5, vf5w\n\t" \
+    "vnop\n\tvnop\n\tvnop\n\tvnop\n\tvnop\n\tcfc2.ni $3, $vi18\n\t" \
+    "and %0, $2, $3\n\t.set reorder" \
+    : "=r" (flags) : "r" (bounds) : "$2", "$3", "$6", "$7", "memory")
+
+#define VU0_MOVE_VF(dst, src) __asm__ volatile ( \
+    ".set noreorder\n\tvmove.xyzw " #dst ", " #src "\n\t.set reorder")
+
+#define VU0_NEGATE_XYZ(vf) __asm__ volatile ( \
+    ".set noreorder\n\tvsub.xyz " #vf ", vf0, " #vf "\n\t.set reorder")
+
+#define VU0_CROSS_XYZ(dst, a, b) __asm__ volatile ( \
+    ".set noreorder\n\tvopmula.xyz ACC, " #a ", " #b "\n\tvopmsub.xyz " #dst ", " #b ", " #a "\n\t.set reorder")
+
+#define VU0_NORMALIZE_VF10() __asm__ volatile ( \
+    ".set noreorder\n\tvmul.xyz vf2, vf10, vf10\n\tvmulax.w ACC, vf0, vf2x\n\t" \
+    "vmadday.w ACC, vf0, vf2y\n\tvmaddz.w vf2, vf0, vf2z\n\tvrsqrt Q, vf0w, vf2w\n\t" \
+    "vwaitq\n\tvmulq.xyz vf10, vf10, Q\n\t.set reorder")
+
+#define VU0_SET_W_ONE(vf) __asm__ volatile ( \
+    ".set noreorder\n\tvmove.w " #vf ", vf0\n\t.set reorder")
+
+#define VU0_TRANSFORM_POINT(dst, src) __asm__ volatile ( \
+    ".set noreorder\n\tvmulax.xyzw ACC, vf28, " #src "x\n\tvmadday.xyzw ACC, vf29, " #src "y\n\t" \
+    "vmaddaz.xyzw ACC, vf30, " #src "z\n\tvmaddw.xyzw " #dst ", vf31, vf0w\n\t.set reorder")
+
+#define EE_MMI_UNIT_MATRIX(dst) __asm__ volatile ( \
+    ".set noreorder\n\t" \
+    "qmfc2.ni $5, $vf0\n\t" \
+    "pextuw $4, $0, $5\n\t" \
+    "pextuw $2, $0, $4\n\t" \
+    "pextuw $3, $4, $0\n\t" \
+    "sq $2, 0(%0)\n\t" \
+    "sq $3, 0x10(%0)\n\t" \
+    "sq $4, 0x20(%0)\n\t" \
+    "sq $5, 0x30(%0)\n\t" \
+    ".set reorder" \
+    : : "r" (dst) : "$2", "$3", "$4", "$5", "memory")
+
+/* The serialized node-def block has a 16-byte count/padding prefix. */
+typedef struct
+{
+    s32 count;
+    u32 pad[3];
+} sdfModelNodeDefList_t;
+
+extern void FromEuler(f32 x, f32 y, f32 z);
+extern void ToMatrix(void);
+extern void MultMatrixRevNoArg(void);
+extern void MultMatrixRev(void *matrix);
+extern void sdf3DPrimSetTmPacket(void *packet);
+extern void sdfModelSetOtCallbacks(sdfGrOt_t *ot);
+
+
 extern void *sdfChipAllocDirect(s32 aSize);
 extern void *sdfChipAllocZeroDirect(s32 aSize);
 extern void sdfChipFreeDirect(void *aPtr);
@@ -86,7 +222,21 @@ void sdfModelInitSystem(void)
     sdfDelayedResrcInitCB(&sdfModelDelayedResrcCB, (sdfDelayedResrcFreeFunc)sdfModelRootFreeResrc);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelNodeNew);
+/* vu0 routine: native SDK vector/matrix operations around model state. */
+sdfModelNode_t *sdfModelNodeNew(void) {
+    sdfModelNode_t *node = sdfChipAllocZeroDirect(sizeof(sdfModelNode_t));
+
+    node->color = 0x80808080;
+    node->drawAttr = -1;
+    node->prev = node;
+    node->next = node;
+    VU0_STORE_VF($vf0, &node->rotate);
+    VU0_STORE_VF($vf0, &node->pos);
+    VU0_SET_ONES_XYZ($vf10);
+    VU0_STORE_VF($vf10, &node->scale);
+    EE_MMI_UNIT_MATRIX(&node->localNoScaledTm);
+    return node;
+}
 
 u8 *sdfModelAllocTmPacket(sdfModelNode_t *aNode)
 {
@@ -131,7 +281,20 @@ void sdfModelNodeFree(sdfModelNode_t *aNode)
     sdfChipFreeDirect(aNode);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelRootNew);
+/* vu0 routine: native SDK vector/matrix operations around model state. */
+sdfModelRootNode_t *sdfModelRootNew(void) {
+    sdfModelRootNode_t *slot;
+
+    slot = sdfChipAllocZeroDirect(sizeof(sdfModelRootNode_t));
+    slot->nodeList = (sdfModelNodeList_t *)sdfItemArrayNew(0, 4, 0x20);
+    EE_MMI_UNIT_MATRIX(&slot->tm);
+    VU0_STORE_VF(vf0, &slot->rotate);
+    VU0_SET_ONES_XYZ(vf10);
+    VU0_STORE_VF(vf10, &slot->scale);
+    slot->drawAttr = -1;
+    slot->color = 0x80808080;
+    return slot;
+}
 
 void sdfModelRootFreeResrc(sdfModelRootNode_t *aRoot)
 {
@@ -168,7 +331,30 @@ void sdfModelAllocNodeList(sdfModelRootNode_t *aRoot, s32 aCount)
     func_002BFF98(aRoot->nodeList, aCount);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelMakeNodeList);
+void sdfModelMakeNodeList(sdfModelRootNode_t *hierarchy) {
+    sdfModelNode_t **nodeArray = hierarchy->nodeList->items;
+    sdfModelNode_t *currentNode = hierarchy->headNode;
+    sdfModelNode_t **output;
+
+    if (currentNode != NULL) {
+        output = nodeArray;
+        do {
+            *output++ = currentNode;
+            if (currentNode->children != NULL) {
+                currentNode = currentNode->children;
+            } else {
+                do {
+                    sdfModelNode_t *nextSibling = currentNode->next;
+                    if (nextSibling != NULL) {
+                        currentNode = nextSibling;
+                        break;
+                    }
+                    currentNode = currentNode->parent;
+                } while (currentNode != NULL);
+            }
+        } while (currentNode != NULL);
+    }
+}
 
 void sdfModelNodeAdd(sdfModelRootNode_t *aRoot, sdfModelNode_t *aParent, sdfModelNode_t *aNode)
 {
@@ -394,7 +580,13 @@ sdfModelPacketHeader_t *sdfModelNewPacketHeader(sdfModelNode_t *aNode, s32 aOtIn
 
 INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelLinkDrawPacket);
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelMakeLocalTm);
+/* vu0 routine: native SDK vector/matrix operations around model state. */
+void sdfModelMakeLocalTm(sdfModelNode_t *node) {
+    VU0_LOAD_VF(vf10, &node->rotate);
+    ToMatrix();
+    VU0_LOAD_VF(vf31, &node->pos);
+    VU0_STORE_MATRIX(&node->localNoScaledTm);
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelNodeBaseSet);
 
@@ -461,7 +653,39 @@ void sdfModelMakeMorphList(sdfModelRootNode_t *aRoot, s32 aCount)
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelMakeRoot);
+sdfModelRootNode_t *sdfModelMakeRoot(void *assetData, sdfModelDef_t *listRef) {
+    s32 itemIndex = 0;
+    sdfModelRootNode_t *model = sdfModelRootNew();
+    sdfModelNodeDefList_t *list;
+    s32 count;
+    sdfModelNodeDef_t *item;
+    sdfModelNode_t *node;
+    sdfModelNode_t *parent;
+
+    model->texList = assetData;
+    model->matList = sdfMatListMake(assetData, listRef->matDef);
+    model->extraData = listRef->extraData;
+    sdfModelMakeMorphList(model, listRef->morphCount);
+    list = listRef->modelDef;
+    count = list->count;
+    list++;
+    sdfModelAllocNodeList(model, count);
+    item = (sdfModelNodeDef_t *)list;
+    if (count != itemIndex) {
+        do {
+            node = sdfModelNodeNew();
+            parent = NULL;
+            if (item->parentIndex >= 0) {
+                parent = ((sdfModelNode_t **)model->nodeList->items)[item->parentIndex];
+            }
+            sdfModelNodeAdd(model, parent, node);
+            itemIndex++;
+            node->id = item->id;
+            item++;
+        } while (itemIndex != count);
+    }
+    return model;
+}
 
 sdfModelRootNode_t *sdfModelMake(void *aTexList, sdfModelDef_t *aDef)
 {
@@ -503,18 +727,87 @@ sdfModelRootNode_t *sdfModelMakeEarly(void *aTexList, sdfModelDef_t *aDef)
     return root;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelEvalNode);
+/* vu0 routine: native SDK vector/matrix operations around model state. */
+void sdfModelEvalNode(sdfModelNode_t *drawNode, const f32 (*parentMatrix)[4], s32 frame) {
+    f32 *xAxis = &drawNode->localNoScaledTm.m[0];
+    f32 *yAxis;
+    f32 *zAxis;
+    f32 *scale;
+    f32 *translation;
+    f32 (*transformed)[4];
+    u8 *workspace;
+    sdfModelNode_t *child;
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelEvalTm2);
+    VU0_LOAD_VF_MEMORY(vf28, xAxis);
+    yAxis = &drawNode->localNoScaledTm.m[4];
+    VU0_LOAD_VF_MEMORY(vf29, yAxis);
+    zAxis = &drawNode->localNoScaledTm.m[8];
+    VU0_LOAD_VF_MEMORY(vf30, zAxis);
+    scale = (f32 *)&drawNode->scale;
+    VU0_LOAD_VF_MEMORY(vf10, scale);
+    VU0_SCALE_MATRIX_ROWS(vf10);
+    translation = (f32 *)&drawNode->pos;
+    VU0_LOAD_VF_MEMORY(vf31, translation);
+    VU0_LOAD_MATRIX_B(parentMatrix);
+    MultMatrixRevNoArg();
+    transformed = (f32 (*)[4])drawNode->tm.m;
+    VU0_STORE_MATRIX(transformed);
+    workspace = drawNode->tmPacket;
+    if (workspace != NULL) {
+        sdf3DPrimSetTmPacket((void *)(workspace + (frame << 7)));
+    }
+    child = drawNode->children;
+    if (child == 0) {
+        return;
+    }
+    do {
+        sdfModelEvalNode(child, (const f32 (*)[4])transformed, frame);
+        child = child->next;
+    } while (child != drawNode->children);
+}
+
+/* vu0 routine: native SDK vector/matrix operations around model state. */
+void sdfModelEvalTm2(sdfModelRootNode_t *model, s32 frame) {
+    u128 rootMatrix[4];
+    void *transform = &model->tm;
+    f32 *scale;
+    sdfModelNodeList_t *list;
+
+    VU0_LOAD_MATRIX(transform);
+    scale = (f32 *)&model->scale;
+    VU0_LOAD_VF_MEMORY(vf10, scale);
+    VU0_MUL_MATRIX_ROWS_VF10();
+    VU0_STORE_MATRIX_M(rootMatrix[0], rootMatrix[1], rootMatrix[2], rootMatrix[3]);
+    list = model->nodeList;
+    sdfModelEvalNode(((sdfModelNode_t **)list->items)[0], (const f32 (*)[4])rootMatrix, frame);
+}
 
 void sdfModelEvalTm(sdfModelRootNode_t *aRoot)
 {
     sdfModelEvalTm2(aRoot, (s8)sdfFrameId);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelOtInit);
+void sdfModelOtInit(sdfModelOt_t *table, sdfGrOt_t *first, sdfGrOt_t *second,
+                    sdfGrOt_t *third, sdfGrOt_t *fourth)
+{
+    table->ot[3] = fourth;
+    table->ot[0] = first;
+    table->ot[2] = third;
+    table->ot[1] = second;
+    sdfModelSetOtCallbacks(second);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelCheckBounds);
+/* vu0 routine: native SDK vector/matrix operations around model state. */
+s32 sdfModelCheckBounds(const f32 *bounds) {
+    s32 flags;
+    s32 result;
+
+    VU0_CLIP_TEST_BOX_CORNERS(flags, bounds);
+    result = flags & 0x3F;
+    result &= (flags >> 12) & (flags >> 6);
+    result &= flags >> 18;
+    return result;
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelTempPacketLinkOt);
 
@@ -567,7 +860,23 @@ void sdfModelDrawEnvLinkOt(sdfGrOt_t **aOt, sdfModelDrawEnv_t *aEnv)
     ((void (*)(sdfGrOt_t *, sdfDrawTag_t *))aOt[3]->regFunc)(aOt[3], &aEnv->term.drawTag);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", func_002B2628);
+void *func_002B2628(void *data, u32 chunkId) {
+    sdfModelChunkHeader_t *chunk = data;
+    u32 currentId;
+
+    if (chunk == NULL) {
+        return NULL;
+    }
+    currentId = chunk->tag;
+    while (currentId != 0) {
+        if (currentId == chunkId) {
+            return chunk;
+        }
+        chunk = (sdfModelChunkHeader_t *)((u8 *)chunk + chunk->size);
+        currentId = chunk->tag;
+    }
+    return NULL;
+}
 
 void *sdfModelGetExtraChunk(sdfModelRootNode_t *aRoot, u32 aTag)
 {
@@ -599,7 +908,30 @@ s32 sdfModelGetNodeIndexByName(sdfModelRootNode_t *aRoot, const char *aName)
     return -1;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelGetNodeName);
+const char *sdfModelGetNodeName(sdfModelRootNode_t *model, s32 nameId) {
+    sdfModelChunkHeader_t *chunk = sdfModelGetExtraChunk(model, 0x4D4E444E);
+    const u8 *name;
+    const u8 *end;
+    if (chunk == NULL) {
+        return D_00529428;
+    }
+    name = (const u8 *)(chunk + 1);
+    end = (const u8 *)chunk + chunk->size;
+    do {
+        const u8 *cursor = name;
+        const s32 *id;
+        while (*cursor++ != 0) {
+        }
+        id = (const s32 *)(((u32)cursor + 3) & ~3U);
+        if (*id == nameId) {
+            return (const char *)name;
+        }
+        name = (const u8 *)(id + 1);
+        if (name >= end) {
+            return D_00529428;
+        }
+    } while (1);
+}
 
 u32 sdfModelGetMarkPosCount(sdfModelRootNode_t *aRoot)
 {
@@ -611,9 +943,35 @@ u32 sdfModelGetMarkPosCount(sdfModelRootNode_t *aRoot)
     return 0;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelMakeMarkPosMatrix);
+/* vu0 routine: native SDK vector/matrix operations around model state. */
+void sdfModelMakeMarkPosMatrix(sdfModelRootNode_t *model, sdfModelMarkPos_t *record) {
+    sdfModelNode_t *drawNode = sdfModelSearchNode(model, record->nodeId);
+    u8 *vector;
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelMakeMarkPos);
+    vector = (u8 *)&record->dir;
+    VU0_LOAD_VF(vf10, vector);
+    VU0_MOVE_VF(vf30, vf10);
+    VU0_MOVE_VF(vf11, vf10);
+    vector = (u8 *)&record->up;
+    VU0_LOAD_VF(vf10, vector);
+    VU0_NEGATE_XYZ(vf10);
+    VU0_MOVE_VF(vf29, vf10);
+    VU0_CROSS_XYZ(vf10, vf10, vf11);
+    VU0_NORMALIZE_VF10();
+    VU0_MOVE_VF(vf28, vf10);
+    VU0_LOAD_VF(vf31, &record->pos);
+    VU0_SET_W_ONE(vf31);
+    MultMatrixRev(&drawNode->tm);
+}
+
+/* vu0 routine: native SDK vector/matrix operations around model state. */
+void sdfModelMakeMarkPos(sdfModelRootNode_t *model, sdfModelMarkPos_t *record) {
+    sdfModelNode_t *drawNode = sdfModelSearchNode(model, record->nodeId);
+
+    VU0_LOAD_MATRIX(&drawNode->tm);
+    VU0_LOAD_VF(vf10, &record->pos);
+    VU0_TRANSFORM_POINT(vf10, vf10);
+}
 
 sdfModelMarkPos_t *sdfModelSearchMarkPosData(sdfModelRootNode_t *aRoot, s32 aId)
 {

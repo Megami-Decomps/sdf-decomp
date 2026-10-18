@@ -324,4 +324,122 @@ enum sdf_shape_packet_type
     SDF_SHAPE_PACKET_TYPE_SHAPED = 3
 };
 
+/* DDS3 model owners and tagged effect controllers. mdlManager allocates
+ * 0x38-byte owners and 0xB4-byte groups; the PIB unit prepends 0x20-byte
+ * controllers and interprets their type-dependent payload. */
+typedef struct mdlObj_t mdlObj_t;
+typedef struct mdlResrc_t mdlResrc_t;
+struct mdlPartSlot_t;
+struct mdlMarkPos_t;
+struct mdlIpuResrc_t;
+struct mdlTrackWork_t;
+typedef struct
+{
+    s32 flags;
+    s16 motionSlotIndex;
+    s16 motionIndex;
+    struct sdfMotionPlayBook_t *motionTable;
+    sdfMemHandle_t *resourceHandle;
+} mdlResrcSlot_t;
+
+typedef struct mdlIpuAttachment_t {
+    mdlObj_t *owner;
+    struct mdlIpuResrc_t *object; /* Borrowed from the owner's heterogeneous part list. */
+    struct sdfTexHandle_t *texture; /* Borrowed texture-list node used for stream creation. */
+    s32 minimumTime;
+    u8 attributes[8];
+} mdlIpuAttachment_t;
+
+typedef struct mdlEffectResrc_t {
+    struct mdlEffectResrc_t *next;
+    u16 type; /* MdlResourceKind value, with native halfword storage. */
+    s16 motionSlotIndex; /* Owning Motion.slotIndex; -1 tags context-wide entries. */
+    union {
+        struct {
+            /* Type 2 stores a track; other part kinds store their created instance. */
+            union {
+                void *instance;
+                struct mdlTrackWork_t *track;
+            };
+            struct mdlPartSlot_t *slot;
+            struct mdlMarkPos_t *mapPositionRecord;
+            f32 anchorScale;
+            u8 pad18[8];
+        } part;
+        mdlIpuAttachment_t object;
+    } payload;
+} mdlEffectResrc_t;
+
+#define MDL_SLOT_COUNT 8
+
+struct mdlResrc_t
+{
+    mdlResrc_t *next;
+    mdlResrc_t *prev;
+    u16 group;
+    u16 type;
+    u8 ownsResources;
+    u8 pad0D[3];
+    mdlObj_t *modelContext;
+    sdfModelTexList_t *resourceList;
+    sdfModelDef_t *itemList;
+    sdfMemHandle_t *requestAllocation;
+    mdlResrcSlot_t slots[MDL_SLOT_COUNT];
+    sdfMemHandle_t *resourceHandle;
+    void *partInfo;
+    sdfItemArray_t *partList;
+    f32 defaultScale;                  /* 0xAC: uniform scale of a new model */
+    f32 objectRadius;
+};
+
+typedef struct mdlDevSlot_t
+{
+    struct mdlDevSlot_t *next;
+    sdfModelRootNode_t *model;
+    s32 remaining;
+} mdlDevSlot_t;
+
+typedef struct
+{
+    mdlDevSlot_t *first;
+    s16 usedCount;
+    u16 capacity;
+    s16 stride;
+    s16 growStep;
+    s32 byteCount;
+    f32 color[4];
+    f32 colorStep[4];
+} mdlDevList_t;
+
+struct mdlObj_t
+{
+    u32 flags;
+    mdlObj_t *next;
+    mdlObj_t *prev;
+    mdlResrc_t *sub;
+    union
+    {
+        u32 word;
+        struct
+        {
+            s16 id;
+            s16 motionIndex;
+        } h;
+    } current;
+    mdlEffectResrc_t *resourceItems;
+    sdfModelRootNode_t *inner;
+    struct sdfMotionCtrlr_t *first;
+    struct sdfMotionCtrlr_t *slots[4];
+    mdlDevList_t *devList;
+    f32 objectRadius;
+};
+
+/* Heterogeneous effect-resource lists use the native item-array header. */
+sdfItemArray_t *mdlEffectResrcListNew(u32 count);
+void mdlEffectResrcListFree(sdfItemArray_t *list);
+void mdlCreateEffectResrc_P2A(sdfItemArray_t *list, void *data);
+void mdlCreateEffectResrc_D3P(sdfItemArray_t *list, void *data);
+void mdlCreateEffectResrc_IPU(sdfItemArray_t *list, u8 *data,
+                            sdfMemHandle_t *allocation, s32 size);
+
 #endif /* MODEL_H */

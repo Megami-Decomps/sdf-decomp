@@ -81,7 +81,12 @@ typedef struct QWORD_ALIGNED
 {
     sdfGrTagStdReg_t test;
     sdfGrTagStdReg_t prim;
-    sdfGrTagStdReg_t rgbaq;
+    union
+    {
+        sdfGrTagStdReg_t rgbaq;
+        /* The clear-color setter replaces RGBA only, retaining Q and A+D. */
+        u32 clearColor;
+    };
     sdfGrTagStdReg_t xyzA;
     sdfGrTagStdReg_t xyzB;
 } sdfGrClearPacket_t;

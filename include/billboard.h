@@ -208,4 +208,37 @@ enum dds3_billboard_draw_mode
     DDS3_BILLBOARD_DRAW_MAX = 2
 };
 
+typedef struct billRenderPair_t {
+    struct billChildPayload_t *children[2];
+    u16 cameraFacingMode;  
+    u16 kind;
+    u32 colors[2];
+    sdfDrawTag_t *packetList;  
+    struct billRenderPair_t *next;  
+} billRenderPair_t;
+
+typedef struct billObj_t {
+    f32 position[4];  
+    f32 childScaleX;   
+    f32 childScaleY;   
+    f32 unk18;
+    f32 unk1C;
+    f32 rotationAngle;   
+    u32 childParam;    
+    void (*callback)();  
+    u16 kind;          
+    u16 requestedPacketListIndex;  
+    union {
+        void *payload;  
+        struct billChildPayload_t *child;  
+        struct billData_t *animationData;  
+    } u;
+    billRenderPair_t pair;  
+    u16 animationActive;  
+    u8 pad52[2];
+    u32 modeFlags;  
+    u32 animationEntryIndex;  
+    s32 entryCount;
+    struct billOut_t *resolvedEntries;  
+} billObj_t;
 #endif /* BILLBOARD_H */
