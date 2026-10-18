@@ -8,6 +8,7 @@
 #include "common.h"
 #include "kernel.h"
 #include "libsdf.h"
+#include "newdata.h"
 
 typedef struct scrHeader_t scrHeader_t;
 typedef struct scrTypeTable_t scrTypeTable_t;

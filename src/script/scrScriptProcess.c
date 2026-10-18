@@ -56,7 +56,15 @@ void scrStartScriptProcess(s32 priority, scrProcessWork_s *pw)
                                      scrScriptProcess, scrScriptShutdown, pw);
 }
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", dds3GlobalWorkClearFlags);
+void dds3GlobalWorkClearFlags(void)
+{
+    s32 countdown;
+
+    for (countdown = 255; countdown >= 0; countdown--) {
+        DDS3_GBWK->integers[255 - countdown] = 0;
+        DDS3_GBWK->floats[255 - countdown] = 0;
+    }
+}
 
 void scrStartScriptByName(s32 priority, char *name, s32 messageHandle)
 {
@@ -140,7 +148,32 @@ void scrAllReleaseScript(void)
     printf("after = %d\n", scrHandleCount);
 }
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", func_00109FD0);
+/* Restart a procedure with an empty operand stack and fresh timers. */
+s32 func_00109FD0(scrProcessWork_s *pw, s32 procNo)
+{
+    s32 cursor;
+
+    if (procNo < 0 || procNo >= pw->TypeTable->ItemCount) {
+        return 0;
+    }
+    for (cursor = 0; (((char *)pw->Name)[cursor] = pw->ProcTable[procNo].Name[cursor]) != 0; cursor++) {
+    }
+    pw->CP = pw->ProcTable[procNo].CodeAddress;
+    pw->SP = 0;
+    {
+        scrStackData_u *stackValue = pw->StackData;
+        u8 *stackType = pw->StackType;
+
+        for (cursor = 27; cursor >= 0; cursor--) {
+            *stackType++ = 0;
+            stackValue++->i = 0;
+        }
+    }
+    pw->StartProc = procNo;
+    pw->ScriptTimer = 0;
+    pw->CommandTimer = 0;
+    return 1;
+}
 
 scrProcessWork_s *scrSearchScriptName(char *name)
 {
@@ -215,4 +248,15 @@ s32 scrRunScript(scrProcessWork_s *pw)
     return scrTraceCode(pw);
 }
 
-INCLUDE_ASM(const s32, "script/scrScriptProcess", scrScriptProcess);
+s32 scrScriptProcess(dds3ProcessID_t *id)
+{
+    switch (scrTraceCode(dds3GetProcessData(id))) {
+    case SCR_RESULT_ERROR:
+        return -1;
+    case SCR_RESULT_END:
+        return -1;
+    case SCR_RESULT_CONTINUE:
+    default:
+        return 0;
+    }
+}
