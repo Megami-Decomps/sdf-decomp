@@ -313,8 +313,10 @@ static inline s32 mdlFileUpper(s32 c)
 #define VU0_SUB_EXTENDED(dst, a, b) __asm__ volatile ( \
     ".set noreorder\n\tvsub.xyzw " #dst ", " #a ", " #b "\n\t.set reorder" : :)
 
-#define VU0_SCALAR_OP(f, insn) __asm__ volatile ( \
-    ".set noreorder\n\tmfc1 $2, %0\n\tqmtc2.ni $2, vf2\n\t" insn "\n\t.set reorder" \
+/* A C float broadcast through vf2.x, then the one operation that uses it. */
+#define VU0_SCALE_VF10(f) __asm__ volatile ( \
+    ".set noreorder\n\tmfc1 $2, %0\n\tqmtc2.ni $2, vf2\n\t" \
+    "vmulx.xyzw vf10, vf10, vf2x\n\t.set reorder" \
     : : "f" (f))
 
 #define VU0_LOAD_MATRIX(src) __asm__ volatile ( \
@@ -877,7 +879,7 @@ void mdlSetBlur(mdlObj_t *ctx, s32 stride, s32 capacity,
         endCarrier[0] = endColor;
         EE_MMI_RGBA_UNPACK(endCarrier, 0.0078125f);
         VU0_SUB_EXTENDED(vf10, vf10, vf11);
-        VU0_SCALAR_OP(inverseSpan, "vmulx.xyzw vf10, vf10, vf2x");
+        VU0_SCALE_VF10(inverseSpan);
         VU0_STORE_VF(vf10, deviceList->colorStep);
     }
 }
