@@ -14,7 +14,7 @@ struct PcpScatterParticle;
 struct PcpScatterPlainInstance;
 struct PcpScatterPlainParams;
 struct PcpScatterPlainParticle;
-struct PcpScatterPool;
+struct dds3ScatterPolyList_tag;
 struct PcpScatterRadialParams;
 struct PcpScatterRadialParticle;
 struct PcpScatterRadialWork;
@@ -24,23 +24,21 @@ struct PcpScatterRibbonWork;
 struct PcpScatterSpinParams;
 struct PcpScatterSpinParticle;
 struct PcpScatterSpinWork;
-struct SdfAssetEntry;
+struct sdfMatPacket_t;
 union SdfDrawTransform;
 struct SdfGsTextureStateValues;
-struct SdfTexRef;
-struct SdfTexResource;
+struct sdfGsMemSlice_t;
 
 typedef struct EffPacketParams EffPacketParams;
-typedef struct SdfTexBuf SdfTexBuf;
-typedef struct SdfTexRef SdfTexRef;
-typedef struct SdfTexResource SdfTexResource;
-typedef struct SdfTex SdfTex;
+typedef struct sdfTexPacket_t sdfTexPacket_t;
+typedef struct sdfGsMemSlice_t sdfGsMemSlice_t;
+typedef struct sdfTexHandle_t sdfTexHandle_t;
 typedef union SdfDrawTransform SdfDrawTransform;
 typedef struct SdfGsTextureStateValues SdfGsTextureStateValues;
-typedef struct SdfAssetEntry SdfAssetEntry;
-typedef union SdfSubParam SdfSubParam;
-typedef struct SdfAsset SdfAsset;
-typedef struct SdfMemBlock SdfMemBlock;
+typedef struct sdfMatPacket_t sdfMatPacket_t;
+typedef union sdfMatUvwParm_t sdfMatUvwParm_t;
+typedef struct sdfMat_t sdfMat_t;
+typedef struct sdfMemHandle_t sdfMemHandle_t;
 typedef struct PcpScatterDraw PcpScatterDraw;
 typedef struct PcpScatterParamsA PcpScatterParamsA;
 typedef struct PcpScatterParticle PcpScatterParticle;
@@ -52,7 +50,7 @@ typedef struct PcpScatterInstanceC PcpScatterInstanceC;
 typedef struct PcpScatterPlainParams PcpScatterPlainParams;
 typedef struct PcpScatterPlainParticle PcpScatterPlainParticle;
 typedef struct PcpScatterPlainInstance PcpScatterPlainInstance;
-typedef struct EffParamWork EffParamWork;
+typedef struct effPartHandle_t effPartHandle_t;
 typedef struct PcpScatterRadialParams PcpScatterRadialParams;
 typedef struct PcpScatterRadialParticle PcpScatterRadialParticle;
 typedef struct PcpScatterRadialWork PcpScatterRadialWork;
@@ -62,9 +60,9 @@ typedef struct PcpScatterRibbonWork PcpScatterRibbonWork;
 typedef struct PcpScatterSpinParams PcpScatterSpinParams;
 typedef struct PcpScatterSpinParticle PcpScatterSpinParticle;
 typedef struct PcpScatterSpinWork PcpScatterSpinWork;
-typedef struct SdfListHead SdfListHead;
-typedef struct SdfPoolNode SdfPoolNode;
-typedef struct SdfTextureFileHeader SdfTextureFileHeader;
+typedef struct sdfDrawTag_t sdfDrawTag_t;
+typedef struct sdfGrOt_t sdfGrOt_t;
+typedef struct TMX_HEADER_t TMX_HEADER_t;
 typedef struct EffRandState EffRandState;
 
 #define EFF_SCATTER_NEUTRAL_COLOR 0x80808080
@@ -144,11 +142,11 @@ struct EffPacketParams {
 
 struct PcpScatterRes;
 
-struct SdfTex;
+struct sdfTexHandle_t;
 
-struct SdfTexBuf;
+struct sdfTexPacket_t;
 
-struct SdfTexBuf {
+struct sdfTexPacket_t {
     s32 gifTagWord; /* Low GIFtag word; NLOOP occupies bits 0-14. */
     u32 gifTagControl; /* High GIFtag control word; one packed register. */
     u64 gifTagRegisters; /* Packed register list: A+D. */
@@ -161,15 +159,11 @@ struct SdfTexBuf {
 };
 
 /* Per-texture reference count and non-owning clone source (0x8). */
-struct SdfTexRef {
-    struct SdfTex *cloneSource; /* Borrowed source pointer; marks the shared-primary clone path. */
-    s32 refCount;
-};
 
 /* Native VRAM range descriptor (0x1C), shared by textures, graph buffers and streams. */
-struct SdfTexResource {
-    struct SdfTexResource *next; /* 0x00 */
-    struct SdfTexResource *prev; /* 0x04 */
+struct sdfGsMemSlice_t {
+    struct sdfGsMemSlice_t *prev; /* 0x00 */
+    struct sdfGsMemSlice_t *next; /* 0x04 */
     u32 allocationMode;         /* 0x08: known categories above; unknown values remain valid */
     u32 word;                   /* 0x0C: VRAM offset in 32-bit words */
     s32 size;                   /* 0x10: range length in 32-bit words */
@@ -181,14 +175,14 @@ struct SdfTexResource {
 /* Serialized byte consumed by the GS texture-state packet builder. */
 typedef u8 SdfTextureClampMode;
 
-struct SdfTex {
-    struct SdfTex *next;
-    struct SdfTex *prev;
-    SdfTexRef *reference;
+struct sdfTexHandle_t {
+    struct sdfTexHandle_t *prev;
+    struct sdfTexHandle_t *next;
+    struct sdfTexHandle_t *origin;
     s16 width;
     s16 height;
-    SdfTexResource *primaryResource;
-    SdfTexResource *secondaryResource;
+    sdfGsMemSlice_t *primaryResource;
+    sdfGsMemSlice_t *secondaryResource;
     u8 paletteCount;
     u8 clutFormat;
     u8 pixelFormat;
@@ -198,8 +192,8 @@ struct SdfTex {
     SdfTextureClampMode clampMode; /* 0x1F: 0xFF leaves GS CLAMP state zero; otherwise low nibble is copied. */
     s32 resourceKey;
     s32 battleTextureSlot;
-    SdfTexBuf *primaryBuffer;
-    SdfTexBuf *secondaryBuffer;
+    sdfTexPacket_t *primaryBuffer;
+    sdfTexPacket_t *secondaryBuffer;
     u8 *paletteData; /* 0x30: retained copy of the texture's palette colors. */
     s32 paletteDataSize; /* 0x34: palette byte count from sdfTexGetClutDataSize. */
     s32 unk38;
@@ -208,11 +202,11 @@ struct SdfTex {
 
 /* Shared scatter texture reference, created and released independently of pools. */
 typedef struct PcpScatterRes {
-    SdfTex *textureHandle;
+    sdfTexHandle_t *textureHandle;
     s32 refCount;
 } PcpScatterRes; /* 0x08 */
 
-struct SdfAsset;
+struct sdfMat_t;
 
 /* Draw entries store six transform floats and expose the same bytes as three qwords. */
 union SdfDrawTransform {
@@ -228,7 +222,7 @@ struct SdfGsTextureStateValues {
 };
 
 /* Native 0xA0-byte draw-entry block allocated by SDF_ASSET_DRAW_ENTRY_BYTES. */
-struct SdfAssetEntry {
+struct sdfMatPacket_t {
     u32 pad00;             /* 0x00 */
     u32 unk04;             /* 0x04 */
     u32 unk08;             /* 0x08 */
@@ -249,10 +243,10 @@ struct SdfAssetEntry {
     u32 vifMscalCommand;   /* 0x9C: VIF MSCAL with microprogram index zero */
 };
 
-union SdfSubParam;
+union sdfMatUvwParm_t;
 
 /* Optional packed or five-float state block owned by an SdfAsset. */
-union SdfSubParam {
+union sdfMatUvwParm_t {
     struct {
         u64 unk0;
         u64 unk8;
@@ -274,12 +268,12 @@ union SdfSubParam {
     } transformInputs;
 };
 
-struct SdfAsset {
+struct sdfMat_t {
     u32 unk00; /* Word from the serialized asset-parameter header. */
     u16 unk04; /* Halfword from the serialized asset-parameter header. */
     u8 dirtyFlags; /* 0x06: pending state-group changes for the two draw entries */
     u8 pad07;
-    struct SdfAssetEntry *drawEntries[2]; /* 0x08: owned 0xA0-byte draw entries */
+    struct sdfMatPacket_t *drawEntries[2]; /* 0x08: owned 0xA0-byte draw entries */
     u32 primaryStateWordFirst; /* 0x10: first word set by primary-state updates */
     u32 primaryStateWordSecond; /* 0x14: second word set by primary-state updates */
     u32 secondaryColor; /* 0x18 */
@@ -287,25 +281,25 @@ struct SdfAsset {
     u32 primaryStateWordThird; /* 0x20 */
     u32 unk24;
     u32 primaryStateWordFourth; /* 0x28: retained as raw bits */
-    SdfTex *texture;
-    SdfTex *secondaryTexture; /* 0x30 */
+    sdfTexHandle_t *texture;
+    sdfTexHandle_t *secondaryTexture; /* 0x30 */
     u32 secondaryMode;       /* 0x34: secondary packet and palette selector */
-    SdfSubParam *primarySubParam; /* 0x38 */
-    SdfSubParam *secondarySubParam; /* 0x3C */
+    sdfMatUvwParm_t *primarySubParam; /* 0x38 */
+    sdfMatUvwParm_t *secondarySubParam; /* 0x3C */
     f32 scalarPairFirst; /* 0x40 */
     f32 scalarPairSecond; /* 0x44 */
 };
 
-struct SdfMemBlock;
+struct sdfMemHandle_t;
 
 /* Embedded command work at actor +0x20. Neither record is the whole owning
  * actor. */
-struct SdfMemBlock;
+struct sdfMemHandle_t;
 
 /* General-heap allocation descriptor (0x10); links bound the represented span. */
-struct SdfMemBlock {
-    struct SdfMemBlock *prev; /* 0x00 */
-    struct SdfMemBlock *next; /* 0x04 */
+struct sdfMemHandle_t {
+    struct sdfMemHandle_t *prev; /* 0x00 */
+    struct sdfMemHandle_t *next; /* 0x04 */
     s32 address;              /* 0x08: start of represented span */
     u16 state;                /* 0x0C: free, used, or end sentinel */
     s16 referenceCount;       /* 0x0E: -1 for sentinels */
@@ -325,8 +319,8 @@ struct PcpScatterDraw {
     f32 *uv;                  // 0x68
     u32 *vertexColors;        // 0x6C
     u32 *colors;              // 0x70
-    struct SdfAsset *asset;    // 0x74
-    struct SdfMemBlock *allocation; // 0x78
+    struct sdfMat_t *asset;    // 0x74
+    struct sdfMemHandle_t *allocation; // 0x78
     struct PcpScatterRes *sharedResource; // 0x7C
 };
 
@@ -386,7 +380,7 @@ struct PcpScatterInstanceA {
     f32 scale;
     u32 color;
     PcpScatterDraw *scatterObject;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
 };
 
 /* B's copied parameter block and runtime owner. Its particle pointer follows
@@ -433,7 +427,7 @@ struct PcpScatterInstanceB {
     u32 color;
     s32 age;
     PcpScatterDraw *scatterObject;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
 };
 
 /* C adds staggered ring motion and two color keys to the copied parameters. */
@@ -481,7 +475,7 @@ struct PcpScatterInstanceC {
     u32 color;
     s32 age;
     PcpScatterDraw *scatterObject;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
 };
 
 /* Plain is a distinct 0xE8-byte parameter and 0x28-byte particle variant. */
@@ -533,11 +527,11 @@ struct PcpScatterPlainInstance {
     f32 scale;
     u32 color;
     PcpScatterDraw *scatterObject;
-    SdfMemBlock *allocationHandle;
+    sdfMemHandle_t *allocationHandle;
 };
 
 /* Appended after the two record arrays; resource helpers own this same control block. */
-typedef struct PcpScatterPool {
+typedef struct dds3ScatterPolyList_tag {
     f32 origin[4];
     u32 poolMode; /* 0x10: selects the surface node used when drawing the pool */
     u32 color;
@@ -545,18 +539,18 @@ typedef struct PcpScatterPool {
     f32 unk1C;
     u8 *recordBase;
     u8 *auxRecordBase;
-    SdfAsset *drawAsset;
-    SdfMemBlock *allocation;
+    sdfMat_t *drawAsset;
+    sdfMemHandle_t *allocation;
     PcpScatterRes *sharedResource;
-} PcpScatterPool; /* 0x34 */
+} dds3ScatterPolyList_tag; /* 0x34 */
 
-struct EffParamWork;
+struct effPartHandle_t;
 
 /* One randomized channel record. */
-struct EffParamWork;
+struct effPartHandle_t;
 
 /* Compact effect owner: its halfword kind selects the opaque payload's operations. */
-struct EffParamWork {
+struct effPartHandle_t {
     u16 kind;
     u8 pad02[2];
     void *payload;
@@ -612,11 +606,11 @@ struct PcpScatterRadialWork {
     PcpScatterRadialParticle *particles;
     f32 scale;
     u32 color;
-    PcpScatterPool *childWork;
-    SdfMemBlock *allocation;
+    dds3ScatterPolyList_tag *childWork;
+    sdfMemHandle_t *allocation;
     u32 duplicateGroupCount;
-    EffParamWork **duplicatedHandles;
-    SdfMemBlock *duplicateAllocation;
+    effPartHandle_t **duplicatedHandles;
+    sdfMemHandle_t *duplicateAllocation;
 };
 
 struct PcpScatterRibbonParticle {
@@ -660,11 +654,11 @@ struct PcpScatterRibbonWork {
     PcpScatterRibbonParticle *particles;
     f32 scale;
     u32 color;
-    PcpScatterPool *childWork;
-    SdfMemBlock *allocation;
+    dds3ScatterPolyList_tag *childWork;
+    sdfMemHandle_t *allocation;
     u32 duplicateGroupCount;
-    EffParamWork **duplicatedHandles;
-    SdfMemBlock *duplicateAllocation;
+    effPartHandle_t **duplicatedHandles;
+    sdfMemHandle_t *duplicateAllocation;
 };
 
 /* Serialized parameters copied into each spin-scatter work owner. */
@@ -713,17 +707,17 @@ struct PcpScatterSpinWork {
     PcpScatterSpinParticle *particles;
     f32 scale;
     u32 color;
-    PcpScatterPool *childWork;
-    SdfMemBlock *allocation;
+    dds3ScatterPolyList_tag *childWork;
+    sdfMemHandle_t *allocation;
     u32 duplicateGroupCount;
-    EffParamWork **duplicatedHandles;
-    SdfMemBlock *duplicateAllocation;
+    effPartHandle_t **duplicatedHandles;
+    sdfMemHandle_t *duplicateAllocation;
 };
 
-struct SdfListHead;
+struct sdfDrawTag_t;
 
-struct SdfListHead {
-    struct SdfListHead *nextList; /* CPU link between lists; first/last are DMA addresses. */
+struct sdfDrawTag_t {
+    struct sdfDrawTag_t *nextList; /* CPU link between lists; first/last are DMA addresses. */
     u32 first;
     u32 last;
     u32 unkC;
@@ -733,24 +727,24 @@ struct SdfListHead {
     u32 unk1C;
 };
 
-struct SdfPoolNode;
+struct sdfGrOt_t;
 
 /* Draw-surface pool entry (0x20); the SDK initializes and flushes this owner. */
-struct SdfPoolNode {
-    struct SdfPoolNode *next; /* 0x00 */
-    SdfListHead *first;       /* 0x04 */
-    SdfListHead *last;        /* 0x08 */
+struct sdfGrOt_t {
+    struct sdfGrOt_t *next; /* 0x00 */
+    sdfDrawTag_t *first;       /* 0x04 */
+    sdfDrawTag_t *last;        /* 0x08 */
     u32 unkC;
-    void (*append)(struct SdfPoolNode *, SdfListHead *);      /* 0x10 */
-    s32 (*prepend)(struct SdfPoolNode *, s32, SdfListHead *); /* 0x14 */
+    void (*append)(struct sdfGrOt_t *, sdfDrawTag_t *);      /* 0x10 */
+    s32 (*prepend)(struct sdfGrOt_t *, s32, sdfDrawTag_t *); /* 0x14 */
     u32 unk18;
     u32 unk1C;
 };
 
-struct SdfTextureFileHeader;
+struct TMX_HEADER_t;
 
 /* Serialized texture-resource header; payload begins after this 0x40-byte prefix. */
-struct SdfTextureFileHeader {
+struct TMX_HEADER_t {
     u8 unk00;
     u8 payloadOffsetFlags; /* 0x01: high nibble adds payload offset bytes; low bits stay opaque. */
     u8 pad02[2];       /* 0x02 */
@@ -799,7 +793,7 @@ struct EffRandState {
 
 extern EffRandState dds3EffectBase[];
 
-void dds3EffectPartDelete(EffParamWork *work);
+void dds3EffectPartDelete(effPartHandle_t *work);
 
 extern u32 dds3WhirlwindPolyListGetABGR(PcpScatterDraw *object, s32 particleIndex);
 
@@ -823,11 +817,11 @@ PcpScatterInstanceC *effPCPWhirlwind3PolyCreate(
 
 extern EffPacketParams D_0056AD58;
 
-extern SdfPoolNode *D_0031F440[];
+extern sdfGrOt_t *D_0031F440[];
 
 extern EffPacketParams D_0056AD28[];
 
-extern SdfPoolNode *D_0031F3D0[];
+extern sdfGrOt_t *D_0031F3D0[];
 
 extern u32 D_0031F310[];
 
@@ -837,7 +831,7 @@ extern u8 D_0031F3E0[];
 
 extern void *memset(void *dst, s32 value, u32 size);
 
-struct SdfMemBlock *sdfMemAllocDirect(s32 requestedBytes);
+struct sdfMemHandle_t *sdfMemAllocDirect(s32 requestedBytes);
 
 /* Reserve size bytes from the active packet buffer, rounded up to 16 bytes.
  * Returns the prior cursor as a 32-bit address; the buffer owns this storage. */
@@ -845,47 +839,47 @@ s32 sdfGrAllocPacketBuff(s32 size);
 
 void *sdfChipAllocDirect(s32 size);
 
-void sdfDrawTagLink(struct SdfListHead *list, u32 packetAddress);
+void sdfDrawTagLink(struct sdfDrawTag_t *list, u32 packetAddress);
 
 /* Apply the primary VU0 matrix bank vf28-vf31 to basis vectors vf24-vf27,
  * then replace vf28-vf31 with the four transformed vectors. */
 void MultMatrixNoArg(void);
 
-void sdf3DPrimLinkMat(SdfListHead *packetList, SdfAsset *asset,
+void sdf3DPrimLinkMat(sdfDrawTag_t *packetList, sdfMat_t *asset,
                               s32 (*allocatePacket)(s32));
 
-void sdf3DPrimLinkTm(SdfListHead *packetList,
+void sdf3DPrimLinkTm(sdfDrawTag_t *packetList,
                            s32 (*allocatePacket)(s32));
 
-struct SdfAsset *sdfMatNew(void);
+struct sdfMat_t *sdfMatNew(void);
 
 f32 sdfCos(f32 angle);
 
-void sdfDrawTagInit(struct SdfListHead *list);
+void sdfDrawTagInit(struct sdfDrawTag_t *list);
 
 /* Set vf28-vf31 to vf28-vf31 * vf24-vf27 in place. */
 void MultMatrixRevNoArg(void);
 
 /* Queue an asset owner for the deferred SdfAsset release callback. */
-void sdfMatFreeDelayed(struct SdfAsset *asset);
+void sdfMatFreeDelayed(struct sdfMat_t *asset);
 
 void sdfChipFreeDirect(void *memory);
 
-void sdfMemFreeDirect(struct SdfMemBlock *allocation);
+void sdfMemFreeDirect(struct sdfMemHandle_t *allocation);
 
-u32 sdfMemLock(struct SdfMemBlock *allocation);
+u32 sdfMemLock(struct sdfMemHandle_t *allocation);
 
 /* Store the primary or secondary texture owner and mark its draw state dirty. */
-void sdfMatSetTex(struct SdfAsset *asset, struct SdfTex *texture);
+void sdfMatSetTex(struct sdfMat_t *asset, struct sdfTexHandle_t *texture);
 
-void sdfMatSetConstant(struct SdfAsset *asset, f32 value);
+void sdfMatSetConstant(struct sdfMat_t *asset, f32 value);
 
 f32 sdfSin(f32 angle);
 
 /* Acquire a texture from a serialized texture-file header. */
-struct SdfTex *sdfTexSet(const SdfTextureFileHeader *header);
+struct sdfTexHandle_t *sdfTexSet(const TMX_HEADER_t *header);
 
-void sdfTexFreeDelayed(SdfTex *texture);
+void sdfTexFreeDelayed(sdfTexHandle_t *texture);
 
 /* Load the X-axis rotation matrix into the primary VU0 matrix registers. */
 void SetRotateMatrixX(f32 angle);
@@ -1028,9 +1022,9 @@ INCLUDE_ASM(const s32, "effect/effPCPScatter", effPCPHamaCardScatterSetColor);
 void effPCPHamaCardScatterSetScale(void) {
 }
 
-PcpScatterPool *dds3ScatterPolyListCreate(s32 groups) {
-    PcpScatterPool *pool;
-    SdfMemBlock *allocation;
+dds3ScatterPolyList_tag *dds3ScatterPolyListCreate(s32 groups) {
+    dds3ScatterPolyList_tag *pool;
+    sdfMemHandle_t *allocation;
     u32 *recordBlock;
     s32 slotCount;
     s32 recordWords;
@@ -1044,7 +1038,7 @@ PcpScatterPool *dds3ScatterPolyListCreate(s32 groups) {
     allocation = sdfMemAllocDirect(allocationBytes);
     recordBlock = (u32 *)sdfMemLock(allocation);
     memset(recordBlock, 0, allocationBytes);
-    pool = (PcpScatterPool *)(recordBlock + (recordWords + auxWords));
+    pool = (dds3ScatterPolyList_tag *)(recordBlock + (recordWords + auxWords));
     pool->recordBase = (u8 *)recordBlock;
     pool->poolMode = 1;
     pool->auxRecordBase = (u8 *)(recordBlock + recordWords);
@@ -1060,7 +1054,7 @@ PcpScatterPool *dds3ScatterPolyListCreate(s32 groups) {
     return pool;
 }
 
-void dds3ScatterPolyListDelete(PcpScatterPool *work)
+void dds3ScatterPolyListDelete(dds3ScatterPolyList_tag *work)
 {
     if (work->sharedResource != NULL) {
         dds3ScatterPolyListTexResourceDelete(work->sharedResource);
@@ -1069,11 +1063,11 @@ void dds3ScatterPolyListDelete(PcpScatterPool *work)
     sdfMemFreeDirect(work->allocation);
 }
 
-void dds3ScatterPolyListDraw(PcpScatterPool *pool) {
+void dds3ScatterPolyListDraw(dds3ScatterPolyList_tag *pool) {
     f32 matrix[16];
-    SdfListHead *packet = (SdfListHead *)sdfGrAllocPacketBuff(0x20);
+    sdfDrawTag_t *packet = (sdfDrawTag_t *)sdfGrAllocPacketBuff(0x20);
     s32 remainingVertices;
-    SdfPoolNode *surface;
+    sdfGrOt_t *surface;
 
     sdfDrawTagInit(packet);
     EE_MMI_UNIT_MATRIX(matrix);
@@ -1111,7 +1105,7 @@ void dds3ScatterPolyListDraw(PcpScatterPool *pool) {
     surface->append(surface, packet);
 }
 
-void dds3ScatterPolyListSetTex(PcpScatterPool *work, u32 resId)
+void dds3ScatterPolyListSetTex(dds3ScatterPolyList_tag *work, u32 resId)
 {
     PcpScatterRes *res;
 
@@ -1119,7 +1113,7 @@ void dds3ScatterPolyListSetTex(PcpScatterPool *work, u32 resId)
     work->sharedResource = res;
 }
 
-void dds3ScatterPolyListCopyTex(PcpScatterPool *work, PcpScatterPool *src)
+void dds3ScatterPolyListCopyTex(dds3ScatterPolyList_tag *work, dds3ScatterPolyList_tag *src)
 {
     PcpScatterRes *res;
 
@@ -1127,12 +1121,12 @@ void dds3ScatterPolyListCopyTex(PcpScatterPool *work, PcpScatterPool *src)
     work->sharedResource = res;
 }
 
-u128 *dds3ScatterPolyListGetVertex(PcpScatterPool *work, s32 index)
+u128 *dds3ScatterPolyListGetVertex(dds3ScatterPolyList_tag *work, s32 index)
 {
     return (u128 *)(work->recordBase + index * EFF_SCATTER_RECORD_BYTES);
 }
 
-u32 *dds3ScatterPolyListGetVC(PcpScatterPool *work, s32 index)
+u32 *dds3ScatterPolyListGetVC(dds3ScatterPolyList_tag *work, s32 index)
 {
     return (u32 *)(work->auxRecordBase + index * EFF_SCATTER_AUX_RECORD_BYTES);
 }
@@ -1142,7 +1136,7 @@ PcpScatterRes *dds3ScatterPolyListTexResourceCreate(u32 resId)
     PcpScatterRes *res;
 
     res = sdfChipAllocDirect(sizeof(PcpScatterRes));
-    res->textureHandle = sdfTexSet((SdfTextureFileHeader *)(resId));
+    res->textureHandle = sdfTexSet((TMX_HEADER_t *)(resId));
     res->refCount = 1;
     return res;
 }
@@ -1483,14 +1477,14 @@ void dds3WhirlwindPolyListDelete(PcpScatterDraw *object) {
 
 void dds3WhirlwindPolyListDraw(PcpScatterDraw *object) {
     f32 matrix[16] __attribute__((aligned(16)));
-    SdfListHead *packet;
+    sdfDrawTag_t *packet;
     EffPacketParams *draw;
     s32 count;
     s32 remaining;
     s32 particleIndex;
-    SdfPoolNode *surface;
+    sdfGrOt_t *surface;
 
-    packet = (SdfListHead *)sdfGrAllocPacketBuff(0x20);
+    packet = (sdfDrawTag_t *)sdfGrAllocPacketBuff(0x20);
     sdfDrawTagInit(packet);
     EE_MMI_UNIT_MATRIX(matrix);
     matrix[10] = matrix[5] = matrix[0] = object->scale;
@@ -1502,10 +1496,10 @@ void dds3WhirlwindPolyListDraw(PcpScatterDraw *object) {
     MultMatrixNoArg();
     sdf3DPrimLinkTm(packet, 0);
     if (object->sharedResource != NULL) {
-        sdfMatSetTex((struct SdfAsset *)object->asset,
+        sdfMatSetTex((struct sdfMat_t *)object->asset,
                       object->sharedResource->textureHandle);
     }
-    sdf3DPrimLinkMat(packet, (SdfAsset *)object->asset, 0);
+    sdf3DPrimLinkMat(packet, (sdfMat_t *)object->asset, 0);
     count = (s32)object->particleCount;
     D_0056AD58.parameters = (const u32 *)D_0031F3E0;
     for (particleIndex = 0; particleIndex < count; particleIndex++) {
