@@ -238,3 +238,4 @@ INCLUDE_ASM(const s32, "sdf/sdfDevCons", sdfDevSetPrintCB);
 INCLUDE_SDATA(const s32, "sdf/sdfDevCons", devConsTop);
 
 INCLUDE_SDATA(const s32, "sdf/sdfDevCons", alreadyInitDevCons);
+

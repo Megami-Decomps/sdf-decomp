@@ -533,3 +533,4 @@ sdfTexHandle_t *sdfTexSearch(u32 aTexId)
 INCLUDE_ASM(const s32, "sdf/sdfTex", sdfTexInit);
 
 INCLUDE_SDATA(const s32, "sdf/sdfTex", sdfTexHandleLink);
+
