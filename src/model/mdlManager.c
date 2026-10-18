@@ -286,22 +286,7 @@ static inline void eeUnpackRGBAWordFloat(u32 color, f32 unit) {
 static inline u32 mdlPackDevSlotColor(s32 age, f32 unit) {
     u32 rgba[4];
 
-    __asm__ volatile (
-        ".set noreorder\n\t"
-        "qmtc2.ni %1, vf2\n\t"
-        "vitof0.xyzw vf2, vf2\n\t"
-        "vmulaw.xyzw ACC, vf10, vf0w\n\t"
-        "vmaddx.xyzw vf2, vf11, vf2x\n\t"
-        "vmul.xyzw vf10, vf2, vf12\n\t"
-        "qmtc2.ni %2, vf2\n\t"
-        "vmulx.xyzw vf10, vf10, vf2x\n\t"
-        "vftoi0.xyzw vf10, vf10\n\t"
-        "qmfc2.ni %0, vf10\n\t"
-        "ppach %0, $0, %0\n\t"
-        "ppacb %0, $0, %0\n\t"
-        ".set reorder"
-        : "=&r"(rgba[0])
-        : "r"(age), "r"(unit));
+    VU0_SEQ_MDL_PACK_DEV_SLOT_COLOR(age, unit);
     return rgba[0];
 }
 
