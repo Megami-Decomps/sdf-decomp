@@ -2,6 +2,7 @@
 #include "model.h"
 #include "motion.h"
 #include "draw3d.h"
+#include "ps2asm.h"
 
 #define MDL_GROUP_COUNT 8
 
@@ -76,23 +77,11 @@ void mdlMotion(mdlObj_t *ctx, s32 searchId, s32 motionIndex, s32 loop, f32 blend
 sdfMotionCtrlr_t *mdlGetMotionCtrlr(mdlObj_t *ctx, s32 searchId);
 void mdlSetEffectColor(mdlObj_t *ctx, u32 value);
 
+/* Kept local: this unit needs the load to act as a memory barrier. */
+#undef VU0_LOAD_VF10
 #define VU0_LOAD_VF10(addr) __asm__ volatile ( \
     ".set noreorder\n\tlqc2 $vf10, 0(%0)\n\t.set reorder" \
     : : "r" (addr) : "memory")
-#define VU0_STORE_VF10(addr) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 $vf10, 0(%0)\n\t.set reorder" \
-    : : "r" (addr) : "memory")
-#define VU0_STORE_VF28(addr) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 $vf28, 0(%0)\n\t.set reorder" \
-    : : "r" (addr) : "memory")
-#define VU0_STORE_VF29(addr) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 $vf29, 0(%0)\n\t.set reorder" \
-    : : "r" (addr) : "memory")
-#define VU0_STORE_VF30(addr) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 $vf30, 0(%0)\n\t.set reorder" \
-    : : "r" (addr) : "memory")
-#define VU0_SET_VF10_W_ONE() __asm__ volatile ( \
-    ".set noreorder\n\tvmove.w $vf10, $vf0\n\t.set reorder")
 
 typedef struct fileRequest_t fileRequest_t;
 
@@ -295,17 +284,6 @@ static inline s32 mdlFileUpper(s32 c)
     return MDL_CHAR_IS_LOWER(c) ? c - 'a' + 'A' : c;
 }
 
-/* SDK VU0/MMI operations, as in the DDS1 twin. */
-#define VU0_LOAD_VF(vf, src) __asm__ volatile ( \
-    ".set noreorder\n\tlqc2 " #vf ", 0(%0)\n\t.set reorder" \
-    : : "r" (src))
-
-#define VU0_STORE_VF(vf, dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 " #vf ", 0(%0)\n\t.set reorder" \
-    : : "r" (dst) : "memory")
-
-#define VU0_MOVE_VF(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\tvmove.xyzw " #dst ", " #src "\n\t.set reorder")
 
 #define VU0_MOVE_VF_EXTENDED(dst, src) __asm__ volatile ( \
     ".set noreorder\n\tvmove.xyzw " #dst ", " #src "\n\t.set reorder" : :)
@@ -313,50 +291,15 @@ static inline s32 mdlFileUpper(s32 c)
 #define VU0_SUB_EXTENDED(dst, a, b) __asm__ volatile ( \
     ".set noreorder\n\tvsub.xyzw " #dst ", " #a ", " #b "\n\t.set reorder" : :)
 
-/* A C float broadcast through vf2.x, then the one operation that uses it. */
+/* A C float broadcast through vf2.x, then the one operation that uses it.
+ * Kept local: retail carries the bits through $2 here, not through
+ * a register cc1 picks. */
+#undef VU0_SCALE_VF10
 #define VU0_SCALE_VF10(f) __asm__ volatile ( \
     ".set noreorder\n\tmfc1 $2, %0\n\tqmtc2.ni $2, vf2\n\t" \
     "vmulx.xyzw vf10, vf10, vf2x\n\t.set reorder" \
     : : "f" (f))
 
-#define VU0_LOAD_MATRIX(src) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "lqc2 vf28, 0(%0)\n\t" \
-    "lqc2 vf29, 16(%0)\n\t" \
-    "lqc2 vf30, 32(%0)\n\t" \
-    "lqc2 vf31, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (src))
-
-#define VU0_SCALE_MATRIX_ROWS(src) __asm__ volatile ( \
-    ".set noreorder\n\tvmulx.xyzw vf28, vf28, " #src "x\n\tvmuly.xyzw vf29, vf29, " #src "y\n\t" \
-    "vmulz.xyzw vf30, vf30, " #src "z\n\t.set reorder")
-
-#define VU0_TRANSFORM_POINT(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\tvmulax.xyzw ACC, vf28, " #src "x\n\tvmadday.xyzw ACC, vf29, " #src "y\n\t" \
-    "vmaddaz.xyzw ACC, vf30, " #src "z\n\tvmaddw.xyzw " #dst ", vf31, vf0w\n\t.set reorder")
-
-#define VU0_PERSPECTIVE_DIVIDE_VF10() __asm__ volatile ( \
-    ".set noreorder\n\tvdiv Q, vf0w, vf10w\n\tvmove.w vf10, vf0\n\tvwaitq\n\t" \
-    "vmulq.xyzw vf10, vf10, Q\n\t.set reorder")
-
-#define VU0_MUL(dst, a, b) __asm__ volatile ( \
-    ".set noreorder\n\tvmul.xyzw " #dst ", " #a ", " #b "\n\t.set reorder")
-
-#define VU0_ADD(dst, a, b) __asm__ volatile ( \
-    ".set noreorder\n\tvadd.xyzw " #dst ", " #a ", " #b "\n\t.set reorder")
-
-#define EE_MMI_RGBA_UNPACK(src, unit) __asm__ volatile ( \
-    ".set noreorder\n" \
-    "lw $2, 0(%0)\n" \
-    "pextlb $2, $0, $2\n" \
-    "pextlh $2, $0, $2\n" \
-    "qmtc2.ni $2, vf10\n" \
-    "vitof0.xyzw vf10, vf10\n" \
-    "qmtc2.ni %1, vf2\n" \
-    "vmulx.xyzw vf10, vf10, vf2x\n" \
-    ".set reorder" \
-    : : "r"(src), "r"(unit) : "$2", "memory")
 
 static inline void eeUnpackRGBAWordFloat(u32 color, f32 unit) {
     u32 rgba[4];
