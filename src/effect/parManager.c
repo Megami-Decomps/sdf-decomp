@@ -606,12 +606,6 @@ typedef struct effDiscAuxEmitter_t {
     ".set noreorder\n\tsqc2 " "vf11" ", 0(%0)\n\t.set reorder" \
     : : "r" (dst))
 
-#define VU0_COPY_VF10_TO_VF2() __asm__ volatile ( \
-    ".set noreorder\n\tvmove.xyzw " "vf2" ", " "vf10" "\n\t.set reorder")
-
-#define VU0_COPY_VF2_TO_VF12() __asm__ volatile ( \
-    ".set noreorder\n\tvmove.xyzw " "vf12" ", " "vf2" "\n\t.set reorder")
-
 
 enum ParKindStateKind {
     PAR_KIND_STATE_HISTORY = 1,
