@@ -1,6 +1,45 @@
 #include "common.h"
+#include "draw3d.h"
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3PolygonManagerInit);
+typedef struct
+{
+    u128 *pVertex;
+    u32 *pVC;
+    s32 count;
+    s32 rec;
+    u32 color;
+} dds3TrackPolyList_t;
+
+typedef struct dds3TrackPoly_t
+{
+    u16 type;
+    u16 bucket;
+    s32 number;
+    s32 face;
+    s32 rec;
+    sdfMemHandle_t *hMem;
+    dds3TrackPolyList_t *list;
+    u128 *pVertex;
+    u32 *pVC;
+    sdfMat_t *pMat;
+    struct dds3TrackPoly_t *next;
+    s32 unk2c;
+} dds3TrackPoly_t;
+
+extern u32 hDrawListTop;
+extern u8 D_005698A0[];
+extern sdf3DPrimPolyParm_t D_005698B0;
+
+extern void sdfRandomizeByTime(void *state);
+
+void dds3TrackPolyInit(void);
+
+void dds3PolygonManagerInit(void)
+{
+    hDrawListTop = 0;
+    dds3TrackPolyInit();
+    sdfRandomizeByTime(D_005698A0);
+}
 
 void dds3PolygonManagerExit(void) {
 }
@@ -15,13 +54,24 @@ INCLUDE_ASM(const s32, "effect/polyManager", dds3PolygonLinkOt);
 
 INCLUDE_ASM(const s32, "effect/polyManager", dds3PolygonSetTex);
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyInit);
+void dds3TrackPolyInit(void)
+{
+    memset(&D_005698B0, 0, sizeof(D_005698B0));
+    D_005698B0.attr = 0x4000;
+}
 
 INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyCreate);
 
 INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyDelete);
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyListInit);
+void dds3TrackPolyListInit(dds3TrackPoly_t *hTrackPoly, s32 number)
+{
+    dds3TrackPolyList_t *list = (dds3TrackPolyList_t *)(number * 20 + (u32)hTrackPoly->list);
+
+    list->color = 0x80808080;
+    list->rec = 0;
+    list->count = 0;
+}
 
 INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyDraw);
 
@@ -37,7 +87,23 @@ INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCRefresh_ParType1);
 
 INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCRefresh_ParType2);
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCSet_Normal);
+void dds3TrackPolyVCSet_Normal(dds3TrackPoly_t *hTrackPoly, u32 firstColor, u32 secondColor)
+{
+    s32 perCell = hTrackPoly->face >> 1;
+    s32 count = hTrackPoly->number;
+    s32 i;
+
+    for (i = 0; i < count; i++) {
+        u32 *vc = hTrackPoly->list[i].pVC;
+        s32 j;
+
+        for (j = 0; j < perCell; j++) {
+            vc[0] = firstColor;
+            vc[1] = secondColor;
+            vc += 2;
+        }
+    }
+}
 
 INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCSet_Acute);
 
