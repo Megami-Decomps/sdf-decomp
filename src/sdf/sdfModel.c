@@ -166,10 +166,10 @@ sdfModelNode_t *sdfModelNodeNew(void) {
     node->drawAttr = -1;
     node->prev = node;
     node->next = node;
-    VU0_STORE_VF($vf0, &node->rotate);
-    VU0_STORE_VF($vf0, &node->pos);
-    VU0_SET_ONES_XYZ($vf10);
-    VU0_STORE_VF($vf10, &node->scale);
+    VU0_STORE_VF(vf0, &node->rotate);
+    VU0_STORE_VF(vf0, &node->pos);
+    VU0_SET_ONES_XYZ(vf10);
+    VU0_STORE_VF(vf10, &node->scale);
     EE_MMI_UNIT_MATRIX(&node->localNoScaledTm);
     return node;
 }
