@@ -523,7 +523,7 @@ void dds3TrackPolySet(dds3TrackPoly_t *system, s32 cellIndex, const u128 *vertic
         vertex = cell->pVertex + shiftCount;
         for (i = 0; i < shiftCount; i++) {
             vertex--;
-            SDF_VU0__COPYVECTOR(vertex + 2, vertex);
+            SDF_VU0_COPYVECTOR(vertex + 2, vertex);
         }
         cell->rec = system->rec;
         if (cell->count < shiftCount + 2) {
@@ -533,8 +533,8 @@ void dds3TrackPolySet(dds3TrackPoly_t *system, s32 cellIndex, const u128 *vertic
         cell->rec--;
         vertex = cell->pVertex;
     }
-    SDF_VU0__COPYVECTOR(vertex, vertices);
-    SDF_VU0__COPYVECTOR(vertex + 1, vertices + 1);
+    SDF_VU0_COPYVECTOR(vertex, vertices);
+    SDF_VU0_COPYVECTOR(vertex + 1, vertices + 1);
 }
 
 void dds3TrackPolyMove(dds3TrackPoly_t *system, s32 cellIndex, const u128 *delta) {
@@ -546,9 +546,9 @@ void dds3TrackPolyMove(dds3TrackPoly_t *system, s32 cellIndex, const u128 *delta
     if (count > 0) {
         i = count;
         do {
-            SDF_VU0__LOADVECTOR(vertex);
-            SDF_VU0__ADDVECTOR();
-            SDF_VU0__STOREVECTOR(vertex);
+            SDF_VU0_LOADVECTOR(vertex);
+            SDF_VU0_ADDVECTOR();
+            SDF_VU0_STOREVECTOR(vertex);
             i--;
             vertex++;
         } while (i != 0);
@@ -566,7 +566,7 @@ void dds3TrackPolySet2(dds3TrackPoly_t *system, s32 cellIndex, const u128 *verti
         vertex = cell->pVertex + shiftCount;
         for (i = 0; i < shiftCount; i++) {
             vertex--;
-            SDF_VU0__COPYVECTOR(vertex + 3, vertex);
+            SDF_VU0_COPYVECTOR(vertex + 3, vertex);
         }
         cell->rec = system->rec;
         if (cell->count < shiftCount + 3) {
@@ -576,9 +576,9 @@ void dds3TrackPolySet2(dds3TrackPoly_t *system, s32 cellIndex, const u128 *verti
         cell->rec--;
         vertex = cell->pVertex;
     }
-    SDF_VU0__COPYVECTOR(vertex, vertices);
-    SDF_VU0__COPYVECTOR(vertex + 1, vertices + 1);
-    SDF_VU0__COPYVECTOR(vertex + 2, vertices + 2);
+    SDF_VU0_COPYVECTOR(vertex, vertices);
+    SDF_VU0_COPYVECTOR(vertex + 1, vertices + 1);
+    SDF_VU0_COPYVECTOR(vertex + 2, vertices + 2);
 }
 
 void dds3TrackPolyMove2(dds3TrackPoly_t *system, s32 cellIndex, const u128 *delta) {
@@ -586,19 +586,19 @@ void dds3TrackPolyMove2(dds3TrackPoly_t *system, s32 cellIndex, const u128 *delt
     s32 count = cell->count / 3;
     u128 *vertex = cell->pVertex;
     s32 i;
-    SDF_VU0__LOADVECTOR_B(delta);
+    SDF_VU0_LOADVECTOR_B(delta);
     if (count > 0) {
         i = count;
         do {
-            SDF_VU0__LOADVECTOR(vertex);
-            SDF_VU0__ADDVECTOR();
-            SDF_VU0__STOREVECTOR(vertex);
-            SDF_VU0__LOADVECTOR(vertex + 1);
-            SDF_VU0__ADDVECTOR();
-            SDF_VU0__STOREVECTOR(vertex + 1);
-            SDF_VU0__LOADVECTOR(vertex + 2);
-            SDF_VU0__ADDVECTOR();
-            SDF_VU0__STOREVECTOR(vertex + 2);
+            SDF_VU0_LOADVECTOR(vertex);
+            SDF_VU0_ADDVECTOR();
+            SDF_VU0_STOREVECTOR(vertex);
+            SDF_VU0_LOADVECTOR(vertex + 1);
+            SDF_VU0_ADDVECTOR();
+            SDF_VU0_STOREVECTOR(vertex + 1);
+            SDF_VU0_LOADVECTOR(vertex + 2);
+            SDF_VU0_ADDVECTOR();
+            SDF_VU0_STOREVECTOR(vertex + 2);
             i--;
             vertex += 3;
         } while (i != 0);
@@ -1014,21 +1014,21 @@ void dds3SpPoly_Ring_Old_Move(dds3SpPolyOld_t *node, s32 cellIndex) {
     p = (f32 *)entry->pVertex;
     pairs = strip->face / 2;
     scale[0] = scale[1] = scale[2] = node->pairDisplacement;
-    SDF_VU0__LOADVECTOR_C(scale);
+    SDF_VU0_LOADVECTOR_C(scale);
     for (i = 0; i < pairs; i++) {
-        SDF_VU0__LOADVECTOR(p + 4);
-        SDF_VU0__LOADVECTOR_B(p);
-        SDF_VU0__SUBVECTOR();
-        SDF_VU0__NORMALIZE();
-        SDF_VU0__COPYVECTOR_C_TO_B();
-        SDF_VU0__MULVECTOR();
-        SDF_VU0__COPYVECTOR_A_TO_B();
-        SDF_VU0__LOADVECTOR(p);
-        SDF_VU0__ADDVECTOR();
-        SDF_VU0__STOREVECTOR(p);
-        SDF_VU0__LOADVECTOR(p + 4);
-        SDF_VU0__ADDVECTOR();
-        SDF_VU0__STOREVECTOR(p + 4);
+        SDF_VU0_LOADVECTOR(p + 4);
+        SDF_VU0_LOADVECTOR_B(p);
+        SDF_VU0_SUBVECTOR();
+        SDF_VU0_NORMALIZE();
+        SDF_VU0_COPYVECTOR_C_TO_B();
+        SDF_VU0_MULVECTOR();
+        SDF_VU0_COPYVECTOR_A_TO_B();
+        SDF_VU0_LOADVECTOR(p);
+        SDF_VU0_ADDVECTOR();
+        SDF_VU0_STOREVECTOR(p);
+        SDF_VU0_LOADVECTOR(p + 4);
+        SDF_VU0_ADDVECTOR();
+        SDF_VU0_STOREVECTOR(p + 4);
         p += 8;
     }
 }
@@ -1043,15 +1043,15 @@ u32 dds3SpPoly_Color(u32 elapsed, u32 duration, u32 color) {
     if (elapsed < duration) {
         ratio = (f32)elapsed / (f32)duration;
     }
-    SDF_VU0__LOADVECTOR(D_00317660);
-    SDF_VU0__LOADVECTOR_B(D_00317650);
+    SDF_VU0_LOADVECTOR(D_00317660);
+    SDF_VU0_LOADVECTOR_B(D_00317650);
     VU0_SCALE_VF10_BITS(1.0f - ratio);
     VU0_SCALE_VF11_BITS(ratio);
-    SDF_VU0__ADDVECTOR();
-    SDF_VU0__COPYVECTOR_A_TO_B();
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_COPYVECTOR_A_TO_B();
     tint[0] = color;
     MMI_RGBA_UNPACK(tint, 1.0f / 128.0f);
-    SDF_VU0__MULVECTOR();
+    SDF_VU0_MULVECTOR();
     MMI_RGBA_PACK_UNIT(packed, 128.0f);
     return packed;
 }
@@ -1074,8 +1074,8 @@ dds3SpPolyRing_t *dds3SpPoly_RingCreate(dds3SpPolyHead_t *templateHead) {
     band->strip = dds3TrackPolyCreate(band->head.entryCount, band->segments, 1, 0);
     dds3TrackPolyVCSet(band->strip, 0, band->dispatchArgA, band->dispatchArgB);
     dds3SpPoly_RingAllBuffInit(band);
-    SDF_VU0__LOADMATRIX(band->head.matrix);
-    SDF_VU0__STOREMATRIX(band->head.matrixCopy);
+    SDF_VU0_LOADMATRIX(band->head.matrix);
+    SDF_VU0_STOREMATRIX(band->head.matrixCopy);
     dds3TrackPolySetMode(band->strip, band->head.drawBucket);
     return band;
 }
@@ -1126,33 +1126,33 @@ void dds3SpPoly_RingMove(dds3SpPolyRing_t *band, s32 index) {
     liftVector[1] = band->liftStep;
     liftVector[2] = liftVector[0] = 0;
     angleStep = 3.14159265f * 2.0f / (f32)band->segments;
-    SDF_VU0__LOADMATRIX(band->head.matrix);
+    SDF_VU0_LOADMATRIX(band->head.matrix);
     angle = 0.0f;
     for (i = 0; i < pairs - 1; i++) {
         radialDirection[0] = sdfCos(angle);
         radialDirection[1] = 0;
         radialDirection[2] = sdfSin(angle);
-        SDF_VU0__LOADVECTOR(radialDirection);
-        SDF_VU0__APPLYMATRIX();
-        SDF_VU0__LOADVECTOR_B(radiusStepVector);
-        SDF_VU0__MULVECTOR();
-        SDF_VU0__LOADVECTOR_B(liftVector);
-        SDF_VU0__APPLYMATRIX_B();
-        SDF_VU0__ADDVECTOR();
-        SDF_VU0__COPYVECTOR_A_TO_C();
-        SDF_VU0__LOADVECTOR_B(pointCursor + 4);
-        SDF_VU0__ADDVECTOR();
-        SDF_VU0__STOREVECTOR(pointCursor + 4);
-        SDF_VU0__COPYVECTOR_C_TO_A();
-        SDF_VU0__LOADVECTOR_B(pointCursor);
-        SDF_VU0__ADDVECTOR();
-        SDF_VU0__STOREVECTOR(pointCursor);
+        SDF_VU0_LOADVECTOR(radialDirection);
+        SDF_VU0_APPLYMATRIX();
+        SDF_VU0_LOADVECTOR_B(radiusStepVector);
+        SDF_VU0_MULVECTOR();
+        SDF_VU0_LOADVECTOR_B(liftVector);
+        SDF_VU0_APPLYMATRIX_B();
+        SDF_VU0_ADDVECTOR();
+        SDF_VU0_COPYVECTOR_A_TO_C();
+        SDF_VU0_LOADVECTOR_B(pointCursor + 4);
+        SDF_VU0_ADDVECTOR();
+        SDF_VU0_STOREVECTOR(pointCursor + 4);
+        SDF_VU0_COPYVECTOR_C_TO_A();
+        SDF_VU0_LOADVECTOR_B(pointCursor);
+        SDF_VU0_ADDVECTOR();
+        SDF_VU0_STOREVECTOR(pointCursor);
         pointCursor += 8;
         angle += angleStep;
     }
     firstPointPair = (f32 *)entry->pVertex;
-    SDF_VU0__COPYVECTOR(pointCursor, firstPointPair);
-    SDF_VU0__COPYVECTOR(pointCursor + 4, firstPointPair + 4);
+    SDF_VU0_COPYVECTOR(pointCursor, firstPointPair);
+    SDF_VU0_COPYVECTOR(pointCursor + 4, firstPointPair + 4);
 }
 
 void dds3SpPoly_RingSetScale(f32 scale, dds3SpPolyRing_t *band) {
@@ -1247,8 +1247,8 @@ dds3SpPolySphereRing_t *dds3SpPoly_SphereRingCreate(dds3SpPolySphereRing_t *sour
     clone->strip = dds3TrackPolyCreate(clone->head.entryCount, clone->segments, 1, 0);
     dds3TrackPolyVCSet(clone->strip, 0, clone->dispatchArgA, clone->dispatchArgB);
     dds3SpPoly_SphereRingAllBuffInit(clone);
-    SDF_VU0__LOADMATRIX(clone->head.matrix);
-    SDF_VU0__STOREMATRIX(clone->head.matrixCopy);
+    SDF_VU0_LOADMATRIX(clone->head.matrix);
+    SDF_VU0_STOREMATRIX(clone->head.matrixCopy);
     dds3TrackPolySetMode(clone->strip, clone->head.drawBucket);
     return clone;
 }
@@ -1310,35 +1310,35 @@ void dds3SpPoly_SphereRingMove(dds3SpPolySphereRing_t *arc, s32 recordIndex) {
     projectedInnerRadius = recordRadius * sdfSin(angle);
     verticalOffset = recordRadius * sdfCos(angle) - recordRadius;
     angleStep = 3.14159265f * 2.0f / (f32)arc->segments;
-    SDF_VU0__LOADMATRIX(arc->head.matrix);
+    SDF_VU0_LOADMATRIX(arc->head.matrix);
     radialWidth = arc->radialWidth;
     angle = 0.0f;
-    SDF_VU0__LOADVECTOR_C(arc->head.origin);
+    SDF_VU0_LOADVECTOR_C(arc->head.origin);
     for (i = 0; i < pairs - 1; i++) {
         innerPointVector[0] = outerPointVector[0] = sdfCos(angle);
         innerPointVector[2] = sdfSin(angle);
         outerPointVector[1] = verticalOffset;
         outerPointVector[2] = innerPointVector[2] * (projectedInnerRadius + radialWidth);
         outerPointVector[0] *= projectedInnerRadius + radialWidth;
-        SDF_VU0__LOADVECTOR(outerPointVector);
-        SDF_VU0__APPLYMATRIX();
-        SDF_VU0__STOREVECTOR(outerPointVector);
+        SDF_VU0_LOADVECTOR(outerPointVector);
+        SDF_VU0_APPLYMATRIX();
+        SDF_VU0_STOREVECTOR(outerPointVector);
         innerPointVector[1] = verticalOffset;
         innerPointVector[0] *= projectedInnerRadius;
         innerPointVector[2] *= projectedInnerRadius;
-        SDF_VU0__LOADVECTOR(innerPointVector);
-        SDF_VU0__APPLYMATRIX();
-        SDF_VU0__ADDVECTOR_A_C();
-        SDF_VU0__STOREVECTOR(pointCursor + 4);
-        SDF_VU0__LOADVECTOR(outerPointVector);
-        SDF_VU0__ADDVECTOR_A_C();
-        SDF_VU0__STOREVECTOR(pointCursor);
+        SDF_VU0_LOADVECTOR(innerPointVector);
+        SDF_VU0_APPLYMATRIX();
+        SDF_VU0_ADDVECTOR_A_C();
+        SDF_VU0_STOREVECTOR(pointCursor + 4);
+        SDF_VU0_LOADVECTOR(outerPointVector);
+        SDF_VU0_ADDVECTOR_A_C();
+        SDF_VU0_STOREVECTOR(pointCursor);
         pointCursor += 8;
         angle += angleStep;
     }
     firstPointPair = (f32 *)stripEntry->pVertex;
-    SDF_VU0__COPYVECTOR(pointCursor, firstPointPair);
-    SDF_VU0__COPYVECTOR(pointCursor + 4, firstPointPair + 4);
+    SDF_VU0_COPYVECTOR(pointCursor, firstPointPair);
+    SDF_VU0_COPYVECTOR(pointCursor + 4, firstPointPair + 4);
 }
 
 void dds3SpPoly_SphereRingSetScale(f32 scale, dds3SpPolySphereRing_t *arc) {
@@ -1430,8 +1430,8 @@ dds3SpPolyRollRing_t *dds3SpPoly_RollRingCreate(dds3SpPolyHead_t *templateHead) 
     band->strip = dds3TrackPolyCreate(band->head.entryCount, band->segments, 1, 0);
     dds3TrackPolyVCSet(band->strip, 0, band->dispatchArgA, band->dispatchArgB);
     dds3SpPoly_RollRingAllBuffInit(band);
-    SDF_VU0__LOADMATRIX(band->head.matrix);
-    SDF_VU0__STOREMATRIX(band->head.matrixCopy);
+    SDF_VU0_LOADMATRIX(band->head.matrix);
+    SDF_VU0_STOREMATRIX(band->head.matrixCopy);
     dds3TrackPolySetMode(band->strip, band->head.drawBucket);
     return band;
 }
@@ -1501,7 +1501,7 @@ void dds3SpPoly_RollRingMove(dds3SpPolyRollRing_t *rotatingBand, s32 index)
     radius = rec->radius;
     rec->radius = radius + rec->radiusStep;
     step = 3.14159265f * 2.0f / (f32)rotatingBand->segments;
-    SDF_VU0__LOADMATRIX_B(rotatingBand->head.matrix);
+    SDF_VU0_LOADMATRIX_B(rotatingBand->head.matrix);
     MultMatrixRevNoArg();
     baseRadiusVector[0] = radius;
     baseRadiusVector[1] = radius;
@@ -1510,29 +1510,29 @@ void dds3SpPoly_RollRingMove(dds3SpPolyRollRing_t *rotatingBand, s32 index)
     offsetRadiusVector[1] = radius + rotatingBand->radialWidth;
     offsetRadiusVector[2] = radius + rotatingBand->radialWidth;
     angle = 0.0f;
-    SDF_VU0__LOADVECTOR_C(rotatingBand->head.origin);
+    SDF_VU0_LOADVECTOR_C(rotatingBand->head.origin);
     for (i = 0; i < pairs - 1; i++) {
         dir[0] = sdfCos(angle);
         dir[1] = 0;
         dir[2] = sdfSin(angle);
-        SDF_VU0__LOADVECTOR(dir);
-        SDF_VU0__APPLYMATRIX();
-        SDF_VU0__STOREVECTOR(dir);
-        SDF_VU0__LOADVECTOR_B(baseRadiusVector);
-        SDF_VU0__MULVECTOR();
-        SDF_VU0__ADDVECTOR_A_C();
-        SDF_VU0__STOREVECTOR(out + 4);
-        SDF_VU0__LOADVECTOR(dir);
-        SDF_VU0__LOADVECTOR_B(offsetRadiusVector);
-        SDF_VU0__MULVECTOR();
-        SDF_VU0__ADDVECTOR_A_C();
-        SDF_VU0__STOREVECTOR(out);
+        SDF_VU0_LOADVECTOR(dir);
+        SDF_VU0_APPLYMATRIX();
+        SDF_VU0_STOREVECTOR(dir);
+        SDF_VU0_LOADVECTOR_B(baseRadiusVector);
+        SDF_VU0_MULVECTOR();
+        SDF_VU0_ADDVECTOR_A_C();
+        SDF_VU0_STOREVECTOR(out + 4);
+        SDF_VU0_LOADVECTOR(dir);
+        SDF_VU0_LOADVECTOR_B(offsetRadiusVector);
+        SDF_VU0_MULVECTOR();
+        SDF_VU0_ADDVECTOR_A_C();
+        SDF_VU0_STOREVECTOR(out);
         out += 8;
         angle += step;
     }
     first = (f32 *)entry->pVertex;
-    SDF_VU0__COPYVECTOR(out, first);
-    SDF_VU0__COPYVECTOR(out + 4, first + 4);
+    SDF_VU0_COPYVECTOR(out, first);
+    SDF_VU0_COPYVECTOR(out + 4, first + 4);
 }
 
 void dds3SpPoly_RollRingSetScale(f32 scale, dds3SpPolyRollRing_t *rotatingBand) {
@@ -1603,15 +1603,15 @@ u16 dds3SpPolyGetState(dds3SpPolyHead_t *work) {
 }
 
 void dds3SpPolySetPosition(void *dst, void *src) {
-    SDF_VU0__COPYVECTOR(dst, src);
+    SDF_VU0_COPYVECTOR(dst, src);
 }
 
 /* vu0 routine: compose the new rotation with the retained source matrix. */
 void dds3SpPolySetRotateMatrix(dds3SpPolyHead_t *effect, void *matrix) {
-    SDF_VU0__LOADMATRIX(matrix);
-    SDF_VU0__LOADMATRIX_B(effect->matrixCopy);
+    SDF_VU0_LOADMATRIX(matrix);
+    SDF_VU0_LOADMATRIX_B(effect->matrixCopy);
     MultMatrixNoArg();
-    SDF_VU0__STOREMATRIX(effect->matrix);
+    SDF_VU0_STOREMATRIX(effect->matrix);
 }
 
 void dds3SpPolySetRGBA(dds3SpPolyHead_t *effect, u32 value) {
@@ -1639,19 +1639,19 @@ void dds3PolygonTriangleSet(dds3Polygon_t *work, const f32 *position) {
     f32 (*positions)[4];
     u16 flags;
 
-    SDF_VU0__COPYVECTOR(point, position);
+    SDF_VU0_COPYVECTOR(point, position);
     positions = (f32 (*)[4])(((u32)count << 4) + (u32)work->positions);
-    SDF_VU0__COPYVECTOR(positions[0], point);
+    SDF_VU0_COPYVECTOR(positions[0], point);
     point[1] += 5.0f;
-    SDF_VU0__COPYVECTOR(positions[1], point);
+    SDF_VU0_COPYVECTOR(positions[1], point);
     point[2] += 5.0f;
-    SDF_VU0__COPYVECTOR(positions[2], point);
+    SDF_VU0_COPYVECTOR(positions[2], point);
     flags = work->flags;
     if (flags & 2) {
         f32 (*normals)[4] = (f32 (*)[4])(((u32)count << 4) + (u32)work->normals);
-        SDF_VU0__COPYVECTOR(normals[0], dds3PolygonTriangleParam);
-        SDF_VU0__COPYVECTOR(normals[1], dds3PolygonTriangleParam);
-        SDF_VU0__COPYVECTOR(normals[2], dds3PolygonTriangleParam);
+        SDF_VU0_COPYVECTOR(normals[0], dds3PolygonTriangleParam);
+        SDF_VU0_COPYVECTOR(normals[1], dds3PolygonTriangleParam);
+        SDF_VU0_COPYVECTOR(normals[2], dds3PolygonTriangleParam);
     }
     if (flags & 4) {
         u32 *colors = (u32 *)(((u32)count << 2) + (u32)work->colors);
