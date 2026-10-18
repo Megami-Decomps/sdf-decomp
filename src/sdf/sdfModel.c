@@ -114,9 +114,9 @@ sdfModelNode_t *sdfModelNodeNew(void) {
     node->drawAttr = -1;
     node->prev = node;
     node->next = node;
-    VU0_STORE_VF0(&node->rotate);
-    VU0_STORE_VF0(&node->pos);
-    VU0_UNIT_SCALE();
+    SDF_VU0_STOREIDENTITYVECTOR(&node->rotate);
+    SDF_VU0_STOREIDENTITYVECTOR(&node->pos);
+    SDF_VU0_SETSCALE1VECTOR();
     SDF_VU0_STOREVECTOR(&node->scale);
     SDF_VU0_STOREIDENTITY(&node->localNoScaledTm);
     return node;
@@ -172,8 +172,8 @@ sdfModelRootNode_t *sdfModelRootNew(void) {
     slot = sdfChipAllocZeroDirect(sizeof(sdfModelRootNode_t));
     slot->nodeList = (sdfModelNodeList_t *)sdfItemArrayNew(0, 4, 0x20);
     SDF_VU0_STOREIDENTITY(&slot->tm);
-    VU0_STORE_VF0(&slot->rotate);
-    VU0_UNIT_SCALE();
+    SDF_VU0_STOREIDENTITYVECTOR(&slot->rotate);
+    SDF_VU0_SETSCALE1VECTOR();
     SDF_VU0_STOREVECTOR(&slot->scale);
     slot->drawAttr = -1;
     slot->color = 0x80808080;
@@ -629,7 +629,7 @@ void sdfModelEvalNode(sdfModelNode_t *drawNode, const f32 (*parentMatrix)[4], s3
     SDF_VU0_LOAD_ROW2_BARRIER(zAxis);
     scale = (f32 *)&drawNode->scale;
     SDF_VU0_LOADVECTOR_BARRIER(scale);
-    VU0_SCALE_MATRIX_ROWS_VF10();
+    SDF_VU0_SCALE_XYZ();
     translation = (f32 *)&drawNode->pos;
     SDF_VU0_LOAD_ROW3_BARRIER(translation);
     SDF_VU0_LOADMATRIX_B(parentMatrix);
@@ -660,8 +660,8 @@ void sdfModelEvalTm2(sdfModelRootNode_t *model, s32 frame) {
     SDF_VU0_LOADMATRIX(transform);
     scale = (f32 *)&model->scale;
     SDF_VU0_LOADVECTOR_BARRIER(scale);
-    VU0_MUL_MATRIX_ROWS_VF10();
-    VU0_STORE_MATRIX_M(rootMatrix[0], rootMatrix[1], rootMatrix[2], rootMatrix[3]);
+    SDF_VU0_SCALE_XYZ_REV();
+    SDF_VU0_STOREMATRIX_MEMOPS(rootMatrix[0], rootMatrix[1], rootMatrix[2], rootMatrix[3]);
     list = model->nodeList;
     sdfModelEvalNode(((sdfModelNode_t **)list->items)[0], (const f32 (*)[4])rootMatrix, frame);
 }
