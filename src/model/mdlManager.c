@@ -1196,7 +1196,7 @@ void mdlGetScreenOffset(mdlObj_t *ctx, void *point)
     VU0_COPY_VF30_TO_VF26();
     VU0_COPY_VF31_TO_VF27();
     SDF_VU0_LOADMATRIX(&ctx->inner->tm);
-    VU0_SCALE_MATRIX_ROWS_VF10();
+    SDF_VU0_SCALE_XYZ();
     MultMatrixRevNoArg();
     SDF_VU0_LOADVECTOR_BARRIER(point);
     SDF_VU0_APPLYMATRIX_XYZ1();
@@ -1214,7 +1214,7 @@ void mdl_1DD9C0(mdlObj_t *ctx, f32 (*inputPoints)[4], f32 (*outputPoints)[4], s3
 
     SDF_VU0_LOADMATRIX(&ctx->inner->tm);
     SDF_VU0_LOADVECTOR_BARRIER(&ctx->inner->scale);
-    VU0_SCALE_MATRIX_ROWS_VF10();
+    SDF_VU0_SCALE_XYZ();
     MultMatrixRev(&D_002FA240);
     MultMatrixRev(&dds3ScreenParam.TM);
     for (pointIndex = 0; pointIndex < pointCount; pointIndex++) {
