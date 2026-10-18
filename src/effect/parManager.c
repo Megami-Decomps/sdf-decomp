@@ -55,7 +55,6 @@ typedef struct {
 } effTrackPolyParams_t;
 
 
-
 typedef struct parSlot_t {
     u128 *points;
     u16 pointCount;
@@ -587,7 +586,6 @@ typedef struct effDiscAuxEmitter_t {
 } effDiscAuxEmitter_t;
 
 
-
 #define VU0_COPY_VF24_TO_VF28() __asm__ volatile ( \
     ".set noreorder\n\tvmove.xyzw " "vf28" ", " "vf24" "\n\t.set reorder")
 
@@ -613,9 +611,6 @@ typedef struct effDiscAuxEmitter_t {
 
 #define VU0_COPY_VF2_TO_VF12() __asm__ volatile ( \
     ".set noreorder\n\tvmove.xyzw " "vf12" ", " "vf2" "\n\t.set reorder")
-
-#define VU0_SUB_VF11_VF10() __asm__ volatile ( \
-    ".set noreorder\n\tvsub.xyzw " "vf11" ", " "vf11" ", " "vf10" "\n\t.set reorder")
 
 
 enum ParKindStateKind {
