@@ -383,13 +383,13 @@ s32 scrCommand_SCENE_LIGHT_RGB(void)
     f32 z;
 
     x = scrGetFloatPara(1);
-    VU0_SET_VF10_X_BITS(x);
+    SDF_VU0_SETVECTOR_X_BITS(x);
     y = scrGetFloatPara(2);
-    VU0_SET_VF10_Y_BITS(y);
+    SDF_VU0_SETVECTOR_Y_BITS(y);
     z = scrGetFloatPara(3);
-    VU0_SET_VF10_Z_BITS(z);
+    SDF_VU0_SETVECTOR_Z_BITS(z);
     SDF_VU0_VECTOR_W_SET_ZERO();
-    VU0_STORE_VF10_TO(v);
+    SDF_VU0_STOREVECTOR_MEMOPS(v);
     dds3SetLightColor(scrGetIntPara(0), 0, &v);
     return 1;
 }
@@ -421,13 +421,13 @@ s32 scrCommand_SCENE_AMBIENT(void)
     f32 z;
 
     x = scrGetFloatPara(1);
-    VU0_SET_VF10_X_BITS(x);
+    SDF_VU0_SETVECTOR_X_BITS(x);
     y = scrGetFloatPara(2);
-    VU0_SET_VF10_Y_BITS(y);
+    SDF_VU0_SETVECTOR_Y_BITS(y);
     z = scrGetFloatPara(3);
-    VU0_SET_VF10_Z_BITS(z);
+    SDF_VU0_SETVECTOR_Z_BITS(z);
     SDF_VU0_VECTOR_W_SET_ONE();
-    VU0_STORE_VF10_TO(v);
+    SDF_VU0_STOREVECTOR_MEMOPS(v);
     dds3SetAmbientColor(scrGetIntPara(0), &v);
     return 1;
 }
