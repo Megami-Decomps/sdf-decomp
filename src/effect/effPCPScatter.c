@@ -1145,13 +1145,13 @@ void effPCPHamaCardSpiralDraw(PcpScatterRadialWork *work) {
                 VU0_LOAD_VF11(position);
                 VU0_SUB_VF10_VF11();
                 VU0_NORMALIZE_VF10();
-                VU0_STORE_VF_UNCLOBBERED(vf10, direction);
+                VU0_STORE_VF10_NOMEM(direction);
                 VU0_LOAD_VF11(halfWidth);
                 VU0_MUL_VF10_VF11();
                 VU0_ADD_VF10_VF12();
-                VU0_MOVE_VF(vf12, vf10);
-                VU0_STORE_VF_UNCLOBBERED(vf10, position);
-                VU0_STORE_VF_UNCLOBBERED(vf10, radial);
+                VU0_COPY_VF10_TO_VF12();
+                VU0_STORE_VF10_NOMEM(position);
+                VU0_STORE_VF10_NOMEM(radial);
                 radial[1] = 0.0f;
                 VU0_LOAD_VF10(direction);
                 VU0_LOAD_VF11(radial);
@@ -1159,14 +1159,14 @@ void effPCPHamaCardSpiralDraw(PcpScatterRadialWork *work) {
                 VU0_NORMALIZE_VF10();
                 VU0_LOAD_VF11(halfHeight);
                 VU0_MUL_VF10_VF11();
-                VU0_STORE_VF_UNCLOBBERED(vf10, side);
+                VU0_STORE_VF10_NOMEM(side);
                 VU0_LOAD_VF10(position);
                 VU0_LOAD_VF11(side);
                 VU0_ADD_VF10_VF11();
-                VU0_STORE_VF_UNCLOBBERED(vf10, vertices);
+                VU0_STORE_VF10_NOMEM(vertices);
                 VU0_SUB_VF10_VF11();
                 VU0_SUB_VF10_VF11();
-                VU0_STORE_VF_UNCLOBBERED(vf10, vertices + 3);
+                VU0_STORE_VF10_NOMEM(vertices + 3);
                 if (j == 1) {
                     PS2_COPY_QUAD(duplicatePosition, position);
                 }
@@ -1196,7 +1196,7 @@ void effPCPHamaCardSpiralDraw(PcpScatterRadialWork *work) {
             VU0_LOAD_VF10(work->params.origin);
             VU0_LOAD_VF11(duplicatePosition);
             VU0_ADD_VF10_VF11();
-            VU0_STORE_VF_UNCLOBBERED(vf10, duplicatePosition);
+            VU0_STORE_VF10_NOMEM(duplicatePosition);
             dds3EffectPartSetPosition(work->duplicatedHandles[group], duplicatePosition);
             dds3EffectPartDraw(work->duplicatedHandles[group]);
         }
@@ -1448,8 +1448,8 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
             position[2] = 0.0f;
             VU0_LOAD_VF10(position);
             VU0_APPLY_MATRIX_VF10();
-            VU0_STORE_VF_UNCLOBBERED(vf10, position);
-            VU0_MOVE_VF(vf12, vf10);
+            VU0_STORE_VF10_NOMEM(position);
+            VU0_COPY_VF10_TO_VF12();
             for (j = 0; j < 3; j++, vertices++, colors++) {
                 colors[0] = color;
                 colors[3] = color;
@@ -1460,18 +1460,18 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
                 next[2] = 0.0f;
                 VU0_LOAD_VF10(next);
                 VU0_APPLY_MATRIX_VF10();
-                VU0_STORE_VF_UNCLOBBERED(vf10, next);
+                VU0_STORE_VF10_NOMEM(next);
                 VU0_LOAD_VF10(next);
                 VU0_LOAD_VF11(position);
                 VU0_SUB_VF10_VF11();
                 VU0_NORMALIZE_VF10();
-                VU0_STORE_VF_UNCLOBBERED(vf10, direction);
+                VU0_STORE_VF10_NOMEM(direction);
                 VU0_LOAD_VF11(halfWidth);
                 VU0_MUL_VF10_VF11();
                 VU0_ADD_VF10_VF12();
-                VU0_MOVE_VF(vf12, vf10);
-                VU0_STORE_VF_UNCLOBBERED(vf10, position);
-                VU0_STORE_VF_UNCLOBBERED(vf10, radial);
+                VU0_COPY_VF10_TO_VF12();
+                VU0_STORE_VF10_NOMEM(position);
+                VU0_STORE_VF10_NOMEM(radial);
                 radial[1] = 0.0f;
                 VU0_LOAD_VF10(direction);
                 VU0_LOAD_VF11(radial);
@@ -1479,14 +1479,14 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
                 VU0_NORMALIZE_VF10();
                 VU0_LOAD_VF11(halfHeight);
                 VU0_MUL_VF10_VF11();
-                VU0_STORE_VF_UNCLOBBERED(vf10, side);
+                VU0_STORE_VF10_NOMEM(side);
                 VU0_LOAD_VF10(position);
                 VU0_LOAD_VF11(side);
                 VU0_ADD_VF10_VF11();
-                VU0_STORE_VF_UNCLOBBERED(vf10, vertices);
+                VU0_STORE_VF10_NOMEM(vertices);
                 VU0_SUB_VF10_VF11();
                 VU0_SUB_VF10_VF11();
-                VU0_STORE_VF_UNCLOBBERED(vf10, vertices + 3);
+                VU0_STORE_VF10_NOMEM(vertices + 3);
                 if (j == 1) {
                     PS2_COPY_QUAD(duplicatePosition, position);
                 }
@@ -1514,7 +1514,7 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
             VU0_LOAD_VF10(work->params.origin);
             VU0_LOAD_VF11(duplicatePosition);
             VU0_ADD_VF10_VF11();
-            VU0_STORE_VF_UNCLOBBERED(vf10, duplicatePosition);
+            VU0_STORE_VF10_NOMEM(duplicatePosition);
             dds3EffectPartSetPosition(work->duplicatedHandles[group], duplicatePosition);
             dds3EffectPartDraw(work->duplicatedHandles[group]);
         }
