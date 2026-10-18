@@ -586,23 +586,6 @@ typedef struct effDiscAuxEmitter_t {
 } effDiscAuxEmitter_t;
 
 
-#define VU0_COPY_VF24_TO_VF28() __asm__ volatile ( \
-    ".set noreorder\n\tvmove.xyzw " "vf28" ", " "vf24" "\n\t.set reorder")
-
-#define VU0_COPY_VF25_TO_VF29() __asm__ volatile ( \
-    ".set noreorder\n\tvmove.xyzw " "vf29" ", " "vf25" "\n\t.set reorder")
-
-#define VU0_COPY_VF26_TO_VF30() __asm__ volatile ( \
-    ".set noreorder\n\tvmove.xyzw " "vf30" ", " "vf26" "\n\t.set reorder")
-
-#define VU0_COPY_VF27_TO_VF31() __asm__ volatile ( \
-    ".set noreorder\n\tvmove.xyzw " "vf31" ", " "vf27" "\n\t.set reorder")
-
-#define SDF_VU0_STOREVECTOR_C(dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 " "vf12" ", 0(%0)\n\t.set reorder" \
-    : : "r" (dst) : "memory")
-
-
 enum ParKindStateKind {
     PAR_KIND_STATE_HISTORY = 1,
     PAR_KIND_STATE_BILLBOARD_CROSS_STRIP = 2,
