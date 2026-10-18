@@ -1,6 +1,6 @@
 #include "common.h"
 #include "ps2asm.h"
-#define VU0_SUB_VF11_VF10() __asm__ volatile ("vsub.xyzw vf11, vf11, vf10")
+
 
 /* One needle instance: position plus the colour the draw loop stamps. */
 typedef struct effNeedleEntry_t
@@ -64,28 +64,6 @@ extern void sdfMatFreeDelayed(void *asset);
 extern void sdfMemFreeDirect(void *ptr);
 extern void dds3NeedleModelVNCListDelete(effNeedleWork_t *work);
 
-/* sceVu0UnitMatrix as libvu0 expands it; gcc 2.96 never emits qmfc2/pextuw. */
-#define EE_MMI_UNIT_MATRIX(dst) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "qmfc2.ni $5, $vf0\n\t" \
-    "pextuw $4, $0, $5\n\t" \
-    "pextuw $2, $0, $4\n\t" \
-    "pextuw $3, $4, $0\n\t" \
-    "sq $2, 0(%0)\n\t" \
-    "sq $3, 0x10(%0)\n\t" \
-    "sq $4, 0x20(%0)\n\t" \
-    "sq $5, 0x30(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (dst) : "$2", "$3", "$4", "$5", "memory")
-
-#define VU0_LOAD_MATRIX_B(src) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "lqc2 vf24, 0(%0)\n\t" \
-    "lqc2 vf25, 16(%0)\n\t" \
-    "lqc2 vf26, 32(%0)\n\t" \
-    "lqc2 vf27, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (src) : "memory")
 
 /* The copied 0x5C-byte needle parameters precede runtime ownership state. */
 typedef struct effNeedleSpiralParams_t {
@@ -175,36 +153,6 @@ void dds3NeedleModelGetPosition(effNeedleWork_t *work, s32 index, f32 *position)
 void dds3NeedleModelSetColor(effNeedleWork_t *work, s32 index, u32 color);
 void dds3NeedleModelSetMatrix(effNeedleWork_t *work, const f32 *matrix);
 
-
-#define VU0_COPY_MATRIX(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "lqc2 vf28, 0(%1)\n\t" \
-    "lqc2 vf29, 16(%1)\n\t" \
-    "lqc2 vf30, 32(%1)\n\t" \
-    "lqc2 vf31, 48(%1)\n\t" \
-    "sqc2 vf28, 0(%0)\n\t" \
-    "sqc2 vf29, 16(%0)\n\t" \
-    "sqc2 vf30, 32(%0)\n\t" \
-    "sqc2 vf31, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (dst), "r" (src) : "memory")
-
-
-
-#define VU0_MOVE_VF(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\tvmove.xyzw " #dst ", " #src "\n\t.set reorder")
-
-
-
-
-#define VU0_STORE_MATRIX_UNCLOBBERED(dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 vf28, 0(%0)\n\tsqc2 vf29, 16(%0)\n\tsqc2 vf30, 32(%0)\n\t" \
-    "sqc2 vf31, 48(%0)\n\t.set reorder" \
-    : : "r" (dst))
-
-#define VU0_STORE_VF_UNCLOBBERED(vf, dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 " #vf ", 0(%0)\n\t.set reorder" \
-    : : "r" (dst))
 
 effNeedleSpiralWork_t *effPCPNeedleSpiralCreate(effNeedleSpiralParams_t *params) {
     effAllocation_t *allocation = sdfMemAllocDirect(params->count * sizeof(effNeedleSpiralSlot_t) + sizeof(effNeedleSpiralWork_t));
