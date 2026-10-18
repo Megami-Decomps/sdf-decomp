@@ -1149,9 +1149,9 @@ void mdlSetRotate(mdlObj_t *ctx)
 {
     SDF_VU0_STOREVECTOR(&ctx->inner->rotate);
     ToMatrix();
-    SDF_MOT_STORE_VF28(&ctx->inner->tm.m[0]);
-    SDF_MOT_STORE_VF29(&ctx->inner->tm.m[4]);
-    SDF_MOT_STORE_VF30(&ctx->inner->tm.m[8]);
+    SDF_VU0_STORE_ROW0(&ctx->inner->tm.m[0]);
+    SDF_VU0_STORE_ROW1(&ctx->inner->tm.m[4]);
+    SDF_VU0_STORE_ROW2(&ctx->inner->tm.m[8]);
 }
 
 void mdlGetScale(mdlObj_t *ctx)

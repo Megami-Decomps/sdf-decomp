@@ -807,7 +807,7 @@ void mdlEffect_P2A_D3P_GetPos(sdfModelRootNode_t *model, mdlEffectResrc_t *ancho
         SDF_VU0_LOADVECTOR_C( aViewEye);
     SDF_VU0_SUBVECTOR_A_C();
     SDF_VU0_NORMALIZE();
-    VU0_SCALE_VF10_BITS(scale);
+    SDF_VU0_SCALEVECTOR_BITS(scale);
     SDF_VU0_ADDVECTOR();
     SDF_VU0_STOREVECTOR_NOMEM( positionOut);
 }
