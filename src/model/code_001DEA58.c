@@ -807,15 +807,15 @@ void mdlEffect_P2A_D3P_GetPos(sdfModelRootNode_t *model, mdlEffectResrc_t *ancho
     sdfModelNode_t *drawNode = sdfModelSearchNode(model, mapPosition->nodeId);
     f32 scale = anchorRecord->payload.part.anchorScale;
 
-    SDF_VU0__LOADMATRIX(&drawNode->tm);
-        SDF_VU0__LOADVECTOR( &mapPosition->position);
-    SDF_VU0__APPLYMATRIX_XYZ1();
-    SDF_VU0__COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADMATRIX(&drawNode->tm);
+        SDF_VU0_LOADVECTOR( &mapPosition->position);
+    SDF_VU0_APPLYMATRIX_XYZ1();
+    SDF_VU0_COPYVECTOR_A_TO_B();
         MDL_LOAD_EYE( aViewEye);
     MDL_SUB_EYE();
-    SDF_VU0__NORMALIZE();
+    SDF_VU0_NORMALIZE();
     VU0_SCALE_VF10_BITS(scale);
-    SDF_VU0__ADDVECTOR();
+    SDF_VU0_ADDVECTOR();
     MDL_STORE_ANCHOR( positionOut);
 }
 
@@ -875,38 +875,38 @@ void mdlSetEffectScaleSub(mdlObj_t *owner, mdlEffectResrc_t *item, float amount)
 void mdlSetDebugMatrix(mdlDebugLight_t *context, f32 *position)
 {
     if (context->pad->stepUpA != 0) {
-        SDF_VU0__LOADVECTOR_MTXCOL(D_002FA240 + 1);
+        SDF_VU0_LOADVECTOR_MTXCOL(D_002FA240 + 1);
         FromRotation(2.0f * 3.14159265f / 180.0f);
         ToMatrix();
-        SDF_VU0__LOADVECTOR( position);
-        SDF_VU0__APPLYMATRIX_XYZ1();
-        SDF_VU0__VECTOR_W_SET_ONE();
-        SDF_VU0__STOREVECTOR( position);
+        SDF_VU0_LOADVECTOR( position);
+        SDF_VU0_APPLYMATRIX_XYZ1();
+        SDF_VU0_VECTOR_W_SET_ONE();
+        SDF_VU0_STOREVECTOR( position);
     } else if (context->pad->stepDownA != 0) {
-        SDF_VU0__LOADVECTOR_MTXCOL(D_002FA240 + 1);
+        SDF_VU0_LOADVECTOR_MTXCOL(D_002FA240 + 1);
         FromRotation(-2.0f * 3.14159265f / 180.0f);
         ToMatrix();
-        SDF_VU0__LOADVECTOR( position);
-        SDF_VU0__APPLYMATRIX_XYZ1();
-        SDF_VU0__VECTOR_W_SET_ONE();
-        SDF_VU0__STOREVECTOR( position);
+        SDF_VU0_LOADVECTOR( position);
+        SDF_VU0_APPLYMATRIX_XYZ1();
+        SDF_VU0_VECTOR_W_SET_ONE();
+        SDF_VU0_STOREVECTOR( position);
     }
     if (context->pad->stepUpB != 0) {
-        SDF_VU0__LOADVECTOR_MTXCOL(D_002FA240);
+        SDF_VU0_LOADVECTOR_MTXCOL(D_002FA240);
         FromRotation(-2.0f * 3.14159265f / 180.0f);
         ToMatrix();
-        SDF_VU0__LOADVECTOR( position);
-        SDF_VU0__APPLYMATRIX_XYZ1();
-        SDF_VU0__VECTOR_W_SET_ONE();
-        SDF_VU0__STOREVECTOR( position);
+        SDF_VU0_LOADVECTOR( position);
+        SDF_VU0_APPLYMATRIX_XYZ1();
+        SDF_VU0_VECTOR_W_SET_ONE();
+        SDF_VU0_STOREVECTOR( position);
     } else if (context->pad->stepDownB != 0) {
-        SDF_VU0__LOADVECTOR_MTXCOL(D_002FA240);
+        SDF_VU0_LOADVECTOR_MTXCOL(D_002FA240);
         FromRotation(2.0f * 3.14159265f / 180.0f);
         ToMatrix();
-        SDF_VU0__LOADVECTOR( position);
-        SDF_VU0__APPLYMATRIX_XYZ1();
-        SDF_VU0__VECTOR_W_SET_ONE();
-        SDF_VU0__STOREVECTOR( position);
+        SDF_VU0_LOADVECTOR( position);
+        SDF_VU0_APPLYMATRIX_XYZ1();
+        SDF_VU0_VECTOR_W_SET_ONE();
+        SDF_VU0_STOREVECTOR( position);
     }
 }
 
@@ -1016,7 +1016,7 @@ s32 mdlDebugPrintEffectScale(dds3ProcessID_t *task) {
     for (lightIndex = 0; lightIndex != 3; lightIndex++, selected -= 4, y += 0x300) {
         light = state->lights[lightIndex];
         if (light != NULL) {
-            SDF_VU0__LOADVECTOR( light[1]);
+            SDF_VU0_LOADVECTOR( light[1]);
             directionY = y + 0x1B0;
             directionStyle = 0;
             if (state->editing == 1) {
