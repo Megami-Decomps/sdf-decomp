@@ -99,30 +99,6 @@ typedef struct EffRandState EffRandState;
 
 #define EFF_SCATTER_DRAW_TEMPLATE_BYTES 0x2C
 
-/*
- * sceVu0UnitMatrix as libvu0 expands it (scratch registers hard-coded by the
- * SDK):
- *     qmfc2.ni $5, vf0            ; (0,0,0,1)
- *     pextuw   $4, $0, $5         ; (0,0,1,0) row 2
- *     pextuw   $2, $0, $4         ; (1,0,0,0) row 0
- *     pextuw   $3, $4, $0         ; (0,1,0,0) row 1
- *     sq $2,0(dst); sq $3,0x10(dst); sq $4,0x20(dst); sq $5,0x30(dst)
- * The four `sq` are part of the idiom: retail stores the identity rows from
- * the registers the shuffle left them in. Tried: sixteen u32 stores of 0/1
- * (gcc 2.96 emits sw of $0 and a constant, never qmfc2/pextuw or sq).
- */
-#define EE_MMI_UNIT_MATRIX(dst) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "qmfc2.ni $5, $vf0\n\t" \
-    "pextuw $4, $0, $5\n\t" \
-    "pextuw $2, $0, $4\n\t" \
-    "pextuw $3, $4, $0\n\t" \
-    "sq $2, 0(%0)\n\t" \
-    "sq $3, 0x10(%0)\n\t" \
-    "sq $4, 0x20(%0)\n\t" \
-    "sq $5, 0x30(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (dst) : "$2", "$3", "$4", "$5", "memory")
 
 struct EffPacketParams {
     s16 parameterCount;
@@ -765,16 +741,6 @@ struct TMX_HEADER_t {
     u8 pad24[0x1C];    /* 0x24 */
 };
 
-/* Load four quadwords into the second matrix bank vf24-vf27 (the right-hand
- * operand of the sdf matrix-multiply routines). */
-#define VU0_LOAD_MATRIX_B(src) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "lqc2 vf24, 0(%0)\n\t" \
-    "lqc2 vf25, 16(%0)\n\t" \
-    "lqc2 vf26, 32(%0)\n\t" \
-    "lqc2 vf27, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (src) : "memory")
 
 /* Load-normalize-store of one packed vector in a single block ("+m" operand
  * with a memory clobber). */
@@ -933,23 +899,6 @@ f32 *dds3WhirlwindPolyListGetUV(PcpScatterDraw *object, s32 particleIndex);
 #define EFF_PARAM_WORK_KIND_EXTENDED_WORK_WITH_MATRIX_CALLBACK 6
 
 #define VEC3_SPLAT(v, x) ((v)[0] = (x), (v)[1] = (x), (v)[2] = (x))
-#define VU0_COPY_MATRIX(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "lqc2 vf28, 0(%1)\n\t" \
-    "lqc2 vf29, 16(%1)\n\t" \
-    "lqc2 vf30, 32(%1)\n\t" \
-    "lqc2 vf31, 48(%1)\n\t" \
-    "sqc2 vf28, 0(%0)\n\t" \
-    "sqc2 vf29, 16(%0)\n\t" \
-    "sqc2 vf30, 32(%0)\n\t" \
-    "sqc2 vf31, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (dst), "r" (src) : "memory")
-#define VU0_MOVE_VF(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\tvmove.xyzw " #dst ", " #src "\n\t.set reorder")
-#define VU0_STORE_VF_UNCLOBBERED(vf, dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 " #vf ", 0(%0)\n\t.set reorder" \
-    : : "r" (dst))
 
 PcpScatterRadialWork *effPCPHamaCardSpiralCreate(params, resource, particleParams)
     const PcpScatterRadialParams *params;
