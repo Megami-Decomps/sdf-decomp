@@ -1,4 +1,5 @@
 #include "common.h"
+#include "newdata.h"
 #include "scr.h"
 
 enum code_operation
@@ -19,11 +20,12 @@ enum code_operation
 };
 
 extern scrProcessWork_s *nowpwork;
-extern scrCommandTable_t scrCommandTable[];
+extern const scrCommandTable_t scrCommandTable[];
+extern s32 (*codefunc[])(scrProcessWork_s *pw);
 
 extern s32 PopInt(scrProcessWork_s *pw);
 extern f32 PopFloat(scrProcessWork_s *pw);
-extern s32 CodeFunc_2Operation(scrProcessWork_s *pw, s32 operation);
+extern void CodeFunc_2Operation(scrProcessWork_s *pw, s32 operation);
 
 void PushInt(scrProcessWork_s *pw, s32 value)
 {
@@ -55,9 +57,44 @@ void PushRet(scrProcessWork_s *pw, s32 cp)
 
 INCLUDE_RODATA(const s32, "script/scrTraceCode", scrCommandTable);
 
-INCLUDE_ASM(const s32, "script/scrTraceCode", PopInt);
+s32 PopInt(scrProcessWork_s *pw)
+{
+    s32 stackIndex = pw->SP;
 
-INCLUDE_ASM(const s32, "script/scrTraceCode", PopFloat);
+    pw->SP = stackIndex - 1;
+    switch ((s8)pw->StackType[stackIndex - 1]) {
+    case SCR_STACK_TYPE_INT:
+    case SCR_STACK_TYPE_RET:
+        return pw->StackData[pw->SP].i;
+    case SCR_STACK_TYPE_FLOAT:
+        return pw->StackData[pw->SP].f;
+    case SCR_STACK_TYPE_INTVAR:
+        return DDS3_GBWK->integers[pw->StackData[pw->SP].i];
+    case SCR_STACK_TYPE_FLOATVAR:
+        return DDS3_GBWK->floats[pw->StackData[pw->SP].i];
+    }
+    return 0;
+}
+
+f32 PopFloat(scrProcessWork_s *pw)
+{
+    s32 stackIndex = pw->SP;
+
+    pw->SP = stackIndex - 1;
+    switch ((s8)pw->StackType[stackIndex - 1]) {
+    case SCR_STACK_TYPE_INT:
+        return (f32)pw->StackData[pw->SP].i;
+    case SCR_STACK_TYPE_RET:
+        return 0.0f;
+    case SCR_STACK_TYPE_FLOAT:
+        return pw->StackData[pw->SP].f;
+    case SCR_STACK_TYPE_INTVAR:
+        return (f32)DDS3_GBWK->integers[pw->StackData[pw->SP].i];
+    case SCR_STACK_TYPE_FLOATVAR:
+        return DDS3_GBWK->floats[pw->StackData[pw->SP].i];
+    }
+    return 0.0f;
+}
 
 s32 CodeFunc_PushI(scrProcessWork_s *pw)
 {
@@ -82,9 +119,19 @@ s32 CodeFunc_PushF(scrProcessWork_s *pw)
     return CODE_RET_NEXT;
 }
 
-INCLUDE_ASM(const s32, "script/scrTraceCode", CodeFunc_PushIX);
+s32 CodeFunc_PushIX(scrProcessWork_s *pw)
+{
+    PushInt(pw, DDS3_GBWK->integers[pw->Code[pw->CP].s.s1]);
+    pw->CP++;
+    return CODE_RET_NEXT;
+}
 
-INCLUDE_ASM(const s32, "script/scrTraceCode", CodeFunc_PushFX);
+s32 CodeFunc_PushFX(scrProcessWork_s *pw)
+{
+    PushFloat(pw, DDS3_GBWK->floats[pw->Code[pw->CP].s.s1]);
+    pw->CP++;
+    return CODE_RET_NEXT;
+}
 
 s32 CodeFunc_PushLIX(scrProcessWork_s *pw)
 {
@@ -116,9 +163,21 @@ s32 CodeFunc_PushReg(scrProcessWork_s *pw)
     return CODE_RET_NEXT;
 }
 
-INCLUDE_ASM(const s32, "script/scrTraceCode", CodeFunc_PopIX);
+s32 CodeFunc_PopIX(scrProcessWork_s *pw)
+{
+    DDS3_GBWK->integers[pw->Code[pw->CP].s.s1] = PopInt(pw);
+    pw->CP++;
+    return CODE_RET_NEXT;
+}
 
-INCLUDE_ASM(const s32, "script/scrTraceCode", CodeFunc_PopFX);
+s32 CodeFunc_PopFX(scrProcessWork_s *pw)
+{
+    f32 value = PopFloat(pw);
+
+    DDS3_GBWK->floats[pw->Code[pw->CP].s.s1] = value;
+    pw->CP++;
+    return CODE_RET_NEXT;
+}
 
 s32 CodeFunc_PopLIX(scrProcessWork_s *pw)
 {
@@ -140,7 +199,22 @@ s32 CodeFunc_Proc(scrProcessWork_s *pw)
     return CODE_RET_NEXT;
 }
 
-INCLUDE_ASM(const s32, "script/scrTraceCode", CodeFunc_Comm);
+/* A pending command yields without consuming its arguments. */
+s32 CodeFunc_Comm(scrProcessWork_s *pw)
+{
+    s32 commandCP = pw->CP;
+    s32 commandIndex = pw->Code[commandCP].s.s1;
+
+    nowpwork = pw;
+    if (scrCommandTable[commandIndex].comm() == 0) {
+        return CODE_RET_SYNC;
+    }
+    pw->SP -= scrCommandTable[commandIndex].paranum;
+    if (commandCP == pw->CP) {
+        pw->CP = commandCP + 1;
+    }
+    return CODE_RET_NEXT;
+}
 
 s32 CodeFunc_End(scrProcessWork_s *pw)
 {
@@ -177,7 +251,184 @@ s32 CodeFunc_Goto(scrProcessWork_s *pw)
     return CODE_RET_NEXT;
 }
 
-INCLUDE_ASM(const s32, "script/scrTraceCode", CodeFunc_2Operation);
+extern s32 CodeFunc_2Operation_i1;
+extern s32 CodeFunc_2Operation_i2;
+extern s32 CodeFunc_2Operation_ri;
+extern f32 CodeFunc_2Operation_f1;
+extern f32 CodeFunc_2Operation_f2;
+extern f32 CodeFunc_2Operation_rf;
+extern s32 CodeFunc_2Operation_t1;
+extern s32 CodeFunc_2Operation_t2;
+
+/* Recovered symbol names for ee-gcc's fptodp/dpcmp runtime entry points. */
+extern f64 sdfFloatToULong(f32 value) __attribute__((const));
+extern s32 dpdiv(f64 left, f64 right) __attribute__((const));
+
+void CodeFunc_2Operation(scrProcessWork_s *pw, s32 operatorCode)
+{
+    CodeFunc_2Operation_t1 = (s8)pw->StackType[pw->SP - 1];
+    CodeFunc_2Operation_t2 = (s8)pw->StackType[pw->SP - 2];
+    if ((CodeFunc_2Operation_t1 == 0 || CodeFunc_2Operation_t1 == 2) && (CodeFunc_2Operation_t2 == 0 || CodeFunc_2Operation_t2 == 2)) {
+        CodeFunc_2Operation_i1 = PopInt(pw);
+        CodeFunc_2Operation_i2 = PopInt(pw);
+        switch (operatorCode) {
+        case 0:
+            CodeFunc_2Operation_ri = CodeFunc_2Operation_i1 + CodeFunc_2Operation_i2;
+            break;
+        case 1:
+            CodeFunc_2Operation_ri = CodeFunc_2Operation_i1 - CodeFunc_2Operation_i2;
+            break;
+        case 2:
+            CodeFunc_2Operation_ri = CodeFunc_2Operation_i1 * CodeFunc_2Operation_i2;
+            break;
+        case 3:
+            CodeFunc_2Operation_ri = CodeFunc_2Operation_i1 / CodeFunc_2Operation_i2;
+            break;
+        case 4:
+            if (CodeFunc_2Operation_i1 != 0 || CodeFunc_2Operation_i2 != 0) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            break;
+        case 5:
+            if (CodeFunc_2Operation_i1 != 0 && CodeFunc_2Operation_i2 != 0) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            break;
+        case 6:
+            if (CodeFunc_2Operation_i1 == CodeFunc_2Operation_i2) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            break;
+        case 7:
+            if (CodeFunc_2Operation_i1 != CodeFunc_2Operation_i2) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            break;
+        case 8:
+            if (CodeFunc_2Operation_i1 < CodeFunc_2Operation_i2) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            break;
+        case 9:
+            if (CodeFunc_2Operation_i1 > CodeFunc_2Operation_i2) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            break;
+        case 10:
+            if (CodeFunc_2Operation_i1 <= CodeFunc_2Operation_i2) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            break;
+        case 11:
+            if (CodeFunc_2Operation_i1 >= CodeFunc_2Operation_i2) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            break;
+        }
+        PushInt(pw, CodeFunc_2Operation_ri);
+    } else {
+        CodeFunc_2Operation_f1 = PopFloat(pw);
+        CodeFunc_2Operation_f2 = PopFloat(pw);
+        switch (operatorCode) {
+        case 0:
+            CodeFunc_2Operation_rf = CodeFunc_2Operation_f1 + CodeFunc_2Operation_f2;
+            break;
+        case 1:
+            CodeFunc_2Operation_rf = CodeFunc_2Operation_f1 - CodeFunc_2Operation_f2;
+            break;
+        case 2:
+            CodeFunc_2Operation_rf = CodeFunc_2Operation_f1 * CodeFunc_2Operation_f2;
+            break;
+        case 3:
+            CodeFunc_2Operation_rf = CodeFunc_2Operation_f1 / CodeFunc_2Operation_f2;
+            break;
+        case 4:
+            if (dpdiv(sdfFloatToULong(CodeFunc_2Operation_f1), 0.0) != 0 ||
+                dpdiv(sdfFloatToULong(CodeFunc_2Operation_f2), 0.0) != 0) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            PushInt(pw, CodeFunc_2Operation_ri);
+            return;
+        case 5:
+            if (dpdiv(sdfFloatToULong(CodeFunc_2Operation_f1), 0.0) != 0 &&
+                dpdiv(sdfFloatToULong(CodeFunc_2Operation_f2), 0.0) != 0) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            PushInt(pw, CodeFunc_2Operation_ri);
+            return;
+        case 6:
+            if (CodeFunc_2Operation_f1 == CodeFunc_2Operation_f2) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            PushInt(pw, CodeFunc_2Operation_ri);
+            return;
+        case 7:
+            if (CodeFunc_2Operation_f1 != CodeFunc_2Operation_f2) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            PushInt(pw, CodeFunc_2Operation_ri);
+            return;
+        case 8:
+            if (CodeFunc_2Operation_f1 < CodeFunc_2Operation_f2) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            PushInt(pw, CodeFunc_2Operation_ri);
+            return;
+        case 9:
+            if (CodeFunc_2Operation_f1 > CodeFunc_2Operation_f2) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            PushInt(pw, CodeFunc_2Operation_ri);
+            return;
+        case 10:
+            if (CodeFunc_2Operation_f1 <= CodeFunc_2Operation_f2) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            PushInt(pw, CodeFunc_2Operation_ri);
+            return;
+        case 11:
+            if (CodeFunc_2Operation_f1 >= CodeFunc_2Operation_f2) {
+                CodeFunc_2Operation_ri = 1;
+            } else {
+                CodeFunc_2Operation_ri = 0;
+            }
+            PushInt(pw, CodeFunc_2Operation_ri);
+            return;
+        }
+        PushFloat(pw, CodeFunc_2Operation_rf);
+    }
+}
+
 
 s32 CodeFunc_Add(scrProcessWork_s *pw)
 {
@@ -207,7 +458,29 @@ s32 CodeFunc_Div(scrProcessWork_s *pw)
     return CODE_RET_NEXT;
 }
 
-INCLUDE_ASM(const s32, "script/scrTraceCode", CodeFunc_Minus);
+s32 CodeFunc_Minus(scrProcessWork_s *pw)
+{
+    switch ((s8)pw->StackType[pw->SP - 1]) {
+    case SCR_STACK_TYPE_INT:
+        pw->StackData[pw->SP - 1].i = -pw->StackData[pw->SP - 1].i;
+        break;
+    case SCR_STACK_TYPE_FLOAT:
+        pw->StackData[pw->SP - 1].f = -pw->StackData[pw->SP - 1].f;
+        break;
+    case SCR_STACK_TYPE_INTVAR:
+        DDS3_GBWK->integers[pw->StackData[pw->SP - 1].i] =
+            -DDS3_GBWK->integers[pw->StackData[pw->SP - 1].i];
+        break;
+    case SCR_STACK_TYPE_FLOATVAR:
+        DDS3_GBWK->floats[pw->StackData[pw->SP - 1].i] =
+            -DDS3_GBWK->floats[pw->StackData[pw->SP - 1].i];
+        break;
+    case SCR_STACK_TYPE_RET:
+        break;
+    }
+    pw->CP++;
+    return CODE_RET_NEXT;
+}
 
 s32 CodeFunc_Not(scrProcessWork_s *pw)
 {
@@ -311,13 +584,82 @@ s32 CodeFunc_IF(scrProcessWork_s *pw)
     return CODE_RET_NEXT;
 }
 
-INCLUDE_ASM(const s32, "script/scrTraceCode", scrTraceCode);
+/* Continue until an instruction completes the procedure or yields a tick. */
+s32 scrTraceCode(scrProcessWork_s *pw)
+{
+    s32 result;
 
-INCLUDE_ASM(const s32, "script/scrTraceCode", scrGetIntPara);
+    while (1) {
+        result = codefunc[pw->Code[pw->CP].s.s0](pw);
+        if (result == CODE_RET_END) {
+            pw->CommandTimer = 0;
+            return SCR_RESULT_END;
+        }
+        if (result == CODE_RET_SYNC) {
+            break;
+        }
+        if (result == CODE_RET_NEXT) {
+            pw->CommandTimer = 0;
+        }
+    }
+    pw->CommandTimer++;
+    pw->ScriptTimer++;
+    return SCR_RESULT_CONTINUE;
+}
 
-INCLUDE_ASM(const s32, "script/scrTraceCode", scrGetFloatPara);
+s32 scrGetIntPara(s32 parameterIndex)
+{
+    scrProcessWork_s *pw = nowpwork;
+    s32 stackIndex = pw->SP - parameterIndex - 1;
 
-INCLUDE_ASM(const s32, "script/scrTraceCode", scrGetStrPara);
+    switch ((s8)pw->StackType[stackIndex]) {
+    case SCR_STACK_TYPE_INT:
+    case SCR_STACK_TYPE_RET:
+        return pw->StackData[stackIndex].i;
+    case SCR_STACK_TYPE_FLOAT:
+        return pw->StackData[stackIndex].f;
+    case SCR_STACK_TYPE_INTVAR:
+        return DDS3_GBWK->integers[pw->StackData[stackIndex].i];
+    case SCR_STACK_TYPE_FLOATVAR:
+        return DDS3_GBWK->floats[pw->StackData[stackIndex].i];
+    }
+    return 0;
+}
+
+f32 scrGetFloatPara(s32 parameterIndex)
+{
+    scrProcessWork_s *pw = nowpwork;
+    s32 stackIndex = pw->SP - parameterIndex - 1;
+
+    switch ((s8)pw->StackType[stackIndex]) {
+    case SCR_STACK_TYPE_INT:
+    case SCR_STACK_TYPE_RET:
+        return (f32)pw->StackData[stackIndex].i;
+    case SCR_STACK_TYPE_FLOAT:
+        return pw->StackData[stackIndex].f;
+    case SCR_STACK_TYPE_INTVAR:
+        return (f32)DDS3_GBWK->integers[pw->StackData[stackIndex].i];
+    case SCR_STACK_TYPE_FLOATVAR:
+        return DDS3_GBWK->floats[pw->StackData[stackIndex].i];
+    }
+    return 0.0f;
+}
+
+u8 *scrGetStrPara(s32 parameterIndex)
+{
+    scrProcessWork_s *pw = nowpwork;
+    s32 stackIndex = pw->SP - parameterIndex - 1;
+    s32 stackType = (s8)pw->StackType[stackIndex];
+
+    if (stackType >= 0) {
+        if (stackType >= SCR_STACK_TYPE_STRING) {
+            if (stackType == SCR_STACK_TYPE_STRING) {
+                return (u8 *)pw->StackData[stackIndex].i;
+            }
+        }
+    }
+    return NULL;
+}
 
 void scrSetIntReturnValue(s32 value)
 {
