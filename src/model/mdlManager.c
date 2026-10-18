@@ -117,16 +117,9 @@ struct mdlObj_t
     f32 objectRadius;
 };
 
-typedef struct
-{
-    s32 count;
-    void *entries;
-} mdlFileTableEntry_t;
-
 extern s32 mdlManagerWork;
 extern mdlResrc_t *mdlResrcMajorList[MDL_GROUP_COUNT];
 extern mdlLoadingEntry_t *mdlLoadingMajorList[MDL_GROUP_COUNT];
-extern mdlFileTableEntry_t modelFileKindTable[];
 
 extern s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 attr);
 extern s32 WaitSema(s32 sema);
@@ -289,7 +282,7 @@ typedef struct
 } mdlFileKindSlot_t;
 
 extern mdlFileSlot_t modelFileTable[];
-extern mdlFileKindSlot_t D_0032C420[];
+extern mdlFileKindSlot_t modelFileKindTable[];
 extern mdlFileKind_t *D_00551F04;
 extern mdlHddFile_t *mdlHddFileList;
 extern sdfMemHandle_t *sdfMemAllocDirect(u32 size);
@@ -1191,8 +1184,8 @@ void mdlReleaseHddFileList(void)
             i++;
         } while (i < count);
     }
-    D_0032C420[5].entries = NULL;
-    D_0032C420[5].count = 0;
+    modelFileKindTable[5].entries = NULL;
+    modelFileKindTable[5].count = 0;
     modelFileTable[5].entries = NULL;
     modelFileTable[5].count = 0;
     sdfMemFreeHandleDirect(&D_0054F634);
@@ -1247,8 +1240,8 @@ void mdlMakeHddFileListDummy(void)
             break;
         }
     }
-    D_0032C420[5].entries = D_00551F04;
-    D_0032C420[5].count = 1;
+    modelFileKindTable[5].entries = D_00551F04;
+    modelFileKindTable[5].count = 1;
     modelFileTable[5].entries = mdlHddFileList;
     modelFileTable[5].count = 1;
 }
