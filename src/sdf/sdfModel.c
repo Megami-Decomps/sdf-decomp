@@ -2,56 +2,21 @@
 #include "libsdf.h"
 #include "model.h"
 #include "draw.h"
+#include "ps2asm.h"
 
 /* Audited SDK COP2/MMI operations: ee-gcc cannot express packed
  * vector transfers or the implicit VU matrix-register convention in C. */
 
-#define VU0_LOAD_VF(vf, src) __asm__ volatile ( \
-    ".set noreorder\n\tlqc2 " #vf ", 0(%0)\n\t.set reorder" \
-    : : "r" (src))
 
 #define VU0_LOAD_VF_MEMORY(vf, src) __asm__ volatile ( \
     ".set noreorder\n\tlqc2 " #vf ", 0(%0)\n\t.set reorder" \
     : : "r" (src) : "memory")
 
-#define VU0_STORE_VF(vf, dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 " #vf ", 0(%0)\n\t.set reorder" \
-    : : "r" (dst) : "memory")
 
 #define VU0_SET_ONES_XYZ(vf) __asm__ volatile ( \
     ".set noreorder\n\tvaddw.xyz " #vf ", vf0, vf0w\n\tvmulx.w " #vf ", vf0, vf0x\n\t.set reorder" \
     : : : "memory")
 
-#define VU0_LOAD_MATRIX(src) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "lqc2 vf28, 0(%0)\n\t" \
-    "lqc2 vf29, 16(%0)\n\t" \
-    "lqc2 vf30, 32(%0)\n\t" \
-    "lqc2 vf31, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (src))
-
-#define VU0_STORE_MATRIX(dst) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "sqc2 vf28, 0(%0)\n\t" \
-    "sqc2 vf29, 16(%0)\n\t" \
-    "sqc2 vf30, 32(%0)\n\t" \
-    "sqc2 vf31, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (dst) : "memory")
-
-#define VU0_LOAD_MATRIX_B(src) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "lqc2 vf24, 0(%0)\n\t" \
-    "lqc2 vf25, 16(%0)\n\t" \
-    "lqc2 vf26, 32(%0)\n\t" \
-    "lqc2 vf27, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (src) : "memory")
-
-#define VU0_SCALE_MATRIX_ROWS(src) __asm__ volatile ( \
-    ".set noreorder\n\tvmulx.xyzw vf28, vf28, " #src "x\n\tvmuly.xyzw vf29, vf29, " #src "y\n\t" \
-    "vmulz.xyzw vf30, vf30, " #src "z\n\t.set reorder")
 
 #define VU0_MUL_MATRIX_ROWS_VF10() __asm__ volatile ( \
     ".set noreorder\n\tvmul.xyz vf28, vf28, vf10\n\tvmul.xyz vf29, vf29, vf10\n\t" \
@@ -90,39 +55,10 @@
     "and %0, $2, $3\n\t.set reorder" \
     : "=r" (flags) : "r" (bounds) : "$2", "$3", "$6", "$7", "memory")
 
-#define VU0_MOVE_VF(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\tvmove.xyzw " #dst ", " #src "\n\t.set reorder")
 
 #define VU0_NEGATE_XYZ(vf) __asm__ volatile ( \
     ".set noreorder\n\tvsub.xyz " #vf ", vf0, " #vf "\n\t.set reorder")
 
-#define VU0_CROSS_XYZ(dst, a, b) __asm__ volatile ( \
-    ".set noreorder\n\tvopmula.xyz ACC, " #a ", " #b "\n\tvopmsub.xyz " #dst ", " #b ", " #a "\n\t.set reorder")
-
-#define VU0_NORMALIZE_VF10() __asm__ volatile ( \
-    ".set noreorder\n\tvmul.xyz vf2, vf10, vf10\n\tvmulax.w ACC, vf0, vf2x\n\t" \
-    "vmadday.w ACC, vf0, vf2y\n\tvmaddz.w vf2, vf0, vf2z\n\tvrsqrt Q, vf0w, vf2w\n\t" \
-    "vwaitq\n\tvmulq.xyz vf10, vf10, Q\n\t.set reorder")
-
-#define VU0_SET_W_ONE(vf) __asm__ volatile ( \
-    ".set noreorder\n\tvmove.w " #vf ", vf0\n\t.set reorder")
-
-#define VU0_TRANSFORM_POINT(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\tvmulax.xyzw ACC, vf28, " #src "x\n\tvmadday.xyzw ACC, vf29, " #src "y\n\t" \
-    "vmaddaz.xyzw ACC, vf30, " #src "z\n\tvmaddw.xyzw " #dst ", vf31, vf0w\n\t.set reorder")
-
-#define EE_MMI_UNIT_MATRIX(dst) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "qmfc2.ni $5, $vf0\n\t" \
-    "pextuw $4, $0, $5\n\t" \
-    "pextuw $2, $0, $4\n\t" \
-    "pextuw $3, $4, $0\n\t" \
-    "sq $2, 0(%0)\n\t" \
-    "sq $3, 0x10(%0)\n\t" \
-    "sq $4, 0x20(%0)\n\t" \
-    "sq $5, 0x30(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (dst) : "$2", "$3", "$4", "$5", "memory")
 
 /* The serialized node-def block has a 16-byte count/padding prefix. */
 typedef struct
