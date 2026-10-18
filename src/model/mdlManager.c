@@ -1191,10 +1191,7 @@ void mdlGetScreenOffset(mdlObj_t *ctx, void *point)
 {
     SDF_VU0_LOADMATRIX(&D_002FA240);
     MultMatrixRev(&dds3ScreenParam.TM);
-    VU0_COPY_VF28_TO_VF24();
-    VU0_COPY_VF29_TO_VF25();
-    VU0_COPY_VF30_TO_VF26();
-    VU0_COPY_VF31_TO_VF27();
+    SDF_VU0_COPYMATRIX_A_TO_B();
     SDF_VU0_LOADMATRIX(&ctx->inner->tm);
     SDF_VU0_SCALE_XYZ();
     MultMatrixRevNoArg();
