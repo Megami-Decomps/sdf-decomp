@@ -75,7 +75,7 @@ s32 effPCPBlurScreenOffset(f32 scale) {
     f32 dy;
     f32 distance;
 
-    VU0_STORE_VF10_NOMEM(original);
+    SDF_VU0_STOREVECTOR_NOMEM(original);
     effScreenOffset();
     SDF_VU0_STOREVECTOR(projectedStart);
 
@@ -87,7 +87,7 @@ s32 effPCPBlurScreenOffset(f32 scale) {
     SDF_VU0_LOADVECTOR_B(&aViewDown);
     SDF_VU0_OUTERPRODUCT();
     SDF_VU0_NORMALIZE();
-    VU0_LOAD_VF11_BARRIER(scaleVector);
+    SDF_VU0_LOADVECTOR_B_BARRIER(scaleVector);
     SDF_VU0_MULVECTOR();
     SDF_VU0_COPYVECTOR_C_TO_B();
     SDF_VU0_ADDVECTOR();
