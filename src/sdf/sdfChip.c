@@ -8,25 +8,6 @@ typedef struct sdfChip_t
     void *nextFree;
 } sdfChip_t;
 
-typedef void (*sdfDelayedResrcFreeFunc)();
-
-typedef struct
-{
-    sdfDelayedResrcFreeFunc freeFunc;
-    void *chunk;
-} sdfDelayedResrcCB_t;
-
-/* Five totals followed by the seven per-size-class allocation counters. */
-typedef struct
-{
-    s32 total;
-    s32 freeSize;
-    s32 pageCount;
-    s32 freePageCount;
-    s32 fragmentedPageCount;
-    s32 severalAllocCount[7];
-} sdfChipInfo_t;
-
 #define SDF_CHIP_CLASS_COUNT 7
 #define SDF_CHIP_PAGE_SHIFT 12
 #define SDF_CHIP_PAGE_BYTES (1 << SDF_CHIP_PAGE_SHIFT)

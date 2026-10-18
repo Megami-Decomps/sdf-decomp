@@ -119,6 +119,16 @@ struct sdfGrPacketHeader_t
     sdfGifTag_t giftag;
 };
 
+/* A resource whose free is deferred to the end of the frame: the free function
+ * plus the head of the list of blocks waiting for it. */
+typedef void (*sdfDelayedResrcFreeFunc)();
+
+typedef struct
+{
+    sdfDelayedResrcFreeFunc freeFunc;
+    void *chunk;
+} sdfDelayedResrcCB_t;
+
 /* sdfChip: fixed-size chips carved out of 4KB pages. One control block per
  * size class, seven of them, selected by plzcw on the request size. */
 struct sdfChipPageInfo_tag
@@ -148,6 +158,17 @@ typedef struct sdfChipRecord_t
     char *file;
     s32 line;
 } sdfChipRecord_t;
+
+/* Five totals followed by the seven per-size-class allocation counters. */
+typedef struct
+{
+    s32 total;
+    s32 freeSize;
+    s32 pageCount;
+    s32 freePageCount;
+    s32 fragmentedPageCount;
+    s32 severalAllocCount[7];
+} sdfChipInfo_t;
 
 /* sdfMem: a doubly linked list over one arena. A block's size is the next
  * handle's ptr minus its own, so the list always ends with a sentinel. */
@@ -188,6 +209,17 @@ typedef struct sdfMemRecord_t
     char *file;
     s32 line;
 } sdfMemRecord_t;
+
+/* Six signed words written by sdfMemGetInfo. */
+typedef struct
+{
+    s32 total;
+    s32 freeSize;
+    s32 maxFreeSize;
+    s32 minFreeSize;
+    s32 handleCount;
+    s32 freeHandleCount;
+} sdfMemInfo_t;
 
 /* GS local memory, allocated in the same list-of-slices shape as sdfMem. */
 struct sdfGsMemSlice_t

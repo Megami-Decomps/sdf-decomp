@@ -1,25 +1,6 @@
 #include "common.h"
 #include "libsdf.h"
 
-typedef void (*sdfDelayedResrcFreeFunc)();
-
-typedef struct
-{
-    sdfDelayedResrcFreeFunc freeFunc;
-    void *chunk;
-} sdfDelayedResrcCB_t;
-
-/* Six signed words written by sdfMemGetInfo. */
-typedef struct
-{
-    s32 total;
-    s32 freeSize;
-    s32 maxFreeSize;
-    s32 minFreeSize;
-    s32 handleCount;
-    s32 freeHandleCount;
-} sdfMemInfo_t;
-
 /* The SDK multi-RPC client; only its byte span matters here. */
 typedef struct
 {
