@@ -468,7 +468,7 @@ INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelLinkDrawPacket);
 void sdfModelMakeLocalTm(sdfModelNode_t *node) {
     SDF_VU0_LOADVECTOR(&node->rotate);
     ToMatrix();
-    VU0_LOAD_VF31(&node->pos);
+    SDF_VU0_LOAD_ROW3(&node->pos);
     SDF_VU0_STOREMATRIX(&node->localNoScaledTm);
 }
 
@@ -622,16 +622,16 @@ void sdfModelEvalNode(sdfModelNode_t *drawNode, const f32 (*parentMatrix)[4], s3
     u8 *workspace;
     sdfModelNode_t *child;
 
-    VU0_LOAD_VF28_BARRIER(xAxis);
+    SDF_VU0_LOAD_ROW0_BARRIER(xAxis);
     yAxis = &drawNode->localNoScaledTm.m[4];
-    VU0_LOAD_VF29_BARRIER(yAxis);
+    SDF_VU0_LOAD_ROW1_BARRIER(yAxis);
     zAxis = &drawNode->localNoScaledTm.m[8];
-    VU0_LOAD_VF30_BARRIER(zAxis);
+    SDF_VU0_LOAD_ROW2_BARRIER(zAxis);
     scale = (f32 *)&drawNode->scale;
     SDF_VU0_LOADVECTOR_BARRIER(scale);
     VU0_SCALE_MATRIX_ROWS_VF10();
     translation = (f32 *)&drawNode->pos;
-    VU0_LOAD_VF31_BARRIER(translation);
+    SDF_VU0_LOAD_ROW3_BARRIER(translation);
     SDF_VU0_LOADMATRIX_B(parentMatrix);
     MultMatrixRevNoArg();
     transformed = (f32 (*)[4])drawNode->tm.m;
@@ -834,17 +834,17 @@ void sdfModelMakeMarkPosMatrix(sdfModelRootNode_t *model, sdfModelMarkPos_t *rec
 
     vector = (u8 *)&record->dir;
     SDF_VU0_LOADVECTOR(vector);
-    VU0_COPY_VF10_TO_VF30();
+    SDF_VU0_SET_ROW2();
     SDF_VU0_COPYVECTOR_A_TO_B();
     vector = (u8 *)&record->up;
     SDF_VU0_LOADVECTOR(vector);
     SDF_VU0_NEGVECTOR_XYZ();
-    VU0_COPY_VF10_TO_VF29();
+    SDF_VU0_SET_ROW1();
     SDF_VU0_OUTERPRODUCT();
     SDF_VU0_NORMALIZE();
-    VU0_COPY_VF10_TO_VF28();
-    VU0_LOAD_VF31(&record->pos);
-    VU0_SET_VF31_W_ONE();
+    SDF_VU0_SET_ROW0();
+    SDF_VU0_LOAD_ROW3(&record->pos);
+    SDF_VU0_MATRIX_ROW3_W_SET_ONE();
     MultMatrixRev(&drawNode->tm);
 }
 
