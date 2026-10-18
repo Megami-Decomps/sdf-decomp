@@ -251,7 +251,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
         VU0_STORE_VF10_NOMEM(position);
         LookAtMatrix(work->params.position, position, D_0031F450);
         ReverseMatrix();
-        VU0_STORE_MATRIX_UNCLOBBERED(work->resource->matrix);
+        VU0_STORE_MATRIX_NOMEM(work->resource->matrix);
     } else {
         SDF_VU0_LOADMATRIX(work->resource->matrix);
     }
