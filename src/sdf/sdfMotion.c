@@ -4,87 +4,6 @@
 #include "model.h"
 #include "motion.h"
 
-/* SDK packed-key and VU interpolation sequences used by model channels. */
-#define VU0_LERP_VF10_W(t) __asm__ volatile ( \
-    ".set noreorder\n\tmfc1 $2, %0\n\tqmtc2.ni $2, vf2\n\tvsubx.w vf3, vf0, vf2x\n\t" \
-    "vmulax.xyzw ACC, vf11, vf2x\n\tvmaddw.xyzw vf10, vf10, vf3w\n\t" \
-    "vmove.w vf10, vf0\n\t.set reorder" \
-    : : "f" (t))
-
-
-#define VU0_LERP_VF10_COPY(t) __asm__ volatile ( \
-    ".set noreorder\n\tmfc1 $2, %0\n\tqmtc2.ni $2, vf2\n\tvsubx.w vf3, vf0, vf2x\n\t" \
-    "vmulax.xyzw ACC, vf11, vf2x\n\tvmaddw.xyzw vf10, vf10, vf3w\n\t" \
-    "vmove.xyzw vf11, vf10\n\t.set reorder" \
-    : : "f" (t))
-
-/* Retail repeats the first pointer and transfers the raw z word to vf3;
- * preserve these two SDK sequence defects (SMT3 0x002B4258, DDS1 twin). */
-#define VU0_LERP_VEC3_KEYS(first, second, t) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "qmtc2.ni %2, vf4\n\t" \
-    "ldr $2, 0(%0)\n\t" \
-    "ldl $2, 7(%0)\n\t" \
-    "lw $3, 8(%0)\n\t" \
-    "ldr $4, 0(%0)\n\t" \
-    "ldl $4, 7(%0)\n\t" \
-    "lw $5, 8(%0)\n\t" \
-    "pcpyld $2, $3, $2\n\t" \
-    "pcpyld $4, $5, $4\n\t" \
-    "vsubx.w vf5, vf0, vf4x\n\t" \
-    "vmulx.xyzw vf10, vf0, vf0x\n\t" \
-    "qmtc2.ni $2, vf2\n\t" \
-    "qmtc2.ni $3, vf3\n\t" \
-    "vmulaw.xyz ACC, vf2, vf5w\n\t" \
-    "vmaddx.xyz vf10, vf3, vf4x\n\t" \
-    ".set reorder" \
-    : : "r" (first), "r" (second), "r" (t) : "$2", "$3", "$4", "$5")
-
-
-#define SDF_VU0_LOADVECTOR_UNALIGN_B(p) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "ldr $2, 0(%0)\n\t" \
-    "ldl $2, 7(%0)\n\t" \
-    "lw $3, 8(%0)\n\t" \
-    "pcpyld $2, $3, $2\n\t" \
-    "qmtc2.ni $2, " "vf11" "\n\t" \
-    ".set reorder" \
-    : : "r"(p) : "$2", "$3")
-
-#define SDF_VU0_LOADSHORTVECTOR(p) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "ldr $2, 0(%0)\n\t" \
-    "ldl $2, 7(%0)\n\t" \
-    "pextlh $2, $2, $0\n\t" \
-    "psraw $2, $2, 16\n\t" \
-    "qmtc2.ni $2, " "vf10" "\n\t" \
-    "vitof12.xyzw " "vf10" ", " "vf10" "\n\t" \
-    ".set reorder" \
-    : : "r"(p) : "$2")
-
-#define SDF_VU0_LOADSHORTVECTOR_B(p) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "ldr $2, 0(%0)\n\t" \
-    "ldl $2, 7(%0)\n\t" \
-    "pextlh $2, $2, $0\n\t" \
-    "psraw $2, $2, 16\n\t" \
-    "qmtc2.ni $2, " "vf11" "\n\t" \
-    "vitof12.xyzw " "vf11" ", " "vf11" "\n\t" \
-    ".set reorder" \
-    : : "r"(p) : "$2")
-
-
-#define SDF_MOT_STORE_VF28_NOMEM(dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 " "vf28" ", 0(%0)\n\t.set reorder" \
-    : : "r" (dst))
-
-#define SDF_MOT_STORE_VF29_NOMEM(dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 " "vf29" ", 0(%0)\n\t.set reorder" \
-    : : "r" (dst))
-
-#define SDF_MOT_STORE_VF30_NOMEM(dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 " "vf30" ", 0(%0)\n\t.set reorder" \
-    : : "r" (dst))
 
 typedef struct
 {
@@ -170,33 +89,6 @@ typedef struct
     sdfMotUvwKey_t blendFrom;
 } sdfMotNodeMatUvw_t;
 
-/* out = a + (b - a) * t per RGBA byte lane, rounded through vf3x. `half` is
- * 0.5f in a general register. */
-#define SDF_MOT_RGBA_LERP(out, a, b, t, half) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "qmtc2.ni %4, vf3\n\t" \
-    "mfc1 $8, %3\n\t" \
-    "pextlb $4, $0, %1\n\t" \
-    "pextlb $5, $0, %2\n\t" \
-    "vsub.xyzw vf2, vf0, vf0\n\t" \
-    "qmtc2.ni $8, vf4\n\t" \
-    "pextlh $4, $0, $4\n\t" \
-    "pextlh $5, $0, $5\n\t" \
-    "vaddax.xyzw ACC, vf2, vf3x\n\t" \
-    "vsubx.w vf5, vf0, vf4x\n\t" \
-    "qmtc2.ni $4, vf2\n\t" \
-    "qmtc2.ni $5, vf3\n\t" \
-    "vsubx.w vf5, vf0, vf4x\n\t" \
-    "vitof0.xyzw vf2, vf2\n\t" \
-    "vitof0.xyzw vf3, vf3\n\t" \
-    "vmaddaw.xyzw ACC, vf2, vf5w\n\t" \
-    "vmaddx.xyzw vf5, vf3, vf4x\n\t" \
-    "vftoi0.xyzw vf4, vf5\n\t" \
-    "qmfc2.ni $4, vf4\n\t" \
-    "ppach $5, $0, $4\n\t" \
-    "ppacb %0, $0, $5\n\t" \
-    ".set reorder" \
-    : "=r" (out) : "r" (a), "r" (b), "f" (t), "r" (half) : "$4", "$5", "$6", "$7", "$8")
 
 extern sdfMatUvwParm_t *sdfMatGetTexUvwParm(sdfMat_t *aMat);
 extern sdfMatUvwParm_t *sdfMatGetMultiTexUvwParm(sdfMat_t *aMat);

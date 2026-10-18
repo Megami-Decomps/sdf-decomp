@@ -8,44 +8,6 @@
  * vector transfers or the implicit VU matrix-register convention in C. */
 
 
-#define VU0_MUL_MATRIX_ROWS_VF10() __asm__ volatile ( \
-    ".set noreorder\n\tvmul.xyz vf28, vf28, vf10\n\tvmul.xyz vf29, vf29, vf10\n\t" \
-    "vmul.xyz vf30, vf30, vf10\n\t.set reorder" \
-    : : : "memory")
-
-#define VU0_STORE_MATRIX_M(a, b, c, d) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 vf28, %0\n\tsqc2 vf29, %1\n\tsqc2 vf30, %2\n\tsqc2 vf31, %3\n\t" \
-    ".set reorder" \
-    : : "m" (a), "m" (b), "m" (c), "m" (d) : "memory")
-
-#define VU0_CLIP_TEST_BOX_CORNERS(flags, bounds) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "ldr $2, 0(%1)\n\tldl $2, 7(%1)\n\tlw $3, 8(%1)\n\t" \
-    "ldr $6, 0xC(%1)\n\tldl $6, 0x13(%1)\n\tlw $7, 0x14(%1)\n\t" \
-    "pcpyld $2, $3, $2\n\tpcpyld $6, $7, $6\n\tqmtc2.ni $2, vf2\n\tqmtc2.ni $6, vf3\n\t" \
-    "vmulax.xyzw ACC, vf28, vf2x\n\tvmadday.xyzw ACC, vf29, vf2y\n\tvmaddaz.xyzw ACC, vf30, vf2z\n\tvmaddw.xyzw vf4, vf31, vf0w\n\t" \
-    "vmulax.xyzw ACC, vf28, vf3x\n\tvmadday.xyzw ACC, vf29, vf2y\n\tvmaddaz.xyzw ACC, vf30, vf2z\n\tvmaddw.xyzw vf5, vf31, vf0w\n\t" \
-    "vclipw.xyz vf4, vf4w\n\t" \
-    "vmulax.xyzw ACC, vf28, vf2x\n\tvmadday.xyzw ACC, vf29, vf3y\n\tvmaddaz.xyzw ACC, vf30, vf2z\n\tvmaddw.xyzw vf4, vf31, vf0w\n\t" \
-    "vclipw.xyz vf5, vf5w\n\t" \
-    "vmulax.xyzw ACC, vf28, vf3x\n\tvmadday.xyzw ACC, vf29, vf3y\n\tvmaddaz.xyzw ACC, vf30, vf2z\n\tvmaddw.xyzw vf5, vf31, vf0w\n\t" \
-    "vclipw.xyz vf4, vf4w\n\t" \
-    "vmulax.xyzw ACC, vf28, vf2x\n\tvmadday.xyzw ACC, vf29, vf2y\n\tvmaddaz.xyzw ACC, vf30, vf3z\n\tvmaddw.xyzw vf4, vf31, vf0w\n\t" \
-    "vclipw.xyz vf5, vf5w\n\t" \
-    "vmulax.xyzw ACC, vf28, vf3x\n\tvmadday.xyzw ACC, vf29, vf2y\n\tvmaddaz.xyzw ACC, vf30, vf3z\n\tvmaddw.xyzw vf5, vf31, vf0w\n\t" \
-    "vnop\n\tcfc2.ni $2, $vi18\n\t" \
-    "vclipw.xyz vf4, vf4w\n\t" \
-    "vmulax.xyzw ACC, vf28, vf2x\n\tvmadday.xyzw ACC, vf29, vf3y\n\tvmaddaz.xyzw ACC, vf30, vf3z\n\tvmaddw.xyzw vf4, vf31, vf0w\n\t" \
-    "vclipw.xyz vf5, vf5w\n\t" \
-    "vmulax.xyzw ACC, vf28, vf3x\n\tvmadday.xyzw ACC, vf29, vf3y\n\tvmaddaz.xyzw ACC, vf30, vf3z\n\tvmaddw.xyzw vf5, vf31, vf0w\n\t" \
-    "vclipw.xyz vf4, vf4w\n\t" \
-    "vnop\n\tvnop\n\t" \
-    "vclipw.xyz vf5, vf5w\n\t" \
-    "vnop\n\tvnop\n\tvnop\n\tvnop\n\tvnop\n\tcfc2.ni $3, $vi18\n\t" \
-    "and %0, $2, $3\n\t.set reorder" \
-    : "=r" (flags) : "r" (bounds) : "$2", "$3", "$6", "$7", "memory")
-
-
 /* The serialized node-def block has a 16-byte count/padding prefix. */
 typedef struct
 {
