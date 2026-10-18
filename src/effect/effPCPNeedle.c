@@ -1,4 +1,5 @@
 #include "common.h"
+#include "ps2asm.h"
 
 /* One needle instance: position plus the colour the draw loop stamps. */
 typedef struct effNeedleEntry_t
@@ -63,7 +64,7 @@ extern void sdfMemFreeDirect(void *ptr);
 extern void dds3NeedleModelVNCListDelete(effNeedleWork_t *work);
 
 /* sceVu0UnitMatrix as libvu0 expands it; gcc 2.96 never emits qmfc2/pextuw. */
-#define EFF_UNIT_MATRIX(dst) __asm__ volatile ( \
+#define EE_MMI_UNIT_MATRIX(dst) __asm__ volatile ( \
     ".set noreorder\n\t" \
     "qmfc2.ni $5, $vf0\n\t" \
     "pextuw $4, $0, $5\n\t" \
@@ -76,15 +77,6 @@ extern void dds3NeedleModelVNCListDelete(effNeedleWork_t *work);
     ".set reorder" \
     : : "r" (dst) : "$2", "$3", "$4", "$5", "memory")
 
-#define VU0_LOAD_MATRIX(src) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "lqc2 vf28, 0(%0)\n\t" \
-    "lqc2 vf29, 16(%0)\n\t" \
-    "lqc2 vf30, 32(%0)\n\t" \
-    "lqc2 vf31, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (src))
-
 #define VU0_LOAD_MATRIX_B(src) __asm__ volatile ( \
     ".set noreorder\n\t" \
     "lqc2 vf24, 0(%0)\n\t" \
@@ -93,15 +85,6 @@ extern void dds3NeedleModelVNCListDelete(effNeedleWork_t *work);
     "lqc2 vf27, 48(%0)\n\t" \
     ".set reorder" \
     : : "r" (src) : "memory")
-
-#define VU0_STORE_MATRIX(dst) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "sqc2 vf28, 0(%0)\n\t" \
-    "sqc2 vf29, 16(%0)\n\t" \
-    "sqc2 vf30, 32(%0)\n\t" \
-    "sqc2 vf31, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (dst) : "memory")
 
 INCLUDE_ASM(const s32, "effect/effPCPNeedle", effPCPNeedleSpiralCreate);
 
@@ -140,7 +123,7 @@ void dds3NeedleModelDraw(effNeedleWork_t *work)
     packet = sdfGrAllocPacketBuff(0x20);
     sdfDrawTagInit(packet);
     sdf3DPrimLinkMat(packet, work->drawAsset, 0);
-    EFF_UNIT_MATRIX(matrix);
+    EE_MMI_UNIT_MATRIX(matrix);
     matrix[0] = work->scale[0];
     matrix[5] = work->scale[1];
     matrix[10] = work->scale[2];
