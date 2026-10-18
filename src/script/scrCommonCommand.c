@@ -2,15 +2,21 @@
 #include "kernel.h"
 #include "scr.h"
 
-#define VU0_SET_AXIS_GPR(axis, r) __asm__ volatile ( \
-    ".set noreorder\n\tqmtc2 %0, $vf2\n\tvaddx." #axis " $vf10, $vf0, $vf2x\n\t.set reorder" \
+#define VU0_SET_VF10_X_BITS(r) __asm__ volatile ( \
+    ".set noreorder\n\tqmtc2 %0, $vf2\n\tvaddx.x $vf10, $vf0, $vf2x\n\t.set reorder" \
     : : "r" (r))
-#define VU0_CLEAR_W(vf) __asm__ volatile ( \
-    ".set noreorder\n\tvmulx.w $" #vf ", $" #vf ", $vf0x\n\t.set reorder")
-#define VU0_SET_W_ONE(vf) __asm__ volatile ( \
-    ".set noreorder\n\tvmove.w $" #vf ", $vf0\n\t.set reorder")
-#define VU0_STORE_VF_TO(vf, lvalue) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 $" #vf ", %0\n\t.set reorder" \
+#define VU0_SET_VF10_Y_BITS(r) __asm__ volatile ( \
+    ".set noreorder\n\tqmtc2 %0, $vf2\n\tvaddx.y $vf10, $vf0, $vf2x\n\t.set reorder" \
+    : : "r" (r))
+#define VU0_SET_VF10_Z_BITS(r) __asm__ volatile ( \
+    ".set noreorder\n\tqmtc2 %0, $vf2\n\tvaddx.z $vf10, $vf0, $vf2x\n\t.set reorder" \
+    : : "r" (r))
+#define VU0_CLEAR_VF10_W() __asm__ volatile ( \
+    ".set noreorder\n\tvmulx.w $vf10, $vf10, $vf0x\n\t.set reorder")
+#define VU0_SET_VF10_W_ONE() __asm__ volatile ( \
+    ".set noreorder\n\tvmove.w $vf10, $vf0\n\t.set reorder")
+#define VU0_STORE_VF10_TO(lvalue) __asm__ volatile ( \
+    ".set noreorder\n\tsqc2 $vf10, %0\n\t.set reorder" \
     : "=m" (lvalue))
 
 static inline f32 ffabsf(f32 x)
@@ -392,13 +398,13 @@ s32 scrCommand_SCENE_LIGHT_RGB(void)
     f32 z;
 
     x = scrGetFloatPara(1);
-    VU0_SET_AXIS_GPR(x, x);
+    VU0_SET_VF10_X_BITS(x);
     y = scrGetFloatPara(2);
-    VU0_SET_AXIS_GPR(y, y);
+    VU0_SET_VF10_Y_BITS(y);
     z = scrGetFloatPara(3);
-    VU0_SET_AXIS_GPR(z, z);
-    VU0_CLEAR_W(vf10);
-    VU0_STORE_VF_TO(vf10, v);
+    VU0_SET_VF10_Z_BITS(z);
+    VU0_CLEAR_VF10_W();
+    VU0_STORE_VF10_TO(v);
     dds3SetLightColor(scrGetIntPara(0), 0, &v);
     return 1;
 }
@@ -430,13 +436,13 @@ s32 scrCommand_SCENE_AMBIENT(void)
     f32 z;
 
     x = scrGetFloatPara(1);
-    VU0_SET_AXIS_GPR(x, x);
+    VU0_SET_VF10_X_BITS(x);
     y = scrGetFloatPara(2);
-    VU0_SET_AXIS_GPR(y, y);
+    VU0_SET_VF10_Y_BITS(y);
     z = scrGetFloatPara(3);
-    VU0_SET_AXIS_GPR(z, z);
-    VU0_SET_W_ONE(vf10);
-    VU0_STORE_VF_TO(vf10, v);
+    VU0_SET_VF10_Z_BITS(z);
+    VU0_SET_VF10_W_ONE();
+    VU0_STORE_VF10_TO(v);
     dds3SetAmbientColor(scrGetIntPara(0), &v);
     return 1;
 }
