@@ -277,16 +277,6 @@ static inline s32 mdlFileUpper(s32 c)
 }
 
 
-/* A C float broadcast through vf2.x, then the one operation that uses it.
- * Kept local: retail carries the bits through $2 here, not through
- * a register cc1 picks. */
-#undef SDF_VU0_SCALEVECTOR
-#define SDF_VU0_SCALEVECTOR(f) __asm__ volatile ( \
-    ".set noreorder\n\tmfc1 $2, %0\n\tqmtc2.ni $2, vf2\n\t" \
-    "vmulx.xyzw vf10, vf10, vf2x\n\t.set reorder" \
-    : : "f" (f))
-
-
 static inline void eeUnpackRGBAWordFloat(u32 color, f32 unit) {
     u32 rgba[4];
     rgba[0] = color;
@@ -808,7 +798,7 @@ void mdlSetBlur(mdlObj_t *ctx, s32 stride, s32 capacity,
         endCarrier[0] = endColor;
         EE_MMI_RGBA_UNPACK(endCarrier, 0.0078125f);
         VU0_SUB_VF10_VF11_EXTENDED();
-        SDF_VU0_SCALEVECTOR(inverseSpan);
+        VU0_SCALEVECTOR_V0(inverseSpan);
         SDF_VU0_STOREVECTOR(deviceList->colorStep);
     }
 }
