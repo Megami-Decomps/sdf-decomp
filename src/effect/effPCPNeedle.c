@@ -240,7 +240,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
     SDF_VU0_LOADVECTOR(aViewTarget);
     SDF_VU0_LOADVECTOR_B(aViewEye);
     SDF_VU0_SUBVECTOR();
-    VU0_STORE_VF10_NOMEM(viewDirection);
+    SDF_VU0_STOREVECTOR_NOMEM(viewDirection);
     value = -work->params.viewOffset * 0.75f;
     viewOffset[0] = value;
     viewOffset[1] = value;
@@ -248,10 +248,10 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
 
     if (effBTLSkillCheckRun() != 0) {
         effBTLModelGetSphereCenter((struct BtlUnit *)effBTLSkillGetInvokeFormation());
-        VU0_STORE_VF10_NOMEM(position);
+        SDF_VU0_STOREVECTOR_NOMEM(position);
         LookAtMatrix(work->params.position, position, D_0031F450);
         ReverseMatrix();
-        VU0_STORE_MATRIX_NOMEM(work->resource->matrix);
+        SDF_VU0_STOREMATRIX_NOMEM(work->resource->matrix);
     } else {
         SDF_VU0_LOADMATRIX(work->resource->matrix);
     }
@@ -261,10 +261,10 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
     axis[1] = 0.0f;
     SDF_VU0_LOADVECTOR(axis);
     SDF_VU0_APPLYMATRIX_XYZ();
-    VU0_STORE_VF10_NOMEM(axis);
+    SDF_VU0_STOREVECTOR_NOMEM(axis);
     SDF_VU0_LOADVECTOR_B(viewOffset);
     SDF_VU0_MULVECTOR();
-    VU0_STORE_VF10_NOMEM(viewOffset);
+    SDF_VU0_STOREVECTOR_NOMEM(viewOffset);
 
     count = work->count;
     i = 0;
@@ -287,7 +287,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
                 position[2] = 0.0f;
                 SDF_VU0_LOADVECTOR(position);
                 SDF_VU0_APPLYMATRIX_XYZ();
-                VU0_STORE_VF10_NOMEM(position);
+                SDF_VU0_STOREVECTOR_NOMEM(position);
                 slot->direction[0] = position[0];
                 slot->direction[1] = position[1];
                 slot->direction[2] = position[2];
@@ -299,7 +299,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
                 SDF_VU0_LOADVECTOR(viewOffset);
                 SDF_VU0_LOADVECTOR_B(resourcePosition);
                 SDF_VU0_ADDVECTOR();
-                VU0_STORE_VF10_NOMEM(resourcePosition);
+                SDF_VU0_STOREVECTOR_NOMEM(resourcePosition);
 
                 position[0] = slot->direction[0];
                 position[1] = slot->direction[1];
@@ -308,7 +308,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
                 slot->angle += angleStep;
                 SDF_VU0_LOADVECTOR(position);
                 SDF_VU0_APPLYMATRIX_XYZ();
-                VU0_STORE_VF10_NOMEM(position);
+                SDF_VU0_STOREVECTOR_NOMEM(position);
 
                 {
                     f32 elapsed = (f32)slot->age;
@@ -324,7 +324,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
                 SDF_VU0_LOADVECTOR(position);
                 SDF_VU0_LOADVECTOR_B(work->params.position);
                 SDF_VU0_ADDVECTOR();
-                VU0_STORE_VF10_NOMEM(position);
+                SDF_VU0_STOREVECTOR_NOMEM(position);
                 dds3NeedleModelSetPosition(work->resource, i, position);
 
                 if (age < fadeIn && fadeIn != 0) {
@@ -356,10 +356,10 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
                     VU0_COPY_VF2_TO_VF12();
                     SDF_VU0_COPYVECTOR_A_TO_B();
                     SDF_VU0_ADDVECTOR_A_C();
-                    VU0_STORE_VF10_NOMEM(vertices[0]);
+                    SDF_VU0_STOREVECTOR_NOMEM(vertices[0]);
                     SDF_VU0_COPYVECTOR_C_TO_A();
                     SDF_VU0_SUBVECTOR_B_A();
-                    VU0_STORE_VF11_NOMEM(vertices[1]);
+                    SDF_VU0_STOREVECTOR_B_NOMEM(vertices[1]);
                     dds3TrackPolySet(work->system, i, (const u128 *)vertices);
                     dds3TrackPolyVCRefresh_ParType1(work->system, i);
                     dds3TrackPolyColorSet((u32)work->system, i, (color & 0xFF000000) | 0x808080);
