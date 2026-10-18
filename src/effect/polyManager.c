@@ -1045,8 +1045,8 @@ u32 dds3SpPoly_Color(u32 elapsed, u32 duration, u32 color) {
     }
     SDF_VU0_LOADVECTOR(D_00317660);
     SDF_VU0_LOADVECTOR_B(D_00317650);
-    VU0_SCALE_VF10_BITS(1.0f - ratio);
-    VU0_SCALE_VF11_BITS(ratio);
+    SDF_VU0_SCALEVECTOR_BITS(1.0f - ratio);
+    SDF_VU0_SCALEVECTOR_B_BITS(ratio);
     SDF_VU0_ADDVECTOR();
     SDF_VU0_COPYVECTOR_A_TO_B();
     tint[0] = color;
