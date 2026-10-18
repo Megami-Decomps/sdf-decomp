@@ -1,4 +1,5 @@
 #include "common.h"
+#include "ps2asm.h"
 
 struct EffPacketParams;
 struct EffRandState;
@@ -770,22 +771,6 @@ struct SdfTextureFileHeader {
     u8 pad24[0x1C];    /* 0x24 */
 };
 
-/* dst = primary matrix (vf28-vf31) * src: the core of libvu0
- * sceVu0ApplyMatrix, used with the sdf matrix-bank convention. */
-#define VU0_APPLY_MATRIX(dst, src) __asm__ volatile ( \
-    ".set noreorder\n\tvmulax.xyzw ACC, vf28, " #src "x\n\tvmadday.xyzw ACC, vf29, " #src "y\n\t" \
-    "vmaddaz.xyzw ACC, vf30, " #src "z\n\tvmaddw.xyzw " #dst ", vf31, " #src "w\n\t.set reorder")
-
-/* Load the same four quadwords into vf28-vf31 (no store). */
-#define VU0_LOAD_MATRIX(src) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "lqc2 vf28, 0(%0)\n\t" \
-    "lqc2 vf29, 16(%0)\n\t" \
-    "lqc2 vf30, 32(%0)\n\t" \
-    "lqc2 vf31, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (src))
-
 /* Load four quadwords into the second matrix bank vf24-vf27 (the right-hand
  * operand of the sdf matrix-multiply routines). */
 #define VU0_LOAD_MATRIX_B(src) __asm__ volatile ( \
@@ -797,12 +782,6 @@ struct SdfTextureFileHeader {
     ".set reorder" \
     : : "r" (src) : "memory")
 
-/* One quadword between memory and a named VU0 register. The load has no
- * memory clobber; the store does, matching the standalone COP2 asm idiom. */
-#define VU0_LOAD_VF(vf, src) __asm__ volatile ( \
-    ".set noreorder\n\tlqc2 " #vf ", 0(%0)\n\t.set reorder" \
-    : : "r" (src))
-
 /* Load-normalize-store of one packed vector in a single block ("+m" operand
  * with a memory clobber). */
 #define VU0_NORMALIZE_PACKED_VECTOR(v) __asm__ volatile ( \
@@ -810,20 +789,6 @@ struct SdfTextureFileHeader {
     "vmadday.w ACC, vf0, vf2y\n\tvmaddz.w vf2, vf0, vf2z\n\tvrsqrt Q, vf0w, vf2w\n\t" \
     "vwaitq\n\tvmulq.xyz vf10, vf10, Q\n\tsqc2 vf10, %0\n\t.set reorder" \
     : "+m" (v) :: "memory")
-
-/* Store vf28-vf31 to four quadwords (pairs with VU0_LOAD_MATRIX). */
-#define VU0_STORE_MATRIX(dst) __asm__ volatile ( \
-    ".set noreorder\n\t" \
-    "sqc2 vf28, 0(%0)\n\t" \
-    "sqc2 vf29, 16(%0)\n\t" \
-    "sqc2 vf30, 32(%0)\n\t" \
-    "sqc2 vf31, 48(%0)\n\t" \
-    ".set reorder" \
-    : : "r" (dst) : "memory")
-
-#define VU0_STORE_VF(vf, dst) __asm__ volatile ( \
-    ".set noreorder\n\tsqc2 " #vf ", 0(%0)\n\t.set reorder" \
-    : : "r" (dst) : "memory")
 
 extern void *effPkt3DPrimMakePoly(EffPacketParams *params);
 
@@ -1242,12 +1207,12 @@ void effPCPWhirlwindPolyPartMove(PcpScatterInstanceA *work, s32 index)
         vertex[4] = vertex[0];
         vertex[5] += rise;
         vertex[6] = vertex[2] = s * radius;
-        VU0_LOAD_VF(vf10, vertex);
-        VU0_APPLY_MATRIX(vf10, vf10);
-        VU0_STORE_VF(vf10, vertex);
-        VU0_LOAD_VF(vf10, vertex + 4);
-        VU0_APPLY_MATRIX(vf10, vf10);
-        VU0_STORE_VF(vf10, vertex + 4);
+        VU0_LOAD_VF10(vertex);
+        VU0_APPLY_MATRIX_VF10();
+        VU0_STORE_VF10(vertex);
+        VU0_LOAD_VF10(vertex + 4);
+        VU0_APPLY_MATRIX_VF10();
+        VU0_STORE_VF10(vertex + 4);
         angle += step;
         vertex += 8;
     }
@@ -1322,12 +1287,12 @@ void effPCPWhirlwind2PolyPartMove(PcpScatterInstanceB *work, s32 index)
         vertex[4] = vertex[0];
         vertex[5] += rise;
         vertex[6] = vertex[2] = s * radius;
-        VU0_LOAD_VF(vf10, vertex);
-        VU0_APPLY_MATRIX(vf10, vf10);
-        VU0_STORE_VF(vf10, vertex);
-        VU0_LOAD_VF(vf10, vertex + 4);
-        VU0_APPLY_MATRIX(vf10, vf10);
-        VU0_STORE_VF(vf10, vertex + 4);
+        VU0_LOAD_VF10(vertex);
+        VU0_APPLY_MATRIX_VF10();
+        VU0_STORE_VF10(vertex);
+        VU0_LOAD_VF10(vertex + 4);
+        VU0_APPLY_MATRIX_VF10();
+        VU0_STORE_VF10(vertex + 4);
         angle += step;
         vertex += 8;
     }
@@ -1402,12 +1367,12 @@ void effPCPWhirlwind3PolyPartMove(PcpScatterInstanceC *work, s32 index)
         vertex[4] = vertex[0];
         vertex[5] += rise;
         vertex[6] = vertex[2] = s * radius;
-        VU0_LOAD_VF(vf10, vertex);
-        VU0_APPLY_MATRIX(vf10, vf10);
-        VU0_STORE_VF(vf10, vertex);
-        VU0_LOAD_VF(vf10, vertex + 4);
-        VU0_APPLY_MATRIX(vf10, vf10);
-        VU0_STORE_VF(vf10, vertex + 4);
+        VU0_LOAD_VF10(vertex);
+        VU0_APPLY_MATRIX_VF10();
+        VU0_STORE_VF10(vertex);
+        VU0_LOAD_VF10(vertex + 4);
+        VU0_APPLY_MATRIX_VF10();
+        VU0_STORE_VF10(vertex + 4);
         angle += step;
         vertex += 8;
     }
@@ -1481,12 +1446,12 @@ void effPCPWwSpherePolyPartMove(PcpScatterPlainInstance *work, s32 index)
         vertex[4] = vertex[0];
         vertex[5] = -height;
         vertex[6] = vertex[2] = s * radius;
-        VU0_LOAD_VF(vf10, vertex);
-        VU0_APPLY_MATRIX(vf10, vf10);
-        VU0_STORE_VF(vf10, vertex);
-        VU0_LOAD_VF(vf10, vertex + 4);
-        VU0_APPLY_MATRIX(vf10, vf10);
-        VU0_STORE_VF(vf10, vertex + 4);
+        VU0_LOAD_VF10(vertex);
+        VU0_APPLY_MATRIX_VF10();
+        VU0_STORE_VF10(vertex);
+        VU0_LOAD_VF10(vertex + 4);
+        VU0_APPLY_MATRIX_VF10();
+        VU0_STORE_VF10(vertex + 4);
         angle += step;
         vertex += 8;
     }
