@@ -1,16 +1,106 @@
 #include "common.h"
+#include "libsdf.h"
+#include "draw.h"
+
+typedef struct
+{
+    u64 pmode;
+    u64 smode2;
+    u32 dispfb;
+    u32 dispfbHi;
+    u64 display;
+    u64 bgcolor;
+} sceGsDispEnv;
+
+extern void sceGsResetGraph(s32 aMode, s32 aInter, s32 aOmode, s32 aFfmode);
+extern void sceGsSetDefDispEnv(sceGsDispEnv *aEnv, s32 aPsm, s32 aWidth, s32 aHeight, s32 aDx,
+                               s32 aDy);
+extern void sceGsPutDispEnv(sceGsDispEnv *aEnv);
+
+extern void sdfGsMemFree(sdfGsMemSlice_t *aSlice);
+extern sdfGsMemSlice_t *sdfGsAllocFrameBuff(s32 aWidth, s32 aHeight, s32 aPsm);
+
+extern sdfGrScreenDef_t sdfGrFrameModes[4];
+extern sdfGrFrameSet_t D_00529388;
+extern sceGsDispEnv D_00580FF0;
+
+extern u8 reqMakeFrameBuff;
+extern u8 sdfGrScreenMode;
+extern u8 sdfGrGsResetDone;
+extern s8 sdfDispFrameId[2];
+extern volatile s8 sdfGrDrawBusy;
+
+void sdfGrSetFrameSetMode(sdfGrFrameSet_t *aSet, s32 aMode, s32 aFree);
+void sdfGrFreeFrameSet(sdfGrFrameSet_t *aSet);
 
 INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrSetFrameSetMode);
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrSetScreen);
+void sdfGrSetScreen(s32 aMode)
+{
+    sdfGrScreenMode = aMode;
+    sdfGrSetFrameSetMode(&D_00529388, aMode, 0);
+    reqMakeFrameBuff = 1;
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrFreeFrameSet);
+void sdfGrFreeFrameSet(sdfGrFrameSet_t *aSet)
+{
+    sdfGsMemFree(aSet->frameHandle[0]);
+    aSet->frameHandle[0] = NULL;
+    sdfGsMemFree(aSet->frameHandle[1]);
+    aSet->frameHandle[1] = NULL;
+    sdfGsMemFree(aSet->zbuffHandle);
+    aSet->zbuffHandle = NULL;
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrMakeFrameSet);
+void sdfGrMakeFrameSet(sdfGrFrameSet_t *aSet)
+{
+    s16 width;
+    s16 height;
+    u8 format;
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrSetDisp);
+    sdfGrFreeFrameSet(aSet);
+    width = aSet->w;
+    height = aSet->buffH;
+    aSet->zbuffHandle = sdfGsAllocFrameBuff(width, height, aSet->zbuffFormat);
+    format = aSet->pixelFormat;
+    aSet->frameHandle[0] = sdfGsAllocFrameBuff(width, height, format);
+    aSet->frameHandle[1] = sdfGsAllocFrameBuff(width, height, format);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrGsReset);
+void sdfGrSetDisp(s32 aBuffId)
+{
+    sdfGsMemSlice_t *buff = D_00529388.frameHandle[aBuffId];
+    u32 fbp;
+
+    sceGsSetDefDispEnv((sceGsDispEnv *)(((u32)&D_00580FF0 & 0x0FFFFFFF) | 0x20000000), 0,
+                       D_00529388.w, D_00529388.buffH, 0, 0);
+    fbp = (buff->addr >> 11) & 0x1FF;
+    D_00580FF0.dispfb = (D_00580FF0.dispfb & ~0x1FF) | fbp;
+    sceGsPutDispEnv(&D_00580FF0);
+}
+
+void sdfGrGsReset(void)
+{
+    s32 inter;
+    s32 ffmode;
+
+    switch (sdfGrFrameModes[sdfGrScreenMode].fieldFrameMode) {
+    case 0:
+        inter = 0;
+        ffmode = 1;
+        break;
+    case 1:
+        inter = 1;
+        ffmode = 0;
+        break;
+    default:
+        inter = 1;
+        ffmode = 1;
+        break;
+    }
+    sceGsResetGraph(sdfGrGsResetDone, inter, 2, ffmode);
+    sdfGrGsResetDone = 1;
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfDrawThIntHandler);
 
@@ -18,7 +108,16 @@ INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrReqCapture);
 
 INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrCapture);
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfDeliverDrawStart);
+void sdfDeliverDrawStart(s32 aOldBuffId, s32 aNextBuffId)
+{
+    if (sdfDispFrameId[0] == aOldBuffId) {
+        sdfDispFrameId[0] = aOldBuffId ^ 1;
+    }
+    if (sdfDispFrameId[1] == aOldBuffId) {
+        sdfDispFrameId[1] = aOldBuffId ^ 1;
+    }
+    sdfGrDrawBusy = aNextBuffId;
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfDeliverDrawEnd);
 

@@ -23,6 +23,7 @@ typedef struct sdfPreDrawHook_t sdfPreDrawHook_t;
 typedef struct sdfModelPacketHeader_t sdfModelPacketHeader_t;
 typedef struct sdfItemArray_t sdfItemArray_t;
 typedef struct sdfGrOt_t sdfGrOt_t;
+typedef struct sdfPacState_t sdfPacState_t;
 
 /* Bodies in draw3d.h; declared here so sdfDrawTag_t can point at them. */
 struct sdf3DLightParallelPacket_t;
@@ -345,6 +346,14 @@ struct sdfMat_t
     f32 fdSoften;
 };
 
+/* A texture coordinate transform in a material packet. sdfMatSetUvwParm fills
+ * it either as six floats or, for the identity case, as three quadword halves. */
+typedef union
+{
+    f32 m[6];
+    u64 q[3];
+} sdfMatTexTm_t;
+
 /* The VIF packet a material keeps per context: the GS registers
  * sdfMatUpdatePacketBasic copies out of the texture handle, interleaved with
  * the VIF codes that upload them. sdfMatNew allocates 0xA0 for it and writes
@@ -372,10 +381,11 @@ struct sdfMatPacket_t
     u64 mtexTex1Data;
     u64 mtexTex0Data;
     u64 mtexClampData;
-    /* sdfMatSetUvwParm writes six floats here: a 2x2 then a 2-vector offset. */
-    f32 texTm[6];
-    /* Unnamed tail. Holds at least the two VIF codes written at 0x98/0x9C. */
-    u8 reserved[32];
+    /* sdfMatSetUvwParm writes one transform per texture: a 2x2 then an offset. */
+    sdfMatTexTm_t texTm;
+    sdfMatTexTm_t multiTexTm;
+    u32 vifcode3;
+    u32 vifcode4;
 };
 
 /* Every growable list in the engine: a 16-byte header plus one element block in
@@ -415,5 +425,125 @@ typedef struct
     sdfVector4_t p;
     f32 param[4];
 } sdf3DLight_t;
+
+/* The .pac stream decoder. sdfPacInit memsets 56 bytes, and sdfPacDecode runs
+ * phase as a three-state machine: 0 starts the next packet, 1 skips bytes, 2
+ * hands the input to decodeFunc. */
+
+/* The 16-byte header every packet in a .pac stream starts with. The low nibble
+ * of flags is the encoding, the high nibble the extra header bytes. */
+typedef struct
+{
+    u8 command;
+    u8 flags;
+    u16 pad;
+    s32 size;
+    u32 pad2;
+    s32 decodedSize;
+} sdfPacPacketHeader_t;
+
+/* sdfPacPacketHeader_t.flags. */
+enum sdf_pac_flag
+{
+    SDF_PAC_ENCODING_MASK = 0xF,
+    SDF_PAC_EXTRA_MASK = 0xF0
+};
+
+/* sdfPacPacketHeader_t.command, as sdfPacStdCallback dispatches on it. */
+enum sdf_pac_command
+{
+    SDF_PAC_COMMAND_MEM = 1,
+    SDF_PAC_COMMAND_TMX = 2,
+    SDF_PAC_COMMAND_MODEL = 6,
+    SDF_PAC_COMMAND_MOTION = 8,
+    SDF_PAC_COMMAND_TEXLIST = 9,
+    SDF_PAC_COMMAND_END = 0xFF
+};
+
+/* sdfPacState_t.flags, set by sdfPacSetStay and sdfPacSetFromTail. */
+enum sdf_pac_state_flag
+{
+    SDF_PAC_STATE_STAY = 1,
+    SDF_PAC_STATE_FROMTAIL = 2
+};
+
+/* One queued resource: the decoded block plus the packet header it came from.
+ * sdfPacNewResrc allocates 32 bytes plus the header's extra bytes. */
+typedef struct sdfPacWork_t
+{
+    struct sdfPacWork_t *next;
+    sdfPacState_t *state;
+    void *resrc;
+    u8 *data;
+    u8 header[16];
+} sdfPacWork_t;
+
+/* The relocation record a model or motion payload starts with; its own data
+ * follows at 16 and the pointer table sits tableOffset bytes into it. */
+typedef struct
+{
+    s32 tableOffset;
+    s32 tableBytes;
+    u32 pad[2];
+    u8 payload[1];
+} sdfPacReloc_t;
+
+/* The decode target for one texture: the sdfMem block it lands in and how many
+ * bytes of it are still to come. */
+typedef struct
+{
+    sdfTexHandle_t *tex;
+    sdfMemHandle_t *memHandle;
+    u8 *cursor;
+    s32 remain;
+} sdfPacBuf_t;
+
+/* A texture list packet in progress: the entry count, the entry being decoded,
+ * and the header and buffer that entry reuses. */
+typedef struct
+{
+    u32 count;
+    s32 index;
+    u32 pad[2];
+    sdfPacPacketHeader_t header;
+    sdfPacBuf_t buf;
+} sdfPacList_t;
+
+typedef s32 (*sdfPacCallbackFunc)(sdfPacState_t *aState, s32 aStat,
+                                  sdfPacPacketHeader_t *aPacket);
+typedef void (*sdfPacDecodeFunc)(sdfPacState_t *aState);
+
+struct sdfPacState_t
+{
+    u8 phase;
+    u8 flags;
+    s16 blockId;
+    sdfPacCallbackFunc callback;
+    sdfPacDecodeFunc decodeFunc;
+    sdfPacDecodeFunc endFunc;
+    const u8 *src;
+    s32 srcLeft;
+    s32 srcUsed;
+    u8 *dst;
+    s32 dstLeft;
+    struct sdfDecomp_t *decomp;
+    sdfPacBuf_t *buf;
+    union
+    {
+        sdfPacBuf_t *buf;
+        sdfPacList_t *list;
+    } slot;
+    sdfPacWork_t *head;
+    sdfPacWork_t *tail;
+};
+
+/* The LZ decoder sdfDecompInit sets up in 32 chip bytes; sdfDecomp returns
+ * nonzero when the stream ends and leaves the unconsumed byte count at 12. */
+struct sdfDecomp_t
+{
+    u32 pad[3];
+    s32 remain;
+    u32 pad2[4];
+};
 
 #endif /* LIBSDF_H */
