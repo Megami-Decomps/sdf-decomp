@@ -351,9 +351,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *work) {
                     SDF_VU0_NORMALIZE();
                     SDF_VU0_LOADVECTOR_B(width);
                     SDF_VU0_MULVECTOR();
-                    VU0_COPY_VF10_TO_VF2();
-                    SDF_VU0_COPYVECTOR_C_TO_A();
-                    VU0_COPY_VF2_TO_VF12();
+                    SDF_VU0_SWAPVECTOR_A_C();
                     SDF_VU0_COPYVECTOR_A_TO_B();
                     SDF_VU0_ADDVECTOR_A_C();
                     SDF_VU0_STOREVECTOR_NOMEM(vertices[0]);
