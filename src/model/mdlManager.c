@@ -6,6 +6,13 @@
 
 #define MDL_GROUP_COUNT 8
 
+/* sdfPacPacketHeader_t.tag for the chunks the PIB unit dispatches on, as the
+ * four bytes each value spells. The IDB has no enum for them. */
+#define PIB_TAG_PIB0 0x30424950
+#define PIB_TAG_P2A 0x413250
+#define PIB_TAG_D3P 0x503344
+#define PIB_TAG_IPU 0x555049
+
 typedef struct mdlLoadingEntry_t
 {
     struct mdlLoadingEntry_t *next;
@@ -1342,9 +1349,9 @@ s32 mdlPackCheck(sdfPacWork_t *work)
     s32 result;
 
     result = 0;
-    if (((sdfPacPacketHeader_t *)work->header)->command == 1)
+    if (((sdfPacPacketHeader_t *)work->header)->command == DDS3_FT_EFFECT)
     {
-        result = ((sdfPacPacketHeader_t *)work->header)->tag == 0x30424950;
+        result = ((sdfPacPacketHeader_t *)work->header)->tag == PIB_TAG_PIB0;
     }
     return result;
 }
@@ -1358,9 +1365,9 @@ sdfPacWork_t *mdlPackSetOld(sdfPacWork_t *work, s32 group, s32 id, s32 mode) {
     parts = NULL;
     while (work != NULL) {
         switch (((sdfPacPacketHeader_t *)work->header)->command) {
-        case 1:
+        case DDS3_FT_EFFECT:
             switch (((sdfPacPacketHeader_t *)work->header)->tag) {
-            case 0x30424950:
+            case PIB_TAG_PIB0:
                 setup.partInfo = work->data;
                 setup.resourceHandle = (sdfMemHandle_t *)work->resrc;
                 count = mdlPibGetEffectCount((mdlPibRecord_t *)work->data);
@@ -1369,26 +1376,26 @@ sdfPacWork_t *mdlPackSetOld(sdfPacWork_t *work, s32 group, s32 id, s32 mode) {
                     setup.partList = parts;
                 }
                 break;
-            case 0x413250:
+            case PIB_TAG_P2A:
                 mdlCreateEffectResrc_P2A(parts, work->data);
                 sdfMemFreeDirect((sdfMemHandle_t *)work->resrc);
                 break;
-            case 0x503344:
+            case PIB_TAG_D3P:
                 mdlCreateEffectResrc_D3P(parts, (struct mdlEffectDescriptor_t *)work->data);
                 sdfMemFreeDirect((sdfMemHandle_t *)work->resrc);
                 break;
             }
             break;
-        case 9:
+        case DDS3_FT_TEXLIST:
             setup.resourceList = (sdfModelTexList_t *)work->resrc;
             break;
-        case 6:
+        case DDS3_FT_MODEL:
             if (setup.requestAllocation == NULL) {
                 setup.requestAllocation = (sdfMemHandle_t *)work->resrc;
                 setup.itemList = (sdfModelDef_t *)work->data;
             }
             break;
-        case 8:
+        case DDS3_FT_MOTION:
             if (setup.motionResource == NULL) {
                 setup.motionResource = (sdfMemHandle_t *)work->resrc;
                 setup.motionTable = (sdfMotionPlayBook_t *)work->data;
@@ -1436,15 +1443,15 @@ sdfPacWork_t *mdlPackSet(sdfPacWork_t *packetWork, s32 group, s32 id, s32 mode) 
     if (remainingParts > 0) {
         do {
             switch (((sdfPacPacketHeader_t *)packetWork->header)->tag) {
-            case 0x413250:
+            case PIB_TAG_P2A:
                 mdlCreateEffectResrc_P2A(partList, packetWork->data);
                 sdfMemFreeDirect((sdfMemHandle_t *)packetWork->resrc);
                 break;
-            case 0x503344:
+            case PIB_TAG_D3P:
                 mdlCreateEffectResrc_D3P(partList, (struct mdlEffectDescriptor_t *)packetWork->data);
                 sdfMemFreeDirect((sdfMemHandle_t *)packetWork->resrc);
                 break;
-            case 0x555049:
+            case PIB_TAG_IPU:
                 objectSize = ((sdfPacPacketHeader_t *)packetWork->header)->decodedSize;
                 if (objectSize == 0) {
                     objectSize = ((sdfPacPacketHeader_t *)packetWork->header)->size
@@ -1466,7 +1473,7 @@ sdfPacWork_t *mdlPackSet(sdfPacWork_t *packetWork, s32 group, s32 id, s32 mode) 
         } while (remainingParts != 0);
     }
 
-    if (((sdfPacPacketHeader_t *)packetWork->header)->command == 9) {
+    if (((sdfPacPacketHeader_t *)packetWork->header)->command == DDS3_FT_TEXLIST) {
         groupSetup.resourceList = (sdfModelTexList_t *)packetWork->resrc;
         packetWork = sdfPacFreeResrc(packetWork);
     }
