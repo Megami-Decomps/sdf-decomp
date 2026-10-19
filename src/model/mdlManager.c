@@ -271,19 +271,19 @@ s32 mdlFileLoad(s32 group, s32 id, s32 arg, const char *path, void (*onComplete)
 
 #define MDL_CHAR_IS_LOWER(c) ((D_0054B550 + 1)[(unsigned)(c)] & 2)
 
-static inline s32 mdlFileUpper(s32 c)
+static inline s32 FileUpper(s32 c)
 {
     return MDL_CHAR_IS_LOWER(c) ? c - 'a' + 'A' : c;
 }
 
 
-static inline void eeUnpackRGBAWordFloat(u32 color, f32 unit) {
+static inline void UnpackRGBAWordFloat(u32 color, f32 unit) {
     u32 rgba[4];
     rgba[0] = color;
     EE_MMI_RGBA_UNPACK(rgba, unit);
 }
 
-static inline u32 mdlPackDevSlotColor(s32 age, f32 unit) {
+static inline u32 PackDevSlotColor(s32 age, f32 unit) {
     u32 rgba[4];
 
     VU0_SEQ_MDL_PACK_DEV_SLOT_COLOR(age, unit);
@@ -832,7 +832,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
         model->zBias = 1000.0f;
         list->first = slot;
     }
-    eeUnpackRGBAWordFloat(original->color, 1.0f / 128.0f);
+    UnpackRGBAWordFloat(original->color, 1.0f / 128.0f);
     SDF_VU0_STOREVECTOR(tint);
     slot = list->first;
     while (slot != NULL) {
@@ -850,7 +850,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
         SDF_VU0_LOADVECTOR_BARRIER(list->color);
         SDF_VU0_LOADVECTOR_B(list->colorStep);
         SDF_VU0_LOADVECTOR_C(tint);
-        color = mdlPackDevSlotColor(remaining - 1, 128.0f);
+        color = PackDevSlotColor(remaining - 1, 128.0f);
         model->color = color;
         sdfModelLinkOt(surfaces, model);
         slot = slot->next;
@@ -1649,7 +1649,7 @@ void mdlMakeHddFileList(void) {
                 s32 kind = -1;
 
                 if (directory.name[length - 3] == '.' &&
-                    (s8)mdlFileUpper(directory.name[length - 1]) == 'B') {
+                    (s8)FileUpper(directory.name[length - 1]) == 'B') {
                     s32 ext = directory.name[length - 2];
 
                     if (MDL_CHAR_IS_LOWER(ext)) {
@@ -1698,7 +1698,7 @@ void mdlMakeHddFileList(void) {
                 *link = next;
                 mdlFreeFileItem(file);
             } else {
-                if (mdlFileUpper(file->extension[0][0]) == 'P') {
+                if (FileUpper(file->extension[0][0]) == 'P') {
                     file->available[1] = 0;
                     file->available[2] = 0;
                 }
