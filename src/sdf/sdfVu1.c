@@ -277,7 +277,7 @@ struct sdfTexHandle_t *sdfTexSetDirect(const TMX_HEADER_t *header);
 /* Read the active packet cursor or restore it at a quadword boundary. */
 s32 sdfGrOpenPacketBuff(void);
 
-static inline VuBlendNode *vuAllocNode(VuWork *work) {
+static inline VuBlendNode *AllocNode(VuWork *work) {
     VuBlendNode *node = work->dmaAddrA;
 
     if (--work->dmaCountA == 0) {
@@ -547,8 +547,8 @@ void corePktClipFace(VuWork *work) {
             u32 firstCode;
 
             if (bRegion == cRegion) {
-                d = vuAllocNode(work);
-                e = vuAllocNode(work);
+                d = AllocNode(work);
+                e = AllocNode(work);
                 if (aRegion == 0) {
                     corePktMakeEdgePoint(d, b, a);
                     corePktMakeEdgePoint(e, c, a);
@@ -579,8 +579,8 @@ void corePktClipFace(VuWork *work) {
                     out[1][2] = (u128 *)e;
                     out += 2;
                 } else {
-                    f = vuAllocNode(work);
-                    g = vuAllocNode(work);
+                    f = AllocNode(work);
+                    g = AllocNode(work);
                     corePktMakeEdgePoint(f, b, a);
                     corePktMakeEdgePoint(g, c, a);
                     out[0][0] = (u128 *)e;
@@ -600,10 +600,10 @@ void corePktClipFace(VuWork *work) {
                 break;
             }
             if (aRegion == 0 && (bRegion ^ cRegion) == 3) {
-                d = vuAllocNode(work);
-                e = vuAllocNode(work);
-                f = vuAllocNode(work);
-                g = vuAllocNode(work);
+                d = AllocNode(work);
+                e = AllocNode(work);
+                f = AllocNode(work);
+                g = AllocNode(work);
                 corePktMakeEdgePoint(d, b, a);
                 corePktMakeEdgePoint(e, c, a);
                 corePktMakeEdgePoint(f, b, c);
@@ -702,8 +702,8 @@ void corePktBuildFaceList(VuWork *work) {
             u32 firstCode;
 
             if (bRegion == cRegion) {
-                d = vuAllocNode(work);
-                e = vuAllocNode(work);
+                d = AllocNode(work);
+                e = AllocNode(work);
                 if (aRegion == 0) {
                     corePktMakeEdgePoint(d, b, a);
                     corePktMakeEdgePoint(e, c, a);
@@ -734,8 +734,8 @@ void corePktBuildFaceList(VuWork *work) {
                     out[1][2] = (u128 *)e;
                     out += 2;
                 } else {
-                    f = vuAllocNode(work);
-                    g = vuAllocNode(work);
+                    f = AllocNode(work);
+                    g = AllocNode(work);
                     corePktMakeEdgePoint(f, b, a);
                     corePktMakeEdgePoint(g, c, a);
                     out[0][0] = (u128 *)e;
@@ -755,10 +755,10 @@ void corePktBuildFaceList(VuWork *work) {
                 break;
             }
             if (aRegion == 0 && (bRegion ^ cRegion) == 3) {
-                d = vuAllocNode(work);
-                e = vuAllocNode(work);
-                f = vuAllocNode(work);
-                g = vuAllocNode(work);
+                d = AllocNode(work);
+                e = AllocNode(work);
+                f = AllocNode(work);
+                g = AllocNode(work);
                 corePktMakeEdgePoint(d, b, a);
                 corePktMakeEdgePoint(e, c, a);
                 corePktMakeEdgePoint(f, b, c);
@@ -849,8 +849,8 @@ void corePktBuildBackFaceList(VuWork *work) {
         out[0][2] = (u128 *)e;
         out += 1;
             if (bRegion != 0) {
-            f = vuAllocNode(work);
-            g = vuAllocNode(work);
+            f = AllocNode(work);
+            g = AllocNode(work);
             corePktMakeEdgePoint(f, b, a);
             corePktMakeEdgePoint(g, c, a);
             out[0][0] = (u128 *)e;
@@ -871,10 +871,10 @@ void corePktBuildBackFaceList(VuWork *work) {
             goto advanceTriangle;
         threeDifferentRegions: {
             if (aRegion != 0 || (bRegion ^ cRegion) != 3) goto rotateTriangle;
-        d = vuAllocNode(work);
-        e = vuAllocNode(work);
-        f = vuAllocNode(work);
-        g = vuAllocNode(work);
+        d = AllocNode(work);
+        e = AllocNode(work);
+        f = AllocNode(work);
+        g = AllocNode(work);
         corePktMakeEdgePoint(d, b, a);
         corePktMakeEdgePoint(e, c, a);
         corePktMakeEdgePoint(f, b, c);
@@ -905,8 +905,8 @@ void corePktBuildBackFaceList(VuWork *work) {
         }
         classifyRegions:
             if (bRegion != cRegion) goto threeDifferentRegions;
-        d = vuAllocNode(work);
-        e = vuAllocNode(work);
+        d = AllocNode(work);
+        e = AllocNode(work);
             if (aRegion != 0) goto interpolateOutsideA;
         corePktMakeEdgePoint(d, b, a);
         corePktMakeEdgePoint(e, c, a);

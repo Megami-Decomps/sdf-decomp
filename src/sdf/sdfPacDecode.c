@@ -43,9 +43,9 @@ void sdfPacTexListDecoder1(sdfPacState_t *aState);
 void sdfPacTexListDecoder0(sdfPacState_t *aState);
 void sdfPacTexListDecoderInit(sdfPacState_t *aState, sdfPacPacketHeader_t *aPacket);
 
-void func_002C60E0(sdfPacState_t *state);
-void func_002C6D58(sdfPacState_t *state);
-void sdfPacTexListDecoderTmxHeaderEndFunc(sdfPacState_t *state);
+void func_002C60E0(sdfPacState_t *aState);
+void func_002C6D58(sdfPacState_t *aState);
+void sdfPacTexListDecoderTmxHeaderEndFunc(sdfPacState_t *aState);
 extern void sdfTexListAdd(sdfItemArray_t *list, sdfTexHandle_t *texture);
 
 void sdfPacInit(sdfPacState_t *aState, sdfPacCallbackFunc aCallback)
@@ -69,9 +69,9 @@ void sdfPacSetFromTail(sdfPacState_t *aState)
     aState->flags |= SDF_PAC_STATE_FROMTAIL;
 }
 
-void sdfPacFree(sdfPacState_t *state)
+void sdfPacFree(sdfPacState_t *aState)
 {
-    sdfPacWork_t *cursor = state->head;
+    sdfPacWork_t *cursor = aState->head;
     sdfPacWork_t *current = cursor;
 
     while (cursor != NULL) {
@@ -93,7 +93,7 @@ void sdfPacUseSrc(sdfPacState_t *aState, s32 aLen)
     aState->srcUsed += aLen;
 }
 
-void sdfPacNewBlock(sdfPacState_t *state)
+void sdfPacNewBlock(sdfPacState_t *aState)
 {
     sdfPacPacketHeader_t *packet;
     u32 alignmentOffset;
@@ -103,51 +103,51 @@ void sdfPacNewBlock(sdfPacState_t *state)
     s32 (*callback)();
     s32 result;
 
-    alignmentOffset = state->srcUsed & 0x3F;
+    alignmentOffset = aState->srcUsed & 0x3F;
     if (alignmentOffset != 0) {
-        state->phase = 1;
-        state->dstLeft = 0x40 - alignmentOffset;
+        aState->phase = 1;
+        aState->dstLeft = 0x40 - alignmentOffset;
         return;
     }
-    packet = (sdfPacPacketHeader_t *)state->src;
-    sdfPacUseSrc(state, 0x10);
+    packet = (sdfPacPacketHeader_t *)aState->src;
+    sdfPacUseSrc(aState, 0x10);
     packetBytes = packet->size;
-    state->blockId++;
+    aState->blockId++;
     headerBytes = (packet->flags & SDF_PAC_EXTRA_MASK) + 0x10;
     payloadBytes = packetBytes - headerBytes;
-    state->dstLeft = payloadBytes;
-    callback = (s32 (*)())state->callback;
-    result = callback(state, 0, packet, payloadBytes);
+    aState->dstLeft = payloadBytes;
+    callback = (s32 (*)())aState->callback;
+    result = callback(aState, 0, packet, payloadBytes);
     if (result == 1) {
-        func_002C60E0(state);
+        func_002C60E0(aState);
         return;
     }
     if (result == 2) {
-        state->phase = 1;
-        state->dstLeft = (state->dstLeft + 0x3F) & ~0x3F;
+        aState->phase = 1;
+        aState->dstLeft = (aState->dstLeft + 0x3F) & ~0x3F;
     } else {
-        state->phase = 2;
+        aState->phase = 2;
     }
 }
 
-void sdfPacEndBlock(sdfPacState_t *state)
+void sdfPacEndBlock(sdfPacState_t *aState)
 {
     s32 result;
     sdfPacWork_t *tail;
     sdfPacWork_t *scan;
     sdfPacWork_t *next;
 
-    result = state->callback(state, 1, (sdfPacPacketHeader_t *)state->tail->header);
+    result = aState->callback(aState, 1, (sdfPacPacketHeader_t *)aState->tail->header);
     if (result == 1) {
-        func_002C60E0(state);
+        func_002C60E0(aState);
         return;
     }
     if (result == 4) {
-        tail = state->tail;
-        scan = state->head;
+        tail = aState->tail;
+        scan = aState->head;
         if (scan == tail) {
-            state->tail = NULL;
-            state->head = NULL;
+            aState->tail = NULL;
+            aState->head = NULL;
         } else {
             while ((next = scan->next) != tail) {
                 scan = next;
@@ -157,7 +157,7 @@ void sdfPacEndBlock(sdfPacState_t *state)
         }
         sdfChipFreeDirect(tail);
     }
-    state->phase = 0;
+    aState->phase = 0;
 }
 
 s32 sdfPacDecode(sdfPacState_t *aState, const u8 *aSrc, s32 aLen)
@@ -195,40 +195,40 @@ s32 sdfPacDecode(sdfPacState_t *aState, const u8 *aSrc, s32 aLen)
 sdfPacWork_t *sdfPacNewResrc(sdfPacState_t *aState, const sdfPacPacketHeader_t *aPacket)
 {
     s32 extra = aPacket->flags & SDF_PAC_EXTRA_MASK;
-    sdfPacWork_t *work = sdfChipAllocZeroDirect(extra + sizeof(sdfPacWork_t));
+    sdfPacWork_t *aWork = sdfChipAllocZeroDirect(extra + sizeof(sdfPacWork_t));
 
-    work->state = aState;
-    memcpy(work->header, aPacket, extra + sizeof(*aPacket));
+    aWork->state = aState;
+    memcpy(aWork->header, aPacket, extra + sizeof(*aPacket));
     if (aState->tail == NULL) {
-        aState->head = work;
+        aState->head = aWork;
     } else {
-        aState->tail->next = work;
+        aState->tail->next = aWork;
     }
-    aState->tail = work;
-    return work;
+    aState->tail = aWork;
+    return aWork;
 }
 
-sdfPacWork_t *sdfPacFreeResrc(sdfPacWork_t *work)
+sdfPacWork_t *sdfPacFreeResrc(sdfPacWork_t *aWork)
 {
-    sdfPacState_t *state = work->state;
-    sdfPacWork_t **link = &state->head;
-    sdfPacWork_t *current = state->head;
+    sdfPacState_t *aState = aWork->state;
+    sdfPacWork_t **link = &aState->head;
+    sdfPacWork_t *current = aState->head;
     sdfPacWork_t *previous = NULL;
     sdfPacWork_t *next;
 
-    if (current != work) {
+    if (current != aWork) {
         do {
             previous = current;
             current = previous->next;
             link = &previous->next;
-        } while (current != work);
+        } while (current != aWork);
     }
-    next = work->next;
+    next = aWork->next;
     *link = next;
-    if (state->tail == work) {
-        state->tail = previous;
+    if (aState->tail == aWork) {
+        aState->tail = previous;
     }
-    sdfChipFreeDirect(work);
+    sdfChipFreeDirect(aWork);
     return next;
 }
 
@@ -260,9 +260,9 @@ s32 sdfPacStdCallback(sdfPacState_t *aState, s32 aStat, sdfPacPacketHeader_t *aP
     return 0;
 }
 
-char *sdfPacGetResrcFileName(sdfPacWork_t *work)
+char *sdfPacGetResrcFileName(sdfPacWork_t *aWork)
 {
-    sdfPacPacketHeader_t *packet = (sdfPacPacketHeader_t *)work->header;
+    sdfPacPacketHeader_t *packet = (sdfPacPacketHeader_t *)aWork->header;
     s32 extra = packet->flags & SDF_PAC_EXTRA_MASK;
 
     if (extra <= 0) {
@@ -320,26 +320,26 @@ void sdfPacMemStayDecoderFunc(sdfPacState_t *aState)
 void sdfPacMemDecoderFuncInit(sdfPacState_t *aState, sdfPacPacketHeader_t *aPacket)
 {
     s32 size = aPacket->decodedSize;
-    sdfPacWork_t *work;
+    sdfPacWork_t *aWork;
 
     if (size == 0) {
         size = aPacket->size + (aPacket->flags & SDF_PAC_EXTRA_MASK) - sizeof(*aPacket);
     }
     if (aState->flags & SDF_PAC_STATE_STAY) {
-        work = sdfPacNewResrc(aState, aPacket);
-        work->data = (u8 *)(aPacket + 1);
+        aWork = sdfPacNewResrc(aState, aPacket);
+        aWork->data = (u8 *)(aPacket + 1);
         aState->decodeFunc = sdfPacMemStayDecoderFunc;
         return;
     }
     aState->phase = 2;
-    work = sdfPacNewResrc(aState, aPacket);
+    aWork = sdfPacNewResrc(aState, aPacket);
     if (aState->flags & SDF_PAC_STATE_FROMTAIL) {
-        work->resrc = sdfMemAllocFromTailDirect(size);
+        aWork->resrc = sdfMemAllocFromTailDirect(size);
     } else {
-        work->resrc = sdfMemAllocDirect(size);
+        aWork->resrc = sdfMemAllocDirect(size);
     }
-    work->data = sdfMemLock(work->resrc);
-    aState->dst = work->data;
+    aWork->data = sdfMemLock(aWork->resrc);
+    aState->dst = aWork->data;
     switch (aPacket->flags & SDF_PAC_ENCODING_MASK) {
     case 0:
         aState->decodeFunc = sdfPacMemDecoderFunc;
@@ -363,12 +363,12 @@ void sdfPacMemDecoderInit(sdfPacState_t *aState, sdfPacPacketHeader_t *aPacket)
 
 void sdfPacModelDecoderEndFunc(sdfPacState_t *aState)
 {
-    sdfPacWork_t *work = aState->tail;
-    sdfPacReloc_t *reloc = (sdfPacReloc_t *)work->data;
+    sdfPacWork_t *aWork = aState->tail;
+    sdfPacReloc_t *reloc = (sdfPacReloc_t *)aWork->data;
     u8 *payload = reloc->payload;
     s32 bytes = reloc->tableBytes;
 
-    work->data = payload;
+    aWork->data = payload;
     if (bytes != 0) {
         sdfAddressResolver((s32 *)payload, (s32)payload, payload + reloc->tableOffset, bytes);
         reloc->tableBytes = 0;
@@ -384,12 +384,12 @@ void sdfPacModelDecoderInit(sdfPacState_t *aState, sdfPacPacketHeader_t *aPacket
 
 void sdfPacMotionDecoderEndFunc(sdfPacState_t *aState)
 {
-    sdfPacWork_t *work = aState->tail;
-    sdfPacReloc_t *reloc = (sdfPacReloc_t *)work->data;
+    sdfPacWork_t *aWork = aState->tail;
+    sdfPacReloc_t *reloc = (sdfPacReloc_t *)aWork->data;
     u8 *payload = reloc->payload;
     s32 bytes = reloc->tableBytes;
 
-    work->data = payload;
+    aWork->data = payload;
     if (bytes != 0) {
         sdfAddressResolver((s32 *)payload, (s32)payload, payload + reloc->tableOffset, bytes);
         reloc->tableBytes = 0;
@@ -458,17 +458,17 @@ void sdfPacTmxStayDecoderFunc(sdfPacState_t *aState)
     }
 }
 
-void sdfPacTmxDecoderInitFunc(sdfPacState_t *state, sdfPacPacketHeader_t *packet,
+void sdfPacTmxDecoderInitFunc(sdfPacState_t *aState, sdfPacPacketHeader_t *packet,
                              sdfPacBuf_t *buffer)
 {
-    state->buf = buffer;
+    aState->buf = buffer;
     buffer->remain = packet->size - 0x10;
-    if (state->flags & SDF_PAC_STATE_STAY) {
-        state->decodeFunc = sdfPacTmxStayDecoderFunc;
-        buffer->cursor = (u8 *)(state->src - 0x10);
+    if (aState->flags & SDF_PAC_STATE_STAY) {
+        aState->decodeFunc = sdfPacTmxStayDecoderFunc;
+        buffer->cursor = (u8 *)(aState->src - 0x10);
         return;
     }
-    if (state->flags & SDF_PAC_STATE_FROMTAIL) {
+    if (aState->flags & SDF_PAC_STATE_FROMTAIL) {
         buffer->memHandle = sdfMemAllocFromTailDirect(packet->size);
     } else {
         buffer->memHandle = sdfMemAllocDirect(packet->size);
@@ -478,14 +478,14 @@ void sdfPacTmxDecoderInitFunc(sdfPacState_t *state, sdfPacPacketHeader_t *packet
     buffer->cursor += 0x10;
     switch (packet->flags) {
     case 0:
-        state->decodeFunc = sdfPacTmxDecoderFunc;
+        aState->decodeFunc = sdfPacTmxDecoderFunc;
         break;
     case 1: {
         struct sdfDecomp_t *decomp = sdfChipAllocDirect(sizeof(*decomp));
 
-        state->decompBuffer = (u8 *)decomp;
+        aState->decompBuffer = (u8 *)decomp;
         sdfDecompInit(decomp, buffer->cursor);
-        state->decodeFunc = sdfPacTmxDecompDecoderFunc;
+        aState->decodeFunc = sdfPacTmxDecompDecoderFunc;
         break;
     }
     }
@@ -515,65 +515,65 @@ void sdfPacTexListDecoderTmxHeaderEndFunc(sdfPacState_t *aState)
     aState->endFunc = sdfPacTexListDecoderTmxBodyEndFunc;
 }
 
-void func_002C6D58(sdfPacState_t *state)
+void func_002C6D58(sdfPacState_t *aState)
 {
-    state->dst = (u8 *)&state->slot.list->header;
-    state->dstLeft = 0x10;
-    state->decodeFunc = sdfPacMemDecoderFunc;
-    state->endFunc = sdfPacTexListDecoderTmxHeaderEndFunc;
+    aState->dst = (u8 *)&aState->slot.list->header;
+    aState->dstLeft = 0x10;
+    aState->decodeFunc = sdfPacMemDecoderFunc;
+    aState->endFunc = sdfPacTexListDecoderTmxHeaderEndFunc;
 }
 
-void sdfPacTexListDecoderTmxBodyEndFunc(sdfPacState_t *state)
+void sdfPacTexListDecoderTmxBodyEndFunc(sdfPacState_t *aState)
 {
-    sdfPacList_t *list = state->slot.list;
+    sdfPacList_t *list = aState->slot.list;
 
-    sdfTexListAdd(state->tail->resrc, list->buf.tex);
+    sdfTexListAdd(aState->tail->resrc, list->buf.tex);
     {
         s32 nextIndex = list->index + 1;
 
         list->index = nextIndex;
         if (nextIndex == list->count) {
             sdfChipFreeDirect(list);
-            sdfPacEndBlock(state);
+            sdfPacEndBlock(aState);
         } else {
-            func_002C6D58(state);
+            func_002C6D58(aState);
         }
     }
 }
 
-void sdfPacTexListDecoder1(sdfPacState_t *state)
+void sdfPacTexListDecoder1(sdfPacState_t *aState)
 {
-    s32 skipBytes = state->srcLeft;
+    s32 skipBytes = aState->srcLeft;
 
-    if (state->dstLeft < skipBytes) {
-        skipBytes = state->dstLeft;
+    if (aState->dstLeft < skipBytes) {
+        skipBytes = aState->dstLeft;
     }
-    sdfPacUseSrc(state, skipBytes);
+    sdfPacUseSrc(aState, skipBytes);
     {
-        s32 bytesRemaining = state->dstLeft - skipBytes;
+        s32 bytesRemaining = aState->dstLeft - skipBytes;
 
-        state->dstLeft = bytesRemaining;
+        aState->dstLeft = bytesRemaining;
         if (bytesRemaining != 0) {
             return;
         }
     }
-    func_002C6D58(state);
+    func_002C6D58(aState);
 }
 
 void sdfPacTexListDecoder0(sdfPacState_t *aState)
 {
     u32 count;
     sdfPacList_t *list;
-    sdfPacWork_t *work;
+    sdfPacWork_t *aWork;
 
     if (aState->srcLeft != 0) {
         count = *(const u32 *)aState->src;
         sdfPacUseSrc(aState, 4);
         list = aState->slot.list;
-        work = aState->tail;
+        aWork = aState->tail;
         list->count = count;
         list->index = 0;
-        work->resrc = sdfTexListNew(count);
+        aWork->resrc = sdfTexListNew(count);
         aState->dstLeft = ((count * 4 + 0x53) & -0x40) - 0x14;
         aState->decodeFunc = sdfPacTexListDecoder1;
     }
