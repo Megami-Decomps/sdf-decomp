@@ -173,7 +173,8 @@ struct sdfGsMemSlice_t
     s32 size;
     s16 w;
     s16 h;
-    u32 pixelFormat;
+    /* The IDB says u32; retail loads it with lw in sdfSetLoadImage, so s32. */
+    s32 pixelFormat;
 };
 
 struct sdfTexHandle_t

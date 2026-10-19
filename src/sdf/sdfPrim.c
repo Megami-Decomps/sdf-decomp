@@ -373,12 +373,12 @@ typedef struct sdfPrimBitBltPacket_t {
 typedef struct sdfGsMemSlice_t {
     struct sdfGsMemSlice_t *prev; /* 0x00 */
     struct sdfGsMemSlice_t *next; /* 0x04 */
-    u32 allocationMode;         /* 0x08: known categories above; unknown values remain valid */
-    u32 word;                   /* 0x0C: VRAM offset in 32-bit words */
+    u32 type;                   /* 0x08: known categories above; unknown values remain valid */
+    u32 addr;                   /* 0x0C: VRAM offset in 32-bit words */
     s32 size;                   /* 0x10: range length in 32-bit words */
-    s16 width;                  /* 0x14 */
-    s16 height;                 /* 0x16 */
-    s32 format;                 /* 0x18: GS pixel-storage mode */
+    s16 w;                      /* 0x14 */
+    s16 h;                      /* 0x16 */
+    s32 pixelFormat;            /* 0x18: retail loads it with lw, so signed */
 } sdfGsMemSlice_t;
 
 /* Graph target: two color buffers followed by the auxiliary/depth buffer (0x14). */
@@ -393,23 +393,22 @@ typedef struct sdfGrFrameSet_t {
 
 /* DMA packet list cursors and endpoints (0x20); DDS1/2 game/code_002D33C8/0032C278.c. */
 typedef struct sdfDrawTag_t {
-    struct sdfDrawTag_t *nextList; /* CPU link between lists; first/last are DMA addresses. */
-    u32 first;
-    u32 last;
-    u32 unkC;
-    u32 firstReferenceSource; /* Optional first DMA reference prefix. */
-    u32 secondReferenceSource; /* Optional second DMA reference prefix. */
-    u32 unk18;
-    u32 unk1C;
+    struct sdfDrawTag_t *next; /* CPU link between lists; head/tail are DMA addresses. */
+    u32 head;
+    u32 tail;
+    u32 z;
+    u32 lightPacket; /* Optional first DMA reference prefix. */
+    u32 fogPacket;   /* Optional second DMA reference prefix. */
+    u32 texPacket[2];
 } sdfDrawTag_t;
 
 /* General-heap allocation descriptor (0x10); links bound the represented span. */
 typedef struct sdfMemHandle_t {
     struct sdfMemHandle_t *prev; /* 0x00 */
     struct sdfMemHandle_t *next; /* 0x04 */
-    s32 address;              /* 0x08: start of represented span */
-    u16 state;                /* 0x0C: free, used, or end sentinel */
-    s16 referenceCount;       /* 0x0E: -1 for sentinels */
+    s32 ptr;                  /* 0x08: start of represented span */
+    u16 stat;                 /* 0x0C: free, used, or end sentinel */
+    s16 mlock;                /* 0x0E: -1 for sentinels */
 } sdfMemHandle_t;
 
 /* Metadata node plus the extended local-to-local image-copy payload (0x70). */
@@ -422,10 +421,10 @@ typedef struct SdfGraphCopyPacket {
 
 /* Complete linked-packet list, distinct from the 0x20-byte DMA list head. */
 typedef struct sdfPreDrawTag_t {
-    u32 unk0;
-    SdfPacketPatchLink *first;
-    SdfPacketPatchLink *last;
-    u32 unkC;
+    u32 next;
+    SdfPacketPatchLink *head;
+    SdfPacketPatchLink *tail;
+    u32 pad;
 } sdfPreDrawTag_t;
 
 extern s32 sdfGrPacketBuffSize;
@@ -805,7 +804,7 @@ void sdfPrimLinkBitBltPacket(s32 packetList, u32 destinationBufferAddress, s32 d
 void sdfPrimFrameMovePredraw(SdfGraphCopyPacket *packet, s32 entryIndex) {
     packet->draw.transfer.bitbltbuf.data =
         (packet->draw.transfer.bitbltbuf.data & ~0x3FFF) |
-        (u64)(u32)(D_00529388.buffers[entryIndex ^ packet->resourceIndexXor]->word >> 6);
+        (u64)(u32)(D_00529388.buffers[entryIndex ^ packet->resourceIndexXor]->addr >> 6);
 }
 
 void sdfPrimLinkFrameMovePacket(sdfDrawTag_t *drawList, sdfPreDrawTag_t *linkedList,
@@ -824,8 +823,8 @@ void sdfPrimLinkFrameMovePacket(sdfDrawTag_t *drawList, sdfPreDrawTag_t *linkedL
     drawPacket = &packet->draw;
 
     sdfPrimSetBitBltPacket(
-        drawPacket, destination->word, destination->width,
-        destination->format, destinationX, destinationY, D_00529388.buffers[0]->word,
+        drawPacket, destination->addr, destination->w,
+        destination->pixelFormat, destinationX, destinationY, D_00529388.buffers[0]->addr,
         D_00529388.width, D_00529388.bufferFormat, sourceX, sourceY, transferWidth,
         transferHeight, 2);
     sdfPreDrawTagLink(linkedList, &packet->link);

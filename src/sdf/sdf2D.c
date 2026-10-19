@@ -56,14 +56,13 @@ typedef u8 SdfTextureClampMode;
 
 /* DMA packet list cursors and endpoints (0x20); DDS1/2 game/code_002D33C8/0032C278.c. */
 typedef struct sdfDrawTag_t {
-    struct sdfDrawTag_t *nextList; /* CPU link between lists; first/last are DMA addresses. */
-    u32 first;
-    u32 last;
-    u32 unkC;
-    u32 firstReferenceSource; /* Optional first DMA reference prefix. */
-    u32 secondReferenceSource; /* Optional second DMA reference prefix. */
-    u32 unk18;
-    u32 unk1C;
+    struct sdfDrawTag_t *next; /* CPU link between lists; head/tail are DMA addresses. */
+    u32 head;
+    u32 tail;
+    u32 z;
+    u32 lightPacket; /* Optional first DMA reference prefix. */
+    u32 fogPacket;   /* Optional second DMA reference prefix. */
+    u32 texPacket[2];
 } sdfDrawTag_t;
 
 /* Variable-sized packet header initialized by sdf2DMakePrimPacketHeader. */
@@ -117,12 +116,12 @@ typedef struct sdfTexPacket_t {
 typedef struct sdfGsMemSlice_t {
     struct sdfGsMemSlice_t *prev; /* 0x00 */
     struct sdfGsMemSlice_t *next; /* 0x04 */
-    u32 allocationMode;         /* 0x08: known categories above; unknown values remain valid */
-    u32 word;                   /* 0x0C: VRAM offset in 32-bit words */
+    u32 type;                   /* 0x08: known categories above; unknown values remain valid */
+    u32 addr;                   /* 0x0C: VRAM offset in 32-bit words */
     s32 size;                   /* 0x10: range length in 32-bit words */
-    s16 width;                  /* 0x14 */
-    s16 height;                 /* 0x16 */
-    s32 format;                 /* 0x18: GS pixel-storage mode */
+    s16 w;                      /* 0x14 */
+    s16 h;                      /* 0x16 */
+    s32 pixelFormat;            /* 0x18: retail loads it with lw, so signed */
 } sdfGsMemSlice_t;
 
 /* Linked texture and its two buffers/resources (0x40); DDS1/2 sdf/sdfTex.c and game texture units. */

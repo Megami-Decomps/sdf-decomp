@@ -68,12 +68,12 @@ typedef struct sdfLoadImagePacket_t {
 typedef struct sdfGsMemSlice_t {
     struct sdfGsMemSlice_t *prev; /* 0x00 */
     struct sdfGsMemSlice_t *next; /* 0x04 */
-    u32 allocationMode;         /* 0x08: known categories above; unknown values remain valid */
-    u32 word;                   /* 0x0C: VRAM offset in 32-bit words */
+    u32 type;                   /* 0x08: known categories above; unknown values remain valid */
+    u32 addr;                   /* 0x0C: VRAM offset in 32-bit words */
     s32 size;                   /* 0x10: range length in 32-bit words */
-    s16 width;                  /* 0x14 */
-    s16 height;                 /* 0x16 */
-    s32 format;                 /* 0x18: GS pixel-storage mode */
+    s16 w;                      /* 0x14 */
+    s16 h;                      /* 0x16 */
+    s32 pixelFormat;            /* 0x18: retail loads it with lw, so signed */
 } sdfGsMemSlice_t;
 
 /* Graph target: two color buffers followed by the auxiliary/depth buffer (0x14). */
@@ -88,14 +88,13 @@ typedef struct sdfGrFrameSet_t {
 
 /* DMA packet list cursors and endpoints (0x20); DDS1/2 game/code_002D33C8/0032C278.c. */
 typedef struct sdfDrawTag_t {
-    struct sdfDrawTag_t *nextList; /* CPU link between lists; first/last are DMA addresses. */
-    u32 first;
-    u32 last;
-    u32 unkC;
-    u32 firstReferenceSource; /* Optional first DMA reference prefix. */
-    u32 secondReferenceSource; /* Optional second DMA reference prefix. */
-    u32 unk18;
-    u32 unk1C;
+    struct sdfDrawTag_t *next; /* CPU link between lists; head/tail are DMA addresses. */
+    u32 head;
+    u32 tail;
+    u32 z;
+    u32 lightPacket; /* Optional first DMA reference prefix. */
+    u32 fogPacket;   /* Optional second DMA reference prefix. */
+    u32 texPacket[2];
 } sdfDrawTag_t;
 
 void sdfDrawTagLink2(struct sdfDrawTag_t *list, u32 packetAddress,
@@ -122,10 +121,10 @@ typedef struct SdfPatchableResourcePacket {
 
 /* Complete linked-packet list, distinct from the 0x20-byte DMA list head. */
 typedef struct sdfPreDrawTag_t {
-    u32 unk0;
-    SdfPacketPatchLink *first;
-    SdfPacketPatchLink *last;
-    u32 unkC;
+    u32 next;
+    SdfPacketPatchLink *head;
+    SdfPacketPatchLink *tail;
+    u32 pad;
 } sdfPreDrawTag_t;
 
 extern sdfGrFrameSet_t D_00529388;
@@ -197,9 +196,9 @@ void sdfSetStoreImage(sdfStoreImagePacket_t *packet, sdfGsMemSlice_t *source,
     packet->header[12] = 0x1000000000000004ULL;
     packet->header[13] = 0xE;
     sdfPrimSetBitBltElem(&packet->transfer, 0, 0, 0, 0, 0,
-        source->word, source->width, source->format,
+        source->addr, source->w, source->pixelFormat,
         sourceX, sourceY, width, height, 1);
-    quadwordCount = (sdfGetTexelBitCount(source->format) * width * height) >> 7;
+    quadwordCount = (sdfGetTexelBitCount(source->pixelFormat) * width * height) >> 7;
     packet->quadwordCount = quadwordCount;
     packet->unkB4 = resourceAddress;
     packet->unkB8 = arg7;
@@ -229,7 +228,7 @@ void sdfLinkStoreImage(sdfDrawTag_t *list, sdfGsMemSlice_t *source, s32 sourceX,
 void sdfLinkStoreFrameImagePredraw(SdfPatchableResourcePacket *packet, s32 entryIndex) {
     packet->resourcePacket.transfer.bitbltbuf.data =
         (packet->resourcePacket.transfer.bitbltbuf.data & ~0x3FFF) |
-        (u64)(u32)(D_00529388.buffers[entryIndex]->word >> 6);
+        (u64)(u32)(D_00529388.buffers[entryIndex]->addr >> 6);
 }
 
 void sdfLinkStoreFrameImage(sdfDrawTag_t *list, sdfPreDrawTag_t *linkedList, s32 sourceX, s32 sourceY,
@@ -259,11 +258,11 @@ void sdfSetLoadImage(sdfLoadImagePacket_t *packet, sdfGsMemSlice_t *source,
     packet->header[1] = 0x5000000611000000;
     packet->header[2] = 0x1000000000000004;
     packet->header[3] = 0xE;
-    sdfPrimSetBitBltElem(&packet->transfer, source->word, source->width,
-                  source->format, destinationX, destinationY, 0, 0, 0, 0, 0,
+    sdfPrimSetBitBltElem(&packet->transfer, source->addr, source->w,
+                  source->pixelFormat, destinationX, destinationY, 0, 0, 0, 0, 0,
                   transferWidth, transferHeight, 0);
 
-    qwc = (sdfGetTexelBitCount(source->format) * transferWidth * transferHeight) >> 7;
+    qwc = (sdfGetTexelBitCount(source->pixelFormat) * transferWidth * transferHeight) >> 7;
     packet->imageReferenceTag = 0x0800000000000000 | qwc;
     packet->imageReferencePad = 0;
     packet->imageGifTag0 = (u32)((qwc & SDF_DMA_QWC_MASK) | 0x30000000) |

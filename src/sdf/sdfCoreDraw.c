@@ -93,9 +93,9 @@ typedef struct SdfChunkHeader {
 typedef struct sdfMemHandle_t {
     struct sdfMemHandle_t *prev; /* 0x00 */
     struct sdfMemHandle_t *next; /* 0x04 */
-    s32 address;              /* 0x08: start of represented span */
-    u16 state;                /* 0x0C: free, used, or end sentinel */
-    s16 referenceCount;       /* 0x0E: -1 for sentinels */
+    s32 ptr;                  /* 0x08: start of represented span */
+    u16 stat;                 /* 0x0C: free, used, or end sentinel */
+    s16 mlock;                /* 0x0E: -1 for sentinels */
 } sdfMemHandle_t;
 
 typedef struct DevRequest {
