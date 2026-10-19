@@ -609,6 +609,8 @@ extern u8 aViewTarget[], aViewEye[];
 extern parDispatch_t dds3ParticleFuncTable[];
 extern effRandState_t dds3EffectBase[];
 extern s32 ParRand[];
+extern f32 D_003170E0[][4];
+extern f32 D_003171B0[][4];
 extern f32 D_003171A0[4];
 extern u8 aViewDown[];
 extern void (*dds3ParticleAllBuffInitTable[])();
@@ -1302,8 +1304,163 @@ void dds3Particle_SparkDelete(void *effect) {
     sdfChipFreeDirect(effect);
 }
 
-/* Seed a ballistic packet; positions are emitter-relative and then offset by the origin. */
+/* vu0 routine: seed a ballistic packet; positions are emitter-relative and
+ * then offset by the origin. */
+/* NON_MATCHING: 22 of 512 words differ (first at +0x90). */
+#ifdef NON_MATCHING
+void dds3Particle_SparkBuffInit(effBallisticEmitter_t *effect, s32 index) {
+    parSparkPacket_t *packet = (parSparkPacket_t *)effect->head.buffer->records;
+    f32 position[4];
+    f32 direction[4];
+    f32 gravity;
+    f32 radius;
+    f32 cone;
+    f32 speed;
+    f32 jitter;
+    f32 decay;
+    f32 angle;
+    f32 angleCos;
+    f32 angleSin;
+    s32 steps;
+    s32 step;
+
+    packet += index;
+    gravity = effect->gravity / 100.0f;
+    radius = effect->radius;
+    cone = effect->cone;
+    speed = effect->speed;
+    switch (effect->mode) {
+    case 0:
+        if (effect->randomDir != 0) {
+            direction[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            direction[1] = 0;
+            direction[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            SDF_VU0_LOADVECTOR(direction);
+            SDF_VU0_NORMALIZE();
+            SDF_VU0_STOREVECTOR(direction);
+            packet->pos[0] = direction[0] * radius;
+            packet->pos[1] = 0;
+            packet->pos[2] = direction[2] * radius;
+            SDF_VU0_LOADMATRIX(effect->head.matrix);
+            SDF_VU0_LOADVECTOR(packet->pos);
+            SDF_VU0_APPLYMATRIX();
+            SDF_VU0_STOREVECTOR(packet->pos);
+            packet->pos[0] += effect->head.origin[0];
+            packet->pos[1] += effect->head.origin[1];
+            packet->pos[2] += effect->head.origin[2];
+            direction[0] = (dds3GetRandFloatA((effRandState_t *)ParRand) - 0.5f) * 2.0f * cone;
+            direction[1] = -(1.0f - cone);
+            direction[2] = (dds3GetRandFloatA((effRandState_t *)ParRand) - 0.5f) * 2.0f * cone;
+            SDF_VU0_LOADVECTOR(direction);
+            SDF_VU0_NORMALIZE();
+            SDF_VU0_STOREVECTOR(direction);
+            jitter = dds3GetRandFloatA(dds3EffectBase) * effect->jitter + (1.0f - effect->jitter);
+            packet->vel[0] = direction[0] * speed * jitter;
+            packet->vel[1] = direction[1] * speed * jitter;
+            packet->vel[2] = direction[2] * speed * jitter;
+            packet->verticalAcceleration = (dds3GetRandFloatA(dds3EffectBase) * 0.5f + 0.5f) * gravity;
+        } else {
+            angle = (3.14159265f * 2.0f) / effect->head.particleCount * index;
+            angleCos = sdfCos(angle);
+            angleSin = sdfSin(angle);
+            packet->pos[0] = angleCos * radius;
+            packet->pos[1] = 0;
+            packet->pos[2] = angleSin * radius;
+            SDF_VU0_LOADMATRIX(effect->head.matrix);
+            SDF_VU0_LOADVECTOR(packet->pos);
+            SDF_VU0_APPLYMATRIX();
+            SDF_VU0_STOREVECTOR(packet->pos);
+            packet->pos[0] += effect->head.origin[0];
+            packet->pos[1] += effect->head.origin[1];
+            packet->pos[2] += effect->head.origin[2];
+            packet->vel[0] = angleCos * cone * speed;
+            packet->vel[1] = -speed * (1.0f - cone);
+            packet->vel[2] = angleSin * cone * speed;
+            packet->verticalAcceleration = gravity;
+        }
+        break;
+    case 1:
+        if (effect->randomDir != 0) {
+            packet->pos[0] = effect->head.origin[0];
+            packet->pos[1] = effect->head.origin[1];
+            packet->pos[2] = effect->head.origin[2];
+            direction[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            direction[1] = -((dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f);
+            direction[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            SDF_VU0_LOADVECTOR(direction);
+            SDF_VU0_NORMALIZE();
+            SDF_VU0_STOREVECTOR(direction);
+            jitter = dds3GetRandFloatA(dds3EffectBase) * effect->jitter + (1.0f - effect->jitter);
+            packet->vel[0] = direction[0] * speed * jitter;
+            packet->vel[1] = direction[1] * speed * jitter;
+            packet->vel[2] = direction[2] * speed * jitter;
+            packet->verticalAcceleration = gravity;
+        } else {
+            packet->pos[0] = effect->head.origin[0];
+            packet->pos[1] = effect->head.origin[1];
+            packet->pos[2] = effect->head.origin[2];
+            SDF_VU0_STOREIDENTITY(effect->head.matrix);
+            packet->vel[0] = D_003170E0[index % 12][0] * speed;
+            packet->vel[1] = D_003170E0[index % 12][1] * speed;
+            packet->vel[2] = D_003170E0[index % 12][2] * speed;
+            packet->verticalAcceleration = gravity;
+        }
+        break;
+    case 2:
+        if (effect->randomDir != 0) {
+            decay = effect->decayPct / 100.0f + 1.0f;
+            SDF_VU0_STOREIDENTITY(effect->head.matrix);
+            direction[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            direction[1] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            direction[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            SDF_VU0_LOADVECTOR(direction);
+            SDF_VU0_NORMALIZE();
+            SDF_VU0_STOREVECTOR(direction);
+            jitter = dds3GetRandFloatA(dds3EffectBase) * effect->jitter + (1.0f - effect->jitter);
+            steps = effect->head.lifetimeFrames;
+            direction[0] = direction[0] * (speed * jitter);
+            direction[1] = direction[1] * (speed * jitter);
+            direction[2] = direction[2] * (speed * jitter);
+            packet->vel[0] = -direction[0];
+            packet->vel[1] = -direction[1];
+            packet->vel[2] = -direction[2];
+            position[0] = effect->head.origin[0];
+            position[1] = effect->head.origin[1];
+            position[2] = effect->head.origin[2];
+            step = 0;
+            do {
+                position[0] += direction[0];
+                position[1] += direction[1];
+                position[2] += direction[2];
+                direction[0] = direction[0] * decay;
+                direction[1] = direction[1] * decay;
+                direction[2] = direction[2] * decay;
+                direction[1] += gravity;
+                step++;
+            } while (step < steps);
+            packet->pos[0] = position[0];
+            packet->pos[1] = position[1];
+            packet->pos[2] = position[2];
+            packet->verticalAcceleration = -gravity;
+        }
+        break;
+    }
+    packet->age = -(dds3GetRandA((effRandState_t *)ParRand) % (effect->spread + 1));
+    packet->color = 0;
+    jitter = effect->head.speedJitter;
+    packet->billboardScale = effect->head.scale[0] * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
+    jitter = effect->head.spinJitter;
+    if (jitter != 0) {
+        packet->spin = (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) * (3.14159265f * 2.0f);
+    } else {
+        packet->spin = 0;
+    }
+    dds3Particle_EffectReset(&effect->head.sub, index);
+}
+#else
 INCLUDE_ASM(const s32, "effect/parManager", dds3Particle_SparkBuffInit);
+#endif
+
 
 /* Spark launch initialization retains an s4/s5 RNG-address allocation residual. */
 /* Scale velocity, add its stored vertical acceleration, and advance position.
@@ -2521,8 +2678,159 @@ void dds3Particle_SparkOffsetDelete(void *effect) {
     sdfChipFreeDirect(effect);
 }
 
-/* Seed an offset-gravity packet; preserve each mode's native partial vector setup. */
+/* vu0 routine: seed an offset-gravity packet; the displacement is tracked
+ * apart from the emitter origin. */
+/* NON_MATCHING: 22 of 484 words differ (first at +0x90). */
+#ifdef NON_MATCHING
+void dds3Particle_SparkOffsetBuffInit(effOffsetGravityEmitter_t *effect, s32 index) {
+    parSparkOffsetPacket_t *packet = (parSparkOffsetPacket_t *)effect->head.buffer->records;
+    f32 position[4];
+    f32 direction[4];
+    f32 gravity;
+    f32 radius;
+    f32 cone;
+    f32 speed;
+    f32 jitter;
+    f32 decay;
+    f32 angle;
+    f32 angleCos;
+    f32 angleSin;
+    s32 steps;
+    s32 step;
+
+    packet += index;
+    gravity = effect->gravity / 100.0f;
+    radius = effect->radius;
+    cone = effect->cone;
+    speed = effect->speed;
+    switch (effect->mode) {
+    case 0:
+        if (effect->randomDir != 0) {
+            direction[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            direction[1] = 0;
+            direction[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            SDF_VU0_LOADVECTOR(direction);
+            SDF_VU0_NORMALIZE();
+            SDF_VU0_STOREVECTOR(direction);
+            packet->offsetX = direction[0] * radius;
+            packet->offsetY = 0;
+            packet->offsetZ = direction[2] * radius;
+            SDF_VU0_COPYVECTOR(packet, effect->head.origin);
+            SDF_VU0_LOADMATRIX(effect->head.matrix);
+            SDF_VU0_LOADVECTOR(&packet->offsetX);
+            SDF_VU0_APPLYMATRIX();
+            SDF_VU0_STOREVECTOR(&packet->offsetX);
+            direction[0] = (dds3GetRandFloatA((effRandState_t *)ParRand) - 0.5f) * 2.0f * cone;
+            direction[1] = -(1.0f - cone);
+            direction[2] = (dds3GetRandFloatA((effRandState_t *)ParRand) - 0.5f) * 2.0f * cone;
+            SDF_VU0_LOADVECTOR(direction);
+            SDF_VU0_NORMALIZE();
+            SDF_VU0_STOREVECTOR(direction);
+            jitter = dds3GetRandFloatA(dds3EffectBase) * effect->jitter + (1.0f - effect->jitter);
+            packet->vel[0] = direction[0] * speed * jitter;
+            packet->vel[1] = direction[1] * speed * jitter;
+            packet->vel[2] = direction[2] * speed * jitter;
+            packet->offsetAcceleration = (dds3GetRandFloatA(dds3EffectBase) * 0.5f + 0.5f) * gravity;
+        } else {
+            angle = (3.14159265f * 2.0f) / effect->head.particleCount * index;
+            angleCos = sdfCos(angle);
+            angleSin = sdfSin(angle);
+            packet->pos[0] = angleCos * radius;
+            packet->pos[1] = 0;
+            packet->pos[2] = angleSin * radius;
+            SDF_VU0_LOADMATRIX(effect->head.matrix);
+            SDF_VU0_LOADVECTOR(packet->pos);
+            SDF_VU0_APPLYMATRIX();
+            SDF_VU0_STOREVECTOR(packet->pos);
+            packet->vel[0] = angleCos * cone * speed;
+            packet->vel[1] = -speed * (1.0f - cone);
+            packet->vel[2] = angleSin * cone * speed;
+            packet->offsetAcceleration = gravity;
+        }
+        break;
+    case 1:
+        if (effect->randomDir != 0) {
+            packet->offsetX = 0;
+            packet->offsetY = 0;
+            packet->offsetZ = 0;
+            SDF_VU0_COPYVECTOR(packet, effect->head.origin);
+            direction[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            direction[1] = -((dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f);
+            direction[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            SDF_VU0_LOADVECTOR(direction);
+            SDF_VU0_NORMALIZE();
+            SDF_VU0_STOREVECTOR(direction);
+            jitter = dds3GetRandFloatA(dds3EffectBase) * effect->jitter + (1.0f - effect->jitter);
+            packet->vel[0] = direction[0] * speed * jitter;
+            packet->vel[1] = direction[1] * speed * jitter;
+            packet->vel[2] = direction[2] * speed * jitter;
+            packet->offsetAcceleration = gravity;
+        } else {
+            packet->pos[0] = 0;
+            packet->pos[1] = 0;
+            packet->pos[2] = 0;
+            SDF_VU0_STOREIDENTITY(effect->head.matrix);
+            packet->vel[0] = D_003171B0[index % 12][0] * speed;
+            packet->vel[1] = D_003171B0[index % 12][1] * speed;
+            packet->vel[2] = D_003171B0[index % 12][2] * speed;
+            packet->offsetAcceleration = gravity;
+        }
+        break;
+    case 2:
+        if (effect->randomDir != 0) {
+            decay = effect->decayPct / 100.0f + 1.0f;
+            SDF_VU0_STOREIDENTITY(effect->head.matrix);
+            direction[0] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            direction[1] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            direction[2] = (dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f;
+            SDF_VU0_LOADVECTOR(direction);
+            SDF_VU0_NORMALIZE();
+            SDF_VU0_STOREVECTOR(direction);
+            jitter = dds3GetRandFloatA(dds3EffectBase) * effect->jitter + (1.0f - effect->jitter);
+            steps = effect->head.lifetimeFrames;
+            direction[0] = direction[0] * (speed * jitter);
+            direction[1] = direction[1] * (speed * jitter);
+            direction[2] = direction[2] * (speed * jitter);
+            packet->vel[0] = -direction[0];
+            packet->vel[1] = -direction[1];
+            packet->vel[2] = -direction[2];
+            position[0] = 0;
+            position[1] = 0;
+            position[2] = 0;
+            step = 0;
+            do {
+                position[0] += direction[0];
+                position[1] += direction[1];
+                position[2] += direction[2];
+                direction[0] = direction[0] * decay;
+                direction[1] = direction[1] * decay;
+                direction[2] = direction[2] * decay;
+                direction[1] += gravity;
+                step++;
+            } while (step < steps);
+            packet->pos[0] = position[0];
+            packet->pos[1] = position[1];
+            packet->pos[2] = position[2];
+            packet->offsetAcceleration = -gravity;
+        }
+        break;
+    }
+    packet->age = -(dds3GetRandA((effRandState_t *)ParRand) % (effect->spread + 1));
+    packet->color = 0;
+    jitter = effect->head.speedJitter;
+    packet->billboardScale = effect->head.scale[0] * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
+    jitter = effect->head.spinJitter;
+    if (jitter != 0) {
+        packet->spin = (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) * (3.14159265f * 2.0f);
+    } else {
+        packet->spin = 0;
+    }
+    dds3Particle_EffectReset(&effect->head.sub, index);
+}
+#else
 INCLUDE_ASM(const s32, "effect/parManager", dds3Particle_SparkOffsetBuffInit);
+#endif
+
 
 /* Accumulate motion in the stored offset, then add the emitter origin.
  * Only mode zero transforms the per-frame displacement through the matrix. */
@@ -3111,7 +3419,62 @@ void dds3ParticleSetColorTable(parColorRamp_t *p, s32 frames) {
     p->b12 = ((f32)((a >> 16) & 0xFF) - (f32)((b >> 16) & 0xFF)) / span;
 }
 
+/* NON_MATCHING: 19 of 83 words differ (first at +0x98). */
+#ifdef NON_MATCHING
+u32 dds3ParticleColorAnim(parColorRamp_t *colorRamp, u32 color, s32 age) {
+    u32 alpha;
+    u32 rgb;
+    s32 components[3];
+    s32 red;
+    s32 green;
+    s32 blue;
+    u32 base;
+    f32 elapsed;
+
+    if (age >= colorRamp->frames - colorRamp->fadeOutFrames) {
+        if (colorRamp->frames < age) {
+            return 0;
+        }
+        alpha = colorRamp->fadeOut * (colorRamp->frames - age);
+        alpha &= 0xFF000000;
+    } else {
+        if (age <= colorRamp->fadeInFrames) {
+            alpha = colorRamp->fadeIn * age;
+            alpha &= 0xFF000000;
+        } else {
+            alpha = colorRamp->alpha << 24;
+        }
+    }
+    if (colorRamp->mode == 1) {
+        rgb = colorRamp->color0;
+    } else {
+        elapsed = (f32)age;
+        if (age < colorRamp->rampFrames) {
+            base = colorRamp->color0;
+            red = (s32)(colorRamp->r01 * elapsed);
+            green = (s32)(colorRamp->g01 * elapsed);
+            blue = (s32)(colorRamp->b01 * elapsed);
+            components[2] = blue;
+            components[1] = green;
+            components[0] = red;
+            rgb = (base + red + (green << 8) + (blue << 16)) & 0xFFFFFF;
+        } else {
+            elapsed = elapsed - (f32)colorRamp->rampFrames;
+            base = colorRamp->color1;
+            red = (s32)(colorRamp->r12 * elapsed);
+            green = (s32)(colorRamp->g12 * elapsed);
+            blue = (s32)(colorRamp->b12 * elapsed);
+            components[2] = blue;
+            components[1] = green;
+            components[0] = red;
+            rgb = (base + red + (green << 8) + (blue << 16)) & 0xFFFFFF;
+        }
+    }
+    return rgb | alpha;
+}
+#else
 INCLUDE_ASM(const s32, "effect/parManager", dds3ParticleColorAnim);
+#endif
 
 /* Allocate contiguous point slabs, slot records and the trailing table header. */
 parTable_t *dds3Particle_BlurCreate(u32 slotCount, u16 pointCapacity, billObj_t **billboardRef) {
@@ -3360,7 +3723,27 @@ void dds3Particle_Track2SetExp(parSystem_t *system, s32 index, const f32 *origin
     dds3TrackPolyColorSet(system, index, color);
 }
 
-INCLUDE_ASM(const s32, "effect/parManager", dds3ParticleColorBlend);
+/* The colour inlines read and write a 16-byte slot, one word of it used. */
+typedef struct {
+    u32 word;
+    u8 pad04[12];
+} parColorWork_t;
+
+/* vu0 routine: unpack two colours, multiply the lanes and pack */
+u32 dds3ParticleColorBlend(u32 color, u32 scale) {
+    parColorWork_t work[3];
+    u32 unit = 0x3C000000;
+    u32 out;
+
+    work[0].word = color;
+    MMI_RGBA_UNPACK(&work[0], unit);
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    work[1].word = scale;
+    MMI_RGBA_UNPACK(&work[1], unit);
+    SDF_VU0_MULVECTOR();
+    SDF_VU0_dds3ColorFtoI(out, 128.0f);
+    return out;
+}
 
 /* Create through the selected dispatch entry and record its index; returns void. */
 void dds3ParticleCreate(s32 dispatchIndex, void *creationData) {
