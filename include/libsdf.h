@@ -391,14 +391,14 @@ enum sdf_pac_flag
 };
 
 /* sdfPacPacketHeader_t.command, as sdfPacStdCallback dispatches on it. */
-enum sdf_pac_command
+enum DDS3_FILE_TYPE
 {
-    SDF_PAC_COMMAND_MEM = 1,
-    SDF_PAC_COMMAND_TMX = 2,
-    SDF_PAC_COMMAND_MODEL = 6,
-    SDF_PAC_COMMAND_MOTION = 8,
-    SDF_PAC_COMMAND_TEXLIST = 9,
-    SDF_PAC_COMMAND_END = 0xFF
+    DDS3_FT_EFFECT = 1,
+    DDS3_FT_TMX = 2,
+    DDS3_FT_MODEL = 6,
+    DDS3_FT_MOTION = 8,
+    DDS3_FT_TEXLIST = 9,
+    DDS3_FT_END = 0xFF
 };
 
 /* sdfPacState_t.flags, set by sdfPacSetStay and sdfPacSetFromTail. */

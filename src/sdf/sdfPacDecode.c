@@ -236,22 +236,22 @@ s32 sdfPacStdCallback(sdfPacState_t *aState, s32 aStat, sdfPacPacketHeader_t *aP
 {
     if (aStat == 0) {
         switch (aPacket->command) {
-        case SDF_PAC_COMMAND_MEM:
+        case DDS3_FT_EFFECT:
             sdfPacMemDecoderInit(aState, aPacket);
             return 0;
-        case SDF_PAC_COMMAND_TMX:
+        case DDS3_FT_TMX:
             sdfPacTmxDecoderInit(aState, aPacket);
             return 0;
-        case SDF_PAC_COMMAND_MODEL:
+        case DDS3_FT_MODEL:
             sdfPacModelDecoderInit(aState, aPacket);
             return 0;
-        case SDF_PAC_COMMAND_MOTION:
+        case DDS3_FT_MOTION:
             sdfPacMotionDecoderInit(aState, aPacket);
             return 0;
-        case SDF_PAC_COMMAND_TEXLIST:
+        case DDS3_FT_TEXLIST:
             sdfPacTexListDecoderInit(aState, aPacket);
             return 0;
-        case SDF_PAC_COMMAND_END:
+        case DDS3_FT_END:
             return 1;
         default:
             return 3;

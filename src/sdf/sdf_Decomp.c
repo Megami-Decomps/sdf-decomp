@@ -1,29 +1,35 @@
 #include "common.h"
 #include "ps2asm.h"
 
-enum {
-    SDF_DECODE_READ_COMMAND = 1,
-    SDF_DECODE_READ_COUNT_LOW = 2,
-    SDF_DECODE_READ_COUNT_HIGH = 3,
-    SDF_DECODE_DISPATCH = 4,
-    SDF_DECODE_COPY_LITERAL = 5,
-    SDF_DECODE_FILL_BYTE = 6,
-    SDF_DECODE_COPY_SHORT_BACKREF = 7,
-    SDF_DECODE_READ_BACKREF_LOW = 8,
-    SDF_DECODE_READ_BACKREF_HIGH = 9,
-    SDF_DECODE_EXPAND_BYTES = 10
+enum sdfDecomp_enum {
+    SDF_DECOMP_STAT_END = 0,
+    SDF_DECOMP_STAT_IDLE = 1,
+    SDF_DECOMP_STAT_DIREC_LENG0 = 2,
+    SDF_DECOMP_STAT_DIREC_LENG1 = 3,
+    SDF_DECOMP_STAT_DIREC = 4,
+    SDF_DECOMP_STAT_DEC_NORMAL = 5,
+    SDF_DECOMP_STAT_DEC_RLE = 6,
+    SDF_DECOMP_STAT_DEC_SD_STEP0 = 7,
+    SDF_DECOMP_STAT_DEC_SD_STEP1 = 8,
+    SDF_DECOMP_STAT_DEC_SD_STEP2 = 9,
+    SDF_DECOMP_STAT_DEC_WORD = 10
 };
+enum sdfDecomp_enum2 {
+    SDF_DECOMP_DIRECTIVE_NORMAL = 0x00,
+    SDF_DECOMP_DIRECTIVE_ZERO = 0x20,
+    SDF_DECOMP_DIRECTIVE_RLE = 0x40,
+    SDF_DECOMP_DIRECTIVE_SD = 0x60,
+    SDF_DECOMP_DIRECTIVE_SD2 = 0x80,
+    SDF_DECOMP_DIRECTIVE_WORD = 0xA0,
+    SDF_DECOMP_DIRECTIVE_CMD = 0xE0
+};
+enum sdfDecomp_enum3 {
+    SDF_DECOMP_CMD_END = 0xFF
+};
+/* No IDB members: the two fields a directive byte splits into. */
 enum {
-    SDF_DECODE_COMMAND_CLASS_MASK = 0xE0,
-    SDF_DECODE_COMMAND_LENGTH_MASK = 0x1F,
-    SDF_DECODE_COMMAND_END_MARKER = 0xFF,
-    SDF_DECODE_COMMAND_RESERVED_MIN = 0xE0,
-    SDF_DECODE_COMMAND_COPY_LITERAL = 0x00,
-    SDF_DECODE_COMMAND_ZERO_FILL = 0x20,
-    SDF_DECODE_COMMAND_REPEAT_BYTE = 0x40,
-    SDF_DECODE_COMMAND_COPY_SHORT_BACKREFERENCE = 0x60,
-    SDF_DECODE_COMMAND_COPY_LONG_BACKREFERENCE = 0x80,
-    SDF_DECODE_COMMAND_EXPAND_BYTES = 0xA0
+    SDF_DECOMP_DIRECTIVE_MASK = 0xE0,
+    SDF_DECOMP_LENGTH_MASK = 0x1F
 };
 
 struct SdfPacket;
@@ -104,7 +110,7 @@ s32 sdfDecomp(SdfPacDecoder *decoder, const u8 *input, s32 inputBytes) {
     if (inputBytes > 0) {
         do {
             switch (decoder->state) {
-                case SDF_DECODE_READ_COMMAND: {
+                case SDF_DECOMP_STAT_IDLE: {
                     u8 command;
                     s32 commandBytes;
                     s32 historyIndex = D_00552170;
@@ -113,8 +119,8 @@ s32 sdfDecomp(SdfPacDecoder *decoder, const u8 *input, s32 inputBytes) {
                     D_00594780[historyIndex] = input;
                     D_00552170 = (historyIndex + 1) & 0xF;
                     command = *input++;
-                    if (command >= SDF_DECODE_COMMAND_RESERVED_MIN) {
-                        if (command == SDF_DECODE_COMMAND_END_MARKER) {
+                    if (command >= SDF_DECOMP_DIRECTIVE_CMD) {
+                        if (command == SDF_DECOMP_CMD_END) {
                             decoder->output = output;
                             decoder->input = input;
                             decoder->inputBytes = inputBytes;
@@ -122,53 +128,53 @@ s32 sdfDecomp(SdfPacDecoder *decoder, const u8 *input, s32 inputBytes) {
                             return 1;
                         }
                     } else {
-                        decoder->command = command & SDF_DECODE_COMMAND_CLASS_MASK;
-                        commandBytes = command & SDF_DECODE_COMMAND_LENGTH_MASK;
+                        decoder->command = command & SDF_DECOMP_DIRECTIVE_MASK;
+                        commandBytes = command & SDF_DECOMP_LENGTH_MASK;
                         if (commandBytes == 0) {
-                            decoder->state = SDF_DECODE_READ_COUNT_LOW;
+                            decoder->state = SDF_DECOMP_STAT_DIREC_LENG0;
                         } else {
                             decoder->pendingBytes = commandBytes;
-                            decoder->state = SDF_DECODE_DISPATCH;
+                            decoder->state = SDF_DECOMP_STAT_DIREC;
                         }
                     }
                     break;
                 }
-                case SDF_DECODE_READ_COUNT_LOW:
+                case SDF_DECOMP_STAT_DIREC_LENG0:
                     decoder->pendingBytes = *input++;
                     inputBytes--;
-                    decoder->state = SDF_DECODE_READ_COUNT_HIGH;
+                    decoder->state = SDF_DECOMP_STAT_DIREC_LENG1;
                     break;
-                case SDF_DECODE_READ_COUNT_HIGH:
+                case SDF_DECOMP_STAT_DIREC_LENG1:
                     decoder->pendingBytes |= *input++ << 8;
                     inputBytes--;
-                    decoder->state = SDF_DECODE_DISPATCH;
+                    decoder->state = SDF_DECOMP_STAT_DIREC;
                     break;
-                case SDF_DECODE_DISPATCH:
+                case SDF_DECOMP_STAT_DIREC:
                     switch (decoder->command) {
-                    case SDF_DECODE_COMMAND_COPY_LITERAL:
-                        decoder->state = SDF_DECODE_COPY_LITERAL;
+                    case SDF_DECOMP_DIRECTIVE_NORMAL:
+                        decoder->state = SDF_DECOMP_STAT_DEC_NORMAL;
                         break;
-                    case SDF_DECODE_COMMAND_ZERO_FILL:
+                    case SDF_DECOMP_DIRECTIVE_ZERO:
                         count = decoder->pendingBytes;
                         memset(output, 0, count);
                         output += count;
-                        decoder->state = SDF_DECODE_READ_COMMAND;
+                        decoder->state = SDF_DECOMP_STAT_IDLE;
                         break;
-                    case SDF_DECODE_COMMAND_REPEAT_BYTE:
-                        decoder->state = SDF_DECODE_FILL_BYTE;
+                    case SDF_DECOMP_DIRECTIVE_RLE:
+                        decoder->state = SDF_DECOMP_STAT_DEC_RLE;
                         break;
-                    case SDF_DECODE_COMMAND_COPY_SHORT_BACKREFERENCE:
-                        decoder->state = SDF_DECODE_COPY_SHORT_BACKREF;
+                    case SDF_DECOMP_DIRECTIVE_SD:
+                        decoder->state = SDF_DECOMP_STAT_DEC_SD_STEP0;
                         break;
-                    case SDF_DECODE_COMMAND_COPY_LONG_BACKREFERENCE:
-                        decoder->state = SDF_DECODE_READ_BACKREF_LOW;
+                    case SDF_DECOMP_DIRECTIVE_SD2:
+                        decoder->state = SDF_DECOMP_STAT_DEC_SD_STEP1;
                         break;
-                    case SDF_DECODE_COMMAND_EXPAND_BYTES:
-                        decoder->state = SDF_DECODE_EXPAND_BYTES;
+                    case SDF_DECOMP_DIRECTIVE_WORD:
+                        decoder->state = SDF_DECOMP_STAT_DEC_WORD;
                         break;
                     }
                     break;
-                case SDF_DECODE_COPY_LITERAL:
+                case SDF_DECOMP_STAT_DEC_NORMAL:
                     count = decoder->pendingBytes;
                     if (inputBytes < count) {
                         count = inputBytes;
@@ -179,34 +185,34 @@ s32 sdfDecomp(SdfPacDecoder *decoder, const u8 *input, s32 inputBytes) {
                     inputBytes -= count;
                     decoder->pendingBytes -= count;
                     if (decoder->pendingBytes == 0) {
-                        decoder->state = SDF_DECODE_READ_COMMAND;
+                        decoder->state = SDF_DECOMP_STAT_IDLE;
                     }
                     break;
-                case SDF_DECODE_FILL_BYTE:
+                case SDF_DECOMP_STAT_DEC_RLE:
                     count = decoder->pendingBytes;
                     memset(output, *input++, count);
                     output += count;
                     inputBytes--;
-                    decoder->state = SDF_DECODE_READ_COMMAND;
+                    decoder->state = SDF_DECOMP_STAT_IDLE;
                     break;
-                case SDF_DECODE_COPY_SHORT_BACKREF:
+                case SDF_DECOMP_STAT_DEC_SD_STEP0:
                     sourceAddress = (u32)(output - *input++);
                     count = decoder->pendingBytes;
                     inputBytes--;
                     do {
                         *output++ = *(u8 *)sourceAddress++;
                     } while (--count != 0);
-                    decoder->state = SDF_DECODE_READ_COMMAND;
+                    decoder->state = SDF_DECOMP_STAT_IDLE;
                     break;
-                case SDF_DECODE_READ_BACKREF_LOW:
+                case SDF_DECOMP_STAT_DEC_SD_STEP1:
                     decoder->backrefLow = *input++;
                     inputBytes--;
                     if (inputBytes == 0) {
-                        decoder->state = SDF_DECODE_READ_BACKREF_HIGH;
+                        decoder->state = SDF_DECOMP_STAT_DEC_SD_STEP2;
                         break;
                     }
                     /* fallthrough */
-                case SDF_DECODE_READ_BACKREF_HIGH: {
+                case SDF_DECOMP_STAT_DEC_SD_STEP2: {
                     s32 combinedOffset;
 
                     offset = *input++ << 8;
@@ -218,10 +224,10 @@ s32 sdfDecomp(SdfPacDecoder *decoder, const u8 *input, s32 inputBytes) {
                     do {
                         *output++ = *(u8 *)sourceAddress++;
                     } while (--count != 0);
-                    decoder->state = SDF_DECODE_READ_COMMAND;
+                    decoder->state = SDF_DECOMP_STAT_IDLE;
                     break;
                 }
-                case SDF_DECODE_EXPAND_BYTES:
+                case SDF_DECOMP_STAT_DEC_WORD:
                     count = decoder->pendingBytes;
                     if (inputBytes < count) {
                         count = inputBytes;
@@ -229,7 +235,7 @@ s32 sdfDecomp(SdfPacDecoder *decoder, const u8 *input, s32 inputBytes) {
                         decoder->pendingBytes -= count;
                     } else {
                         decoder->pendingBytes = 0;
-                        decoder->state = SDF_DECODE_READ_COMMAND;
+                        decoder->state = SDF_DECOMP_STAT_IDLE;
                         inputBytes -= count;
                     }
                     do {

@@ -36,15 +36,19 @@ typedef u8 SdfDevOperationCode;
 
 typedef s8 SdfDevStateCode;
 
-#define SDF_DEV_EVENT_INACTIVE 0
-
-#define SDF_DEV_EVENT_OPENED 2
-
-#define SDF_DEV_EVENT_SIZE_REPLY 4
-
-#define SDF_DEV_EVENT_READ_REPLY 5
-
-#define SDF_DEV_EVENT_CLOSED 7
+/* The reason code sdfFileCmdHandle_t.callback is invoked with. */
+enum SdfFileIOCmdClbk {
+    SDF_FILE_CMD_CLBK_ERROR = 0,
+    SDF_FILE_CMD_CLBK_CANCEL = 1,
+    SDF_FILE_CMD_CLBK_OPEN = 2,
+    SDF_FILE_CMD_CLBK_SEEK = 3,
+    SDF_FILE_CMD_CLBK_FILESIZE = 4,
+    SDF_FILE_CMD_CLBK_READ = 5,
+    SDF_FILE_CMD_CLBK_WRITE = 6,
+    SDF_FILE_CMD_CLBK_CLOSE = 7,
+    SDF_FILE_CMD_CLBK_DONE = 8,
+    SDF_FILE_CMD_CLBK_FREE = 9
+};
 
 extern u8 D_00594940[];
 
@@ -209,11 +213,11 @@ s32 sdfFileRpcReadCallback(sdfFileCmdHandle_t *deviceState, s32 command, s32 sou
     s32 timer;
 
     switch (command) {
-    case SDF_DEV_EVENT_SIZE_REPLY:
+    case SDF_FILE_CMD_CLBK_FILESIZE:
         stream->readResult = byteCount;
         SignalSema(stream->semaphore);
         break;
-    case SDF_DEV_EVENT_READ_REPLY: {
+    case SDF_FILE_CMD_CLBK_READ: {
         struct {
             s32 source;
             s32 destination;
@@ -245,11 +249,11 @@ s32 sdfFileRpcReadCallback(sdfFileCmdHandle_t *deviceState, s32 command, s32 sou
         }
         break;
     }
-    case SDF_DEV_EVENT_OPENED:
-    case SDF_DEV_EVENT_CLOSED:
+    case SDF_FILE_CMD_CLBK_OPEN:
+    case SDF_FILE_CMD_CLBK_CLOSE:
         SignalSema(stream->semaphore);
         break;
-    case SDF_DEV_EVENT_INACTIVE:
+    case SDF_FILE_CMD_CLBK_ERROR:
         SignalSema(stream->semaphore);
         break;
     }
