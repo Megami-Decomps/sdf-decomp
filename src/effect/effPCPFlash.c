@@ -1119,7 +1119,7 @@ PcpFlashTrianglePulseWork *effPCPFlashPolySphere2Create(PcpFlashTrianglePulsePar
 
     memcpy(work, params, 0x30);
     work->parts = (PcpFlashPulseParticle *)(work + 1);
-    work->tintColor = 0x80808080;
+    work->tintColor = EFF_NEUTRAL_COLOR;
     work->allocationHandle = allocation;
     work->renderScale = 1.0f;
     work->updateCount = 0;
@@ -1256,7 +1256,7 @@ void effPCPFlashPolySphere2Draw(PcpFlashTrianglePulseWork *work) {
             } else {
                 part->scale = 0.0f;
             }
-            part->color = 0x80808080;
+            part->color = EFF_NEUTRAL_COLOR;
         } else {
             if (part->age >= lifetime) {
                 if (restart != 0) {
@@ -1304,7 +1304,7 @@ PcpFlashStreakWork *effPCPFlashPolySphereCreate(PcpFlashStreakParams *src) {
     memcpy(work, src, 0x40);
     work->parts = (PcpFlashRotatingParticle *)(work + 1);
     work->allocationHandle = handle;
-    work->tintColor = 0x80808080;
+    work->tintColor = EFF_NEUTRAL_COLOR;
     work->renderScale = 1.0f;
     work->updateCount = 0;
     if (work->randomRange == 0) {
@@ -1516,7 +1516,7 @@ void effPCPFlashPolySphereDraw(PcpFlashStreakWork *work) {
             } else {
                 part->scale = 0.0f;
             }
-            part->color = 0x80808080;
+            part->color = EFF_NEUTRAL_COLOR;
         } else {
             if (part->age >= lifetime) {
                 if (restart != 0) {
@@ -1568,7 +1568,7 @@ PcpFlashScalingOrbitWork *effPCPFlashPolyRingCreate(effFlashScalingOrbitParam_t 
     memcpy(work, params, 0x48);
     work->parts = (PcpFlashOrbitParticle *)(work + 1);
     work->allocationHandle = handle;
-    work->tintColor = 0x80808080;
+    work->tintColor = EFF_NEUTRAL_COLOR;
     work->updateCount = 0;
     work->renderScale = 1.0f;
     if (work->randomRange == 0) {
@@ -1755,7 +1755,7 @@ void effPCPFlashPolyRingDraw(PcpFlashScalingOrbitWork *work) {
             }
             effPCPFlashPolyRingPartSetVertex(work, index);
             effPCPFlashPolyRingPartSetVC(work, index, 0);
-            part->color = 0x80808080;
+            part->color = EFF_NEUTRAL_COLOR;
         } else {
             if (part->age >= lifetime) {
                 if (restart != 0) {
@@ -1807,7 +1807,7 @@ PcpFlashAccumulatingWork *effPCPFlashPolyPipeCreate(effFlashAccumulatingParam_t 
     memcpy(work, params, 0x50);
     work->parts = (PcpFlashAccumulatingParticle *)(work + 1);
     work->allocationHandle = handle;
-    work->tintColor = 0x80808080;
+    work->tintColor = EFF_NEUTRAL_COLOR;
     work->updateCount = 0;
     work->renderScale = 1.0f;
     if (work->randomRange == 0) {
@@ -2001,7 +2001,7 @@ void effPCPFlashPolyPipeDraw(PcpFlashAccumulatingWork *work)
         if (age == 0) {
             effPCPFlashPolyPipePartSetVertex(work, index);
             effPCPFlashPolyPipePartSetVC(work, index, 0);
-            part->color = 0x80808080;
+            part->color = EFF_NEUTRAL_COLOR;
             factor = dds3GetRandFloatA(dds3EffectBase) * 0.5f + 0.5f;
             part->radialHalfThickness = work->radialHalfThicknessBase * factor;
             factor = dds3GetRandFloatA(dds3EffectBase) * 0.7f + 0.3f;
@@ -2055,7 +2055,7 @@ PcpFlashOrbitArcWork *effPCPFlashPolyRingExpCreate(effFlashOrbitArcParam_t *para
     memcpy(ring, params, 0x58);
     ring->parts = block->parts;
     ring->allocationHandle = handle;
-    ring->tintColor = 0x80808080;
+    ring->tintColor = EFF_NEUTRAL_COLOR;
     ring->orbitRadius = ring->orbitRadiusStart;
     ring->upSpan = ring->upSpanStart;
     ring->acrossSpan = ring->acrossSpanStart;
@@ -2269,7 +2269,7 @@ void effPCPFlashPolyRingExpDraw(PcpFlashOrbitArcWork *work)
             part->stepSpeed = work->heightStart;
             effPCPFlashPolyRingExpPartSetVertex(work, index);
             effPCPFlashPolyRingExpPartSetVC(work, index, 0);
-            part->color = 0x80808080;
+            part->color = EFF_NEUTRAL_COLOR;
         } else if (age >= lifetime) {
             if (restart != 0) {
                 part->age = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % randomRange);
@@ -2317,7 +2317,7 @@ PcpFlashRotatingQuadWork *effPCPFlashPolySphereExpCreate(effFlashRotatingQuadPar
     memcpy(work, params, 0x4C);
     work->parts = (PcpFlashRotatingQuadParticle *)(work + 1);
     work->allocationHandle = handle;
-    work->tintColor = 0x80808080;
+    work->tintColor = EFF_NEUTRAL_COLOR;
     work->renderScale = 1.0f;
     work->updateCount = 0;
     if (work->randomRange == 0) {
@@ -2514,7 +2514,7 @@ void effPCPFlashPolySphereExpDraw(PcpFlashRotatingQuadWork *work) {
             } else {
                 part->scale = 0.0f;
             }
-            part->color = 0x80808080;
+            part->color = EFF_NEUTRAL_COLOR;
         } else {
             if (part->age >= lifetime) {
                 if (restart != 0) {
@@ -2570,7 +2570,7 @@ PcpFlashRadialTriangleWork *effPCPFlashPolySphere2ExpCreate(PcpFlashRadialTriang
 
     memcpy(work, params, 0x3C);
     work->parts = (PcpFlashMotionParticle *)(work + 1);
-    work->tintColor = 0x80808080;
+    work->tintColor = EFF_NEUTRAL_COLOR;
     work->allocationHandle = handle;
     work->renderScale = 1.0f;
     work->updateCount = 0;
@@ -2711,7 +2711,7 @@ void effPCPFlashPolySphere2ExpDraw(PcpFlashRadialTriangleWork *work) {
                 effPCPFlashPolySphere2ExpPartSetVC(work, index, 0);
                 part->accumulator = startA;
                 part->stepSpeed = startB;
-                part->color = 0x80808080;
+                part->color = EFF_NEUTRAL_COLOR;
             } else if (age > 0) {
                 f32 speed = part->stepSpeed;
                 s32 remain;
@@ -2762,7 +2762,7 @@ PcpFlashRadialStripWork *effPCPFlashPolySphere3Create(effFlashRadialStripParam_t
     memcpy(work, params, 0xD0);
     work->parts = (PcpFlashRadialStripParticle *)(work + 1);
     work->allocationHandle = handle;
-    work->tintColor = 0x80808080;
+    work->tintColor = EFF_NEUTRAL_COLOR;
     work->updateCount = 0;
     work->renderScale = 1.0f;
     if (work->randomRange == 0) {
@@ -2970,7 +2970,7 @@ void effPCPFlashPolySphere3Draw(PcpFlashRadialStripWork *work) {
                 part->thickness = maxThickness;
                 part->radius = startA;
                 part->radialSpeed = startB;
-                part->color = 0x80808080;
+                part->color = EFF_NEUTRAL_COLOR;
             } else if (age > 0) {
                 f32 speed = part->radialSpeed;
                 s32 remain;
@@ -3023,7 +3023,7 @@ PcpFlashFadingOrbitWork *effPCPFlashPolyRingExp2Create(effFlashFadingOrbitParam_
     memcpy(work, params, 0x50);
     work->parts = (PcpFlashOrbitParticle *)(work + 1);
     work->allocationHandle = handle;
-    work->tintColor = 0x80808080;
+    work->tintColor = EFF_NEUTRAL_COLOR;
     work->updateCount = 0;
     work->renderScale = 1.0f;
     if (work->randomRange == 0) {
@@ -3213,7 +3213,7 @@ void effPCPFlashPolyRingExp2Draw(PcpFlashFadingOrbitWork *work) {
                 }
                 effPCPFlashPolyRingExp2PartSetVertex(work, index);
                 effPCPFlashPolyRingExp2PartSetVC(work, index, 0);
-                part->color = 0x80808080;
+                part->color = EFF_NEUTRAL_COLOR;
             } else if (age > 0) {
                 s32 remain;
                 f32 blend;
@@ -3266,7 +3266,7 @@ PcpFlashOffsetRadialWork *effPCPFlashPolyCircleCreate(PcpFlashOffsetRadialParams
 
     memcpy(work, params, 0x40);
     work->parts = (PcpFlashMotionParticle *)(work + 1);
-    work->tintColor = 0x80808080;
+    work->tintColor = EFF_NEUTRAL_COLOR;
     work->allocationHandle = handle;
     work->renderScale = 1.0f;
     work->updateCount = 0;
@@ -3408,7 +3408,7 @@ void effPCPFlashPolyCircleDraw(PcpFlashOffsetRadialWork *work) {
                 effPCPFlashPolyCirclePartSetVC(work, index, 0);
                 part->accumulator = startA;
                 part->stepSpeed = startB;
-                part->color = 0x80808080;
+                part->color = EFF_NEUTRAL_COLOR;
             } else if (age > 0) {
                 f32 speed = part->stepSpeed;
                 s32 remain;
@@ -3682,7 +3682,7 @@ void effPCPFlashPolyRingExpHDraw(EffRingWork *work)
             part->basisFactor = work->param48;
             effPCPFlashPolyRingExpHPartSetVertex(work, index);
             effPCPFlashPolyRingExpHPartSetVC(work, index, 0);
-            part->color = 0x80808080;
+            part->color = EFF_NEUTRAL_COLOR;
         } else if (age >= lifetime) {
             if (restart != 0) {
                 part->age = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % randomRange);
