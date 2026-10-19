@@ -33,8 +33,8 @@ struct scrHeader_t
     char MagicCode[4];
     s32 ExpandSize;
     s32 TypeTableCount;
-    u16 LocalIntCount;
-    u16 LocalFloatCount;
+    s16 LocalIntCount;
+    s16 LocalFloatCount;
     s32 Resrve2;
     s32 Resrve3;
 };
