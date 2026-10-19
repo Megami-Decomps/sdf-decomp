@@ -200,12 +200,12 @@ typedef struct QWORD_ALIGNED
 } sdfMultiBillBoardVc1Packet_t;
 
 /* dds3BillResource_tag.current_mode, the pBillTag slot a batch links into.
- * Values from the HD metadata's BILL_DRAW; not checked against the binary. */
-enum dds3_billboard_draw_mode
+ * Names and values from the IDB; not checked against the binary. */
+enum BILL_DRAW
 {
-    DDS3_BILLBOARD_DRAW_MODE0 = 0,
-    DDS3_BILLBOARD_DRAW_MODE1 = 1,
-    DDS3_BILLBOARD_DRAW_MAX = 2
+    BILL_DRAW_MODE0 = 0,
+    BILL_DRAW_MODE1 = 1,
+    BILL_DRAW_MAX = 2
 };
 
 typedef struct billRenderPair_t {

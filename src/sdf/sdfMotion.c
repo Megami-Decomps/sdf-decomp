@@ -598,9 +598,9 @@ void sdfMotCLBK_modelVisibleSeek(sdfMotNodeModelBase_t *aThis, f32 aFrame)
     key = itf.key0;
     node = aThis->modelNode;
     if (*key == 0) {
-        node->flags |= SDF_MODEL_NODE_FLAG_HIDDEN2;
+        node->flags |= SDF_MODEL_NODE_FLAG_MOTION_HIDE;
     } else {
-        node->flags &= ~SDF_MODEL_NODE_FLAG_HIDDEN2;
+        node->flags &= ~SDF_MODEL_NODE_FLAG_MOTION_HIDE;
     }
 }
 
@@ -614,9 +614,9 @@ void sdfMotCLBK_modelVisibleBlendSeek(sdfMotNodeModelBase_t *aThis, f32 aFrame, 
     key = itf.key0;
     node = aThis->modelNode;
     if (*key == 0) {
-        node->flags |= SDF_MODEL_NODE_FLAG_HIDDEN2;
+        node->flags |= SDF_MODEL_NODE_FLAG_MOTION_HIDE;
     } else {
-        node->flags &= ~SDF_MODEL_NODE_FLAG_HIDDEN2;
+        node->flags &= ~SDF_MODEL_NODE_FLAG_MOTION_HIDE;
     }
 }
 

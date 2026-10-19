@@ -534,7 +534,7 @@ void sdfMatUpdatePacketMultiTex(sdfMat_t *aMat, sdfMatPacket_t *aPacket)
         aPacket->mtexTex0Data = sdfTexGetTex0Reg(handle);
         aPacket->mtexClampData = sdfTexGetClampReg(handle);
     }
-    sdfMatSetUvwParm(&aPacket->multiTexTm, aMat->multiTexUvwParm);
+    sdfMatSetUvwParm(&aPacket->mtexTexTm, aMat->multiTexUvwParm);
 }
 
 void sdfMatUpdatePacketFaceDiv(sdfMat_t *aMat, sdfMatPacket_t *aPacket)

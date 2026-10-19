@@ -143,7 +143,7 @@ typedef struct QWORD_ALIGNED
 typedef struct QWORD_ALIGNED
 {
     sdfGrPacketHeader_t header;
-    sdfPrimTexflushElem_t elem;
+    sdfPrimTexflushElem_t texflush;
 } sdfPrimTexflushPacket_t;
 
 /* One GS local-memory to local-memory copy, as sdfPrimSetBitBltElem packs it:

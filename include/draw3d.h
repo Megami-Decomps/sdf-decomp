@@ -128,7 +128,7 @@ typedef struct
  * sdfShapePacket_t (model.h); the prim header follows inline. */
 typedef struct
 {
-    u8 packetType; /* sdf_shape_packet_type 4 through 8 */
+    u8 packetType; /* PACKET_TYPE_e 4 through 8 */
     u8 mpgType;    /* unconfirmed */
     s16 priority;  /* unconfirmed */
     u16 size;      /* unconfirmed */
@@ -159,27 +159,38 @@ typedef struct
 
 /* sdfCorePrimHeader_t.attrBits. The low bits are PRIM's own; the pass bits are
  * what corePktEmitAllPasses and corePktOpenAndEmit branch on. */
-enum sdf_core_attr
+enum SDF_ATTRBIT_e
 {
-    SDF_CORE_ATTR_REFMAPPASS = 0x0001,
-    SDF_CORE_ATTR_SPECULARPASS = 0x0002,
-    SDF_CORE_ATTR_GOURAUD = 0x0008,
-    SDF_CORE_ATTR_TEXTURED = 0x0010,
-    SDF_CORE_ATTR_FOG = 0x0020,
-    SDF_CORE_ATTR_BLEND = 0x0040,
-    SDF_CORE_ATTR_COLOR = 0x0800,
-    SDF_CORE_ATTR_MULTITEXPASS = 0x1000,
-    SDF_CORE_ATTR_TWOSIDED = 0x4000 /* emit the back faces as a second batch */
+    SDF_ATTRBIT_SPECULAR = 0x0001,
+    SDF_ATTRBIT_REFMAP = 0x0002,
+    SDF_ATTRBIT_LUSTERMAP = 0x0004,
+    SDF_ATTRBIT_SMOOTHSHADING = 0x0008,
+    SDF_ATTRBIT_TEXMAP = 0x0010,
+    SDF_ATTRBIT_FOG = 0x0020,
+    SDF_ATTRBIT_ALPHABLEND = 0x0040,
+    SDF_ATTRBIT_ANTIALIAS = 0x0080,
+    SDF_ATTRBIT_DIRECT_UV = 0x0100,
+    SDF_ATTRBIT_CONTEXT = 0x0200,
+    SDF_ATTRBIT_FIX = 0x0400,
+    SDF_ATTRBIT_VERTCOL = 0x0800,
+    SDF_ATTRBIT_MULTITEX = 0x1000,
+    SDF_ATTRBIT_SINGLESIDE = 0x2000,
+    SDF_ATTRBIT_DOUBLESIDE = 0x4000
 };
 
 /* sdfCorePrimHeader_t.packetBits, as sdfCorePacketGen walks the body. */
-enum sdf_core_packet_bit
+enum SDF_PACKETBIT_e
 {
-    SDF_CORE_PACKET_FACES = 0x0020,
-    SDF_CORE_PACKET_NORMALS = 0x0080,
-    SDF_CORE_PACKET_UV = 0x0100,
-    SDF_CORE_PACKET_WEIGHTS = 0x0800,
-    SDF_CORE_PACKET_BLENDSHAPES = 0x1000
+    SDF_PACKETBIT_FACE = 0x0020,
+    SDF_PACKETBIT_VERTEX = 0x0040,
+    SDF_PACKETBIT_NORMAL = 0x0080,
+    SDF_PACKETBIT_ST = 0x0100,
+    SDF_PACKETBIT_VERTCOL = 0x0200,
+    SDF_PACKETBIT_CLRBUFF = 0x0400,
+    SDF_PACKETBIT_BLENDVERT = 0x0800,
+    SDF_PACKETBIT_BLENDGRP = 0x1000,
+    SDF_PACKETBIT_NODRAW = 0x2000,
+    SDF_PACKETBIT_STRIP = 0x4000
 };
 
 /* The draw state sdfCorePacketGen keeps on its stack and every corePkt*

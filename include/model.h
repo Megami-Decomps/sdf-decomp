@@ -287,41 +287,46 @@ typedef struct QWORD_ALIGNED
 } sdfModelNormalDrawPacket_t;
 
 /* sdfModelRootNode_t.flags. */
-enum sdf_model_root_flag
+enum SDF_MODEL_FLAG_e
 {
-    SDF_MODEL_ROOT_FLAG_COMPLEXNODEID = 1,  /* sdfModelSearchNode searches by id */
-    SDF_MODEL_ROOT_FLAG_OWNFACEDIV = 2,     /* use the root's own faceDiv terms */
-    SDF_MODEL_ROOT_FLAG_TEMPPACKET = 4,     /* also link the temporary packets */
-    SDF_MODEL_ROOT_FLAG_NOLINKEDPACKET = 8, /* suppress the type 1 and 2 paths */
-    SDF_MODEL_ROOT_FLAG_DREW = 16           /* set if anything reached a table */
+    SDF_MODEL_FLAG_COMPLEX_NODE_ID = 1,   /* sdfModelSearchNode searches by id */
+    SDF_MODEL_FLAG_SELF_FACEDIV_PARM = 2, /* use the root's own faceDiv terms */
+    SDF_MODEL_FLAG_EARLY_SETUP = 4,       /* set by sdfModelMakeEarly */
+    SDF_MODEL_FLAG_REVERSE_FACE = 8,
+    SDF_MODEL_FLAG_DREW = 16              /* set if anything reached a table */
 };
 
 /* sdfModelNode_t.flags. Either hidden bit suppresses the node; sdfModelLinkOt
  * tests them as one 0x11 mask. */
-enum sdf_model_node_flag
+enum SDF_MODEL_NODE_FLAG_e
 {
-    SDF_MODEL_NODE_FLAG_HIDDEN = 1,
-    SDF_MODEL_NODE_FLAG_OWNCOLOR = 2,
-    SDF_MODEL_NODE_FLAG_HIDDEN2 = 16
+    SDF_MODEL_NODE_FLAG_HIDE = 1,
+    SDF_MODEL_NODE_FLAG_LOCALCOLOR = 2,
+    SDF_MODEL_NODE_FLAG_MOTION_HIDE = 16
 };
 
 /* sdfModelPacketHeader_t.type, as sdfModelLinkOt switches on it. */
-enum sdf_model_packet_type
+enum MODEL_PACKET_HEADER_TYPE_e
 {
-    SDF_MODEL_PACKET_TYPE_END = 0,
-    SDF_MODEL_PACKET_TYPE_DMACALL = 1,
-    SDF_MODEL_PACKET_TYPE_SHAPED = 2,
-    SDF_MODEL_PACKET_TYPE_GENERATED = 3
+    MODEL_PACKET_HEADER_TYPE_END = 0, /* no IDB member; sdfModelLinkOt stops here */
+    MODEL_PACKET_HEADER_TYPE_NORMAL = 1,
+    MODEL_PACKET_HEADER_TYPE_SHAPE = 2,
+    MODEL_PACKET_HEADER_TYPE_COREDRAW = 3
 };
 
 /* sdfShapePacket_t.packetType, as sdfModelLinkDrawPacket dispatches on it.
  * 4 through 8 all build a generated packet; 5 and 7 first resolve the skinned
- * nodes. Only the three named below have a path of their own. */
-enum sdf_shape_packet_type
+ * nodes. Only the first three have a path of their own. */
+enum PACKET_TYPE_e
 {
-    SDF_SHAPE_PACKET_TYPE_NORMAL = 1,
-    SDF_SHAPE_PACKET_TYPE_ONESKIN = 2,
-    SDF_SHAPE_PACKET_TYPE_SHAPED = 3
+    PACKET_TYPE_NORMAL = 1,
+    PACKET_TYPE_ONESKIN = 2,
+    PACKET_TYPE_SHAPED = 3,
+    PACKET_TYPE_COREDRAW_NORMAL = 4,
+    PACKET_TYPE_COREDRAW_ONESKIN = 5,
+    PACKET_TYPE_COREDRAW_SHAPED = 6,
+    PACKET_TYPE_COREVU0DRAW_ONESKIN = 7,
+    PACKET_TYPE_COREVU0DRAW_STD = 8
 };
 
 /* DDS3 model owners and tagged effect controllers. mdlManager allocates
@@ -352,7 +357,7 @@ typedef struct mdlIpuAttachment_t {
 
 typedef struct mdlEffectResrc_t {
     struct mdlEffectResrc_t *next;
-    u16 type; /* MdlResourceKind value, with native halfword storage. */
+    u16 type; /* dds3ModelEffectType value, with native halfword storage. */
     s16 motionSlotIndex; /* Owning Motion.slotIndex; -1 tags context-wide entries. */
     union {
         struct {

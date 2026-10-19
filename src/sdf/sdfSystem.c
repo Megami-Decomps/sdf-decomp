@@ -500,12 +500,12 @@ void dds3InitSubsystems(u32 heapSize, u32 initialHeapSize, u32 packetBufferBytes
 }
 
 void sdfStartThreadAndWait(sdfThCB_t *node, void (*entry)(void), void *stack, s64 stackSize, s32 priority, s32 threadArgument) {
-    node->threadId = CreateThreadSimple((void *)entry, stack, (s32)stackSize, priority);
+    node->thId = CreateThreadSimple((void *)entry, stack, (s32)stackSize, priority);
     WaitSema(sdfThreadSema);
     node->next = sdfVblankThreadId;
     sdfVblankThreadId = node;
     SignalSema(sdfThreadSema);
-    StartThread(node->threadId, threadArgument);
+    StartThread(node->thId, threadArgument);
 }
 
 void sdfWaitVblank(s32 count)
@@ -532,7 +532,7 @@ void func_002A8758(sdfThCB_t *node) {
     }
     *link = node->next;
     SignalSema(sdfThreadSema);
-    threadId = node->threadId;
+    threadId = node->thId;
     if (threadId == GetThreadId()) {
         ExitDeleteThread();
         return;
@@ -550,7 +550,7 @@ sdfThCB_t *func_002A87F0(s32 threadId) {
     WaitSema(sdfThreadSema);
     node = sdfVblankThreadId;
     while (node != NULL) {
-        if (node->threadId == threadId) {
+        if (node->thId == threadId) {
             break;
         }
         node = node->next;
@@ -588,7 +588,7 @@ void VblankThreadProc(void) {
         sdfVblankFlag++;
         WaitSema(sdfThreadSema);
         for (threadEntry = sdfVblankThreadId; threadEntry != NULL; threadEntry = threadEntry->next) {
-            WakeupThread(threadEntry->threadId);
+            WakeupThread(threadEntry->thId);
         }
         SignalSema(sdfThreadSema);
     }

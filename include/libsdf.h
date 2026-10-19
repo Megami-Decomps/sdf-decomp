@@ -67,7 +67,7 @@ typedef void (*sdfDelayedResrcFreeFunc)();
 
 typedef struct
 {
-    sdfDelayedResrcFreeFunc freeFunc;
+    sdfDelayedResrcFreeFunc freeFuncPtr;
     void *chunk;
 } sdfDelayedResrcCB_t;
 
@@ -324,7 +324,7 @@ struct sdfMatPacket_t
     u64 mtexClampData;
     /* sdfMatSetUvwParm writes one transform per texture: a 2x2 then an offset. */
     sdfMatTexTm_t texTm;
-    sdfMatTexTm_t multiTexTm;
+    sdfMatTexTm_t mtexTexTm;
     u32 vifcode3;
     u32 vifcode4;
 };
@@ -516,7 +516,7 @@ typedef struct sifCommand_t
 typedef struct sdfThCB_t
 {
     struct sdfThCB_t *next;
-    s32 threadId;
+    s32 thId;
 } sdfThCB_t;
 
 typedef u8 sdfTextureClampMode_t;

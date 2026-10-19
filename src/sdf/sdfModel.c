@@ -335,7 +335,7 @@ sdfModelNode_t *sdfModelSearchNode(sdfModelRootNode_t *aRoot, s32 aId)
 
     count = list->count;
     items = list->items;
-    if (aRoot->flags & SDF_MODEL_ROOT_FLAG_COMPLEXNODEID) {
+    if (aRoot->flags & SDF_MODEL_FLAG_COMPLEX_NODE_ID) {
         for (i = 0; i < count; i++) {
             sdfModelNode_t *node = items[i];
 
@@ -597,7 +597,7 @@ sdfModelRootNode_t *sdfModelMakeEarly(void *aTexList, sdfModelDef_t *aDef)
     s32 count;
     sdfModelNodeDef_t *nodeDef;
 
-    root->flags |= SDF_MODEL_ROOT_FLAG_TEMPPACKET;
+    root->flags |= SDF_MODEL_FLAG_EARLY_SETUP;
     def = aDef->modelDef;
     count = def[0];
     nodeDef = (sdfModelNodeDef_t *)(def + 4);
@@ -903,17 +903,17 @@ void sdfModelSetFaceDivParm(sdfModelRootNode_t *aRoot, f32 aSoften, f32 aBias)
 {
     aRoot->faceDivSoften = aSoften;
     aRoot->faceDivBias = aBias;
-    aRoot->flags = aRoot->flags | SDF_MODEL_ROOT_FLAG_OWNFACEDIV;
+    aRoot->flags = aRoot->flags | SDF_MODEL_FLAG_SELF_FACEDIV_PARM;
 }
 
 void sdfModelResetFaceDivParm(sdfModelRootNode_t *aRoot)
 {
-    aRoot->flags = aRoot->flags & ~SDF_MODEL_ROOT_FLAG_OWNFACEDIV;
+    aRoot->flags = aRoot->flags & ~SDF_MODEL_FLAG_SELF_FACEDIV_PARM;
 }
 
 f32 sdfModelGetFaceDivSoften(sdfModelRootNode_t *aRoot)
 {
-    if (aRoot->flags & SDF_MODEL_ROOT_FLAG_OWNFACEDIV) {
+    if (aRoot->flags & SDF_MODEL_FLAG_SELF_FACEDIV_PARM) {
         return aRoot->faceDivSoften;
     }
     return sdfFaceDivSoften;
@@ -921,7 +921,7 @@ f32 sdfModelGetFaceDivSoften(sdfModelRootNode_t *aRoot)
 
 f32 sdfModelGetFaceDivBias(sdfModelRootNode_t *aRoot)
 {
-    if (aRoot->flags & SDF_MODEL_ROOT_FLAG_OWNFACEDIV) {
+    if (aRoot->flags & SDF_MODEL_FLAG_SELF_FACEDIV_PARM) {
         return aRoot->faceDivBias;
     }
     return sdfFaceDivBias;

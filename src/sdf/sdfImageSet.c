@@ -29,11 +29,11 @@ extern s32 iWakeupThread(s32 threadId);
 extern void (*sdfGsErrorHandler)(s32 size, s32 type);
 
 /* sdfImageSetRelease_t.freeMode: which heap owns the uploaded pixels. */
-enum sdf_image_set_free_mode
+enum SdfImageSetMem
 {
-    SDF_IMAGE_SET_FREE_NONE = 0,
-    SDF_IMAGE_SET_FREE_MEM = 1,
-    SDF_IMAGE_SET_FREE_CHIP = 2
+    SDF_IMAGESET_MEM_IGNORE = 0,
+    SDF_IMAGESET_MEM_HANDLE = 1,
+    SDF_IMAGESET_MEM_CHIP = 2
 };
 
 typedef struct sdfImageSetRelease
@@ -272,9 +272,9 @@ void sdfImageSetChainReleaseMem(s32 addr)
         release = sdfChipAllocZeroDirect(0xA0);
         if (sdfChipCheck((void *)addr) != 0) {
             release->chip = (void *)addr;
-            release->freeMode = SDF_IMAGE_SET_FREE_CHIP;
+            release->freeMode = SDF_IMAGESET_MEM_CHIP;
         } else {
-            release->freeMode = SDF_IMAGE_SET_FREE_MEM;
+            release->freeMode = SDF_IMAGESET_MEM_HANDLE;
             release->memHandle = sdfMemGetHandleByPtr((void *)addr);
         }
         WaitSema(cb->semaId);
@@ -337,10 +337,10 @@ void sdfImageSetTrans(void)
         sdfImageSetRelease_t *next = release->next;
 
         switch (release->freeMode) {
-        case SDF_IMAGE_SET_FREE_MEM:
+        case SDF_IMAGESET_MEM_HANDLE:
             sdfMemFreeDirect(release->memHandle);
             break;
-        case SDF_IMAGE_SET_FREE_CHIP:
+        case SDF_IMAGESET_MEM_CHIP:
             sdfChipFreeDirect(release->chip);
             break;
         }
