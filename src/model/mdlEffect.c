@@ -1,5 +1,4 @@
 #include "common.h"
-
 #include "libsdf.h"
 #include "model.h"
 #include "kernel.h"
@@ -11,11 +10,17 @@
 __asm__("fptodp = sdfFloatToULong");
 
 typedef struct mdlBillboard_t mdlBillboard_t;
+
 typedef struct mdlEffect_t mdlEffect_t;
+
 typedef struct mdlTrackWork_t mdlTrackWork_t;
+
 typedef struct mdlIpuResrc_t mdlIpuResrc_t;
+
 typedef struct mdlPartSlot_t mdlPartSlot_t;
+
 typedef struct mdlMarkPos_t mdlMarkPos_t;
+
 typedef struct mdlPibItem_t {
     s32 kind;       /* 0x00: 0xFFFF terminates the record chain */
     s32 nextOffset; /* 0x04: relative byte offset to next record */
@@ -41,7 +46,6 @@ typedef struct mdlPibItem_t {
         } half;
     } tail;
 } mdlPibItem_t;
-
 
 typedef struct mdlPartSlot_t {
     u32 kind;       /* 0x00 */
@@ -166,6 +170,7 @@ typedef struct mdlDebugOption_t {
 } mdlDebugOption_t;
 
 typedef struct { u8 hasAudio, stereo, loopMode, playbackCadenceStep; } mdlIpuParams_t;
+
 struct mdlIpuResrc_t
 {
     u32 sourceAddress; /* EE byte address handed to the IPU stream initializer. */
@@ -176,6 +181,7 @@ struct mdlIpuResrc_t
     u8 unk14[0xC];
     u8 ipuState[0x8C];
 };
+
 typedef struct
 {
     mdlObj_t *model;
@@ -187,6 +193,7 @@ typedef struct
     u32 kind;
     u32 gradientColors[4];
 } mdlTrackCreateParams_t;
+
 typedef struct
 {
     f32 (*lights[4])[4];
@@ -194,77 +201,120 @@ typedef struct
     u8 unk20[0x10];
     u32 fogColor;
 } mdlLightParams_t;
+
 typedef void (*mdlOtRegFunc_t)(sdfGrOt_t *, sdfDrawTag_t *);
+
 extern sdfGrOt_t sdfGrOtTable[];
+
 extern s8 dds3PadButtonState[];
-extern u8 dds3PadBitTable[];
+
 extern s8 D_005298D8[16];
+
 extern f32 D_002FA240[16];
+
 extern u8 aViewEye[];
+
 extern mdlLightParams_t dds3LightParam;
+
 extern mdlDebugLight_t D_0032C530;
+
 extern mdlDebugScale_t mdlDebugScaleWork;
+
 extern mdlDebugEntry_t mdlDebugEntryTable[];
+
 extern mdlDebugOption_t softenBiasWork;
+
 extern mdlDebugLabel_t D_0032C4E0[4], D_0032C548, D_0032C5B8[4];
 extern u16 D_0032C510[], D_0032C5E8[4] __attribute__((section(".data")));
-extern f32 sdfFaceDivSoften, sdfFaceDivBias;
 extern u8 corePktSoftenBias __attribute__((section(".sdata")));
-extern s32 D_0054F728, dds3BitEditorTable, dds3BitEditorTable2;
-extern char D_0054F738[];
+
+extern f32 sdfFaceDivSoften, sdfFaceDivBias;
+
 extern char *D_0032C4D0[];
+
 extern u8 D_0032C4C8[];
+
 extern u16 D_0032C498[];
+
 extern void *sdfChipAllocZeroDirect(u32 size);
+
 extern void sdfChipFreeDirect(void *ptr);
+
 extern void sdfMemFreeDirect(sdfMemHandle_t *handle);
+
 extern void *dds3BillboardCreate(s32, u32);
+
 extern void dds3BillboardDelete(mdlBillboard_t *);
+
 extern mdlBillboard_t *dds3BillboardCopy(mdlBillboard_t *);
+
 extern void *dds3EffectLoad(void *descriptor);
+
 extern void dds3EffectDelete(mdlEffect_t *);
+
 extern mdlEffect_t *dds3EffectCopy(mdlEffect_t *);
+
 extern void sdfIpuFree(void *ipu);
+
 extern void sdfIpuSetOutputTex(void *, mdlIpuParams_t *, u8 *, s32, sdfTexHandle_t *);
+
 extern sdfItemArray_t *sdfItemArrayNew(u32, s32, s32);
+
 extern void sdfItemArrayFree(sdfItemArray_t *);
+
 extern mdlMarkPos_t *sdfModelSearchMarkPosData(sdfModelRootNode_t *, s32);
+
 extern mdlTrackWork_t *Eff_ModelTrackPolyCreate(mdlTrackCreateParams_t *);
+
 extern void Eff_ModelTrackPolyDelete(mdlTrackWork_t *);
+
 extern void Eff_ModelTrackPolyDraw(mdlTrackWork_t *);
+
 extern void mdlSetBlur(mdlObj_t *, s32, s32, u32, u32);
+
 extern sdfTexHandle_t *sdfTexSearch(s32 dataId);
+
 extern sdfModelNode_t *sdfModelSearchNode(sdfModelRootNode_t *, u32);
+
 extern void dds3BillboardSetPosition(void *, const void *);
+
 extern void dds3BillboardDraw(mdlBillboard_t *);
+
 extern void dds3EffectSetPosition(mdlEffect_t *, const void *);
+
 extern void dds3EffectDraw(mdlEffect_t *);
+
 extern void dds3BillboardSetRGBA(mdlBillboard_t *, s32);
+
 extern void dds3EffectSetRGBA(mdlEffect_t *, s32);
+
 extern void dds3BillboardSetScale(mdlBillboard_t *, f32, f32);
+
 extern void dds3EffectSetScale(mdlEffect_t *, f32);
+
 extern void *sdfDevPrintf(s32, s32, s32, s32, const char *, ...);
+
 extern void sdfDrawTagLink(sdfDrawTag_t *, u32);
+
 extern void *dds3PrimFrameRect(s32, s32, s32, s32, s32, u32, u32);
+
 extern void dds3DebugIntEditEx(void *, s32, s64, s64, s64, s64, s8 *);
+
 extern void *dds3FontReqAllocDrawTag(void);
+
 extern void FromRotation(f32);
+
 extern void ToMatrix(void);
+
 extern s32 dds3DebugFloatEditEx(f32 *, u8 *, f32, f32, f32, f32);
+
 extern s32 dds3DebugColorEditEx(u32 *, s32, s8 *);
+
 extern void dds3PrimDebugTextBox(sdfDrawTag_t *, s32, s32, s32, f32 *);
+
 extern void dds3PrimDebugTextBoxRGB(void *, s32, s32, s32, u32, s32);
+
 extern void *dds3PrimLine3D(s32, s32, s32, s32);
-extern void *sdfGrAllocPacketBuff(u32);
-extern void sdfDrawTagInit(sdfDrawTag_t *);
-extern void dds3ConsPanelTagLink(sdfDrawTag_t *, s32, s32, s32, s32);
-extern s32 dds3SelectMenu(s32, s32, s32, s32, s32, s32 *, s32 *, s32 *, s32 *);
-extern void *memcpy(void *, const void *, u32);
-extern void evtSetAgeOfMoon(u8);
-extern void evtDisableMoonDraw(void);
-extern void evtDisableMoonCalc(void);
-void evtBitAllOff(void);
-void evtBitOff(s32 flag);
 
 /* SDK matrix-column gather: EE GCC cannot express the MMI pack from C. */
 typedef enum MdlResourceKind {
@@ -273,6 +323,7 @@ typedef enum MdlResourceKind {
     MDL_RESOURCE_TRACK_POLY = 2,
     MDL_RESOURCE_OBJECT = 3
 } MdlResourceKind;
+
 typedef enum MdlViewerRecordKind {
     MDL_VIEWER_RECORD_KIND_BILLBOARD_PART = 1,
     MDL_VIEWER_RECORD_KIND_EFFECT_PART = 2,
@@ -282,33 +333,55 @@ typedef enum MdlViewerRecordKind {
 } MdlViewerRecordKind;
 
 extern char D_0054F648[];
+
 extern char D_0054F650[];
+
 extern char D_0054F678[];
+
 extern char D_0054F680[];
+
 extern char D_0054F6A0[];
+
 extern char D_0054F6A8[];
+
 extern char D_0054F6E0[];
+
 extern char D_0054F700[];
+
 extern char D_0054F708[];
+
 extern char D_0054F710[];
+
 extern char D_0054F718[];
+
 extern char D_0054F720[];
-extern char D_0054F740[];
-extern char D_0054F748[];
 
 #define MDL_RECORD_LIST_HEADER_BYTES 8
+
 #define MDL_RECORD_END_KIND 0xFFFF
+
 #define MDL_MARK_COLOR_COUNT 4
+
 #define MDL_COLOR_CHANNEL_COUNT 4
+
 #define MDL_COLOR_BYTE_MASK 0xFF
+
 #define MDL_COLOR_BYTE_BITS 8
+
 #define MDL_MARK_LAST_FIELD 0x16
+
 #define MDL_MARK_COLOR_FIRST_FIELD 7
+
 #define MDL_PAD_REPEAT_FLAG 2
+
 #define MDL_PART_SLOT_BYTES 0x10
+
 #define MDL_PART_VALUE_SIZE_THRESHOLD 0x11
+
 #define MDL_PART_BILLBOARD 0
+
 #define MDL_PART_EFFECT 1
+
 #define MDL_PART_OBJECT 3
 
 /* Read the PIB file version without following its relative link. */
@@ -1335,197 +1408,79 @@ s32 soften_bias_Process(dds3ProcessID_t *task) {
     return 0;
 }
 
-void evtInitGlobalWork(void) {
-    evtBitAllOff();
-    evtSetAgeOfMoon(0);
-    evtDisableMoonDraw();
-    evtDisableMoonCalc();
-}
+INCLUDE_RODATA(const s32, "model/mdlEffect", D_0053A788);
 
-void evtBitAllOff(void) {
-    s32 i = 0x7f;
-    u32 *word = DDS3_GBWK->eventFlags;
+INCLUDE_RODATA(const s32, "model/mdlEffect", D_0053A798);
 
-    do {
-        i -= 1;
-        *word = 0;
-        word += 1;
-    } while (i >= 0);
-}
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F648);
 
-void evtBitAllOff_FieldDebug(void) {
-    s32 i = 0;
-    do {
-        evtBitOff(i++);
-    } while (i < 0xC00);
-    i = 0xD00;
-    do {
-        evtBitOff(i++);
-    } while (i < 0x1000);
-}
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F650);
 
-/* Signed flag indices need a bias before arithmetic right shift divides by 32. */
-void evtBitOn(s32 flag) {
-    s32 adjustedFlag = (flag < 0) ? flag + 0x1f : flag;
-    DDS3_GBWK->eventFlags[adjustedFlag >> 5] |= 1 << flag;
-}
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F658);
 
-void evtBitOff(s32 flag) {
-    s32 adjustedFlag = (flag < 0) ? flag + 0x1f : flag;
-    DDS3_GBWK->eventFlags[adjustedFlag >> 5] &= ~(1 << flag);
-}
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F660);
 
-s32 evtBitCheck(s32 flag) {
-    s32 adjustedFlag = (flag < 0) ? flag + 0x1f : flag;
-    return (((s32)DDS3_GBWK->eventFlags[adjustedFlag >> 5] >> flag) & 1);
-}
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F668);
 
-INCLUDE_RODATA(const s32, "code_001DEA58", D_0053A788);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F670);
 
-INCLUDE_RODATA(const s32, "code_001DEA58", D_0053A798);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F678);
 
-s32 dds3BitEditorProcess(void) {
-    char glyph[2];
-    sdfDrawTag_t *packets;
-    s32 column, row, style, result;
-    s32 cellWidth = 0xC0, cellHeight = 0x60;
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F680);
 
-    /* The DDS1 twin at 0021F664..74 copies this space/NUL template as a
-     * block too; see DDS docs/idioms.md, "Bit-editor glyph template block copy". */
-    memcpy(glyph, D_0054F738, sizeof(glyph));
-    packets = (sdfDrawTag_t *)sdfGrAllocPacketBuff(sizeof(*packets));
-    sdfDrawTagInit(packets);
-    dds3ConsPanelTagLink(packets, 50, 50, 23, 20);
-    sdfDrawTagLink(packets, (u32)sdfDevPrintf(
-        0x7320, 0x7A90, 0xFF0000, 0, "BitEditor"));
-    if (evtBitCheck((D_0054F728 + dds3BitEditorTable2) * 16 + dds3BitEditorTable)) {
-        sdfDrawTagLink(packets, (u32)sdfDevPrintf(
-            0x7AA0, 0x7A90, 0xFF0000, 7, "%04X = ON",
-            (D_0054F728 + dds3BitEditorTable2) * 16 + dds3BitEditorTable));
-    } else {
-        sdfDrawTagLink(packets, (u32)sdfDevPrintf(
-            0x7AA0, 0x7A90, 0xFF0000, 7, "%04X = OFF",
-            (D_0054F728 + dds3BitEditorTable2) * 16 + dds3BitEditorTable));
-    }
-    for (column = 0; column < 16; column++) {
-        style = dds3BitEditorTable == column ? 14 : 7;
-        sdfDrawTagLink(packets, (u32)sdfDevPrintf(
-            0x7320 + (column + 6) * cellWidth, 0x7A90 + cellHeight * 2,
-            0xFF0000, style, D_0054F740, column));
-    }
-    for (row = 0; row < 16; row++) {
-        style = dds3BitEditorTable2 == row ? 14 : 7;
-        sdfDrawTagLink(packets, (u32)sdfDevPrintf(
-            0x73E0, 0x7A90 + (row + 3) * cellHeight, 0xFF0000,
-            style, D_0054F748, (D_0054F728 + row) * 16));
-        for (column = 0; column < 16; column++) {
-            if (evtBitCheck((D_0054F728 + row) * 16 + column)) {
-                glyph[0] = 'O';
-                style = dds3BitEditorTable == column || dds3BitEditorTable2 == row ? 6 : 0;
-            } else {
-                glyph[0] = '+';
-                style = dds3BitEditorTable == column || dds3BitEditorTable2 == row ? 14 : 8;
-            }
-            if (dds3BitEditorTable == column && dds3BitEditorTable2 == row) {
-                style = 4;
-            }
-            sdfDrawTagLink(packets, (u32)sdfDevPrintf(
-                0x7320 + (column + 6) * cellWidth,
-                0x7A90 + (row + 3) * cellHeight, 0xFF0000, style, glyph));
-        }
-    }
-    { sdfGrOt_t *ot = &sdfGrOtTable[81]; ((mdlOtRegFunc_t)ot->regFunc)(ot, packets); }
-    if ((dds3PadBitTable[24] & 2) && D_0054F728 > 0) {
-        D_0054F728 -= 16;
-        if (D_0054F728 < 0) D_0054F728 = 0;
-    }
-    if (dds3PadBitTable[26] & 2) {
-        if (D_0054F728 + 16 < 256) {
-            if (D_0054F728 + 32 > 256) D_0054F728 = 240;
-            else D_0054F728 += 16;
-        }
-    }
-    result = dds3SelectMenu(1, 16, 256, 16, 16, NULL,
-        &D_0054F728, &dds3BitEditorTable, &dds3BitEditorTable2);
-    if (result == -1) return -1;
-    if (result == 1) {
-        if (evtBitCheck((D_0054F728 + dds3BitEditorTable2) * 16 + dds3BitEditorTable)) {
-            evtBitOff((D_0054F728 + dds3BitEditorTable2) * 16 + dds3BitEditorTable);
-        } else {
-            evtBitOn((D_0054F728 + dds3BitEditorTable2) * 16 + dds3BitEditorTable);
-        }
-    }
-    return 0;
-}
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F648);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F688);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F650);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F690);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F658);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F698);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F660);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6A0);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F668);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6A8);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F670);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6B0);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F678);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6B8);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F680);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6C0);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F688);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6C8);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F690);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6D0);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F698);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6D8);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F6A0);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6E0);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F6A8);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6E8);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F6B0);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6F0);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F6B8);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6F8);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F6C0);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F700);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F6C8);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F708);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F6D0);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F710);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F6D8);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F718);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F6E0);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F720);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F6E8);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F728);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F6F0);
+INCLUDE_SDATA(const s32, "model/mdlEffect", dds3BitEditorTable);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F6F8);
+INCLUDE_SDATA(const s32, "model/mdlEffect", dds3BitEditorTable2);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F700);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F734);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F708);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F738);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F710);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F740);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F718);
+INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F748);
 
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F720);
-
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F728);
-
-INCLUDE_SDATA(const s32, "code_001DEA58", dds3BitEditorTable);
-
-INCLUDE_SDATA(const s32, "code_001DEA58", dds3BitEditorTable2);
-
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F734);
-
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F738);
-
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F740);
-
-INCLUDE_SDATA(const s32, "code_001DEA58", D_0054F748);
-
-INCLUDE_SDATA(const s32, "code_001DEA58", evtNextEventNo);
+INCLUDE_SDATA(const s32, "model/mdlEffect", evtNextEventNo);
 
