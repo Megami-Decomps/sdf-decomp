@@ -67,7 +67,7 @@ typedef struct EffRandState EffRandState;
 
 #define EFF_SCATTER_NEUTRAL_COLOR 0x80808080
 
-#define EFF_SCATTER_RIBBON_TURN 6.2831850051879883f
+#define EFF_SCATTER_FULL_TURN 6.2831852f
 
 #define EFF_SCATTER_DEGREES_TO_RADIANS 0.017453292f
 
@@ -885,7 +885,6 @@ f32 *dds3WhirlwindPolyListGetUV(PcpScatterDraw *object, s32 particleIndex);
 #define EFF_SCATTER_RESOURCE_BLOCK 1
 #define EFF_SCATTER_CHILD_BLOCK 2
 #define EFF_SCATTER_RGB_MASK 0xFFFFFF
-#define EFF_SCATTER_RADIAL_TURN 6.2831852f
 #define EFF_SCATTER_HALF_TURN 3.14159265f
 #define EFF_SCATTER_HALF_SEGMENT 0.5f
 #define EFF_PARAM_WORK_KIND_EXTENDED_WORK_WITH_MATRIX_CALLBACK 6
@@ -911,7 +910,7 @@ PcpScatterRadialWork *effPCPHamaCardSpiralCreate(params, resource, particleParam
     work = (PcpScatterRadialWork *)sdfMemLock(handle);
     work->particles = (PcpScatterRadialParticle *)(work + 1);
     work->params = *params;
-    work->color = 0x80808080;
+    work->color = EFF_SCATTER_NEUTRAL_COLOR;
     work->allocation = handle;
     work->scale = 1.0f;
     work->duplicatedHandles = NULL;
@@ -1021,7 +1020,7 @@ void effPCPHamaCardSpiralPartInit(PcpScatterRadialWork *work, u32 index) {
     if (segments == 0) {
         segments = 1;
     }
-    angleStep = EFF_SCATTER_RADIAL_TURN / segments;
+    angleStep = EFF_SCATTER_FULL_TURN / segments;
     particle->angle = angleStep * (index % segments) + angleStep * EFF_SCATTER_HALF_SEGMENT * dds3GetRandFloatA(dds3EffectBase);
     jitter = work->params.radiusJitter;
     particle->radius = work->params.startRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
@@ -1660,7 +1659,7 @@ void effPCPHamaCardScatterPartInit(PcpScatterRibbonWork *work, s32 index)
     particle->tiltHalfAngle = rightAngle;
     particle->tiltAngle = diagonalAngle;
     particle->tiltStep = tiltStep;
-    particle->unk1C = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_RIBBON_TURN;
+    particle->unk1C = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_FULL_TURN;
     particle->radius = EFF_SCATTER_INITIAL_RIBBON_RADIUS;
 
     direction[0] = (dds3GetRandFloatA(dds3EffectBase) - EFF_SCATTER_RANDOM_MIDPOINT) * EFF_SCATTER_RANDOM_SPAN;
@@ -2694,7 +2693,7 @@ void effPCPWwSpherePolyPartInit(PcpScatterPlainInstance *work, s32 index) {
 
     ring = &work->particles[index];
     count = work->scatterObject->vectorsPerParticle >> 1;
-    angle = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_RADIAL_TURN;
+    angle = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_FULL_TURN;
     jitter = work->params.angleStepJitter;
     angleStep = work->params.angleStepBase * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) / (f32)count;
     jitter = work->params.radiusJitter;
@@ -2702,9 +2701,9 @@ void effPCPWwSpherePolyPartInit(PcpScatterPlainInstance *work, s32 index) {
     jitter = work->params.heightJitter;
     height = work->params.heightBase * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     /* Euler samples use the retail constant's lower-rounded full turn. */
-    ring->rot[0] = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_RIBBON_TURN;
-    ring->rot[1] = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_RIBBON_TURN;
-    ring->rot[2] = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_RIBBON_TURN;
+    ring->rot[0] = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_FULL_TURN;
+    ring->rot[1] = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_FULL_TURN;
+    ring->rot[2] = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_FULL_TURN;
     ring->angle = angle;
     ring->radius = radius;
     ring->height = height;
@@ -2861,7 +2860,7 @@ PcpScatterDraw *dds3WhirlwindPolyListCreate(u32 count, u32 pairs) {
     object->vertexColors = (u32 *)cursor;
     cursor += vectors * 4;
     object->colors = (u32 *)cursor;
-    object->color = 0x80808080;
+    object->color = EFF_SCATTER_NEUTRAL_COLOR;
     object->vectorsPerParticle = vectors;
     object->packetQueueIndex = 1;
     object->particleCount = count;
