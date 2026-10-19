@@ -1,5 +1,6 @@
 #include "common.h"
 #include "ps2asm.h"
+#include "sdf_resource.h"
 
 struct EffPacketParams;
 struct EffRandState;
@@ -45,7 +46,6 @@ typedef union sdfMatUvwParm_t sdfMatUvwParm_t;
 typedef struct sdfTexPacket_t sdfTexPacket_t;
 typedef struct sdfGsMemSlice_t sdfGsMemSlice_t;
 typedef struct sdfTexHandle_t sdfTexHandle_t;
-typedef struct sdfMat_t sdfMat_t;
 typedef struct sdfMemHandle_t sdfMemHandle_t;
 typedef struct EffRingColorSlot EffRingColorSlot;
 typedef struct EffRingParticle EffRingParticle;
@@ -234,27 +234,6 @@ struct sdfTexHandle_t {
     u8 *monoClutData; /* 0x3C: lazily generated weighted-RGB intensity bytes. */
 };
 
-struct sdfMat_t {
-    u32 id;
-    u16 flags;
-    u8 duty; /* 0x06: pending state-group changes for the two packets */
-    u8 pad;
-    struct sdfMatPacket_t *packet[2]; /* 0x08: owned 0xA0-byte draw entries */
-    u32 ambient; /* 0x10: first word set by primary-state updates */
-    u32 diffuse; /* 0x14: second word set by primary-state updates */
-    u32 multiTexDiffuse; /* 0x18 */
-    f32 constant; /* 0x1C: interpolated primary-state float */
-    u32 specular; /* 0x20 */
-    u32 specularParm;
-    u32 refmap; /* 0x28: retained as raw bits */
-    sdfTexHandle_t *texHandle;
-    sdfTexHandle_t *multiTexHandle; /* 0x30 */
-    u32 multiTexMethod;       /* 0x34: secondary packet and palette selector */
-    sdfMatUvwParm_t *uvwParm; /* 0x38 */
-    sdfMatUvwParm_t *multiTexUvwParm; /* 0x3C */
-    f32 fdBias; /* 0x40 */
-    f32 fdSoften; /* 0x44 */
-};
 
 struct sdfMemHandle_t;
 
