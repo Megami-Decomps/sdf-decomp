@@ -11,11 +11,7 @@
 
 typedef struct sdfChipPageInfo_tag sdfChipPageInfo_tag;
 typedef struct sdfChipCB_tag sdfChipCB_tag;
-typedef struct sdfMemHandle_t sdfMemHandle_t;
-typedef struct sdfGsMemSlice_t sdfGsMemSlice_t;
-typedef struct sdfTexHandle_t sdfTexHandle_t;
 typedef struct sdfTexPacket_t sdfTexPacket_t;
-typedef struct sdfDrawTag_t sdfDrawTag_t;
 typedef struct sdfPreDrawTag_t sdfPreDrawTag_t;
 typedef struct sdfMatUvwParm_t sdfMatUvwParm_t;
 typedef struct sdfMatPacket_t sdfMatPacket_t;
@@ -112,16 +108,6 @@ typedef struct
     s32 severalAllocCount[7];
 } sdfChipInfo_t;
 
-/* sdfMem: a doubly linked list over one arena. A block's size is the next
- * handle's ptr minus its own, so the list always ends with a sentinel. */
-struct sdfMemHandle_t
-{
-    sdfMemHandle_t *prev;
-    sdfMemHandle_t *next;
-    void *ptr;
-    u16 stat; /* sdf_mem_stat; sdfMemGetType returns it */
-    u16 mlock;
-};
 
 /* sdfMemHandle_t.stat. sdfMemAllocDirect takes the first FREE handle, stops at
  * the END sentinel, and stamps the one it took USED; sdfMemFreeDirect puts it
@@ -163,47 +149,7 @@ typedef struct
     s32 freeHandleCount;
 } sdfMemInfo_t;
 
-/* GS local memory, allocated in the same list-of-slices shape as sdfMem. */
-struct sdfGsMemSlice_t
-{
-    sdfGsMemSlice_t *prev;
-    sdfGsMemSlice_t *next;
-    s32 type; /* 0 free */
-    u32 addr;
-    s32 size;
-    s16 w;
-    s16 h;
-    /* The IDB says u32; retail loads it with lw in sdfSetLoadImage, so s32. */
-    s32 pixelFormat;
-};
 
-struct sdfTexHandle_t
-{
-    sdfTexHandle_t *prev;
-    sdfTexHandle_t *next;
-    sdfTexHandle_t *origin; /* unconfirmed */
-    s16 width;
-    s16 height;
-    sdfGsMemSlice_t *pixelGsHandle;
-    sdfGsMemSlice_t *clutGsHandle;
-    u8 numOfCLUT;
-    u8 CLUTFormat;
-    u8 pixelFormat;
-    u8 numOfMipmap;
-    u16 mipmapParam;  /* unconfirmed */
-    u8 flags;         /* unconfirmed */
-    u8 texWrapMode;   /* unconfirmed */
-    u32 texId;        /* unconfirmed */
-    u32 clutId;       /* unconfirmed */
-    sdfTexPacket_t *packet;
-    sdfTexPacket_t *packetCtx2; /* unconfirmed */
-    void *clutData;
-    u32 clutDataSize;
-    u32 clutColor;
-    /* The intensity table sdfTexSetMonoClut derives from the CLUT, allocated
-     * on first use and written a byte per entry. */
-    u8 *monoClutData;
-};
 
 struct sdfTexPacket_t
 {
@@ -213,18 +159,6 @@ struct sdfTexPacket_t
     sdfGrTagStdReg_t clamp;
 };
 
-struct sdfDrawTag_t
-{
-    sdfDrawTag_t *next;
-    sdfGrPacketHeader_t *head;
-    sdfGrPacketHeader_t *tail;
-    /* Sort key. sdfDrawTagInit sets it to 0xFFFF as an integer, so f32 is
-     * the one field type here not pinned by the code. */
-    f32 z;
-    struct sdf3DLightParallelPacket_t *lightPacket;
-    struct sdf3DFogPacket_t *fogPacket;
-    void *texPacket[2];
-};
 
 /* A callback sdfGrDrawFrame runs before it sends the chain. */
 struct sdfPreDrawHook_t

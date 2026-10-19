@@ -1,5 +1,6 @@
 #include "common.h"
 #include "sdf_types.h"
+#include "sdf_resource.h"
 
 struct SdfPacketPatchLink;
 
@@ -64,17 +65,6 @@ typedef struct sdfLoadImagePacket_t {
     u64 finishRegister;
 } sdfLoadImagePacket_t;
 
-/* Native VRAM range descriptor (0x1C), shared by textures, graph buffers and streams. */
-typedef struct sdfGsMemSlice_t {
-    struct sdfGsMemSlice_t *prev; /* 0x00 */
-    struct sdfGsMemSlice_t *next; /* 0x04 */
-    u32 type;                   /* 0x08: known categories above; unknown values remain valid */
-    u32 addr;                   /* 0x0C: VRAM offset in 32-bit words */
-    s32 size;                   /* 0x10: range length in 32-bit words */
-    s16 w;                      /* 0x14 */
-    s16 h;                      /* 0x16 */
-    s32 pixelFormat;            /* 0x18: retail loads it with lw, so signed */
-} sdfGsMemSlice_t;
 
 /* Graph target: two color buffers followed by the auxiliary/depth buffer (0x14). */
 typedef struct sdfGrFrameSet_t {
@@ -86,16 +76,6 @@ typedef struct sdfGrFrameSet_t {
     sdfGsMemSlice_t *buffers[3];
 } sdfGrFrameSet_t;
 
-/* DMA packet list cursors and endpoints (0x20); DDS1/2 game/code_002D33C8/0032C278.c. */
-typedef struct sdfDrawTag_t {
-    struct sdfDrawTag_t *next; /* CPU link between lists; head/tail are DMA addresses. */
-    u32 head;
-    u32 tail;
-    u32 z;
-    u32 lightPacket; /* Optional first DMA reference prefix. */
-    u32 fogPacket;   /* Optional second DMA reference prefix. */
-    u32 texPacket[2];
-} sdfDrawTag_t;
 
 void sdfDrawTagLink2(struct sdfDrawTag_t *list, u32 packetAddress,
                           u32 rangeTailAddress);

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "ps2asm.h"
 #include "sdf_lighting.h"
+#include "sdf_resource.h"
 
 struct SdfPadEntry;
 
@@ -88,43 +89,7 @@ typedef struct sdfTexPacket_t {
     u64 clampRegister; /* GS CLAMP_1/CLAMP_2 register selector. */
 } sdfTexPacket_t;
 
-/* Native VRAM range descriptor (0x1C), shared by textures, graph buffers and streams. */
-typedef struct sdfGsMemSlice_t {
-    struct sdfGsMemSlice_t *prev; /* 0x00 */
-    struct sdfGsMemSlice_t *next; /* 0x04 */
-    u32 type;                   /* 0x08: known categories above; unknown values remain valid */
-    u32 addr;                   /* 0x0C: VRAM offset in 32-bit words */
-    s32 size;                   /* 0x10: range length in 32-bit words */
-    s16 w;                      /* 0x14 */
-    s16 h;                      /* 0x16 */
-    s32 pixelFormat;            /* 0x18: retail loads it with lw, so signed */
-} sdfGsMemSlice_t;
 
-/* Linked texture and its two buffers/resources (0x40); DDS1/2 sdf/sdfTex.c and game texture units. */
-typedef struct sdfTexHandle_t {
-    struct sdfTexHandle_t *prev;
-    struct sdfTexHandle_t *next;
-    struct sdfTexHandle_t *origin;
-    s16 width;
-    s16 height;
-    sdfGsMemSlice_t *pixelGsHandle;
-    sdfGsMemSlice_t *clutGsHandle;
-    u8 numOfCLUT;
-    u8 CLUTFormat;
-    u8 pixelFormat;
-    u8 numOfMipmap;
-    u16 mipmapParam; /* Packed GS TEX1 L/K parameters. */
-    u8 flags;
-    SdfTextureClampMode texWrapMode; /* 0x1F: 0xFF leaves GS CLAMP state zero; otherwise low nibble is copied. */
-    s32 texId;
-    s32 clutId;
-    sdfTexPacket_t *packet;
-    sdfTexPacket_t *packetCtx2;
-    u8 *clutData; /* 0x30: retained copy of the texture's palette colors. */
-    s32 clutDataSize; /* 0x34: palette byte count from sdfTexGetPaletteByteSize. */
-    s32 clutColor;
-    u8 *monoClutData; /* 0x3C: lazily generated weighted-RGB intensity bytes. */
-} sdfTexHandle_t;
 
 extern sdfTexHandle_t *D_005518B8;
 
