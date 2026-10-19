@@ -316,21 +316,23 @@ extern void dds3PrimDebugTextBoxRGB(void *, s32, s32, s32, u32, s32);
 
 extern void *dds3PrimLine3D(s32, s32, s32, s32);
 
-/* SDK matrix-column gather: EE GCC cannot express the MMI pack from C. */
-typedef enum MdlResourceKind {
-    MDL_RESOURCE_BILLBOARD = 0,
-    MDL_RESOURCE_EFFECT = 1,
-    MDL_RESOURCE_TRACK_POLY = 2,
-    MDL_RESOURCE_OBJECT = 3
-} MdlResourceKind;
+/* mdlEffectResrc_t.type: which effect a controller drives. */
+typedef enum dds3ModelEffectType {
+    dds3ModelEffectType_P2A = 0,
+    dds3ModelEffectType_D3P = 1,
+    dds3ModelEffectType_TRACK = 2,
+    dds3ModelEffectType_IPU = 3
+} dds3ModelEffectType;
 
-typedef enum MdlViewerRecordKind {
-    MDL_VIEWER_RECORD_KIND_BILLBOARD_PART = 1,
-    MDL_VIEWER_RECORD_KIND_EFFECT_PART = 2,
-    MDL_VIEWER_RECORD_KIND_TRACK_POLY = 3,
-    MDL_VIEWER_RECORD_KIND_STREAM = 4,
-    MDL_VIEWER_RECORD_KIND_OBJECT_PART = 5
-} MdlViewerRecordKind;
+/* mdlPibItem_t.kind, as mdlCreateEffect dispatches on it. */
+typedef enum PIB_CHUNK_TYPE {
+    PIB_CHUNK_TYPE_P2A = 1,
+    PIB_CHUNK_TYPE_D3P = 2,
+    PIB_CHUNK_TYPE_TRACK = 3,
+    PIB_CHUNK_TYPE_BLUR = 4,
+    IPU = 5,
+    PIB_CHUNK_TYPE_END = 0xFFFF
+} PIB_CHUNK_TYPE;
 
 extern char D_0054F648[];
 
@@ -466,12 +468,12 @@ u16 mdlPibGetMotionCount(const mdlPibItem_t *record) {
 }
 
 void mdlPibDrawEffectInfo(sdfDrawTag_t *packetList, s32 x, s32 y, s32 depth, s32 textStyle, mdlPibItem_t *record) {
-    if (record->kind >= MDL_VIEWER_RECORD_KIND_BILLBOARD_PART &&
-        record->kind <= MDL_VIEWER_RECORD_KIND_OBJECT_PART) {
+    if (record->kind >= PIB_CHUNK_TYPE_P2A &&
+        record->kind <= IPU) {
         switch (record->kind) {
-        case MDL_VIEWER_RECORD_KIND_BILLBOARD_PART:
-        case MDL_VIEWER_RECORD_KIND_EFFECT_PART: {
-            char *label = record->kind == MDL_VIEWER_RECORD_KIND_BILLBOARD_PART ? D_0054F648 : D_0054F650;
+        case PIB_CHUNK_TYPE_P2A:
+        case PIB_CHUNK_TYPE_D3P: {
+            char *label = record->kind == PIB_CHUNK_TYPE_P2A ? D_0054F648 : D_0054F650;
 
             if (record->parameter.part.count == 1) {
                 sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(x, y, depth, textStyle,
@@ -485,17 +487,17 @@ void mdlPibDrawEffectInfo(sdfDrawTag_t *packetList, s32 x, s32 y, s32 depth, s32
                                                                 record->parameter.part.partIndex)));
             return;
         }
-        case MDL_VIEWER_RECORD_KIND_TRACK_POLY:
+        case PIB_CHUNK_TYPE_TRACK:
             sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(x, y, depth, textStyle,
                                                                 "TRACK %d~%d", record->payload.word,
                                                                 record->parameter.word)));
             return;
-        case MDL_VIEWER_RECORD_KIND_STREAM:
+        case PIB_CHUNK_TYPE_BLUR:
             sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(x, y, depth, textStyle,
                                                                 "BLUR %d,%d", record->payload.stream.selectorA,
                                                                 record->payload.stream.selectorB)));
             return;
-        case MDL_VIEWER_RECORD_KIND_OBJECT_PART:
+        case IPU:
             sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(x, y, depth, textStyle,
                                                                 "IPU %08x", record->payload.word)));
             return;
@@ -750,7 +752,7 @@ void mdlCreateEffect_TRACK(mdlObj_t *owner, mdlPibTrack_t *record, s32 motionSlo
     effectParams.gradientColors[1] = record->gradientColors[1];
     effectParams.gradientColors[2] = record->gradientColors[2];
     effectParams.gradientColors[3] = record->gradientColors[3];
-    resourceItem = mdlCreateEffectCtrlr(owner, MDL_RESOURCE_TRACK_POLY, motionSlotIndex);
+    resourceItem = mdlCreateEffectCtrlr(owner, dds3ModelEffectType_TRACK, motionSlotIndex);
     resourceItem->payload.part.track = Eff_ModelTrackPolyCreate(&effectParams);
 }
 
@@ -772,7 +774,7 @@ void mdlCreateEffect_IPU(mdlObj_t *owner, mdlPibIpu_t *entryRecord, s32 motionSl
                 mdlEffectResrc_t *resourceItem;
                 u8 *attributes;
                 object->inUse = 1;
-                resourceItem = mdlCreateEffectCtrlr(owner, MDL_RESOURCE_OBJECT, motionSlotIndex);
+                resourceItem = mdlCreateEffectCtrlr(owner, dds3ModelEffectType_IPU, motionSlotIndex);
                 /* Fill the object and resource data before attaching the owner. */
                 resourceItem->payload.object.object = object;
                 attributes = resourceItem->payload.object.attributes;
@@ -804,19 +806,19 @@ void mdlDrawEffect_IPU(mdlEffectResrc_t *item) {
 /* Dispatch the five record kinds, retaining the game's native return behavior. */
 void mdlCreateEffect(mdlObj_t *owner, mdlPibItem_t *record, s32 motionSlotIndex) {
     switch (record->kind) {
-    case MDL_VIEWER_RECORD_KIND_BILLBOARD_PART:
-        mdlCreateEffect_P2A_D3P(owner, (mdlPibEffect_t *)record, motionSlotIndex, MDL_RESOURCE_BILLBOARD, mdlEffectDup_P2A);
+    case PIB_CHUNK_TYPE_P2A:
+        mdlCreateEffect_P2A_D3P(owner, (mdlPibEffect_t *)record, motionSlotIndex, dds3ModelEffectType_P2A, mdlEffectDup_P2A);
         return;
-    case MDL_VIEWER_RECORD_KIND_EFFECT_PART:
-        mdlCreateEffect_P2A_D3P(owner, (mdlPibEffect_t *)record, motionSlotIndex, MDL_RESOURCE_EFFECT, mdlEffectDup_D3P);
+    case PIB_CHUNK_TYPE_D3P:
+        mdlCreateEffect_P2A_D3P(owner, (mdlPibEffect_t *)record, motionSlotIndex, dds3ModelEffectType_D3P, mdlEffectDup_D3P);
         return;
-    case MDL_VIEWER_RECORD_KIND_TRACK_POLY:
+    case PIB_CHUNK_TYPE_TRACK:
         mdlCreateEffect_TRACK(owner, (mdlPibTrack_t *)record, motionSlotIndex);
         return;
-    case MDL_VIEWER_RECORD_KIND_STREAM:
+    case PIB_CHUNK_TYPE_BLUR:
         mdlCreateEffect_BLUR(owner, record);
         return;
-    case MDL_VIEWER_RECORD_KIND_OBJECT_PART:
+    case IPU:
         mdlCreateEffect_IPU(owner, (mdlPibIpu_t *)record, motionSlotIndex);
         break;
     }
@@ -837,13 +839,13 @@ void mdlGenEffect(mdlObj_t *owner, s32 recordId, s32 motionSlotIndex) {
 /* Release billboard, effect, or tracked-poly handles when applicable, then always free the list item. */
 void mdlFreeEffect(mdlEffectResrc_t *item) {
     switch (item->type) {
-    case MDL_RESOURCE_BILLBOARD:
+    case dds3ModelEffectType_P2A:
         dds3BillboardDelete((mdlBillboard_t *)item->payload.part.instance);
         break;
-    case MDL_RESOURCE_EFFECT:
+    case dds3ModelEffectType_D3P:
         dds3EffectDelete((mdlEffect_t *)item->payload.part.instance);
         break;
-    case MDL_RESOURCE_TRACK_POLY:
+    case dds3ModelEffectType_TRACK:
         Eff_ModelTrackPolyDelete(item->payload.part.track);
         break;
     }
@@ -892,22 +894,22 @@ void mdlLinkEffect(mdlObj_t *owner, mdlEffectResrc_t *anchorRecord) {
     void *resourceInstance;
 
     switch (anchorRecord->type) {
-    case MDL_RESOURCE_BILLBOARD:
+    case dds3ModelEffectType_P2A:
         mdlEffect_P2A_D3P_GetPos(model, anchorRecord, position);
         resourceInstance = anchorRecord->payload.part.instance;
         dds3BillboardSetPosition(resourceInstance, position);
         dds3BillboardDraw((mdlBillboard_t *)resourceInstance);
         break;
-    case MDL_RESOURCE_EFFECT:
+    case dds3ModelEffectType_D3P:
         mdlEffect_P2A_D3P_GetPos(model, anchorRecord, position);
         resourceInstance = anchorRecord->payload.part.instance;
         dds3EffectSetPosition((mdlEffect_t *)resourceInstance, position);
         dds3EffectDraw((mdlEffect_t *)resourceInstance);
         break;
-    case MDL_RESOURCE_TRACK_POLY:
+    case dds3ModelEffectType_TRACK:
         Eff_ModelTrackPolyDraw(anchorRecord->payload.part.track);
         break;
-    case MDL_RESOURCE_OBJECT:
+    case dds3ModelEffectType_IPU:
         mdlDrawEffect_IPU(anchorRecord);
         break;
     }
@@ -916,10 +918,10 @@ void mdlLinkEffect(mdlObj_t *owner, mdlEffectResrc_t *anchorRecord) {
 /* Set billboard/effect color; other controller kinds have no RGBA dispatch. */
 void mdlSetEffectColorSub(mdlObj_t *owner, mdlEffectResrc_t *item, u32 color) {
     switch (item->type) {
-    case MDL_RESOURCE_BILLBOARD:
+    case dds3ModelEffectType_P2A:
         dds3BillboardSetRGBA((mdlBillboard_t *)item->payload.part.instance, color);
         return;
-    case MDL_RESOURCE_EFFECT:
+    case dds3ModelEffectType_D3P:
         dds3EffectSetRGBA((mdlEffect_t *)item->payload.part.instance, color);
         break;
     }
@@ -928,10 +930,10 @@ void mdlSetEffectColorSub(mdlObj_t *owner, mdlEffectResrc_t *item, u32 color) {
 /* Set billboard/effect scale; other controller kinds have no scale dispatch. */
 void mdlSetEffectScaleSub(mdlObj_t *owner, mdlEffectResrc_t *item, float amount) {
     switch (item->type) {
-    case MDL_RESOURCE_BILLBOARD:
+    case dds3ModelEffectType_P2A:
         dds3BillboardSetScale((struct mdlBillboard_t *)item->payload.part.instance, amount, amount);
         return;
-    case MDL_RESOURCE_EFFECT:
+    case dds3ModelEffectType_D3P:
         dds3EffectSetScale((mdlEffect_t *)item->payload.part.instance, amount);
         break;
     }
