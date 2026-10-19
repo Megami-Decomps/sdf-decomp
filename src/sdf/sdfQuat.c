@@ -1,0 +1,257 @@
+#include "fpu.h"
+#include "common.h"
+#include "libsdf.h"
+#include "ps2asm.h"
+
+f32 sdfSin(f32 aRad);
+
+enum sdf_dev_state {
+    SDF_DEV_STATE_OPENING = 2,
+    SDF_DEV_STATE_SEEKING = 3,
+    SDF_DEV_STATE_READING = 4,
+    SDF_DEV_STATE_WRITING = 5,
+    SDF_DEV_STATE_CLOSING = 6,
+    SDF_DEV_STATE_ACTIVE = 7,
+    SDF_DEV_STATE_COMPLETE = 8,
+    SDF_DEV_STATE_INACTIVE = 9
+};
+
+enum sdf_dev_operation {
+    SDF_DEV_OPERATION_NONE = 0,
+    SDF_DEV_OPERATION_OPEN_READ = 1,
+    SDF_DEV_OPERATION_OPEN_WRITE = 2,
+    SDF_DEV_OPERATION_SEEK = 3,
+    SDF_DEV_OPERATION_GET_SIZE = 4,
+    SDF_DEV_OPERATION_READ = 5,
+    SDF_DEV_OPERATION_WRITE = 6,
+    SDF_DEV_OPERATION_CLOSE = 7,
+    SDF_DEV_OPERATION_READ_BUFFER = 8,
+    SDF_DEV_OPERATION_WRITE_BUFFER = 9
+};
+
+enum sdf_tex_resource {
+    SDF_TEX_RESOURCE_FREE = 0,
+    SDF_TEX_RESOURCE_FRAME = 1,
+    SDF_TEX_RESOURCE_TEXTURE = 2,
+    SDF_TEX_RESOURCE_CLUT = 3,
+    SDF_TEX_RESOURCE_KNOWN_MODE_COUNT = 4
+};
+
+enum sdf_stream_output {
+    SDF_STREAM_OUTPUT_RGBA32 = 0,
+    SDF_STREAM_OUTPUT_RGBA16 = 1,
+    SDF_STREAM_OUTPUT_RGBA16_DITHERED = 2
+};
+
+enum sdf_stream_playback {
+    SDF_STREAM_PLAYBACK_INITIAL = 0,
+    SDF_STREAM_PLAYBACK_FIRST_COMPLETION = 1,
+    SDF_STREAM_PLAYBACK_CADENCED = 2
+};
+
+typedef union { f32 quaternion[4]; u16 monthDays[20]; } sdfMathConstants_t;
+
+extern sdfMathConstants_t D_00529BB0;
+
+extern f32 D_00529B90[4];
+
+extern f32 D_00529BA0[4];
+
+extern f32 D_00529620[4];
+
+extern s32 (*p2sdSmgBuf)(void);
+
+/* Return the input-signed complement of the sampled angle, not standard acos(x). * Magnitudes at or above one leave the angle magnitude at zero. */ f32 sdfAcos(f32 x);
+
+f32 sdfAtan2(f32 y, f32 x);
+
+f32 sdfCos(f32 aRad);
+
+/* vu0 routine: shared quaternion registers are the input/output interface. */
+void Mult(void)
+{
+    VU0_SEQ_MULT();
+}
+
+/* vu0 routine: the conjugate over the squared norm. */
+void Inverse(void)
+{
+    VU0_SEQ_INVERSE();
+}
+
+/* vu0 routine: normalize all four components of vf10. The IDB called this
+ * SDF_QUAT_INNERPRODUCT, which belongs to the dot product below. */
+void Normalize(void)
+{
+    VU0_SEQ_NORMALIZE();
+}
+
+/* vu0 routine: retail reduces (x*x)*(y*y) + z*z + w*w, not squared length. */
+f32 sdf_2C0510(void)
+{
+    f32 componentMetric;
+    VU0_SEQ_SDF_2_C0510(componentMetric);
+    return componentMetric;
+}
+
+/* vu0 routine: return the four-lane dot product of vf10 and vf11. */
+f32 SDF_QUAT_INNERPRODUCT(void)
+{
+    f32 dotProduct;
+    VU0_QUAT_DOT_VF10_VF11(dotProduct);
+    return dotProduct;
+}
+
+/* vf10 initially holds the axis; write the sine-scaled axis and cosine W. */
+void FromRotation(f32 angle)
+{
+    f32 halfAngle = angle * 0.5f;
+    f32 trigValue = sdfSin(halfAngle);
+    SDF_VU0_SCALEVECTOR_V0(trigValue);
+    trigValue = sdfCos(halfAngle);
+    VU0_SEQ_FROM_ROTATION(trigValue);
+}
+
+/* As above, but write the second VU quaternion register (vf11). */
+void FromRotation_B(f32 angle)
+{
+    f32 halfAngle = angle * 0.5f;
+    f32 trigValue = sdfSin(halfAngle);
+    SDF_VU0_SCALEVECTOR_B_V0(trigValue);
+    trigValue = sdfCos(halfAngle);
+    VU0_SEQ_FROM_ROTATION_B(trigValue);
+}
+
+/* vu0 routine: shared quaternion registers are the input/output interface. */
+void ToMatrix(void)
+{
+    VU0_SEQ_TO_MATRIX();
+}
+
+void FromEulerXYZ(f32 x, f32 y, f32 z);
+
+INCLUDE_ASM(const s32, "sdf/sdfQuat", FromEulerXYZ);
+
+void FromEuler(f32 x, f32 y, f32 z);
+
+INCLUDE_ASM(const s32, "sdf/sdfQuat", FromEuler);
+
+/* vu0 routine: compose pitch and offset-adjusted planar direction quaternions. */
+void LookAt(f32 xOffset, f32 yOffset) {
+    f32 input[4];
+    f32 quaternion[4];
+    f32 x;
+    f32 y;
+    f32 z;
+    f32 horizontalSquared;
+    f32 horizontalLength;
+    f32 s;
+    f32 t;
+    f32 offsetSquared;
+    f32 adjustedZ;
+    SDF_VU0_STOREVECTOR(input);
+    t = 0.0f;
+    x = -input[0];
+    y = input[1];
+    if (yOffset < t) {
+        y = -y;
+    }
+    z = input[2];
+    horizontalSquared = x * x + z * z;
+    if (horizontalSquared < 0.000001f) {
+        if (y < t) {
+            SDF_VU0_LOADVECTOR(D_00529B90);
+        } else {
+            SDF_VU0_LOADVECTOR(D_00529BA0);
+        }
+        return;
+    }
+    /* Pitch quaternion from the vertical and horizontal direction lengths. */
+    s = y * y;
+    horizontalLength = fsqrtf(horizontalSquared);
+    quaternion[1] = t;
+    quaternion[2] = t;
+    t = fsqrtf(horizontalSquared + s) + horizontalLength;
+    s = frsqrtf(1.0f, t * t + s);
+    quaternion[0] = y * s;
+    quaternion[3] = t * s;
+    SDF_VU0_LOADVECTOR(quaternion);
+    /* Yaw quaternion from the normalized, offset-adjusted XZ direction. */
+    s = 1.0f / horizontalLength;
+    x *= s;
+    z *= s;
+    adjustedZ = z + yOffset;
+    t = x + xOffset;
+    offsetSquared = t * t + adjustedZ * adjustedZ;
+    if (offsetSquared < 0.000001f) {
+        SDF_VU0_LOADVECTOR_B(D_00529BB0.quaternion);
+    } else {
+        s = frsqrtf(1.0f, offsetSquared);
+        quaternion[0] = 0.0f;
+        quaternion[1] = t * s;
+        quaternion[2] = 0.0f;
+        quaternion[3] = adjustedZ * s;
+        SDF_VU0_LOADVECTOR_B(quaternion);
+    }
+    Mult();
+}
+
+/* vu0 routine: blend vf10/vf11 along the shorter quaternion arc into vf10.
+ * blendAmount is used without clamping; the final step normalizes either blend. */
+void Slerp(f32 blendAmount) {
+    f32 dotProduct;
+    f32 firstWeight;
+    f32 secondWeight;
+    f32 sineAngle;
+    f32 angleBetween;
+    VU0_QUAT_DOT_VF10_VF11(dotProduct);
+    if (dotProduct < 0.0f) {
+        dotProduct = -dotProduct;
+        VU0_NEGATE_VF11_TO_VF12();
+    } else {
+        SDF_VU0_COPYVECTOR_B_TO_C();
+    }
+    firstWeight = 1.0f - blendAmount;
+    secondWeight = blendAmount;
+    /* Near-identical quaternions use linear weights; normalization still follows. */
+    if (dotProduct < 0.99899996f) {
+        angleBetween = sdfAcos(dotProduct);
+        sineAngle = sdfSin(angleBetween);
+        firstWeight = sdfSin(firstWeight * angleBetween) / sineAngle;
+        secondWeight = sdfSin(secondWeight * angleBetween) / sineAngle;
+    }
+    VU0_SET_WEIGHTS_VF2X_VF3X(firstWeight, secondWeight);
+    VU0_WEIGHTED_SUM_VF10_VF12();
+    Normalize();
+}
+
+/* vu0 routine: shared quaternion registers are the input/output interface. */
+void Lerp(f32 blendAmount)
+{
+    f32 dotProduct;
+    VU0_QUAT_DOT_VF10_VF11(dotProduct);
+    if (dotProduct < 0.0f) {
+        VU0_NEGATE_VF11_TO_VF12();
+    } else {
+        SDF_VU0_COPYVECTOR_B_TO_C();
+    }
+    {
+        f32 firstWeight = 1.0f - blendAmount;
+        VU0_SET_WEIGHTS_VF2X_VF3X(firstWeight, blendAmount);
+        VU0_WEIGHTED_SUM_VF10_VF12();
+    }
+    Normalize();
+}
+
+/* vu0 routine: shared quaternion registers are the input/output interface. */
+f32 EulerAngleAxisY(void)
+{
+    f32 rotatedZ;
+    f32 rotatedX;
+    ToMatrix();
+    /* PEXEW exchanges words 0 and 2: output 0 is Z, while output 1 is X. */
+    SDF_VU0_LOADVECTOR_BARRIER(D_00529620);
+    SDF_VU0_APPLYMATRIX_XYZ();
+    VU0_SEQ_EULER_ANGLE_AXIS_Y(rotatedZ, rotatedX);
+    return sdfAtan2(rotatedZ, rotatedX);
+}

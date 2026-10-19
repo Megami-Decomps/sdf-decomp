@@ -1,0 +1,612 @@
+#include "common.h"
+#include "ps2asm.h"
+
+enum {
+    SDF_TMX_MAGIC = 0x30584D54,
+    SDF_STREAM_CHUNK_BYTES = 0x4000,
+    SDF_STREAM_COMMAND_CREATE_STATE = 32,
+    SDF_STREAM_COMMAND_CONTROL = 33,
+    SDF_STREAM_COMMAND_READ = 34,
+    SDF_STREAM_COMMAND_RELEASE_STATE = 35,
+    SDF_IOP_MODULES_PER_GROUP = 2,
+    SDF_KEY_TREE_PATH_LIMIT = 32,
+    SDF_POOL_REBUILD_CHAIN = 0,
+    SDF_POOL_PUSH_FREE = 1
+};
+
+struct TMX_HEADER_t;
+
+struct sdfFileCmdHandle_t;
+
+struct SdfStreamReadRequest;
+
+struct SdfStreamState;
+
+/* Read the raw free-running count from EE timer 0. */
+extern u32 sdfGetRunTimeCountBase(void);
+
+/* Return the modulo-16-bit elapsed count from the EE timer 0 value. */
+extern u32 sdfGetRunTimeCount(u32 previous);
+
+/* Serialized byte consumed by the GS texture-state packet builder. */
+typedef u8 SdfTextureClampMode;
+
+/* Protocol IDs use distinct byte-sized storage codes in DevState. */
+typedef u8 SdfDevOperationCode;
+
+typedef s8 SdfDevStateCode;
+
+#define SDF_DEV_EVENT_INACTIVE 0
+
+#define SDF_DEV_EVENT_OPENED 2
+
+#define SDF_DEV_EVENT_SIZE_REPLY 4
+
+#define SDF_DEV_EVENT_READ_REPLY 5
+
+#define SDF_DEV_EVENT_CLOSED 7
+
+extern u8 D_00594940[];
+
+extern void StartThread();
+
+extern void SleepThread(void);
+
+extern char *mcModuleNames[];
+
+extern s32 sceSifLoadModule(const char *, s32, const char *);
+
+extern char *strcpy(char *, const char *);
+
+extern char *strcat(char *, const char *);
+
+extern void sceMcInit(void);
+
+/* Allocate a workspace sized by stackBytes, pass the thread entry to
+ * CreateThreadSimple, and return that function's result unchanged. */
+s32 sdfCreateThreadWithStack(void (*entryAddress)(), s32 stackBytes, s32 priority);
+
+/* Serialized texture-resource header; payload begins after this 0x40-byte prefix. */
+typedef struct TMX_HEADER_t {
+    u8 unk00;
+    u8 payloadOffsetFlags; /* 0x01: high nibble adds payload offset bytes; low bits stay opaque. */
+    u8 pad02[2];       /* 0x02 */
+    u32 byteCount;     /* 0x04 */
+    u32 magic;         /* 0x08 */
+    u8 pad0C[4];       /* 0x0C */
+    u8 paletteCount;   /* 0x10 */
+    u8 clutFormat;     /* 0x11 */
+    s16 width;         /* 0x12 */
+    s16 height;        /* 0x14 */
+    u8 pixelFormat;    /* 0x16 */
+    u8 maxMipLevel;    /* 0x17 */
+    u16 lodParameters; /* 0x18 */
+    u8 unk1A;          /* 0x1A */
+    SdfTextureClampMode clampMode; /* 0x1B: serialized GS clamp mode */
+    s32 resourceKey;   /* 0x1C */
+    s32 battleTextureSlot; /* 0x20: selects one of two battle-model texture headers */
+    u8 pad24[0x1C];    /* 0x24 */
+} TMX_HEADER_t;
+
+/* Complete 0x40-byte owner allocated by sdfFileCmdNewHandle. */
+typedef struct sdfFileCmdHandle_t {
+    struct sdfFileCmdHandle_t *next; /* 0x00 */
+    struct sdfFileCmdHandle_t *previous; /* 0x04 */
+    struct sdfFileCmdHandle_t *workerNext; /* 0x08 */
+    struct sdfFileCmdHandle_t *workerPrev; /* 0x0C */
+    char *resolvedPath; /* 0x10 */
+    u8 workerIndex; /* 0x14 */
+    SdfDevOperationCode operation; /* 0x15 */
+    SdfDevStateCode state; /* 0x16 */
+    u8 pad17; /* 0x17 */
+    s32 operationArg; /* 0x18 */
+    s32 requestExtra; /* 0x1C */
+    void *requestData; /* 0x20 */
+    s32 options; /* 0x24 */
+    s32 resourceId; /* 0x28 */
+    s32 result; /* 0x2C */
+    s32 transferred; /* 0x30 */
+    u8 pad34[4]; /* 0x34 */
+    void (*callback)(struct sdfFileCmdHandle_t *, s32, s32, s32, s32); /* 0x38 */
+    s32 callbackContext; /* 0x3C: opaque callback-context word */
+} sdfFileCmdHandle_t;
+
+s32 sdfFileCmdRead(sdfFileCmdHandle_t *state, void *data, s32 byteCount);
+
+s32 sdfFileCmdFree(sdfFileCmdHandle_t *state);
+
+s32 sdfFileCmdClearError(sdfFileCmdHandle_t *state);
+
+s32 sdfFileCmdClose(sdfFileCmdHandle_t *request);
+
+typedef struct SdfStreamReadRequest {
+    u8 opaque00[4];
+    s32 destinationAddress; /* Caller-provided address word in the read request. */
+    s32 byteCount;
+} SdfStreamReadRequest;
+
+typedef struct SdfStreamState {
+    sdfFileCmdHandle_t *deviceState;
+    s32 semaphore;
+    s32 readResult;
+    s32 remainingBytes;
+    u8 *destination; /* +0x10: current DMA destination; advanced per completed chunk. */
+    s32 transferredBytes;
+} SdfStreamState;
+
+extern SdfStreamState sdfFileRpcState;
+
+extern s32 sdfFileRpcBuf[];
+
+extern sdfFileCmdHandle_t *sdfFileCmdReadOpen(const char *path,
+                                          s32 (*callback)(sdfFileCmdHandle_t *, s32, s32, s32, s32),
+                                          s32 callbackContext);
+
+extern s32 sdfFileCmdFileSize();
+
+extern s32 WaitSema(s32);
+
+extern void FlushCache(s32);
+
+extern s32 SignalSema(s32);
+
+extern s32 sceSifSetDma(void *, s32);
+
+extern s32 sceSifDmaStat(s32);
+
+extern s32 GetThreadId(void);
+
+extern s32 sdfFileRpcThreadId;
+
+void SdfFileRpcServerThreadProc(void);
+
+/* One row per administrative mode. The entry receives the restore flag and
+ * mode data; destroy and cleanup return scheduler results. Each row is 12 bytes
+ * on the EE. */
+typedef struct Dds3AdminModeDispatch {
+    void (*entry)(s32 restoring, void *data);
+    s32 (*destroy)(void);
+    s32 (*cleanup)(void);
+} Dds3AdminModeDispatch;
+
+void sdfTmxSetHeader(TMX_HEADER_t *header, s32 width, s32 height, s32 depth, s32 paletteCount, s32 clutFormat);
+
+void sdfFileRpcContinueRead(void);
+
+s32 sdfFileRpcReadCallback(sdfFileCmdHandle_t *deviceState, s32 command, s32 sourceAddress,
+                  s32 byteCount, s32 callbackArg);
+
+s32 *sdfFileRpcHandler(u32 command, s32 request);
+
+void sdfStartFileRpcServer(void);
+
+void LoadMcModules(const char *prefix, s32 moduleGroup);
+
+void sdfTmxSetHeader(TMX_HEADER_t *header, s32 width, s32 height, s32 depth, s32 paletteCount, s32 clutFormat) {
+    memset(header, 0, sizeof(TMX_HEADER_t));
+    header->clutFormat = clutFormat;
+    header->width = width;
+    header->height = height;
+    header->pixelFormat = depth;
+    header->paletteCount = paletteCount;
+    header->magic = SDF_TMX_MAGIC;
+    header->unk00 = 2;
+}
+
+void sdfFileRpcContinueRead(void) {
+    s32 chunkBytes = sdfFileRpcState.remainingBytes;
+
+    if (chunkBytes > SDF_STREAM_CHUNK_BYTES) {
+        chunkBytes = SDF_STREAM_CHUNK_BYTES;
+    }
+    sdfFileCmdRead(sdfFileRpcState.deviceState, D_00594940, chunkBytes);
+}
+
+s32 sdfFileRpcReadCallback(sdfFileCmdHandle_t *deviceState, s32 command, s32 sourceAddress,
+                  s32 byteCount, s32 callbackArg) {
+    SdfStreamState *stream = &sdfFileRpcState;
+    s32 dmaId;
+    s32 timer;
+
+    switch (command) {
+    case SDF_DEV_EVENT_SIZE_REPLY:
+        stream->readResult = byteCount;
+        SignalSema(stream->semaphore);
+        break;
+    case SDF_DEV_EVENT_READ_REPLY: {
+        struct {
+            s32 source;
+            s32 destination;
+            s32 size;
+            s32 attributes;
+        } transfer;
+
+        FlushCache(0);
+        transfer.source = sourceAddress;
+        transfer.destination = (s32)stream->destination;
+        transfer.size = byteCount;
+        transfer.attributes = 0;
+        dmaId = sceSifSetDma(&transfer, 1);
+        while (sceSifDmaStat(dmaId) >= 0) {
+            timer = sdfGetRunTimeCountBase();
+            while ((s32)sdfGetRunTimeCount(timer) <= 0) {
+            }
+        }
+        timer = sdfGetRunTimeCountBase();
+        while ((s32)sdfGetRunTimeCount(timer) < 0x64) {
+        }
+        stream->destination += byteCount;
+        stream->transferredBytes += byteCount;
+        stream->remainingBytes -= byteCount;
+        if (stream->remainingBytes > 0) {
+            sdfFileRpcContinueRead();
+        } else {
+            SignalSema(stream->semaphore);
+        }
+        break;
+    }
+    case SDF_DEV_EVENT_OPENED:
+    case SDF_DEV_EVENT_CLOSED:
+        SignalSema(stream->semaphore);
+        break;
+    case SDF_DEV_EVENT_INACTIVE:
+        SignalSema(stream->semaphore);
+        break;
+    }
+    return 0;
+}
+
+s32 *sdfFileRpcHandler(u32 command, s32 request) {
+    SdfStreamState *state = &sdfFileRpcState;
+    sdfFileCmdHandle_t *deviceState;
+    switch (command) {
+    case SDF_STREAM_COMMAND_CREATE_STATE:
+        state->deviceState = sdfFileCmdReadOpen((const char *)request, sdfFileRpcReadCallback, 0);
+        if (state->deviceState != 0) {
+            WaitSema(state->semaphore);
+            deviceState = state->deviceState;
+            if (deviceState->result != 0) {
+                sdfFileCmdClearError(deviceState);
+                sdfFileCmdFree(state->deviceState);
+                state->deviceState = 0;
+                deviceState = 0;
+            }
+        } else {
+            deviceState = 0;
+        }
+        sdfFileRpcBuf[0] = (s32)deviceState;
+        break;
+    case SDF_STREAM_COMMAND_CONTROL:
+        sdfFileCmdFileSize(state->deviceState, request, request);
+        WaitSema(state->semaphore);
+        sdfFileRpcBuf[0] = state->readResult;
+        break;
+    case SDF_STREAM_COMMAND_READ:
+        state->remainingBytes = ((SdfStreamReadRequest *)request)->byteCount;
+        state->transferredBytes = 0;
+        state->destination = (u8 *)((SdfStreamReadRequest *)request)->destinationAddress;
+        sdfFileRpcContinueRead();
+        WaitSema(state->semaphore);
+        sdfFileRpcBuf[0] = state->transferredBytes;
+        break;
+    case SDF_STREAM_COMMAND_RELEASE_STATE:
+        sdfFileCmdClose(state->deviceState);
+        WaitSema(state->semaphore);
+        sdfFileCmdFree(state->deviceState);
+        state->deviceState = 0;
+        sdfFileRpcBuf[0] = 0;
+        break;
+    }
+    return sdfFileRpcBuf;
+}
+
+typedef struct _reent _reent;
+
+typedef __builtin_va_list va_list;
+
+typedef struct __sbuf {
+    u8 *_base;
+    s32 _size;
+} __sbuf;
+
+typedef struct __sFILE {
+    u8 *_p;
+    s32 _r;
+    s32 _w;
+    s16 _flags;
+    s16 _file;
+    __sbuf _bf;
+    s32 _lbfsize;
+    void *_cookie;
+    s32 (*_read)(void *cookie, char *buf, s32 n);
+    s32 (*_write)(void *cookie, const char *buf, s32 n);
+    long (*_seek)(void *cookie, s32 offset, s32 whence);
+    s32 (*_close)(void *cookie);
+    __sbuf _ub;
+    u8 *_up;
+    s32 _ur;
+    u8 _ubuf[3];
+    u8 _nbuf[1];
+    __sbuf _lb;
+    s32 _blksize;
+    s32 _offset;
+    _reent *_data;
+} FILE;
+
+typedef struct __siov {
+    void *iov_base;
+    u32 iov_len;
+} __siov;
+
+typedef struct __suio {
+    __siov *uio_iov;
+    s32 uio_iovcnt;
+    s32 uio_resid;
+} __suio;
+
+typedef struct _Bigint {
+    struct _Bigint *next;
+    s32 k;
+    s32 maxwds;
+    s32 sign;
+    s32 wds;
+    u32 x[1];
+} _Bigint;
+
+typedef struct _glue {
+    struct _glue *next;
+    s32 niobs;
+    FILE *iobs;
+} _glue;
+
+typedef struct AtExitEntry {
+    void *unk00;
+    void *unk04;
+    void *fn;
+    void *unk0C;
+    void *unk10;
+    struct AtExitEntry *next;
+} AtExitEntry;
+
+typedef struct AtExitList {
+    u32 **entries;
+    s32 count;
+} AtExitList;
+
+typedef struct _atexit {
+    struct _atexit *_next;
+    s32 _ind;
+    void (*_fns[32])(void);
+} _atexit;
+
+struct _reent {
+    s32 _errno;
+    FILE *_stdin;
+    FILE *_stdout;
+    FILE *_stderr;
+    s32 _inc;
+    char _emergency[25];
+    s32 _current_category;
+    const char *_current_locale;
+    s32 __sdidinit;
+    void (*__cleanup)(struct _reent *r);
+    _Bigint *_result;
+    s32 _result_k;
+    _Bigint *_p5s;
+    _Bigint **_freelist;
+    u8 _unused[0xF8];
+    _atexit *_atexit;
+    _atexit _atexit0;
+    void (**_sig_func)(s32 sig);
+    struct _glue __sglue;
+    FILE __sf[3];
+};
+
+extern _reent *D_0052BE28 __attribute__((section(".data")));
+
+extern s32 _puts_r(_reent *r, const char *s);
+
+extern s32 _raise_r(_reent *r, s32 sig);
+
+extern void *_signal_r(_reent *r, s32 sig, void *handler);
+
+extern s32 _setlocale_r(_reent *r, s32 category, const char *locale);
+
+extern void *func_002DA308(_reent *r);
+
+extern void _cleanup_r(_reent *r);
+
+extern s32 fflush(void *fp);
+
+extern s32 _fwalk(_reent *r, s32 (*func)(void *));
+
+extern s32 libc_2DC670(void);
+
+extern long _strtol_r(_reent *r, const char *s, char **end, s32 base);
+
+extern long strtol(const char *s, char **end, s32 base);
+
+extern s32 raise(s32 sig);
+
+extern void func_001001C8(s32 code) __attribute__((noreturn));
+
+extern u8 D_0054B8D8[] __attribute__((section(".data")));
+
+extern s32 D_00552178 __attribute__((section(".data")));
+
+extern s32 D_0052C28C __attribute__((section(".data")));
+
+extern s32 D_0052C288 __attribute__((section(".data")));
+
+extern s32 D_0052C378 __attribute__((section(".data")));
+
+extern s32 _init_signal_r(_reent *r);
+
+extern void gcc2_compiled__2(FILE *fp, s32 flags, s32 file, _reent *data);
+
+extern _glue *__sfmoreglue(_reent *r, s32 n);
+
+extern s32 __sigtramp_r(_reent *r, s32 sig);
+
+extern void *libc_2D2648(void *fn);
+
+extern void free(void *ptr);
+
+extern void *malloc(u32 size);
+
+extern void __malloc_lock(_reent *r);
+
+extern void __malloc_unlock(_reent *r);
+
+extern void *_malloc_r(_reent *r, u32 size);
+
+extern void _free_r(_reent *r, void *ptr);
+
+extern s32 SignalSema(s32 sema);
+
+extern void *sbrk(s32 incr);
+
+extern s32 close(s32 fd);
+
+extern _Bigint *_Balloc(_reent *r, s32 k);
+
+extern s32 registerAtExit(void *fn, void *entry);
+
+extern s32 libc_2D25B0(void *fn, void *entry);
+
+extern s32 write(s32 fd, const void *buf, s32 count);
+
+extern s32 read(s32 fd, void *buf, s32 count);
+
+extern long lseek(s32 fd, s32 offset, s32 whence);
+
+extern s32 fstat(s32 fd, void *buf);
+
+extern s32 kill(s32 pid, s32 sig);
+
+extern long _read_r(_reent *r, s32 fd, char *buf, s32 n);
+
+extern long _write_r(_reent *r, s32 fd, const char *buf, s32 n);
+
+extern long _lseek_r(_reent *r, s32 fd, s32 offset, s32 whence);
+
+extern s32 __sfvwrite(FILE *fp, __suio *uio);
+
+extern s32 __sread(void *cookie, char *buf, s32 n);
+
+extern s32 __swrite(void *cookie, const char *buf, s32 n);
+
+extern long __sseek(void *cookie, s32 offset, s32 whence);
+
+extern s32 __sclose(void *cookie);
+
+extern s32 GetThreadId(void);
+
+extern s32 WaitSema(s32 sema);
+
+extern s32 vfprintf(FILE *fp, const char *fmt, va_list ap);
+
+extern void *memset(void *s, s32 c, u32 n);
+
+extern void *_calloc_r(_reent *r, u32 n, u32 size);
+
+extern const double D_0054B930[];
+
+extern void abort(void);
+
+extern s32 initAtExit(void);
+
+extern s32 atexit(void (*fn)(void));
+
+extern void (**D_0052BB28)(void) __attribute__((section(".data")));
+
+extern s32 D_0052BB2C __attribute__((section(".data")));
+
+extern s32 D_0052C37C __attribute__((section(".data")));
+
+extern u8 D_0052D940[] __attribute__((section(".data")));
+
+extern void (*D_002F5600[])(void) __attribute__((section(".data")));
+
+extern s32 D_0059AD58 __attribute__((section(".data")));
+
+extern AtExitEntry *D_0059AD60 __attribute__((section(".data")));
+
+extern AtExitEntry D_0059AD40;
+
+typedef struct SdfUnpacked {
+    s32 kind;
+    s32 sign;
+    s32 exp;
+    u32 mant;
+} SdfUnpacked;
+
+extern void sdfUnpackFloat(const void *x, SdfUnpacked *u);
+
+extern f32 sdfPackFloat(const SdfUnpacked *u);
+
+extern long dptoul(s32 kind, s32 sign, s32 exp, long mant);
+
+#define va_start(ap, last) __builtin_stdarg_start((ap), last)
+
+#define va_end(ap) ((void)0)
+
+extern s32 func_002D6678(_reent *r, FILE *fp, const char *fmt, va_list ap);
+
+typedef union f32_bits {
+    f32 f;
+    u32 u;
+} f32_bits;
+
+typedef struct SdfUnpackedD {
+    s32 kind;
+    s32 sign;
+    s32 exp;
+    long mant;
+} SdfUnpackedD;
+
+extern long libc_2D34A0(const SdfUnpackedD *u);
+
+extern void sdfUnpackDouble(const double *x, SdfUnpackedD *u);
+
+extern SdfUnpackedD *libc_2D1590(const SdfUnpackedD *a, const SdfUnpackedD *b, SdfUnpackedD *r);
+
+extern long libc_2D3638(const SdfUnpackedD *a, const SdfUnpackedD *b);
+
+extern const u8 D_0054B551[];
+
+#define SDF_TOLOWER(c) ((D_0054B551[(c)] & 1) ? (c) + 0x20 : (c))
+
+INCLUDE_ASM(const s32, "sdf/sdfTmx", SdfFileRpcServerThreadProc);
+
+INCLUDE_ASM(const s32, "sdf/sdfTmx", sdf_2C7BC4);
+
+void sdfStartFileRpcServer(void) {
+    s32 workerId = sdfCreateThreadWithStack(SdfFileRpcServerThreadProc, 0x1000, 0x4C);
+
+    StartThread(workerId, 0);
+    sdfFileRpcThreadId = GetThreadId();
+    SleepThread();
+}
+
+void LoadMcModules(const char *prefix, s32 moduleGroup) {
+    char path[0x100];
+    char **moduleNames = &mcModuleNames[moduleGroup * SDF_IOP_MODULES_PER_GROUP];
+    s32 moduleIndex;
+
+    for (moduleIndex = 0; moduleIndex != SDF_IOP_MODULES_PER_GROUP; moduleIndex++) {
+        strcpy(path, prefix);
+        strcat(path, moduleNames[moduleIndex]);
+        sceSifLoadModule(path, 0, 0);
+    }
+    sceMcInit();
+}
+
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0054A3A0);
+
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0054A3B0);
+
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0054A3C0);
+
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0054A3D0);
+

@@ -1,0 +1,912 @@
+#include "fpu.h"
+#include "common.h"
+#include "libsdf.h"
+#include "ps2asm.h"
+
+struct sdfGsMemSlice_t;
+
+s32 strlen(const char *aStr);
+
+s32 sdfSndCmdTrans(void);
+
+s32 SleepThread(void);
+
+extern s8 sdfSndBurstReqMode;
+
+typedef struct
+{
+    u32 unk0;
+    u8 unk4;
+    u8 unk5;
+    u16 unk6;
+} p2sdLoadEntry_t;
+
+extern p2sdLoadEntry_t LastLoad[];
+
+s32 sdfSndSendCmd(s32 aCmd, s32 aArg1, void *aData, s32 aSize);
+
+extern s32 SignalSema(s32 aSemaId);
+
+extern u32 p2sdPcmCallback;
+
+extern u32 sdfSndMap[];
+
+extern u32 p2sdPcmState;
+
+extern u32 p2sdPcmBusy;
+
+extern u8 D_00593890[];
+
+enum sdf_dev_state {
+    SDF_DEV_STATE_OPENING = 2,
+    SDF_DEV_STATE_SEEKING = 3,
+    SDF_DEV_STATE_READING = 4,
+    SDF_DEV_STATE_WRITING = 5,
+    SDF_DEV_STATE_CLOSING = 6,
+    SDF_DEV_STATE_ACTIVE = 7,
+    SDF_DEV_STATE_COMPLETE = 8,
+    SDF_DEV_STATE_INACTIVE = 9
+};
+
+enum sdf_dev_operation {
+    SDF_DEV_OPERATION_NONE = 0,
+    SDF_DEV_OPERATION_OPEN_READ = 1,
+    SDF_DEV_OPERATION_OPEN_WRITE = 2,
+    SDF_DEV_OPERATION_SEEK = 3,
+    SDF_DEV_OPERATION_GET_SIZE = 4,
+    SDF_DEV_OPERATION_READ = 5,
+    SDF_DEV_OPERATION_WRITE = 6,
+    SDF_DEV_OPERATION_CLOSE = 7,
+    SDF_DEV_OPERATION_READ_BUFFER = 8,
+    SDF_DEV_OPERATION_WRITE_BUFFER = 9
+};
+
+typedef struct sndRingPacket_t {
+    u32 transportHeader[3];
+    u32 command;
+    u32 sequence;
+    u8 payload[108];
+} sndRingPacket_t;
+
+typedef struct sdfSndTrackPacket_t {
+    u32 trackId;
+    u32 unk4;
+    u16 setting;
+    u16 unkA;
+    u32 unkC;
+} sdfSndTrackPacket_t;
+
+typedef struct sndSequenceVolumePanPacket_t {
+    u32 trackId;
+    u32 opaque04;
+    u16 volume;
+    u16 pan;
+    u32 opaqueNotSent0C;
+} sndSequenceVolumePanPacket_t;
+
+typedef struct sndListenerState_t {
+    s32 opaque00[2];
+    s32 scaledValues[6];
+} sndListenerState_t;
+
+typedef struct sndFileRequestState_t {
+    u8 path[0x100];
+    s32 size;
+    s32 pending;
+    s32 data;
+} sndFileRequestState_t;
+
+typedef struct sndChannel_t {
+    u8 index;
+    u8 unk1;
+    s16 unk2;
+    u32 unk4;
+    u32 iopWorkAddress;
+    u32 unkC;
+} sndChannel_t;
+
+typedef struct sndIopBuffer_t {
+    s32 size;
+    u32 iopAddress;
+} sndIopBuffer_t;
+
+typedef struct {
+    u8 values[24];
+    u8 pad18[8];
+} sndMidiStateGroup_t;
+
+typedef struct sndMergedWork_t {
+    s32 header;
+    s32 bufferCount;
+    u32 iopBufferAddress;
+    u32 iopBufferBytes;
+    sndChannel_t channels[16];
+    sndIopBuffer_t buffers[16];
+    p2sdLoadEntry_t slots[7];
+    void *eeWorkAddress;
+    u32 eeWorkByteCount;
+    u32 opaque1D0;
+    u32 opaque1D4;
+    u32 opaque1D8;
+    u32 opaque1DC;
+    u8 unk1E0[0x380];
+    sndMidiStateGroup_t stateGroups[2];
+} sndMergedWork_t;
+
+typedef struct sdfSoundRpcRequest_t {
+    u8 opaque00[8];
+    s32 destination;
+    s32 byteCount;
+} sdfSoundRpcRequest_t;
+
+enum sdf_tex_resource {
+    SDF_TEX_RESOURCE_FREE = 0,
+    SDF_TEX_RESOURCE_FRAME = 1,
+    SDF_TEX_RESOURCE_TEXTURE = 2,
+    SDF_TEX_RESOURCE_CLUT = 3,
+    SDF_TEX_RESOURCE_KNOWN_MODE_COUNT = 4
+};
+
+typedef struct {
+    u32 control;
+    u32 address;
+    u32 vifCode0;
+    u32 vifCode1;
+} sdfDmaDumpTag_t;
+
+enum sdf_stream_output {
+    SDF_STREAM_OUTPUT_RGBA32 = 0,
+    SDF_STREAM_OUTPUT_RGBA16 = 1,
+    SDF_STREAM_OUTPUT_RGBA16_DITHERED = 2
+};
+
+enum sdf_stream_playback {
+    SDF_STREAM_PLAYBACK_INITIAL = 0,
+    SDF_STREAM_PLAYBACK_FIRST_COMPLETION = 1,
+    SDF_STREAM_PLAYBACK_CADENCED = 2
+};
+
+extern void sdfSndTransToIOP(s32 destination, void *source, s32 size);
+
+extern void *memcpy(void *, const void *, unsigned int);
+
+extern void sdfDelayThread(s32 delay);
+
+extern char * strcpy(char *, const char *);
+
+extern char D_00549878[];
+
+extern sndRingPacket_t D_00590840[32];
+
+extern u32 sdfSndSendCmd_cmd_id;
+
+extern vu16 sdfSndCmdIndex;
+
+extern vu16 sdfSndCmdTailIndex;
+
+extern s32 sdfSndCmdBuf;
+
+extern s32 WakeupThread(s32 thread);
+
+extern void FlushCache(s32);
+
+extern sndListenerState_t D_005907F0;
+
+char *sdfSndMakeFilename(char *pathBuffer, const char *filename);
+
+extern s32 p2sdLoadCheckMidi(s32 packedTrack);
+
+extern s32 p2sdSmgHandle;
+
+extern s32 sprintf();
+
+extern sndFileRequestState_t D_00593E20;
+
+extern s32 D_00552120;
+
+extern char D_00529BE8[];
+
+extern s32 sifRpcServerSema;
+
+extern char D_00551A20[];
+
+extern char D_00551A28[];
+
+extern char D_00551A30[];
+
+extern char D_00551A38[];
+
+extern char D_00551A40[];
+
+extern char sdfDumpLineBuf[];
+
+extern char D_00551A50[];
+
+extern char D_00549B50[];
+
+extern char D_00549B70[];
+
+extern char D_00549B88[];
+
+extern char D_00549BB0[];
+
+extern char D_00549BD0[];
+
+extern char *sdfDmaTagNameTable[];
+
+sdfGsMemSlice_t *sdfGsMemGetLinkHead(void);
+
+extern char D_0054A088[];
+
+extern char D_0054A100[];
+
+extern char D_00551B40[];
+
+extern char *D_00529CC8[];
+
+sdfGsMemSlice_t *sdfGsMemGetLinkTail(void);
+
+extern char *D_00529CD8[];
+
+void sdfMemGetInfo(sdfMemInfo_t *stats);
+
+void sdfChipGetInfo(sdfChipInfo_t *stats);
+
+extern s32 (*p2sdSmgBuf)(void);
+
+void p2sdLoadSMGFile(s32 packed);
+
+u32 *sdfFileRpcHandleCmd(u32 command, sdfSoundRpcRequest_t *request);
+
+void sdfGrFlushOtChain(u32 *source);
+
+s32 sdfPrintf(const char *fmt, ...);
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndIopAlloc);
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndCmdTrans);
+
+void sdfSndCmdIFThread(void)
+{
+    for (;;) {
+        SleepThread();
+        if (sdfSndBurstReqMode == 0) {
+            while (sdfSndCmdTrans() == 0) {
+                ;
+            }
+        }
+    }
+}
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndInitCmdIF);
+
+s32 sdfSndSendCmd(s32 command, s32 channel, void *packet, s32 payloadBytes) {
+    s32 nextWriteIndex;
+    s32 wakeAttemptsRemaining;
+    sndRingPacket_t *entry;
+    u32 transferQuadwords;
+    if (++sdfSndSendCmd_cmd_id == 0) {
+        sdfSndSendCmd_cmd_id = 1;
+    }
+    nextWriteIndex = ((s16)sdfSndCmdTailIndex + 1) & (32 - 1);
+    if (nextWriteIndex == (s16)sdfSndCmdIndex) {
+        for (wakeAttemptsRemaining = 8; wakeAttemptsRemaining != 0; wakeAttemptsRemaining--) {
+            do {
+                WakeupThread(sdfSndCmdBuf);
+            } while ((s16)sdfSndCmdIndex != nextWriteIndex);
+        }
+        return 0;
+    }
+    entry = &D_00590840[(s16)sdfSndCmdTailIndex];
+    entry->sequence = sdfSndSendCmd_cmd_id;
+    if (payloadBytes != 0) {
+        memcpy(entry->payload, packet, payloadBytes);
+    }
+    /* The SIF length includes the transport/command header and rounds up to quadwords. */
+    transferQuadwords = (payloadBytes + 0x14 +
+                        (16 - 1)) >> 4;
+    entry->command = (command << 16) |
+                     (channel & 0xFFFF) |
+                     (transferQuadwords << 28);
+    sdfSndCmdTailIndex = nextWriteIndex;
+    if (sdfSndBurstReqMode != 0) {
+        while (sdfSndCmdTrans() != 0) {
+        }
+    } else {
+        WakeupThread(sdfSndCmdBuf);
+    }
+    return sdfSndSendCmd_cmd_id;
+}
+
+void sdfSndSyncCmd(s32 aHandle)
+{
+}
+
+s32 sdfSndSendSyncCmd(s32 aCmd, s32 aArg1, void *aData, s32 aSize)
+{
+    s32 handle = sdfSndSendCmd(aCmd, aArg1, aData, aSize);
+
+    sdfSndSyncCmd(handle);
+    return handle;
+}
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndTransToIOP);
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndLoadIRXModules);
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndVoiceMapInit);
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndSeqMapInit);
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndInit);
+
+/* Starts a track with the default 0x7f setting after preparing its identifier. */
+void p2sdPlayBGM(s32 trackId) {
+    sdfSndTrackPacket_t packet;
+    p2sdLoadSMGFile(trackId);
+    packet.trackId = trackId;
+    packet.unk4 = 0;
+    packet.setting = 0x7F;
+    sdfSndSendCmd(0x20, 0, &packet, 0x10);
+}
+
+s32 p2sdSendStopCmd(s32 aId)
+{
+    s32 arg = aId;
+
+    return sdfSndSendCmd(0x30, 0, &arg, 0x10);
+}
+
+/* Starts the alternate track command, leaving the other packet fields untouched. */
+void p2sdResumeBgm(s32 trackId) {
+    sdfSndTrackPacket_t packet;
+    p2sdLoadSMGFile(trackId);
+    packet.trackId = trackId;
+    packet.setting = 0x7F;
+    sdfSndSendCmd(0x130, 0, &packet, 0x10);
+}
+
+s32 p2sdStopSe(s32 aId)
+{
+    s32 arg = aId;
+
+    return sdfSndSendCmd(0x30, 0, &arg, 0x10);
+}
+
+s32 p2sdStopAllBgm(void)
+{
+    return sdfSndSendCmd(0x1A0, 0, 0, 0);
+}
+
+s32 p2sd_2C1788(void)
+{
+    return sdfSndSendCmd(0x210, 0, 0, 0);
+}
+
+s32 p2sdStopAllSe(void)
+{
+    return sdfSndSendCmd(0x40, 0, 0, 0);
+}
+
+s32 p2sd_2C17D8(s32 aSeId)
+{
+    return sdfSndSendCmd(aSeId | 0x50, 0, 0, 0);
+}
+
+/* Send a NUL-terminated command string; the transport excludes the terminator. */
+u32 sdfSndLoadHDFile(s32 command, char *text) {
+    u32 length = strlen(text);
+    return sdfSndSendSyncCmd(command | 0x70, 0, text, length);
+}
+
+u32 sdfSndLoadBDFile(s32 command, char *text) {
+    u32 length = strlen(text);
+    return sdfSndSendSyncCmd(command | 0x60, 0, text, length);
+}
+
+/* Send text with command bit 0x80; payload length excludes its NUL terminator. */
+u32 sdfSndLoadSQFile(s32 command, char *text) {
+    u32 length = strlen(text);
+    return sdfSndSendSyncCmd(command | 0x80, 0, text, length);
+}
+
+/* Send a 12-byte sequence command; the trailing struct word is not transmitted. */
+void p2sdPlaySE(s32 trackId, s32 volume, s32 pan) {
+    sndSequenceVolumePanPacket_t packet;
+    p2sdLoadSMGFile(trackId);
+    packet.trackId = trackId;
+    packet.volume = volume;
+    packet.pan = (u8)pan;
+    sdfSndSendCmd(0x90, 0, &packet, 0xC);
+}
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", p2sdPlaySeDeg);
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", func_002C1990);
+
+/* Converts world coordinates to the sound engine's one-tenth scale. */
+void p2sdPlaySe3DEx(s32 trackId, s32 radiusInHundreds, f32 worldX, f32 worldY, f32 worldZ) {
+    u32 packet[8];
+    packet[0] = trackId;
+    packet[1] = radiusInHundreds;
+    packet[2] = (s32)(worldX * 0.1f);
+    packet[3] = (s32)(worldY * 0.1f);
+    packet[4] = (s32)(worldZ * 0.1f);
+    sdfSndSendSyncCmd(0x170, 0, packet, 0x20);
+}
+
+/* Scale six world-space values and send them to the sound engine when they changed. */
+void p2sdSetStandPos(f32 firstPointX, f32 firstPointY, f32 firstPointZ,
+                                 f32 secondPointX, f32 secondPointY, f32 secondPointZ) {
+    sndListenerState_t state;
+    state.scaledValues[0] = firstPointX * 0.1f;
+    state.scaledValues[1] = firstPointY * 0.1f;
+    state.scaledValues[2] = firstPointZ * 0.1f;
+    state.scaledValues[3] = secondPointX * 0.1f;
+    state.scaledValues[4] = secondPointY * 0.1f;
+    state.scaledValues[5] = secondPointZ * 0.1f;
+    if (D_005907F0.scaledValues[0] != state.scaledValues[0] || D_005907F0.scaledValues[1] != state.scaledValues[1] ||
+        D_005907F0.scaledValues[2] != state.scaledValues[2] || D_005907F0.scaledValues[3] != state.scaledValues[3] ||
+        D_005907F0.scaledValues[4] != state.scaledValues[4] || D_005907F0.scaledValues[5] != state.scaledValues[5]) {
+        sdfSndSendSyncCmd(0x160, 0, &state, 0x20);
+        D_005907F0 = state;
+    }
+}
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", p2sdLoadCheckMidi);
+
+/* Make sure the MIDI bank named by the packed track id is resident, loading it if not. */
+void p2sdLoadSMGFile(s32 packed) {
+    char name[0x10];
+    char path[0x100];
+    s32 status = p2sdLoadCheckMidi(packed);
+    s32 id;
+    switch (status) {
+    case 0:
+        id = packed >> 16;
+        sprintf(name, "MIDI%04X.SMG", id);
+        sdfSndMakeFilename(path, name);
+        sdfSndSendSyncCmd(0xA0, 0, path, strlen(path) + 1);
+        p2sdSmgHandle = id;
+        break;
+    case 1:
+        break;
+    case 2:
+        do {
+            sdfDelayThread(2);
+            if (p2sdSmgBuf != NULL) {
+                p2sdSmgBuf();
+            }
+        } while (p2sdLoadCheckMidi(packed) != 1);
+        break;
+    }
+}
+
+u64 p2sd_2C1D78(const char *aName)
+{
+    return sdfSndSendSyncCmd(0xA0, 0, (void *)aName, strlen(aName));
+}
+
+void p2sdSetPcmBuffer(s32 data, s32 size) {
+    s32 *packet;
+    D_00593E20.size = size;
+    D_00593E20.pending = 1;
+    D_00593E20.data = data;
+    if (data != 0 && size > 0) {
+        packet = &D_00552120;
+        *packet = data;
+        sdfSndSendSyncCmd(0x1B0, 0, packet, 4);
+    }
+    p2sdSmgHandle = -1;
+}
+
+u64 p2sd_2C1E10(s32 aCh)
+{
+    return sdfSndSendSyncCmd((aCh & 0xF) | 0x1C0, 0, NULL, 0);
+}
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", p2sd_2C1E40);
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", func_002C1E70);
+
+void p2sd_2C1EA0(s32 id) {
+    u32 packet[4];
+    if (p2sdLoadCheckMidi(id) != 0) {
+        packet[0] = id;
+        sdfSndSendSyncCmd(0xB0, 0, packet, 0x10);
+        id >>= 16;
+        if (p2sdSmgHandle == id) {
+            p2sdSmgHandle = -1;
+        }
+    }
+}
+
+u8 p2sd_2C1EF8(s32 aIndex)
+{
+    return LastLoad[aIndex].unk4;
+}
+
+u8 p2sd_2C1F10(s32 aIndex)
+{
+    return LastLoad[aIndex].unk5;
+}
+
+s32 p2sd_2C1F28(s32 aIndex)
+{
+    s32 remaining = LastLoad[aIndex].unk4 - LastLoad[aIndex].unk5;
+
+    if (remaining > 0) {
+        return remaining;
+    }
+    return 0;
+}
+
+u8 *p2sd_2C1F50(void)
+{
+    return D_00593890;
+}
+
+p2sdLoadEntry_t *p2sd_2C1F60(void)
+{
+    return LastLoad;
+}
+
+u32 p2sd_2C1F70(u32 *aOutValue)
+{
+    if (aOutValue != NULL) {
+        *aOutValue = sdfSndMap[0x77];
+    }
+    return sdfSndMap[0x76];
+}
+
+/* Pack two 24-byte MIDI state groups into out; NULL leaves the state untouched. */
+void p2sd_2C1F90(u8 *out) {
+    s32 group;
+    if (out == NULL) {
+        return;
+    }
+    for (group = 0; group < 2; group++) {
+        s32 byteIndex;
+        for (byteIndex = 0; byteIndex < 24; byteIndex++) {
+            *out++ = ((sndMergedWork_t *)sdfSndMap)->stateGroups[group].values[byteIndex];
+        }
+    }
+}
+
+/* Sends a prepared track identifier with the 0x17f setting. */
+void p2sdPlayBGMFade(s32 trackId) {
+    sdfSndTrackPacket_t packet;
+    p2sdLoadSMGFile(trackId);
+    packet.trackId = trackId;
+    packet.unk4 = 0;
+    packet.setting = 0x17F;
+    sdfSndSendCmd(0x20, 0, &packet, 0x10);
+}
+
+s32 p2sdFadeOutBgm(s32 aId)
+{
+    struct
+    {
+        s32 id;
+        s32 unk4;
+        s16 fade;
+    } arg;
+
+    arg.id = aId;
+    arg.unk4 = 0;
+    arg.fade = 0x17F;
+    return sdfSndSendCmd(0x20, 0, &arg, 0x10);
+}
+
+s32 p2sdStopBGM(s32 aId)
+{
+    s32 arg = aId;
+
+    return sdfSndSendCmd(0xD0, 0, &arg, 0x10);
+}
+
+s32 p2sdBgmVolDown(void)
+{
+    return sdfSndSendCmd(0x180, 0, 0, 0);
+}
+
+s32 p2sdBgmVolUp(void)
+{
+    return sdfSndSendCmd(0x190, 0, 0, 0);
+}
+
+void p2sdSetBgmTrack(s32 aTrack)
+{
+    sdfSndSendCmd(0xE0 | ((aTrack + 1) & 0xF), 0, NULL, 0);
+}
+
+s32 p2sdLoadPcmFile(const char *name, u8 channel) {
+    if (p2sdPcmState != 0) {
+        return 1;
+    }
+    strcpy(D_00529BE8, name);
+    sdfSndSendSyncCmd((channel >> 3) | 0xF0, 0, 0, 0);
+    return 0;
+}
+
+u32 p2sdGetPcmState(void)
+{
+    return p2sdPcmState;
+}
+
+s32 p2sdSyncSound(void)
+{
+    return sdfSndSendSyncCmd(0x100, 0, 0, 0);
+}
+
+void p2sd_2C21A8(u8 channel) {
+    sdfSndSendSyncCmd(((channel >> 3) & 0xF) | 0x110, 0, 0, 0);
+}
+
+s32 p2sd_2C21D8(u32 aCh)
+{
+    if (aCh > 16) {
+        aCh = 16;
+    }
+    if (aCh == 0) {
+        aCh = 1;
+    }
+    return sdfSndSendSyncCmd((aCh - 1) | 0x1D0, 0, NULL, 0);
+}
+
+u32 p2sdSetPcmCallback(u32 aCallback)
+{
+    if (p2sdPcmBusy != 0) {
+        return 0;
+    }
+    p2sdPcmCallback = aCallback;
+    return aCallback;
+}
+
+/* Send opcode 0x120 with the channel's group (bits 3-6) unless a command is
+ * pending; returns nonzero when busy. */
+s32 p2sdPlayPcm(u8 channel) {
+    if (p2sdPcmBusy) {
+        return 1;
+    }
+    channel = (channel >> 3) & 0xF;
+    sdfSndSendSyncCmd(0x120 | channel, 0, 0, 0);
+    return 0;
+}
+
+u32 p2sd_2C2280(void)
+{
+    return p2sdPcmBusy;
+}
+
+s32 p2sdSyncMovie(void)
+{
+    return sdfSndSendSyncCmd(0x100, 0, 0, 0);
+}
+
+/* Separate native copy of the command-0x110 channel-group sender. */
+void p2sd_2C22B0(u8 channel) {
+    sdfSndSendSyncCmd(((channel >> 3) & 0xF) | 0x110, 0, 0, 0);
+}
+
+s32 sdfFileRpcCallback(s32 unused, u32 event) {
+    switch (event) {
+    case 1:
+        break;
+    case 3:
+        break;
+    case 6:
+        break;
+    case 5:
+        FlushCache(0);
+        /* Fall through: flush and wake the waiting thread. */
+    case 4:
+        SignalSema(sifRpcServerSema);
+        break;
+    case 0:
+    case 2:
+    case 7:
+        SignalSema(sifRpcServerSema);
+        break;
+    }
+    return 0;
+}
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdfFileRpcHandleCmd);
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", SifRpcServerThreadProc);
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdf_2C2608);
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdf_2C2618);
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdf_2C27F8);
+
+/* Print size bytes in address-aligned, sixteen-column hexadecimal rows. */
+void sdfDumpHexLine(const u8 *data, s32 size) {
+    s32 column = 0;
+    s32 i;
+    while (size > 0) {
+        if (column == 0) {
+            sdfPrintf(D_00551A20, data);
+            column = (u32)data & 0xF;
+            for (i = column; i > 0; i--) {
+                sdfPrintf(D_00551A28);
+            }
+        } else if (column == 8) {
+            sdfPrintf(D_00551A30);
+        } else {
+            sdfPrintf(D_00551A38);
+        }
+        sdfPrintf(D_00551A40, *data++);
+        column++;
+        if (column == 0x10) {
+            column = 0;
+            sdfPrintf(sdfDumpLineBuf);
+        }
+        size--;
+    }
+    if (column == 0) {
+        sdfPrintf(sdfDumpLineBuf);
+    } else {
+        sdfPrintf(D_00551A50);
+    }
+}
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549B50);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549B70);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549B88);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549BB0);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549BD0);
+
+void sdfDumpDmaChain(sdfDmaDumpTag_t *source) {
+    sdfDmaDumpTag_t *callStack[2];
+    sdfDmaDumpTag_t *cursor;
+    u32 tag;
+    u32 tagAddress;
+    s32 tagType;
+    s32 tagCount;
+    s32 depth = 0;
+    s32 done = 0;
+    sdfPrintf(D_00549B50, source);
+    cursor = source;
+    for (;;) {
+        if ((u32)cursor & 0xF) {
+            sdfPrintf(D_00549B70, cursor);
+            return;
+        }
+        tag = cursor->control;
+        tagAddress = cursor->address;
+        tagType = (tag >> 28) & 7;
+        tagCount = tag & 0xFFFF;
+        sdfPrintf(D_00549B88, cursor, sdfDmaTagNameTable[tagType], tag, tagAddress, cursor->vifCode0, cursor->vifCode1);
+        cursor++;
+        switch (tagType) {
+        case 0:
+            done = 1;
+            break;
+        case 1:
+            cursor += tagCount;
+            break;
+        case 2:
+            cursor = (sdfDmaDumpTag_t *)tagAddress;
+            break;
+        case 3:
+        case 4:
+            break;
+        case 5:
+            if (depth == 2) {
+                sdfPrintf(D_00549BB0);
+                return;
+            }
+            callStack[depth++] = cursor;
+            cursor = (sdfDmaDumpTag_t *)tagAddress;
+            break;
+        case 6:
+            if (depth == 0) {
+                done = 1;
+            } else {
+                cursor = callStack[--depth];
+            }
+            break;
+        case 7:
+            cursor += tagCount;
+            done = 1;
+            break;
+        }
+        if (done != 0) {
+            sdfPrintf(D_00549BD0, cursor);
+            return;
+        }
+    }
+}
+
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdfGrFlushOtChain);
+
+void sdfDumpGsMemory(void) {
+    char buf[8];
+    sdfGsMemSlice_t *head;
+    sdfGsMemSlice_t *node;
+    sdfGsMemSlice_t *walk;
+    char *name;
+    sdfPrintf(D_0054A088);
+    head = sdfGsMemGetLinkHead();
+    node = head;
+    while (node != 0) {
+        if ((u32)node->type < SDF_TEX_RESOURCE_KNOWN_MODE_COUNT) {
+            name = D_00529CC8[node->type];
+        } else {
+            sdfPrintf(buf, D_00551B40, node->type);
+            name = buf;
+        }
+        sdfPrintf(D_0054A100, node, node->prev, node->next, name, node->addr, node->size);
+        walk = head;
+        while (walk != node) {
+            walk = walk->next;
+        }
+        node = node->next;
+    }
+}
+
+void sdfDumpGsMemory2(void) {
+    char buf[8];
+    sdfGsMemSlice_t *head;
+    sdfGsMemSlice_t *node;
+    sdfGsMemSlice_t *walk;
+    char *name;
+    sdfPrintf(D_0054A088);
+    head = sdfGsMemGetLinkTail();
+    node = head;
+    while (node != 0) {
+        if ((u32)node->type < SDF_TEX_RESOURCE_KNOWN_MODE_COUNT) {
+            name = D_00529CD8[node->type];
+        } else {
+            sdfPrintf(buf, D_00551B40, node->type);
+            name = buf;
+        }
+        sdfPrintf(D_0054A100, node, node->prev, node->next, name, node->addr, node->size);
+        walk = head;
+        while (walk != node) {
+            walk = walk->prev;
+        }
+        node = node->prev;
+    }
+}
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_0054A088);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_0054A100);
+
+void sdfDumpMemory(void) {
+    sdfMemInfo_t info;
+    sdfMemGetInfo(&info);
+    sdfPrintf(" <<< memory information >>>\n             total : 0x%06X\n        free total : 0x%06X\n     max free size : 0x%06X\n     min free size : 0x%06X\n      handle total : %d\n free handle count : %d\n\n",
+                    info.total, info.freeSize,
+                    info.maxFreeSize, info.minFreeSize,
+                    info.handleCount, info.freeHandleCount);
+}
+
+/* Print the chip heap totals and how many cells are in use per size class (1..16, 17..32, ...). */
+void sdfDumpChipMemory(void) {
+    sdfChipInfo_t stats;
+    u32 limit = 16;
+    s32 i = 0;
+    u32 first;
+    u32 *used;
+    sdfChipGetInfo(&stats);
+    sdfPrintf(" <<< chip memory information >>>\n                 total : 0x%06X\n            free total : 0x%06X\n            page count : %d\n       free page count : %d\n fragmented page count : %d\n", stats.total, stats.freeSize, stats.pageCount, stats.freePageCount, stats.fragmentedPageCount);
+    sdfPrintf("\n several size alloc count...\n");
+    first = 0;
+    used = stats.severalAllocCount;
+    do {
+        sdfPrintf("       for %3d .. %4d : %d\n", first, limit, *used++);
+        i++;
+        first = limit + 1;
+        limit *= 2;
+    } while (i != 7);
+    sdfPrintf(sdfDumpLineBuf, first);
+}
