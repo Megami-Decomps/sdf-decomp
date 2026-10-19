@@ -29,6 +29,10 @@ extern u8 reqMakeFrameBuff;
 extern u8 sdfGrScreenMode;
 extern u8 sdfGrGsResetDone;
 extern s8 sdfDispFrameId[2];
+extern u8 sdfFrameEvenOdd;
+extern volatile u8 sdfReqDrawDelayCount;
+extern s32 WakeupThread(s32 thread);
+extern void sdfWaitVblank(s32 mode);
 extern volatile s8 sdfGrDrawBusy;
 extern s32 sdfGrCaptureReq;
 extern s32 sdfGrCaptureTarget;
@@ -86,12 +90,42 @@ extern void sdfCoreDrawReset(void);
 #define D_ENABLER ((volatile u32 *)0x1000F520)
 #define D_ENABLEW ((volatile u32 *)0x1000F590)
 #define D1_CHCR ((volatile u32 *)0x10009000)
+#define GS_CSR ((volatile u64 *)0x12001000)
 #define GS_BUSDIR ((volatile u64 *)0x12001040)
 #define HW_READ(reg) (*(reg))
 #define HW_WRITE(reg, value) (*(reg) = (value))
 
 
+/* NON_MATCHING: 11 of 22 words differ (first at +0x1C). */
+#ifdef NON_MATCHING
+void sdfGrSetFrameSetMode(sdfGrFrameSet_t *aSet, s32 aMode, s32 aFree)
+{
+    sdfGrScreenDef_t *def = &sdfGrFrameModes[aMode];
+    s16 w;
+    s16 h;
+    s16 buffH;
+    u16 pixelFormat;
+    u16 zbuffFormat;
+
+    if (aFree != 0) {
+        aSet->frameHandle[0] = NULL;
+        aSet->frameHandle[1] = NULL;
+        aSet->zbuffHandle = NULL;
+    }
+    w = def->w;
+    h = def->h;
+    buffH = def->buffH;
+    pixelFormat = def->pixelFormat;
+    zbuffFormat = def->zbuffFormat;
+    aSet->w = w;
+    aSet->h = h;
+    aSet->buffH = buffH;
+    aSet->zbuffFormat = zbuffFormat;
+    aSet->pixelFormat = pixelFormat;
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfGrSetFrameSetMode);
+#endif
 
 void sdfGrSetScreen(s32 aMode)
 {
@@ -298,7 +332,28 @@ void sdfDrawThread(void) {
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfGraph", sdfDispThread);
+void sdfDispThread(void) {
+    u32 field;
+    s32 bufferIndex;
+
+    for (;;) {
+        sdfWaitVblank(0);
+        field = (~HW_READ(GS_CSR) >> 13) & 1;
+        sdfFrameEvenOdd = field ^ 1;
+        if (sdfDispThreadFlag == 1) {
+            sdfDispThreadFlag = 2;
+            WakeupThread(sdfDrawThreadId);
+            WaitSema(dds3GsThreadId);
+        }
+        bufferIndex = sdfDispFrameId[sdfFrameEvenOdd];
+        if (bufferIndex >= 0) {
+            sdfGrSetDisp(bufferIndex);
+        }
+        if (sdfReqDrawDelayCount != 0) {
+            sdfReqDrawDelayCount--;
+        }
+    }
+}
 
 void sdfGrInit(s32 packetBufferBytes) {
     s32 thread;

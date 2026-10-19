@@ -482,13 +482,56 @@ sdfMotionNode_t *sdfMotGenModelLinerRotXYZ(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId
     return &node->modelBase.nodeBase;
 }
 
-void sdfMotCLBK_modelLinerRotXYZSeek(sdfMotNodeModelVec_t *binding, f32 frame);
+/* vu0 routine: sample and blend the channel using the SDK packed operations. */
+void sdfMotCLBK_modelLinerRotXYZSeek(sdfMotNodeModelVec_t *binding, f32 frame) {
+    sdfMotGetKeyIf_t keyInterval;
+    /* volatile: retail reads the three angles with the call's delay slot left
+     * empty, which only a volatile local reaches. */
+    volatile sdfVector4_t euler;
+    sdfModelNode_t *drawNode;
+    f32 (*matrix)[4];
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_modelLinerRotXYZSeek);
+    sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
+    SDF_VU0_LOADVECTOR_UNALIGN(keyInterval.key0);
+    SDF_VU0_LOADVECTOR_UNALIGN_B(keyInterval.key1);
+    VU0_LERP_VF10_VF11(keyInterval.rate);
+    SDF_VU0_VECTOR_W_SET_ZERO();
+    SDF_VU0_STOREVECTOR_NOMEM(&euler);
+    FromEuler(euler.x, euler.y, euler.z);
+    drawNode = binding->modelBase.modelNode;
+    SDF_VU0_STOREVECTOR_NOMEM(&drawNode->rotate);
+    matrix = (f32 (*)[4])drawNode->localNoScaledTm.m;
+    ToMatrix();
+    SDF_VU0_STORE_ROW0_NOMEM(matrix[0]);
+    SDF_VU0_STORE_ROW1_NOMEM(matrix[1]);
+    SDF_VU0_STORE_ROW2_NOMEM(matrix[2]);
+}
 
-void sdfMotCLBK_modelLinerRotXYZBlendSeek(sdfMotNodeModelVec_t *binding, f32 frame, f32 blendWeight);
+/* vu0 routine: sample and blend the channel using the SDK packed operations. */
+void sdfMotCLBK_modelLinerRotXYZBlendSeek(sdfMotNodeModelVec_t *binding, f32 frame, f32 blendWeight) {
+    sdfMotGetKeyIf_t keyInterval;
+    volatile sdfVector4_t euler;
+    sdfModelNode_t *drawNode;
+    f32 (*matrix)[4];
 
-INCLUDE_ASM(const s32, "sdf/sdfMotion", sdfMotCLBK_modelLinerRotXYZBlendSeek);
+    sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
+    SDF_VU0_LOADVECTOR_UNALIGN(keyInterval.key0);
+    SDF_VU0_LOADVECTOR_UNALIGN_B(keyInterval.key1);
+    VU0_LERP_VF10_VF11(keyInterval.rate);
+    SDF_VU0_VECTOR_W_SET_ZERO();
+    SDF_VU0_STOREVECTOR_NOMEM(&euler);
+    FromEuler(euler.x, euler.y, euler.z);
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(&binding->blendFrom);
+    Lerp(blendWeight);
+    drawNode = binding->modelBase.modelNode;
+    SDF_VU0_STOREVECTOR_NOMEM(&drawNode->rotate);
+    matrix = (f32 (*)[4])drawNode->localNoScaledTm.m;
+    ToMatrix();
+    SDF_VU0_STORE_ROW0_NOMEM(matrix[0]);
+    SDF_VU0_STORE_ROW1_NOMEM(matrix[1]);
+    SDF_VU0_STORE_ROW2_NOMEM(matrix[2]);
+}
 
 sdfMotionNode_t *sdfMotGenModelLinerScale(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
 {
