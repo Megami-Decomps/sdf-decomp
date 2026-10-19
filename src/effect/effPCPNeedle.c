@@ -486,9 +486,85 @@ void dds3NeedleModelDraw(effNeedleWork_t *work)
     D_0031F550[work->mode]->append(D_0031F550[work->mode], packet);
 }
 
-INCLUDE_ASM(const s32, "effect/effPCPNeedle", dds3NeedleModelVNCListCreate);
+extern char D_00533C68[];
+extern char D_00533C90[];
+extern s32 printf(const char *format, ...);
 
-INCLUDE_ASM(const s32, "effect/effPCPNeedle", dds3NeedleModelVNCListDelete);
+/* Build a closed triangle fan: one outer vertex, the axis centre and the next
+ * outer vertex per segment. */
+void dds3NeedleModelVNCListCreate(effNeedleWork_t *work, u32 segments, u32 center, u32 edge, f32 radius, f32 offset)
+{
+    void *allocation;
+    f32 (*position)[4];
+    f32 (*normal)[4];
+    u32 *color;
+    u32 vertexCount;
+    u32 i;
+    f32 angle;
+    f32 step;
+    f32 mid;
+
+    if (segments < 3) {
+        segments = 3;
+    }
+    if (work->streamAllocation != NULL) {
+        dds3NeedleModelVNCListDelete(work);
+    }
+    angle = 0.0f;
+    vertexCount = segments * 3;
+    allocation = sdfMemAllocDirect(vertexCount * 36);
+    work->streamAllocation = allocation;
+    position = (f32 (*)[4])sdfMemLock(allocation);
+    normal = position + vertexCount;
+    color = (u32 *)(normal + vertexCount);
+    work->vertexCount = vertexCount;
+    work->positions = position;
+    work->normals = normal;
+    work->colors = color;
+    step = EFFECT_RING_FULL_TURN / (f32)segments;
+    for (i = 0; i < segments; i++) {
+        mid = step * 0.5f;
+        normal[0][0] = sdfCos(angle);
+        normal[0][1] = sdfSin(angle);
+        normal[0][2] = 0.0f;
+        mid = angle + step * 0.5f;
+        position[0][0] = normal[0][0] * radius;
+        angle += step;
+        position[0][1] = normal[0][1] * radius;
+        position[0][2] = -offset;
+        normal++;
+        position++;
+        normal[0][0] = sdfCos(mid);
+        normal[0][1] = sdfSin(mid);
+        normal[0][2] = 0.0f;
+        position[0][0] = 0.0f;
+        position[0][1] = 0.0f;
+        position[0][2] = 0.0f;
+        normal++;
+        position++;
+        normal[0][0] = sdfCos(angle);
+        normal[0][1] = sdfSin(angle);
+        normal[0][2] = 0.0f;
+        color[0] = edge;
+        color[1] = center;
+        color[2] = edge;
+        color += 3;
+        position[0][0] = normal[0][0] * radius;
+        position[0][1] = normal[0][1] * radius;
+        position[0][2] = -offset;
+        normal++;
+        position++;
+    }
+    printf(D_00533C68, work->streamAllocation);
+}
+
+void dds3NeedleModelVNCListDelete(effNeedleWork_t *work)
+{
+    if (work->streamAllocation != NULL) {
+        printf(D_00533C90, work->streamAllocation);
+        sdfMemFreeDirect(work->streamAllocation);
+    }
+}
 
 void dds3NeedleModelSetPosition(effNeedleWork_t *work, s32 index, f32 *vec)
 {
@@ -517,3 +593,8 @@ void dds3NeedleModelSetColor(effNeedleWork_t *work, s32 index, u32 color)
 void dds3NeedleModelSetMatrix(effNeedleWork_t *work, const f32 *matrix) {
     VU0_COPY_MATRIX(work->matrix, matrix);
 }
+
+INCLUDE_RODATA(const s32, "effect/effPCPNeedle", D_00533C68);
+
+INCLUDE_RODATA(const s32, "effect/effPCPNeedle", D_00533C90);
+
