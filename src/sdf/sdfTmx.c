@@ -1,5 +1,6 @@
 #include "common.h"
 #include "ps2asm.h"
+#include "sdf_resource.h"
 
 enum {
     SDF_TMX_MAGIC = 0x30584D54,
@@ -70,29 +71,6 @@ extern void sceMcInit(void);
  * CreateThreadSimple, and return that function's result unchanged. */
 s32 sdfCreateThreadWithStack(void (*entryAddress)(), s32 stackBytes, s32 priority);
 
-/* Serialized texture-resource header; payload begins after this 0x40-byte prefix. */
-typedef struct TMX_HEADER_t {
-    u8 fileType;
-    u8 compression;    /* 0x01: high nibble adds payload offset bytes; low bits stay opaque. */
-    s16 userId;        /* 0x02 */
-    u32 fileSize;      /* 0x04 */
-    u32 formatId;      /* 0x08 */
-    s32 realSize;      /* 0x0C */
-    u8 numOfCLUT;      /* 0x10 */
-    u8 CLUTFormat;     /* 0x11 */
-    s16 width;         /* 0x12 */
-    s16 height;        /* 0x14 */
-    u8 pixelFormat;    /* 0x16 */
-    u8 numOfMipmap;    /* 0x17 */
-    u16 mipmapParam;   /* 0x18 */
-    u8 flags;          /* 0x1A */
-    SdfTextureClampMode texWrapMode; /* 0x1B: serialized GS clamp mode */
-    /* The IDB calls 0x1C onward userArea and comment. These two are what this
-     * game puts in its user area; sdfTmx reads both as words. */
-    s32 resourceKey;   /* 0x1C */
-    s32 battleTextureSlot; /* 0x20: selects one of two battle-model texture headers */
-    u8 pad24[0x1C];    /* 0x24 */
-} TMX_HEADER_t;
 
 /* Complete 0x40-byte owner allocated by sdfFileCmdNewHandle. */
 typedef struct sdfFileCmdHandle_t {

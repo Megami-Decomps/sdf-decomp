@@ -1,6 +1,7 @@
 #include "common.h"
 #include "ps2asm.h"
 #include "sdf_lighting.h"
+#include "sdf_resource.h"
 
 struct sdfDrawTag_t;
 
@@ -189,28 +190,6 @@ typedef struct sdfTexHandle_t {
     u8 *monoClutData; /* 0x3C: lazily generated weighted-RGB intensity bytes. */
 } sdfTexHandle_t;
 
-/* Asset holding texture and resource entries (0x48); DDS1/2 game/code_002D9748/003325F8.c. */
-typedef struct sdfMat_t {
-    u32 id;
-    u16 flags;
-    u8 duty; /* 0x06: pending state-group changes for the two packets */
-    u8 pad;
-    struct sdfMatPacket_t *packet[2]; /* 0x08: owned 0xA0-byte draw entries */
-    u32 ambient;         /* 0x10 */
-    u32 diffuse;         /* 0x14 */
-    u32 multiTexDiffuse; /* 0x18 */
-    f32 constant;        /* 0x1C */
-    u32 specular;        /* 0x20 */
-    u32 specularParm;    /* 0x24 */
-    u32 refmap;          /* 0x28 */
-    sdfTexHandle_t *texHandle;
-    sdfTexHandle_t *multiTexHandle; /* 0x30 */
-    u32 multiTexMethod;             /* 0x34: secondary packet and palette selector */
-    sdfMatUvwParm_t *uvwParm;         /* 0x38 */
-    sdfMatUvwParm_t *multiTexUvwParm; /* 0x3C */
-    f32 fdBias;   /* 0x40 */
-    f32 fdSoften; /* 0x44 */
-} sdfMat_t;
 
 /* Refresh one of the two draw entries and retain the other entry's dirty bits. */
 void sdfMatUpdatePacket(struct sdfMat_t *asset, s32 entryIndex);

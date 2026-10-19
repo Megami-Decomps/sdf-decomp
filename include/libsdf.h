@@ -6,6 +6,7 @@
  * see include/README.md for the evidence per struct. */
 
 #include "common.h"
+#include "sdf_resource.h"
 #include "sdf_types.h"
 
 typedef struct sdfChipPageInfo_tag sdfChipPageInfo_tag;
@@ -16,7 +17,6 @@ typedef struct sdfTexHandle_t sdfTexHandle_t;
 typedef struct sdfTexPacket_t sdfTexPacket_t;
 typedef struct sdfDrawTag_t sdfDrawTag_t;
 typedef struct sdfPreDrawTag_t sdfPreDrawTag_t;
-typedef struct sdfMat_t sdfMat_t;
 typedef struct sdfMatUvwParm_t sdfMatUvwParm_t;
 typedef struct sdfMatPacket_t sdfMatPacket_t;
 typedef struct sdfPreDrawHook_t sdfPreDrawHook_t;
@@ -262,31 +262,6 @@ struct sdfMatUvwParm_t
     f32 pad;
 };
 
-/* One material plus its two prebuilt VIF packets, one per texture context.
- * sdfhook gives this struct a trailing reserved[88] and 160 bytes; sdfMatNew
- * allocates 0x48, which is where the struct ends here. */
-struct sdfMat_t
-{
-    u32 id;
-    u16 flags;
-    u8 duty;
-    u8 pad;
-    sdfMatPacket_t *packet[2];
-    u32 ambient;
-    u32 diffuse;
-    u32 multiTexDiffuse;
-    f32 constant;
-    u32 specular;
-    u32 specularParm;
-    u32 refmap;
-    sdfTexHandle_t *texHandle;
-    sdfTexHandle_t *multiTexHandle;
-    u32 multiTexMethod;
-    sdfMatUvwParm_t *uvwParm;
-    sdfMatUvwParm_t *multiTexUvwParm;
-    f32 fdBias;
-    f32 fdSoften;
-};
 
 /* A texture coordinate transform in a material packet. sdfMatSetUvwParm fills
  * it either as six floats or, for the identity case, as three quadword halves. */
@@ -520,32 +495,7 @@ typedef struct sdfThCB_t
     s32 thId;
 } sdfThCB_t;
 
-typedef u8 sdfTextureClampMode_t;
 
-/* Native 0x40-byte TMX header; sdfTexSetEx and resource loaders consume it. */
-typedef struct TMX_HEADER_t
-{
-    u8 fileType;
-    u8 compression;
-    s16 userId;
-    u32 fileSize;
-    u32 formatId;
-    s32 realSize;
-    u8 numOfCLUT;
-    u8 CLUTFormat;
-    s16 width;
-    s16 height;
-    u8 pixelFormat;
-    u8 numOfMipmap;
-    u16 mipmapParam;
-    u8 flags;
-    sdfTextureClampMode_t texWrapMode;
-    /* The IDB calls 0x1C onward userArea and comment. These two are what this
-     * game puts in its user area; sdfTmx reads both as words. */
-    s32 resourceKey;
-    s32 battleTextureSlot;
-    u8 pad24[0x1C];
-} TMX_HEADER_t;
 
 /* Serialized texture-offset table passed with an in-memory scene resource.
  * Event loading only forwards this pointer; its contents remain opaque here. */
