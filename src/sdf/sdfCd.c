@@ -32,7 +32,6 @@ extern s32 SignalSema(s32 aSemaId);
 
 extern void *sdfCdImageDirData;
 
-extern const char D_00549640[];
 
 void FatalError(const char *aMessage, ...) __attribute__((noreturn));
 
@@ -107,7 +106,6 @@ extern u8 *sdfCdImageOffset;
 
 extern u8 D_0058F7C0[0x800];
 
-extern char D_00549658[];
 
 extern s32 sceOpen();
 
@@ -273,7 +271,7 @@ s32 sdfCdImageGetCurrFileSize(void)
     sdfCdImageEntry_t *file = sdfCdImageCurrFile;
 
     if (file == NULL) {
-        FatalError(D_00549640);
+        FatalError("file didn't open.");
     }
     return file->size;
 }
@@ -284,7 +282,7 @@ void sdfCdImageLoadDir(const char *fileName) {
     s32 fileBytes;
     void *buffer;
     if (fileHandle < 0) {
-        FatalError(D_00549658, fileName);
+        FatalError("%s couldn't open.", fileName);
     }
     fileBytes = sceLseek(fileHandle, 0, 2);
     sceLseek(fileHandle, 0, 0);
@@ -301,7 +299,7 @@ void sdfCdImageInit(const char *discFileName, const char *preloadFileName) {
     dds3ImgPath = (u32)discFileName;
     sdfCdImageLoadDir(preloadFileName);
     if (sceCdSearchFile(discFileRecord, (s32)discFileName) == 0) {
-        FatalError(D_00549658, discFileName);
+        FatalError("%s couldn't open.", discFileName);
     }
     dds3ImgLsn = discFileRecord[0];
     iopHeapAddress = sceSifAllocIopHeap(0x28010);
@@ -315,8 +313,4 @@ s32 sdfCdInit(void)
     sceCdInit(0);
     return sceCdMmode(sdfCdTrayMode);
 }
-
-INCLUDE_RODATA(const s32, "sdf/sdfCd", D_00549640);
-
-INCLUDE_RODATA(const s32, "sdf/sdfCd", D_00549658);
 

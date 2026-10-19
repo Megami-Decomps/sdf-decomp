@@ -24,7 +24,6 @@ typedef struct sdfHandlerNode_t {
 
 struct pipeTextureFile_t;
 
-extern char D_00549018[];
 
 extern dds3Basic_t *pipe_Camera;
 
@@ -397,7 +396,8 @@ sdfHandlerNode_t *DmacAddHandler(s32 kind, s32 channel, s32 handler, s32 arg, s3
         id = AddSbusIntcHandler(channel, handler);
         break;
     default:
-        FatalError(D_00549018, kind);
+        FatalError("sdfAddHandler : unknown type %d
+", kind);
         break;
     }
     node = sdfAllocAuto(sizeof(*node));
@@ -614,6 +614,4 @@ void sdfSetMainThreadPriority(void)
     ChangeThreadPriority(thid, 0x7C);
     SleepThread();
 }
-
-INCLUDE_RODATA(const s32, "sdf/sdfSystem", D_00549018);
 
