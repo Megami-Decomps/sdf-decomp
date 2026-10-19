@@ -35,8 +35,7 @@ extern s32 printf(const char *fmt, ...);
 extern void datDebugPrintf(const char *fmt, ...);
 extern u64 sdfFloatToULong(f32 value);
 
-/* The float to double promotion helper gcc calls on a %f argument. */
-__asm__("fptodp = sdfFloatToULong");
+EQUATE_FPTODP();
 
 extern s32 scrGetIntPara(s32 index);
 extern f32 scrGetFloatPara(s32 index);
