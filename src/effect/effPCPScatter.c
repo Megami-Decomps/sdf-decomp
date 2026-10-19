@@ -157,23 +157,23 @@ struct sdfTexHandle_t {
     struct sdfTexHandle_t *origin;
     s16 width;
     s16 height;
-    sdfGsMemSlice_t *primaryResource;
-    sdfGsMemSlice_t *secondaryResource;
-    u8 paletteCount;
-    u8 clutFormat;
+    sdfGsMemSlice_t *pixelGsHandle;
+    sdfGsMemSlice_t *clutGsHandle;
+    u8 numOfCLUT;
+    u8 CLUTFormat;
     u8 pixelFormat;
-    u8 maxMipLevel;
-    u16 lodParameters; /* Packed GS TEX1 L/K parameters. */
-    u8 unk1E;
-    SdfTextureClampMode clampMode; /* 0x1F: 0xFF leaves GS CLAMP state zero; otherwise low nibble is copied. */
-    s32 resourceKey;
-    s32 battleTextureSlot;
-    sdfTexPacket_t *primaryBuffer;
-    sdfTexPacket_t *secondaryBuffer;
-    u8 *paletteData; /* 0x30: retained copy of the texture's palette colors. */
-    s32 paletteDataSize; /* 0x34: palette byte count from sdfTexGetClutDataSize. */
-    s32 unk38;
-    u8 *intensityMap; /* 0x3C: lazily generated weighted-RGB intensity bytes. */
+    u8 numOfMipmap;
+    u16 mipmapParam; /* Packed GS TEX1 L/K parameters. */
+    u8 flags;
+    SdfTextureClampMode texWrapMode; /* 0x1F: 0xFF leaves GS CLAMP state zero; otherwise low nibble is copied. */
+    s32 texId;
+    s32 clutId;
+    sdfTexPacket_t *packet;
+    sdfTexPacket_t *packetCtx2;
+    u8 *clutData; /* 0x30: retained copy of the texture's palette colors. */
+    s32 clutDataSize; /* 0x34: palette byte count from sdfTexGetClutDataSize. */
+    s32 clutColor;
+    u8 *monoClutData; /* 0x3C: lazily generated weighted-RGB intensity bytes. */
 };
 
 /* Shared scatter texture reference, created and released independently of pools. */
@@ -202,13 +202,13 @@ struct sdfMatPacket_t {
     u32 pad00;             /* 0x00 */
     u32 unk04;             /* 0x04 */
     u32 unk08;             /* 0x08 */
-    u32 secondaryColor;    /* 0x0C: packed color applied by the secondary draw state */
-    u32 primaryStateWordThird; /* 0x10: copied from the owning asset, or forced to zero. */
+    u32 multiTexDiffuse;    /* 0x0C: packed color applied by the secondary draw state */
+    u32 specular; /* 0x10: copied from the owning asset, or forced to zero. */
     u32 unk14;             /* 0x14 */
     u32 pad18;             /* 0x18 */
     f32 unk1C;             /* 0x1C */
     u32 alphaState;        /* 0x20: packed GS ALPHA_2 state emitted by the VU transfer builder */
-    u32 secondaryMode;     /* 0x24: secondary packet mode copied from SdfAsset */
+    u32 multiTexMethod;     /* 0x24: secondary packet mode copied from SdfAsset */
     f32 y;                 /* 0x28 */
     f32 x;                 /* 0x2C */
     u8 pad30[8];           /* 0x30 */
@@ -245,25 +245,25 @@ union sdfMatUvwParm_t {
 };
 
 struct sdfMat_t {
-    u32 unk00; /* Word from the serialized asset-parameter header. */
-    u16 unk04; /* Halfword from the serialized asset-parameter header. */
-    u8 dirtyFlags; /* 0x06: pending state-group changes for the two draw entries */
-    u8 pad07;
-    struct sdfMatPacket_t *drawEntries[2]; /* 0x08: owned 0xA0-byte draw entries */
-    u32 primaryStateWordFirst; /* 0x10: first word set by primary-state updates */
-    u32 primaryStateWordSecond; /* 0x14: second word set by primary-state updates */
-    u32 secondaryColor; /* 0x18 */
-    f32 primaryStateFloat; /* 0x1C: interpolated primary-state float */
-    u32 primaryStateWordThird; /* 0x20 */
-    u32 unk24;
-    u32 primaryStateWordFourth; /* 0x28: retained as raw bits */
-    sdfTexHandle_t *texture;
-    sdfTexHandle_t *secondaryTexture; /* 0x30 */
-    u32 secondaryMode;       /* 0x34: secondary packet and palette selector */
-    sdfMatUvwParm_t *primarySubParam; /* 0x38 */
-    sdfMatUvwParm_t *secondarySubParam; /* 0x3C */
-    f32 scalarPairFirst; /* 0x40 */
-    f32 scalarPairSecond; /* 0x44 */
+    u32 id;
+    u16 flags;
+    u8 duty; /* 0x06: pending state-group changes for the two packets */
+    u8 pad;
+    struct sdfMatPacket_t *packet[2]; /* 0x08: owned 0xA0-byte draw entries */
+    u32 ambient; /* 0x10: first word set by primary-state updates */
+    u32 diffuse; /* 0x14: second word set by primary-state updates */
+    u32 multiTexDiffuse; /* 0x18 */
+    f32 constant; /* 0x1C: interpolated primary-state float */
+    u32 specular; /* 0x20 */
+    u32 specularParm;
+    u32 refmap; /* 0x28: retained as raw bits */
+    sdfTexHandle_t *texHandle;
+    sdfTexHandle_t *multiTexHandle; /* 0x30 */
+    u32 multiTexMethod;       /* 0x34: secondary packet and palette selector */
+    sdfMatUvwParm_t *uvwParm; /* 0x38 */
+    sdfMatUvwParm_t *multiTexUvwParm; /* 0x3C */
+    f32 fdBias; /* 0x40 */
+    f32 fdSoften; /* 0x44 */
 };
 
 struct sdfMemHandle_t;
