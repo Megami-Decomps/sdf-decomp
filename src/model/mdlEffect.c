@@ -6,8 +6,7 @@
 #include "ps2asm.h"
 #include "motion.h"
 
-/* EE GCC's software float-to-double promotion helper, named by the SMT3 IDB. */
-__asm__("fptodp = sdfFloatToULong");
+EQUATE_FPTODP();
 
 typedef struct mdlBillboard_t mdlBillboard_t;
 
