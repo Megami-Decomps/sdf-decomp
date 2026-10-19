@@ -486,8 +486,6 @@ void dds3NeedleModelDraw(effNeedleWork_t *work)
     D_0031F550[work->mode]->append(D_0031F550[work->mode], packet);
 }
 
-extern char D_00533C68[];
-extern char D_00533C90[];
 extern s32 printf(const char *format, ...);
 
 /* Build a closed triangle fan: one outer vertex, the axis centre and the next
@@ -555,13 +553,15 @@ void dds3NeedleModelVNCListCreate(effNeedleWork_t *work, u32 segments, u32 cente
         normal++;
         position++;
     }
-    printf(D_00533C68, work->streamAllocation);
+    printf("dds3NeedleModelVNCListCreate[%p] ****
+", work->streamAllocation);
 }
 
 void dds3NeedleModelVNCListDelete(effNeedleWork_t *work)
 {
     if (work->streamAllocation != NULL) {
-        printf(D_00533C90, work->streamAllocation);
+        printf("dds3NeedleModelVNCListDelete[%p] ****
+", work->streamAllocation);
         sdfMemFreeDirect(work->streamAllocation);
     }
 }
@@ -594,7 +594,5 @@ void dds3NeedleModelSetMatrix(effNeedleWork_t *work, const f32 *matrix) {
     VU0_COPY_MATRIX(work->matrix, matrix);
 }
 
-INCLUDE_RODATA(const s32, "effect/effPCPNeedle", D_00533C68);
 
-INCLUDE_RODATA(const s32, "effect/effPCPNeedle", D_00533C90);
 
