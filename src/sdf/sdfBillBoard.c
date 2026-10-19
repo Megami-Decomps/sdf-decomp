@@ -1,5 +1,6 @@
 #include "common.h"
 #include "ps2asm.h"
+#include "billboard.h"
 #include "sdf_lighting.h"
 
 #define SDF_DMA_QWORD_SHIFT 4
@@ -46,52 +47,56 @@ u32 sdfMultiBillBoardVcGetPacketSize(s32 count);
 u32 sdfMultiBillBoardVcMakeN(u128 *positions, void *byteAttributes, void *halfAttributes, void *wordAttributes, s32 vertexCount, void *(*allocatePacket)(s32));
 
 void sdfBillBoardMakeTMPacket(u8 *packet, const f32 *matrix) {
-    *(u16 *)packet = 2;
-    *(u32 *)(packet + 8) = 0x6403C000;
-    *(f32 *)(packet + 12) = matrix[0];
-    *(f32 *)(packet + 16) = matrix[1];
-    *(f32 *)(packet + 20) = matrix[4];
-    *(f32 *)(packet + 24) = matrix[5];
-    *(f32 *)(packet + 28) = matrix[12];
-    *(f32 *)(packet + 32) = matrix[13];
-    *(u32 *)(packet + 36) = 0x04000000;
-    *(u32 *)(packet + 40) = 0x14000008;
-    memset(packet + 0x2C, 0, 12);
+    sdfBillBoardTMPacket_t *p = (sdfBillBoardTMPacket_t *)packet;
+
+    p->dma_qwc = 2;
+    p->vif_unpack = 0x6403C000;
+    p->tm[0] = matrix[0];
+    p->tm[1] = matrix[1];
+    p->tm[2] = matrix[4];
+    p->tm[3] = matrix[5];
+    p->tm[4] = matrix[12];
+    p->tm[5] = matrix[13];
+    p->vif_itop = 0x04000000;
+    p->vif_mscal = SDF_VIF_MSCAL_VERTICES;
+    memset(p->pad, 0, sizeof(p->pad));
 }
 
 void sdfBillBoardMake1(u8 *packet, const f32 *position, u32 color, const void *uv,
                                    const f32 *quad) {
-    *(u16 *)packet = 7;
-    *(u32 *)(packet + 8) = 0x6C01C000;
-    *(u32 *)(packet + 12) = 1;
-    *(u32 *)(packet + 16) = 0xA0000000;
-    *(u32 *)(packet + 20) = 0x43434310;
-    *(u32 *)(packet + 24) = 0x43;
-    *(u32 *)(packet + 28) = 0x6001C001;
-    *(u32 *)(packet + 32) = 0x155;
-    *(u32 *)(packet + 36) = 0x6801C002;
-    *(f32 *)(packet + 40) = position[0];
-    *(f32 *)(packet + 44) = position[1];
-    *(f32 *)(packet + 48) = position[2];
-    *(u32 *)(packet + 52) = 0x6E01C003;
-    *(u32 *)(packet + 56) = color;
-    *(u32 *)(packet + 60) = 0x6504C004;
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 64), (const u8 *)uv);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 68), (const u8 *)uv + 4);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 72), (const u8 *)uv + 8);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 76), (const u8 *)uv + 12);
-    *(u32 *)(packet + 80) = 0x6404C008;
-    *(f32 *)(packet + 84) = quad[0];
-    *(f32 *)(packet + 88) = quad[1];
-    *(f32 *)(packet + 92) = quad[2];
-    *(f32 *)(packet + 96) = quad[3];
-    *(f32 *)(packet + 100) = quad[4];
-    *(f32 *)(packet + 104) = quad[5];
-    *(f32 *)(packet + 108) = quad[6];
-    *(f32 *)(packet + 112) = quad[7];
-    *(u32 *)(packet + 116) = 0x04000002;
-    *(u32 *)(packet + 120) = 0x14000008;
-    *(u32 *)(packet + 124) = 0;
+    sdfBillBoard1Packet_t *p = (sdfBillBoard1Packet_t *)packet;
+
+    p->dma_qwc = 7;
+    p->vif_unpack1 = 0x6C01C000;
+    p->count = 1;
+    p->giftag_h = 0xA0000000;
+    p->giftag_reg_l = 0x43434310;
+    p->giftag_reg_h = 0x43;
+    p->vif_unpack2 = 0x6001C001;
+    p->prim = 0x155;
+    p->vif_unpack3 = 0x6801C002;
+    p->center[0] = position[0];
+    p->center[1] = position[1];
+    p->center[2] = position[2];
+    p->vif_unpack4 = 0x6E01C003;
+    p->color = color;
+    p->vif_unpack5 = 0x6504C004;
+    EE_LOAD_UNALIGNED_WORD(p->uv[0], (const u8 *)uv);
+    EE_LOAD_UNALIGNED_WORD(p->uv[1], (const u8 *)uv + 4);
+    EE_LOAD_UNALIGNED_WORD(p->uv[2], (const u8 *)uv + 8);
+    EE_LOAD_UNALIGNED_WORD(p->uv[3], (const u8 *)uv + 12);
+    p->vif_unpack6 = 0x6404C008;
+    p->xyOffset[0] = quad[0];
+    p->xyOffset[1] = quad[1];
+    p->xyOffset[2] = quad[2];
+    p->xyOffset[3] = quad[3];
+    p->xyOffset[4] = quad[4];
+    p->xyOffset[5] = quad[5];
+    p->xyOffset[6] = quad[6];
+    p->xyOffset[7] = quad[7];
+    p->vif_itop = SDF_VIF_ITOP_COMPACT_VERTEX;
+    p->vif_mscal = SDF_VIF_MSCAL_VERTICES;
+    p->pad = 0;
 }
 
 s32 sdfBillBoardGetPacketSize(s32 count) {
@@ -162,41 +167,43 @@ u32 *sdfBillBoardMakeN(const u128 *positions, const void *byteAttributes, const 
 
 void sdfMultiBillBoardMake1(u8 *packet, const f32 *position, u32 primaryColor, u32 secondaryColor,
                    const void *primaryUv, const void *secondaryUv, const f32 *quad) {
-    *(u16 *)packet = 8;
-    *(u32 *)(packet + 8) = 0x6C01C000;
-    *(u32 *)(packet + 12) = 1;
-    *(u32 *)(packet + 16) = 0xA0000000;
-    *(u32 *)(packet + 20) = 0x43434310;
-    *(u32 *)(packet + 24) = 0x43;
-    *(u32 *)(packet + 28) = 0x6001C001;
-    *(u32 *)(packet + 32) = 0x155;
-    *(u32 *)(packet + 36) = 0x6801C002;
-    *(f32 *)(packet + 40) = position[0];
-    *(f32 *)(packet + 44) = position[1];
-    *(f32 *)(packet + 48) = position[2];
-    *(u32 *)(packet + 52) = 0x6E02C003;
-    *(u32 *)(packet + 56) = primaryColor;
-    *(u32 *)(packet + 60) = secondaryColor;
-    *(u32 *)(packet + 64) = 0x6D04C005;
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 68), (const u8 *)primaryUv);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 72), (const u8 *)secondaryUv);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 76), (const u8 *)primaryUv + 4);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 80), (const u8 *)secondaryUv + 4);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 84), (const u8 *)primaryUv + 8);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 88), (const u8 *)secondaryUv + 8);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 92), (const u8 *)primaryUv + 12);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 96), (const u8 *)secondaryUv + 12);
-    *(u32 *)(packet + 100) = 0x6404C009;
-    *(f32 *)(packet + 104) = quad[0];
-    *(f32 *)(packet + 108) = quad[1];
-    *(f32 *)(packet + 112) = quad[2];
-    *(f32 *)(packet + 116) = quad[3];
-    *(f32 *)(packet + 120) = quad[4];
-    *(f32 *)(packet + 124) = quad[5];
-    *(f32 *)(packet + 128) = quad[6];
-    *(f32 *)(packet + 132) = quad[7];
-    *(u32 *)(packet + 136) = 0x04000004;
-    *(u32 *)(packet + 140) = 0x14000008;
+    sdfMultiBillBoard1Packet_t *p = (sdfMultiBillBoard1Packet_t *)packet;
+
+    p->dma_qwc = 8;
+    p->vif_unpack1 = 0x6C01C000;
+    p->count = 1;
+    p->giftag_h = 0xA0000000;
+    p->giftag_reg_l = 0x43434310;
+    p->giftag_reg_h = 0x43;
+    p->vif_unpack2 = 0x6001C001;
+    p->prim = 0x155;
+    p->vif_unpack3 = 0x6801C002;
+    p->center[0] = position[0];
+    p->center[1] = position[1];
+    p->center[2] = position[2];
+    p->vif_unpack4 = 0x6E02C003;
+    p->color[0] = primaryColor;
+    p->color[1] = secondaryColor;
+    p->vif_unpack5 = 0x6D04C005;
+    EE_LOAD_UNALIGNED_WORD(p->uv[0], (const u8 *)primaryUv);
+    EE_LOAD_UNALIGNED_WORD(p->uv[1], (const u8 *)secondaryUv);
+    EE_LOAD_UNALIGNED_WORD(p->uv[2], (const u8 *)primaryUv + 4);
+    EE_LOAD_UNALIGNED_WORD(p->uv[3], (const u8 *)secondaryUv + 4);
+    EE_LOAD_UNALIGNED_WORD(p->uv[4], (const u8 *)primaryUv + 8);
+    EE_LOAD_UNALIGNED_WORD(p->uv[5], (const u8 *)secondaryUv + 8);
+    EE_LOAD_UNALIGNED_WORD(p->uv[6], (const u8 *)primaryUv + 12);
+    EE_LOAD_UNALIGNED_WORD(p->uv[7], (const u8 *)secondaryUv + 12);
+    p->vif_unpack6 = 0x6404C009;
+    p->xyOffset[0] = quad[0];
+    p->xyOffset[1] = quad[1];
+    p->xyOffset[2] = quad[2];
+    p->xyOffset[3] = quad[3];
+    p->xyOffset[4] = quad[4];
+    p->xyOffset[5] = quad[5];
+    p->xyOffset[6] = quad[6];
+    p->xyOffset[7] = quad[7];
+    p->vif_itop = 0x04000004;
+    p->vif_mscal = SDF_VIF_MSCAL_VERTICES;
 }
 
 u32 sdfMultiBillBoardGetPacketSize(s32 count) {
@@ -263,41 +270,43 @@ u32 *sdfMultiBillBoardMakeN(u128 *positions, void *attributes, void *halfAttribu
 
 void sdfBillBoardVcMake1(u8 *packet, const f32 *position, const u32 *colors, const void *uv,
                    const f32 *quad) {
-    *(u16 *)packet = 8;
-    *(u32 *)(packet + 8) = 0x6C01C000;
-    *(u32 *)(packet + 12) = 1;
-    *(u32 *)(packet + 16) = 0xD0000000;
-    *(u32 *)(packet + 20) = 0x34134130;
-    *(u32 *)(packet + 24) = 0x41341;
-    *(u32 *)(packet + 28) = 0x6001C001;
-    *(u32 *)(packet + 32) = 0x155;
-    *(u32 *)(packet + 36) = 0x6801C002;
-    *(f32 *)(packet + 40) = position[0];
-    *(f32 *)(packet + 44) = position[1];
-    *(f32 *)(packet + 48) = position[2];
-    *(u32 *)(packet + 52) = 0x6E04C003;
-    *(u32 *)(packet + 56) = colors[0];
-    *(u32 *)(packet + 60) = colors[1];
-    *(u32 *)(packet + 64) = colors[2];
-    *(u32 *)(packet + 68) = colors[3];
-    *(u32 *)(packet + 72) = 0x6504C007;
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 76), (const u8 *)uv);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 80), (const u8 *)uv + 4);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 84), (const u8 *)uv + 8);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 88), (const u8 *)uv + 12);
-    *(u32 *)(packet + 92) = 0x6404C00B;
-    *(f32 *)(packet + 96) = quad[0];
-    *(f32 *)(packet + 100) = quad[1];
-    *(f32 *)(packet + 104) = quad[2];
-    *(f32 *)(packet + 108) = quad[3];
-    *(f32 *)(packet + 112) = quad[4];
-    *(f32 *)(packet + 116) = quad[5];
-    *(f32 *)(packet + 120) = quad[6];
-    *(f32 *)(packet + 124) = quad[7];
-    *(u32 *)(packet + 128) = 0x04000006;
-    *(u32 *)(packet + 132) = 0x14000008;
-    *(u32 *)(packet + 136) = 0;
-    *(u32 *)(packet + 140) = 0;
+    sdfBillBoardVc1Packet_t *p = (sdfBillBoardVc1Packet_t *)packet;
+
+    p->dma_qwc = 8;
+    p->vif_unpack1 = 0x6C01C000;
+    p->count = 1;
+    p->giftag_h = 0xD0000000;
+    p->giftag_reg_l = 0x34134130;
+    p->giftag_reg_h = 0x41341;
+    p->vif_unpack2 = 0x6001C001;
+    p->prim = 0x155;
+    p->vif_unpack3 = 0x6801C002;
+    p->center[0] = position[0];
+    p->center[1] = position[1];
+    p->center[2] = position[2];
+    p->vif_unpack4 = 0x6E04C003;
+    p->color[0] = colors[0];
+    p->color[1] = colors[1];
+    p->color[2] = colors[2];
+    p->color[3] = colors[3];
+    p->vif_unpack5 = 0x6504C007;
+    EE_LOAD_UNALIGNED_WORD(p->uv[0], (const u8 *)uv);
+    EE_LOAD_UNALIGNED_WORD(p->uv[1], (const u8 *)uv + 4);
+    EE_LOAD_UNALIGNED_WORD(p->uv[2], (const u8 *)uv + 8);
+    EE_LOAD_UNALIGNED_WORD(p->uv[3], (const u8 *)uv + 12);
+    p->vif_unpack6 = 0x6404C00B;
+    p->xyOffset[0] = quad[0];
+    p->xyOffset[1] = quad[1];
+    p->xyOffset[2] = quad[2];
+    p->xyOffset[3] = quad[3];
+    p->xyOffset[4] = quad[4];
+    p->xyOffset[5] = quad[5];
+    p->xyOffset[6] = quad[6];
+    p->xyOffset[7] = quad[7];
+    p->vif_itop = 0x04000006;
+    p->vif_mscal = SDF_VIF_MSCAL_VERTICES;
+    p->pad[0] = 0;
+    p->pad[1] = 0;
 }
 
 u32 sdfBillBoardVcGetPacketSize(s32 count) {
@@ -367,35 +376,37 @@ u32 sdfBillBoardVcMakeN(const u128 *positions, const void *attributes,
 
 void sdfMultiBillBoardVcMake1(u8 *packet, const f32 *position, const void *colors, const void *primaryUv,
                    const void *secondaryUv, const void *quad) {
-    *(u16 *)packet = 10;
-    *(u32 *)(packet + 8) = 0x6C01C000;
-    *(u32 *)(packet + 12) = 1;
-    *(u32 *)(packet + 16) = 0xD0000000;
-    *(u32 *)(packet + 20) = 0x34134130;
-    *(u32 *)(packet + 24) = 0x41341;
-    *(u32 *)(packet + 28) = 0x6001C001;
-    *(u32 *)(packet + 32) = 0x15D;
-    *(u32 *)(packet + 36) = 0x6801C002;
-    *(f32 *)(packet + 40) = position[0];
-    *(f32 *)(packet + 44) = position[1];
-    *(f32 *)(packet + 48) = position[2];
-    *(u32 *)(packet + 52) = 0x6E08C003;
+    sdfMultiBillBoardVc1Packet_t *p = (sdfMultiBillBoardVc1Packet_t *)packet;
+
+    p->dma_qwc = 10;
+    p->vif_unpack1 = 0x6C01C000;
+    p->count = 1;
+    p->giftag_h = 0xD0000000;
+    p->giftag_reg_l = 0x34134130;
+    p->giftag_reg_h = 0x41341;
+    p->vif_unpack2 = 0x6001C001;
+    p->prim = 0x15D;
+    p->vif_unpack3 = 0x6801C002;
+    p->center[0] = position[0];
+    p->center[1] = position[1];
+    p->center[2] = position[2];
+    p->vif_unpack4 = 0x6E08C003;
     memcpy(packet + 56, colors, 32);
-    *(u32 *)(packet + 88) = 0x6D04C00B;
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 92), (const u8 *)primaryUv);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 96), (const u8 *)secondaryUv);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 100), (const u8 *)primaryUv + 4);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 104), (const u8 *)secondaryUv + 4);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 108), (const u8 *)primaryUv + 8);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 112), (const u8 *)secondaryUv + 8);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 116), (const u8 *)primaryUv + 12);
-    EE_LOAD_UNALIGNED_WORD(*(u32 *)(packet + 120), (const u8 *)secondaryUv + 12);
-    *(u32 *)(packet + 124) = 0x6404C00F;
+    p->vif_unpack5 = 0x6D04C00B;
+    EE_LOAD_UNALIGNED_WORD(p->uv[0], (const u8 *)primaryUv);
+    EE_LOAD_UNALIGNED_WORD(p->uv[1], (const u8 *)secondaryUv);
+    EE_LOAD_UNALIGNED_WORD(p->uv[2], (const u8 *)primaryUv + 4);
+    EE_LOAD_UNALIGNED_WORD(p->uv[3], (const u8 *)secondaryUv + 4);
+    EE_LOAD_UNALIGNED_WORD(p->uv[4], (const u8 *)primaryUv + 8);
+    EE_LOAD_UNALIGNED_WORD(p->uv[5], (const u8 *)secondaryUv + 8);
+    EE_LOAD_UNALIGNED_WORD(p->uv[6], (const u8 *)primaryUv + 12);
+    EE_LOAD_UNALIGNED_WORD(p->uv[7], (const u8 *)secondaryUv + 12);
+    p->vif_unpack6 = 0x6404C00F;
     memcpy(packet + 128, quad, 32);
-    *(u32 *)(packet + 160) = 0x04000008;
-    *(u32 *)(packet + 164) = 0x14000008;
-    *(u32 *)(packet + 168) = 0;
-    *(u32 *)(packet + 172) = 0;
+    p->vif_itop = 0x04000008;
+    p->vif_mscal = SDF_VIF_MSCAL_VERTICES;
+    p->pad[0] = 0;
+    p->pad[1] = 0;
 }
 
 u32 sdfMultiBillBoardVcGetPacketSize(s32 count) {
