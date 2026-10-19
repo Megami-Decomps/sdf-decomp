@@ -23,8 +23,8 @@ extern s8 sdfDelayedResrcFlag;
 
 /* Interrupt-synchronized deferred callback owner (0x08). */
 typedef struct sdfDelayedResrcCB_t {
-    SdfPendingCallback handler;
-    sdfDelayedResrcChunk_t *pending;
+    SdfPendingCallback freeFuncPtr;
+    sdfDelayedResrcChunk_t *chunk;
 } sdfDelayedResrcCB_t;
 
 /* A queued batch links its next chunk before 63 deferred owner addresses. */
@@ -86,8 +86,8 @@ void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *request, SdfPendingCallback call
     if (sdfDelayedResrcSemaId < 0) {
         sdfDelayedResrcSemaId = sdfCreateSema(1, 0x7f, 0);
     }
-    request->handler = callback;
-    request->pending = NULL;
+    request->freeFuncPtr = callback;
+    request->chunk = NULL;
 }
 
 void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *owner, void *entry) {
@@ -97,14 +97,14 @@ void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *owner, void *entry) {
 
     if (entry != NULL) {
         WaitSema(sdfDelayedResrcSemaId);
-        pendingNode = owner->pending;
+        pendingNode = owner->chunk;
         if (pendingNode == NULL) {
             pendingNode = (sdfDelayedResrcChunk_t *)sdfChipAllocDirect(sizeof(sdfDelayedResrcChunk_t));
             pendingNode->remaining = 0;
             pendingNode->next = sdfDelayedResrcLink;
             pendingNode->buffer = NULL;
             pendingNode->owner = owner;
-            owner->pending = pendingNode;
+            owner->chunk = pendingNode;
             sdfDelayedResrcLink = pendingNode;
         }
         freeEntries = pendingNode->remaining;
@@ -128,7 +128,7 @@ sdfDelayedResrcChunk_t *sdfDelayedResrcClose(void) {
 
     sdfDelayedResrcLink = NULL;
     for (node = head; node != NULL; node = node->next) {
-        node->owner->pending = NULL;
+        node->owner->chunk = NULL;
     }
     return head;
 }
@@ -144,7 +144,7 @@ void sdfDelayedResrcRelease(sdfDelayedResrcChunk_t *pendingNode) {
     if (pendingNode != NULL) {
         do {
             entryCount = SDF_PENDING_BUFFER_CAPACITY - pendingNode->remaining;
-            entryHandler = pendingNode->owner->handler;
+            entryHandler = pendingNode->owner->freeFuncPtr;
             entryBuffer = pendingNode->buffer;
             if (entryBuffer != NULL) {
                 do {

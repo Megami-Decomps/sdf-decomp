@@ -205,7 +205,7 @@ typedef struct sdfPrimTransElem_t {
 /* A single A+D write follows the texture-flush DMA/VIF/GIF header. */
 typedef struct sdfPrimTexflushPacket_t {
     sdfGrPacketHeader_t header;
-    sdfGrTagStdReg_t textureFlush;
+    sdfGrTagStdReg_t texflush;
 } sdfPrimTexflushPacket_t;
 
 typedef struct SdfPacketPatchLink {
@@ -315,7 +315,7 @@ extern struct sdfMemHandle_t *sdfGrPacketBuffHandle;
 /* Fixed packets allocated by the paired blend and composite-quad renderers. */
 typedef struct sdfPrimTransPacket_t {
     sdfGrPacketHeader_t header;
-    sdfPrimTransElem_t registers;
+    sdfPrimTransElem_t elem;
 } sdfPrimTransPacket_t;
 
 typedef struct sdfPrimGt3Packet_t {
@@ -366,7 +366,7 @@ typedef struct sdfPrimG4Packet_t {
 /* DMA/VIF and GIF header followed by the complete image-transfer register block. */
 typedef struct sdfPrimBitBltPacket_t {
     sdfGrPacketHeader_t header;
-    sdfPrimBitBltElem_t transfer;
+    sdfPrimBitBltElem_t bitblt;
 } sdfPrimBitBltPacket_t;
 
 /* Native VRAM range descriptor (0x1C), shared by textures, graph buffers and streams. */
@@ -634,7 +634,7 @@ void sdfPrimSetOpaque2Elem(sdfPrimTransElem_t *packet) {
 }
 
 void sdfPrimSetOpaquePacket(sdfPrimTransPacket_t *packet) {
-    sdfPrimSetOpaqueElem(&packet->registers);
+    sdfPrimSetOpaqueElem(&packet->elem);
     packet->header.dmaWords.tag = SDF_ALPHA_DMA_QWORDS;
     packet->header.dmaWords.vif = (((u64)SDF_VIF_DIRECT_THREE_WORD << 16 | SDF_VIF_FLUSHE_HALFWORD) << 16);
     packet->header.giftag.parm = (((u64)SDF_GIF_ONE_REGISTER_WORD << 32) | SDF_GIF_TWO_AD_LOOPS_EOP);
@@ -642,7 +642,7 @@ void sdfPrimSetOpaquePacket(sdfPrimTransPacket_t *packet) {
 }
 
 void sdfPrimSetOpaque2Packet(sdfPrimTransPacket_t *packet) {
-    sdfPrimSetOpaque2Elem(&packet->registers);
+    sdfPrimSetOpaque2Elem(&packet->elem);
     packet->header.dmaWords.tag = SDF_ALPHA_DMA_QWORDS;
     packet->header.dmaWords.vif = (((u64)SDF_VIF_DIRECT_THREE_WORD << 16 | SDF_VIF_FLUSHE_HALFWORD) << 16);
     packet->header.giftag.parm = (((u64)SDF_GIF_ONE_REGISTER_WORD << 32) | SDF_GIF_TWO_AD_LOOPS_EOP);
@@ -664,7 +664,7 @@ void sdfPrimSetSemiTrans2Elem(sdfPrimTransElem_t *packet) {
 }
 
 void sdfPrimSetSemiTransPacket(sdfPrimTransPacket_t *packet) {
-    sdfPrimSetSemiTransElem(&packet->registers);
+    sdfPrimSetSemiTransElem(&packet->elem);
     packet->header.dmaWords.tag = 3;
     packet->header.dmaWords.vif = (((u64)0x50000003 << 16 | 0x1000) << 16);
     packet->header.giftag.parm = (((u64)0x10000000 << 32) | 0x8002);
@@ -672,7 +672,7 @@ void sdfPrimSetSemiTransPacket(sdfPrimTransPacket_t *packet) {
 }
 
 void sdfPrimSetSemiTrans2Packet(sdfPrimTransPacket_t *packet) {
-    sdfPrimSetSemiTrans2Elem(&packet->registers);
+    sdfPrimSetSemiTrans2Elem(&packet->elem);
     packet->header.dmaWords.tag = 3;
     packet->header.dmaWords.vif = (((u64)0x50000003 << 16 | 0x1000) << 16);
     packet->header.giftag.parm = (((u64)0x10000000 << 32) | 0x8002);
@@ -694,7 +694,7 @@ void sdfPrimSetAddTrans2Elem(sdfPrimTransElem_t *packet) {
 }
 
 void sdfPrimSetAddTransPacket(sdfPrimTransPacket_t *packet) {
-    sdfPrimSetAddTransElem(&packet->registers);
+    sdfPrimSetAddTransElem(&packet->elem);
     packet->header.dmaWords.tag = 3;
     packet->header.dmaWords.vif = (((u64)0x50000003 << 16 | 0x1000) << 16);
     packet->header.giftag.parm = (((u64)0x10000000 << 32) | 0x8002);
@@ -702,7 +702,7 @@ void sdfPrimSetAddTransPacket(sdfPrimTransPacket_t *packet) {
 }
 
 void sdfPrimSetAddTrans2Packet(sdfPrimTransPacket_t *packet) {
-    sdfPrimSetAddTrans2Elem(&packet->registers);
+    sdfPrimSetAddTrans2Elem(&packet->elem);
     packet->header.dmaWords.tag = 3;
     packet->header.dmaWords.vif = (((u64)0x50000003 << 16 | 0x1000) << 16);
     packet->header.giftag.parm = (((u64)0x10000000 << 32) | 0x8002);
@@ -724,7 +724,7 @@ void sdfPrimSetSubTrans2Elem(sdfPrimTransElem_t *packet) {
 }
 
 void sdfPrimSetSubTransPacket(sdfPrimTransPacket_t *packet) {
-    sdfPrimSetSubTransElem(&packet->registers);
+    sdfPrimSetSubTransElem(&packet->elem);
     packet->header.dmaWords.tag = 3;
     packet->header.dmaWords.vif = (((u64)0x50000003 << 16 | 0x1000) << 16);
     packet->header.giftag.parm = (((u64)0x10000000 << 32) | 0x8002);
@@ -732,7 +732,7 @@ void sdfPrimSetSubTransPacket(sdfPrimTransPacket_t *packet) {
 }
 
 void sdfPrimSetSubTrans2Packet(sdfPrimTransPacket_t *packet) {
-    sdfPrimSetSubTrans2Elem(&packet->registers);
+    sdfPrimSetSubTrans2Elem(&packet->elem);
     packet->header.dmaWords.tag = 3;
     packet->header.dmaWords.vif = (((u64)0x50000003 << 16 | 0x1000) << 16);
     packet->header.giftag.parm = (((u64)0x10000000 << 32) | 0x8002);
@@ -745,7 +745,7 @@ void sdfPrimSetTexflushElem(sdfGrTagStdReg_t *write) {
 }
 
 void sdfPrimSetTexflushPacket(sdfPrimTexflushPacket_t *packet) {
-    sdfPrimSetTexflushElem(&packet->textureFlush);
+    sdfPrimSetTexflushElem(&packet->texflush);
     packet->header.dmaWords.tag = 2;
     packet->header.dmaWords.vif = (((u64)0x50000002 << 16 | 0x1000) << 16);
     packet->header.giftag.parm = (((u64)0x10000000 << 32) | 0x8001);
@@ -779,7 +779,7 @@ void sdfPrimSetBitBltPacket(sdfPrimBitBltPacket_t *packet, u32 destinationBuffer
     packet->header.dmaWords.vif = (((u64)0x50000005 << 16 | 0x1000) << 16);
     packet->header.giftag.parm = (((u64)0x10000000 << 32) | 0x8004);
     packet->header.giftag.regs = 0xE;
-    sdfPrimSetBitBltElem(&packet->transfer, destinationBufferAddress, destinationBufferWidth,
+    sdfPrimSetBitBltElem(&packet->bitblt, destinationBufferAddress, destinationBufferWidth,
                   destinationFormat, destinationX, destinationY, sourceBufferAddress, sourceBufferWidth,
                   sourceFormat, sourceX, sourceY, transferWidth, transferHeight, transferDirection);
 }
@@ -802,8 +802,8 @@ void sdfPrimLinkBitBltPacket(s32 packetList, u32 destinationBufferAddress, s32 d
 }
 
 void sdfPrimFrameMovePredraw(SdfGraphCopyPacket *packet, s32 entryIndex) {
-    packet->draw.transfer.bitbltbuf.data =
-        (packet->draw.transfer.bitbltbuf.data & ~0x3FFF) |
+    packet->draw.bitblt.bitbltbuf.data =
+        (packet->draw.bitblt.bitbltbuf.data & ~0x3FFF) |
         (u64)(u32)(D_00529388.buffers[entryIndex ^ packet->resourceIndexXor]->addr >> 6);
 }
 

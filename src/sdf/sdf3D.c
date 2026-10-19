@@ -80,14 +80,14 @@ typedef struct sdfDrawTag_t {
 } sdfDrawTag_t;
 
 /* Shared fog/depth state consumed by sdf3DMakeFogPacket (0x14).
- * The viewer config serializes fogNear, depthNear, fogFar, depthFar, fogColor;
- * timeline payloads store fogFar before fogNear instead. */
+ * The viewer config serializes fogMax, fogNear, fogMin, fogFar, color;
+ * timeline payloads store fogMin before fogMax instead. */
 typedef struct sdf3DFogParam_t {
-    f32 fogNear;    /* 0x00: minimum fog range. */
-    f32 fogFar;     /* 0x04: maximum fog range. */
-    f32 depthNear;  /* 0x08: near depth used in the projection coefficients. */
-    f32 depthFar;   /* 0x0C: far depth used in the projection coefficients. */
-    u32 fogColor;   /* 0x10: packed GS FOGCOL value. */
+    f32 fogMax;   /* 0x00: minimum fog range. */
+    f32 fogMin;   /* 0x04: maximum fog range. */
+    f32 fogNear;  /* 0x08: near depth used in the projection coefficients. */
+    f32 fogFar;   /* 0x0C: far depth used in the projection coefficients. */
+    u32 color;    /* 0x10: packed GS FOGCOL value. */
 } sdf3DFogParam_t;
 
 /* Native 0x90-byte camera/viewport owner shared by both projection builders. */
@@ -402,12 +402,12 @@ void sdf3DMakeLightParallelPacket(sdf3DLightParallelPacket_t *packet, sdfLightSo
 INCLUDE_ASM(const s32, "sdf/sdf3D", sdf3DMakeLightParallelPacket);
 
 void sdf3DMakeFogPacket(sdf3DFogPacket_t *packet, sdf3DFogParam_t *projectionParams) {
-    f32 rangeMax = projectionParams->fogFar;
-    f32 rangeMin = projectionParams->fogNear;
-    f32 nearZ = projectionParams->depthNear;
-    f32 farZ = projectionParams->depthFar;
+    f32 rangeMax = projectionParams->fogMin;
+    f32 rangeMin = projectionParams->fogMax;
+    f32 nearZ = projectionParams->fogNear;
+    f32 farZ = projectionParams->fogFar;
     f32 depthRange = farZ - nearZ;
-    s32 fogColor = projectionParams->fogColor;
+    s32 fogColor = projectionParams->color;
     packet->dmaTag = 0x20000004;
     packet->vifUnpackCode = 0x6C03C00013000000ULL;
     packet->gifTag = 0x1000000000008001ULL;

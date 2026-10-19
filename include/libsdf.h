@@ -525,21 +525,23 @@ typedef u8 sdfTextureClampMode_t;
 /* Native 0x40-byte TMX header; sdfTexSetEx and resource loaders consume it. */
 typedef struct TMX_HEADER_t
 {
-    u8 unk00;
-    u8 payloadOffsetFlags;
-    u8 pad02[2];
-    u32 byteCount;
-    u32 magic;
-    u8 pad0C[4];
-    u8 paletteCount;
-    u8 clutFormat;
+    u8 fileType;
+    u8 compression;
+    s16 userId;
+    u32 fileSize;
+    u32 formatId;
+    s32 realSize;
+    u8 numOfCLUT;
+    u8 CLUTFormat;
     s16 width;
     s16 height;
     u8 pixelFormat;
-    u8 maxMipLevel;
-    u16 lodParameters;
-    u8 unk1A;
-    sdfTextureClampMode_t clampMode;
+    u8 numOfMipmap;
+    u16 mipmapParam;
+    u8 flags;
+    sdfTextureClampMode_t texWrapMode;
+    /* The IDB calls 0x1C onward userArea and comment. These two are what this
+     * game puts in its user area; sdfTmx reads both as words. */
     s32 resourceKey;
     s32 battleTextureSlot;
     u8 pad24[0x1C];

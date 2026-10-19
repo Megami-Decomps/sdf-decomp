@@ -191,25 +191,25 @@ typedef struct sdfTexHandle_t {
 
 /* Asset holding texture and resource entries (0x48); DDS1/2 game/code_002D9748/003325F8.c. */
 typedef struct sdfMat_t {
-    u32 unk00; /* Word from the serialized asset-parameter header. */
-    u16 unk04; /* Halfword from the serialized asset-parameter header. */
-    u8 dirtyFlags; /* 0x06: pending state-group changes for the two draw entries */
-    u8 pad07;
-    struct sdfMatPacket_t *drawEntries[2]; /* 0x08: owned 0xA0-byte draw entries */
-    u32 primaryStateWordFirst; /* 0x10: first word set by primary-state updates */
-    u32 primaryStateWordSecond; /* 0x14: second word set by primary-state updates */
-    u32 secondaryColor; /* 0x18 */
-    f32 primaryStateFloat; /* 0x1C: interpolated primary-state float */
-    u32 primaryStateWordThird; /* 0x20 */
-    u32 unk24;
-    u32 primaryStateWordFourth; /* 0x28: retained as raw bits */
-    sdfTexHandle_t *texture;
-    sdfTexHandle_t *secondaryTexture; /* 0x30 */
-    u32 secondaryMode;       /* 0x34: secondary packet and palette selector */
-    sdfMatUvwParm_t *primarySubParam; /* 0x38 */
-    sdfMatUvwParm_t *secondarySubParam; /* 0x3C */
-    f32 scalarPairFirst; /* 0x40 */
-    f32 scalarPairSecond; /* 0x44 */
+    u32 id;
+    u16 flags;
+    u8 duty; /* 0x06: pending state-group changes for the two packets */
+    u8 pad;
+    struct sdfMatPacket_t *packet[2]; /* 0x08: owned 0xA0-byte draw entries */
+    u32 ambient;         /* 0x10 */
+    u32 diffuse;         /* 0x14 */
+    u32 multiTexDiffuse; /* 0x18 */
+    f32 constant;        /* 0x1C */
+    u32 specular;        /* 0x20 */
+    u32 specularParm;    /* 0x24 */
+    u32 refmap;          /* 0x28 */
+    sdfTexHandle_t *texHandle;
+    sdfTexHandle_t *multiTexHandle; /* 0x30 */
+    u32 multiTexMethod;             /* 0x34: secondary packet and palette selector */
+    sdfMatUvwParm_t *uvwParm;         /* 0x38 */
+    sdfMatUvwParm_t *multiTexUvwParm; /* 0x3C */
+    f32 fdBias;   /* 0x40 */
+    f32 fdSoften; /* 0x44 */
 } sdfMat_t;
 
 /* Refresh one of the two draw entries and retain the other entry's dirty bits. */
