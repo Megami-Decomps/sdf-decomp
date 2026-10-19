@@ -985,7 +985,18 @@ void mdlLink(mdlObj_t *ctx, void *surfaces)
     mdlLinkBlur(ctx, surfaces);
 }
 
-INCLUDE_ASM(const s32, "model/mdlManager", mdlHideAllNode);
+void mdlHideAllNode(mdlObj_t *ctx)
+{
+    sdfModelNode_t **items;
+    s32 count;
+    s32 i;
+
+    count = ctx->inner->nodeList->count;
+    items = ctx->inner->nodeList->items;
+    for (i = 0; i < count; i++) {
+        items[i]->flags = 1;
+    }
+}
 
 void mdlMotion(mdlObj_t *ctx, s32 searchId, s32 motionIndex, s32 loopEnabled,
                                      f32 blendLeadFrames, f32 blendDurationFrames) {
