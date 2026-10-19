@@ -4,6 +4,23 @@
 
 /* The native end message is padded to a 0x20-byte rodata block. */
 extern s8 dds3CrossfadeRunFlag;
+extern u32 dds3CrossfadeFrame;
+extern u32 dds3CrossfadeFrameMax;
+extern sdfGrOt_t sdfGrOtTable[];
+extern void sdfDrawTagInit(sdfDrawTag_t *list);
+extern void sdfDrawTagLink(sdfDrawTag_t *list, u32 packetAddress);
+extern void sdfGrLinkDispFrameTex(sdfDrawTag_t *list, u32 source, void *node);
+extern void sdf2DLinkTexPacket(sdfDrawTag_t *list, sdfTexHandle_t *texture, s32 gsContext);
+extern void *sdf2DAllocSprite(s32 loopCount);
+extern void *sdf2DGetPrimPtr(void *packet);
+extern u32 dds3GetFrameID(void);
+extern sdfTexHandle_t *dds3GetRenderTexture(void);
+extern u32 dds3RenderDrawEnv;
+extern f32 D_002F5C20[];
+extern f32 D_002F5C30[];
+extern void dds3CrossfadeEnd(void);
+extern s32 dds3AllocRenderTexture(u16 width, u16 height, f32 aspect);
+extern s32 dds3RenderTextureON(void);
 extern u32 D_003176C0[];
 extern s32 sdf2DGetPrimPacketSize(s32 registerCount, s32 loopCount);
 extern void *sdfGrAllocPacketBuff(s32 size);
@@ -164,10 +181,179 @@ void *effPkt3DPrimMakePoly(sdf3DPrimPolyParm_t *params) {
     return packet;
 }
 
-/* Each framebuffer has two GS clear-colour writes, 0x10 bytes apart. */
-INCLUDE_ASM(const s32, "effect/effPacket", dds3CrossfadeStart);
+/* The render draw env's clear sprite, 0x1800 into each 0x1BE0 draw bank: both
+ * XYZ corners go to the GS coordinate bias, which clears nothing. */
+typedef struct
+{
+    u8 unk0000[0x1300];
+    u8 frameMaskSource[0x500];
+    u64 clearXyzA;
+    u64 unk1808;
+    u64 clearXyzB;
+    u8 unk1818[0x3C8];
+} effPacketDrawBank_t;
 
-INCLUDE_ASM(const s32, "effect/effPacket", dds3CrossfadeRun);
+/* One textureless sprite as sdf2D lays it out: the colour, then two corners
+ * of 0x20 bytes each. */
+typedef struct
+{
+    s32 u;
+    s32 v;
+    u8 pad08[8];
+    s32 x;
+    s32 y;
+    s32 mask;
+    s16 flag;
+    u8 pad1E[2];
+} effPacketSpriteCorner_t;
+
+typedef struct
+{
+    s32 r;
+    s32 g;
+    s32 b;
+    s32 a;
+    effPacketSpriteCorner_t corner[2];
+} effPacketSpriteVertex_t;
+
+extern effPacketDrawBank_t dds3DrawEnv[];
+
+void dds3CrossfadeStart(s32 frames)
+{
+    s32 i;
+
+    if (dds3CrossfadeRunFlag != 0) {
+        dds3CrossfadeEnd();
+    }
+    if (frames == 0) {
+        return;
+    }
+    D_002F5C20[0] = 0.0f;
+    D_002F5C20[1] = 0.0f;
+    D_002F5C20[2] = 0.0f;
+    D_002F5C30[0] = 0.0f;
+    D_002F5C30[1] = 0.0f;
+    D_002F5C30[2] = 0.0f;
+    dds3RenderDrawEnv = 0x80808080;
+    dds3AllocRenderTexture(0x100, 0xE0, 0.0f);
+    dds3RenderTextureON();
+    for (i = 0; i != 2; i++) {
+        dds3DrawEnv[i].clearXyzA = 0x80008000;
+        dds3DrawEnv[i].clearXyzB = 0x80008000;
+    }
+    dds3CrossfadeFrameMax = frames;
+    dds3CrossfadeRunFlag = 1;
+    dds3CrossfadeFrame = 0;
+    printf("dds3CrossfadeStart\n");
+}
+
+void dds3CrossfadeRun(void)
+{
+    sdfDrawTag_t *list;
+    void *reference;
+    u32 frame;
+    void *sprite;
+    effPacketSpriteVertex_t *vertex;
+    s32 color;
+    s32 alpha;
+    u32 level;
+
+    if (dds3CrossfadeRunFlag == 0) {
+        return;
+    }
+    if (dds3CrossfadeFrame == dds3CrossfadeFrameMax) {
+        dds3CrossfadeEnd();
+        return;
+    }
+    if (dds3CrossfadeFrame == 0) {
+        list = (sdfDrawTag_t *)sdfGrAllocPacketBuff(0x20);
+        sdfDrawTagInit(list);
+        reference = (void *)sdfGrAllocPacketBuff(0x20);
+        frame = dds3GetFrameID();
+        sdfGrLinkDispFrameTex(list, (u32)dds3DrawEnv[frame].frameMaskSource, reference);
+        {
+            u64 *packet = (u64 *)sdfGrAllocPacketBuff(0x40);
+
+            packet[0] = 3;
+            packet[1] = 0x5000000310000000ULL;
+            packet[2] = 0x1000000000008002ULL;
+            packet[3] = 0xE;
+            packet[4] = 0x8000000080ULL;
+            packet[5] = 0x3B;
+            packet[6] = 0;
+            packet[7] = 0x3F;
+            sdfDrawTagLink(list, (u32)packet);
+        }
+        {
+            u64 *packet = (u64 *)sdfGrAllocPacketBuff(0x40);
+
+            packet[0] = 3;
+            packet[1] = 0x5000000310000000ULL;
+            packet[2] = 0x1000000000008002ULL;
+            packet[3] = 0xE;
+            packet[4] = 0x31001;
+            packet[5] = 0x47;
+            packet[6] = 0x44;
+            packet[7] = 0x42;
+            sdfDrawTagLink(list, (u32)packet);
+        }
+        sprite = sdf2DAllocSprite(1);
+        vertex = (effPacketSpriteVertex_t *)sdf2DGetPrimPtr(sprite);
+        vertex->r = 0x80;
+        vertex->g = 0x80;
+        vertex->b = 0x80;
+        vertex->a = 0x80;
+        vertex->corner[0].u = 0;
+        vertex->corner[0].v = 0;
+        vertex->corner[0].x = 0x77F8;
+        vertex->corner[0].y = 0x78F8;
+        vertex->corner[0].mask = 0xFF0000;
+        vertex->corner[0].flag = 0;
+        vertex->corner[1].u = 0x2000;
+        vertex->corner[1].v = 0xE00;
+        vertex->corner[1].x = 0x87F8;
+        vertex->corner[1].y = 0x86F8;
+        vertex->corner[1].mask = 0xFF0000;
+        vertex->corner[1].flag = 0;
+        sdfDrawTagLink(list, (u32)sprite);
+        {
+            sdfGrOt_t *ot = &sdfGrOtTable[2];
+
+            ot->regFunc(ot, list);
+        }
+    }
+    dds3CrossfadeFrame++;
+    level = (u32)(dds3CrossfadeFrame * 128.0f / dds3CrossfadeFrameMax);
+    color = 0x80;
+    alpha = (color - level) & 0xFF;
+    list = (sdfDrawTag_t *)sdfGrAllocPacketBuff(0x20);
+    sdfDrawTagInit(list);
+    sdf2DLinkTexPacket(list, dds3GetRenderTexture(), 0);
+    sprite = sdf2DAllocSprite(1);
+    vertex = (effPacketSpriteVertex_t *)sdf2DGetPrimPtr(sprite);
+    vertex->r = color;
+    vertex->g = color;
+    vertex->b = color;
+    vertex->a = alpha;
+    vertex->corner[0].u = 0;
+    vertex->corner[0].v = 0;
+    vertex->corner[0].x = 0x7000;
+    vertex->corner[0].y = 0x7900;
+    vertex->corner[0].mask = 0xFF0000;
+    vertex->corner[0].flag = 0;
+    vertex->corner[1].u = 0x1000;
+    vertex->corner[1].v = 0xE00;
+    vertex->corner[1].x = 0x9000;
+    vertex->corner[1].y = 0x8700;
+    vertex->corner[1].mask = 0xFF0000;
+    vertex->corner[1].flag = 0;
+    sdfDrawTagLink(list, (u32)sprite);
+    {
+        sdfGrOt_t *ot = &sdfGrOtTable[70];
+
+        ot->regFunc(ot, list);
+    }
+}
 
 void dds3CrossfadeEnd(void) {
     dds3RenderTextureOFF();
