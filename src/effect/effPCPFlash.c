@@ -1,6 +1,7 @@
 #include "common.h"
 #include "ps2asm.h"
 #include "sdf_resource.h"
+#include "sdf_types.h"
 
 struct EffPacketParams;
 struct EffRandState;
@@ -55,7 +56,6 @@ typedef struct PcpFlashRadialTriangleParams PcpFlashRadialTriangleParams;
 typedef struct PcpFlashStreakParams PcpFlashStreakParams;
 typedef struct PcpFlashTrianglePulseParams PcpFlashTrianglePulseParams;
 typedef struct PcpFlashTrianglePulseWork PcpFlashTrianglePulseWork;
-typedef struct sdfVector3_t sdfVector3_t;
 typedef struct sdfGrOt_t sdfGrOt_t;
 typedef struct EffThunderDrawParams EffThunderDrawParams;
 typedef struct EffPacketParams EffPacketParams;
@@ -717,12 +717,6 @@ struct PcpFlashTrianglePulseWork {
     EffRecordPool *resourceHandle;
 };
 
-/* Three-component vector; the VU0 loaders read it as the xyz of a quadword. */
-struct sdfVector3_t {
-    f32 x;
-    f32 y;
-    f32 z;
-};
 
 struct sdfDrawTag_t;
 
