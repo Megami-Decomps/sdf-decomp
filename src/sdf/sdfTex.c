@@ -17,9 +17,7 @@ extern void sdfGsMemFree(sdfGsMemSlice_t *slice);
 extern sdfGsMemSlice_t *sdfGsMemAllocFromTail(s32 size, s32 type);
 extern void *memcpy(void *dst, const void *src, u32 len);
 
-/* The texture file header sdfTexSetEx parses; only its address is needed here. */
-typedef struct sdfTexFile_t sdfTexFile_t;
-extern sdfTexHandle_t *sdfTexSetEx(sdfTexFile_t *aTex, s32 aMemMode);
+extern sdfTexHandle_t *sdfTexSetEx(TMX_HEADER_t *aTex, s32 aMemMode);
 
 extern void *sdfTexTransData(s32 aGsAddr, s32 aWidth, s32 aHeight, s32 aPixelFormat, void *aData,
                              s32 aMemMode);
@@ -513,14 +511,53 @@ void sdfTexRebuildPacket(sdfTexHandle_t *aHandle)
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfTex", sdfTexSetEx);
+sdfTexHandle_t *sdfTexSetEx(TMX_HEADER_t *aTex, s32 aMemMode)
+{
+    sdfTexHandle_t *handle;
+    void *data;
+    s32 gsAddr;
+    s32 width;
+    s32 height;
+    s32 level;
+    s32 pixelFormat;
+    s32 bitCount;
 
-sdfTexHandle_t *sdfTexSet(sdfTexFile_t *aTex)
+    handle = sdfTexAlloc(aTex->width, aTex->height, aTex->pixelFormat, aTex->numOfMipmap,
+                         aTex->CLUTFormat, aTex->numOfCLUT);
+    handle->mipmapParam = aTex->mipmapParam;
+    handle->flags = aTex->flags;
+    handle->texWrapMode = aTex->texWrapMode;
+    handle->texId = aTex->resourceKey;
+    handle->clutId = aTex->battleTextureSlot;
+    data = (u8 *)aTex + (aTex->compression & 0xF0) + sizeof(TMX_HEADER_t);
+    if (sdfTexGetCLUTCount(handle) != 0) {
+        sdfTexAllocClutBuff(handle);
+        sdfTexCopyClutData(handle, data);
+        data = sdfTexTransCLUT(handle, sdfTexGetCLUTAddr(handle), data, aMemMode);
+    }
+    pixelFormat = handle->pixelFormat;
+    width = handle->width;
+    height = handle->height;
+    level = handle->numOfMipmap;
+    gsAddr = sdfTexGetPixelAddr(handle);
+    bitCount = sdfTexGetTexelBitCount(pixelFormat);
+    do {
+        data = sdfTexTransData(gsAddr, width, height, pixelFormat, data, aMemMode);
+        level--;
+        gsAddr += (bitCount * width * height) >> 5;
+        width >>= 1;
+        height >>= 1;
+    } while (level != -1);
+    sdfTexMakeGIFPacket(handle);
+    return handle;
+}
+
+sdfTexHandle_t *sdfTexSet(TMX_HEADER_t *aTex)
 {
     return sdfTexSetEx(aTex, 0);
 }
 
-sdfTexHandle_t *sdfTexSetDirect(sdfTexFile_t *aTex)
+sdfTexHandle_t *sdfTexSetDirect(TMX_HEADER_t *aTex)
 {
     return sdfTexSetEx(aTex, 1);
 }
