@@ -3,7 +3,6 @@
 #include "ps2asm.h"
 
 /* The native end message is padded to a 0x20-byte rodata block. */
-extern const char D_00532E00[]; /* "dds3CrossfadeEnd\n" */
 extern s8 dds3CrossfadeRunFlag;
 extern u32 D_003176C0[];
 extern s32 sdf2DGetPrimPacketSize(s32 registerCount, s32 loopCount);
@@ -174,10 +173,9 @@ void dds3CrossfadeEnd(void) {
     dds3RenderTextureOFF();
     dds3FreeRenderTexture();
     dds3CrossfadeRunFlag = 0;
-    printf(D_00532E00);
+    printf("dds3CrossfadeEnd
+");
 }
-INCLUDE_RODATA(const s32, "effect/effPacket", D_00532E00);
-
 INCLUDE_SDATA(const s32, "effect/effPacket", dds3CrossfadeRunFlag);
 
 INCLUDE_SDATA(const s32, "effect/effPacket", D_0054F0C1);
