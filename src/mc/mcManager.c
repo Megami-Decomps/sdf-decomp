@@ -17,6 +17,7 @@ typedef enum McPollResult {
 } McPollResult;
 
 extern s32 sceMcSync(s32 mode, void *cmd, s32 *result);
+extern s32 sceMcGetInfo(s32 port, s32 slot, s32 *type, s32 *free, s32 *format);
 extern s32 sceMcChdir(s32 port, s32 slot, const char *path, char *cwd);
 extern s32 sceMcGetDir(s32 port, s32 slot, const char *path, u32 mode, s32 maxent, void *table);
 extern s32 sceMcOpen(s32 port, s32 slot, const char *path, s32 flags);
@@ -27,39 +28,135 @@ extern s32 sceMcClose(s32 descriptor);
 extern s32 sceMcRead(s32 descriptor, void *buffer, s32 size);
 extern s32 sceMcWrite(s32 descriptor, const void *buffer, s32 size);
 
-/* Each port's control block strides 40 bytes; the selected slot is at +19. */
+/* One control block per port. */
 typedef struct
 {
-    u8 unk00[19];
-    u8 slotIndex;
-    u8 unk14[20];
+    s32 syncResult;
+    s32 type;
+    s32 free;
+    s32 format;
+    u8 retry;
+    u8 fileInfoReady;
+    u8 cardStat;
+    s8 slotIndex;
+    u32 slotFlags[5];
 } sdfMcControl_t;
 
 extern sdfMcControl_t sdfMcCb[];
+extern s32 sdfMcInfo;
 
-INCLUDE_ASM(const s32, "mc/mcManager", sdfMcFuncGetInfo);
+void sdfMcFuncGetInfo(s32 port)
+{
+    sdfMcControl_t *cb = &sdfMcCb[port];
+    s32 dummy;
+    s32 *p = &dummy;
 
-INCLUDE_ASM(const s32, "mc/mcManager", sdfMcRegetInfo);
+    sceMcGetInfo(port, MC_CARD_SLOT, &cb->type, &cb->free, &cb->format);
+}
 
-INCLUDE_ASM(const s32, "mc/mcManager", sdfMcFuncGetInfo1);
+void sdfMcRegetInfo(s32 port)
+{
+    sdfMcInfo = port;
+    sdfMcFuncGetInfo(port);
+    sdfMcCb[port].retry = 0;
+}
 
-INCLUDE_ASM(const s32, "mc/mcManager", sdfMcGetFileInfoReady);
+McPollResult sdfMcFuncGetInfo1(void)
+{
+    sdfMcControl_t *cb = &sdfMcCb[sdfMcInfo];
+    u32 commandId;
+    s32 commandResult;
+    s32 pollResult = sceMcSync(MC_SYNC_POLL_MODE, &commandId, &commandResult);
 
-INCLUDE_ASM(const s32, "mc/mcManager", sdfMcGetFreeBytes);
+    if (pollResult == MC_SYNC_COMPLETE) {
+        cb->syncResult = commandResult;
+        if (commandResult == -1) {
+            cb->cardStat = 1;
+            cb->slotIndex = 0;
+        }
+        switch (cb->type) {
+        case 0:
+            cb->cardStat = 1;
+            cb->fileInfoReady = 0;
+            cb->slotIndex = 0;
+            break;
+        case 2:
+            if (cb->format == 0) {
+                s32 retry = cb->retry;
 
-INCLUDE_ASM(const s32, "mc/mcManager", sdfMcGetStatus);
+                if (retry < 5) {
+                    cb->retry = retry + 1;
+                    sdfMcFuncGetInfo(sdfMcInfo);
+                    return MC_POLL_PENDING;
+                }
+                cb->fileInfoReady = 2;
+                cb->cardStat = 1;
+                cb->slotIndex = 0;
+            } else {
+                cb->fileInfoReady = 1;
+            }
+            break;
+        default:
+            cb->fileInfoReady = 3;
+            cb->cardStat = 1;
+            cb->slotIndex = 0;
+            break;
+        }
+        return MC_POLL_SUCCESS;
+    }
+    return MC_POLL_PENDING;
+}
 
-INCLUDE_ASM(const s32, "mc/mcManager", sdfMcClearCardStat);
+s32 sdfMcGetFileInfoReady(s32 port)
+{
+    return sdfMcCb[port].fileInfoReady;
+}
 
-INCLUDE_ASM(const s32, "mc/mcManager", sdfMcSetCardStat);
+s32 sdfMcGetFreeBytes(s32 port)
+{
+    return sdfMcCb[port].free << 10;
+}
 
-INCLUDE_ASM(const s32, "mc/mcManager", sdfMcClearSlotFlags);
+s32 sdfMcGetStatus(s32 port)
+{
+    return sdfMcCb[port].cardStat;
+}
 
-INCLUDE_ASM(const s32, "mc/mcManager", sdfMcSetSlotFlags);
+void sdfMcClearCardStat(s32 port)
+{
+    sdfMcCb[port].cardStat = 0;
+}
 
-INCLUDE_ASM(const s32, "mc/mcManager", sdfMcGetSlotFlags);
+void sdfMcSetCardStat(s32 port)
+{
+    sdfMcCb[port].cardStat = 1;
+}
 
-INCLUDE_ASM(const s32, "mc/mcManager", sdfMcGetSlotIndex);
+void sdfMcClearSlotFlags(s32 port, s32 slot)
+{
+    sdfMcControl_t *cb = &sdfMcCb[port];
+
+    cb->slotFlags[slot] = 0;
+}
+
+void sdfMcSetSlotFlags(s32 port, s32 slot, u32 flags)
+{
+    sdfMcControl_t *cb = &sdfMcCb[port];
+
+    cb->slotFlags[slot] |= flags;
+}
+
+u32 sdfMcGetSlotFlags(s32 port, s32 slot)
+{
+    sdfMcControl_t *cb = &sdfMcCb[port];
+
+    return cb->slotFlags[slot];
+}
+
+s32 sdfMcGetSlotIndex(s32 port)
+{
+    return sdfMcCb[port].slotIndex;
+}
 
 void sdfMcSetSlotIndex(s32 port, s32 slot)
 {
