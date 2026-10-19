@@ -16,7 +16,6 @@ extern s32 sdfGetRunTimeCountBase(void);
 extern s32 sdfGetRunTimeCount(s32 startTicks);
 
 extern sdfIopRpcClient_t sdfIopRpcClient;
-extern char D_00549040[];
 
 void SdfIopInit(const char *driverPath, const char *modulePath)
 {
@@ -24,11 +23,11 @@ void SdfIopInit(const char *driverPath, const char *modulePath)
 
     if (modulePath != NULL) {
         while (sceSifLoadModule(modulePath, 0, NULL) < 0) {
-            printf(D_00549040, modulePath);
+            printf("%s can't load.\n", modulePath);
         }
     }
     while (sceSifLoadModule(driverPath, 0, NULL) < 0) {
-        printf(D_00549040, driverPath);
+        printf("%s can't load.\n", driverPath);
     }
     if (modulePath != NULL) {
         sceSifMInitRpc(0);
@@ -43,6 +42,4 @@ void SdfIopInit(const char *driverPath, const char *modulePath)
         }
     }
 }
-
-INCLUDE_RODATA(const s32, "code_002A99B0", D_00549040);
 

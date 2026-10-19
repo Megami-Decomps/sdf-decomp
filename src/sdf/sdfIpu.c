@@ -309,7 +309,6 @@ extern char D_00551B10[];
 
 extern char D_00551B18[];
 
-extern char D_0054A2D8[];
 
 extern char D_00551B40[];
 

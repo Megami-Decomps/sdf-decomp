@@ -25,7 +25,6 @@ void sdfFileCmdThreadSetPrio(s32 aPrio);
 
 s32 sdfFileCmdRead(void *aHandle, void *aBuffer, s32 aSize);
 
-extern const char D_00549640[];
 
 s32 sdfFileCmdUnlink(void *aCmd);
 
@@ -120,7 +119,6 @@ extern void StartThread();
 
 extern void *memcpy(void *, const void *, unsigned int);
 
-extern char D_00549658[];
 
 extern s32 sceOpen();
 

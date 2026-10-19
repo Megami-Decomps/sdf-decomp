@@ -177,7 +177,6 @@ extern void sdfDelayThread(s32 delay);
 
 extern char * strcpy(char *, const char *);
 
-extern char D_00549878[];
 
 extern sndRingPacket_t D_00590840[32];
 
@@ -233,7 +232,6 @@ extern char D_00549B88[];
 
 extern char D_00549BB0[];
 
-extern char D_00549BD0[];
 
 extern char *sdfDmaTagNameTable[];
 
@@ -764,8 +762,6 @@ INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549B88);
 
 INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549BB0);
 
-INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549BD0);
-
 void sdfDumpDmaChain(sdfDmaDumpTag_t *source) {
     sdfDmaDumpTag_t *callStack[2];
     sdfDmaDumpTag_t *cursor;
@@ -822,7 +818,8 @@ void sdfDumpDmaChain(sdfDmaDumpTag_t *source) {
             break;
         }
         if (done != 0) {
-            sdfPrintf(D_00549BD0, cursor);
+            sdfPrintf("<<< DMA normal end [%p] >>>
+", cursor);
             return;
         }
     }
