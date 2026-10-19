@@ -72,21 +72,23 @@ s32 sdfCreateThreadWithStack(void (*entryAddress)(), s32 stackBytes, s32 priorit
 
 /* Serialized texture-resource header; payload begins after this 0x40-byte prefix. */
 typedef struct TMX_HEADER_t {
-    u8 unk00;
-    u8 payloadOffsetFlags; /* 0x01: high nibble adds payload offset bytes; low bits stay opaque. */
-    u8 pad02[2];       /* 0x02 */
-    u32 byteCount;     /* 0x04 */
-    u32 magic;         /* 0x08 */
-    u8 pad0C[4];       /* 0x0C */
-    u8 paletteCount;   /* 0x10 */
-    u8 clutFormat;     /* 0x11 */
+    u8 fileType;
+    u8 compression;    /* 0x01: high nibble adds payload offset bytes; low bits stay opaque. */
+    s16 userId;        /* 0x02 */
+    u32 fileSize;      /* 0x04 */
+    u32 formatId;      /* 0x08 */
+    s32 realSize;      /* 0x0C */
+    u8 numOfCLUT;      /* 0x10 */
+    u8 CLUTFormat;     /* 0x11 */
     s16 width;         /* 0x12 */
     s16 height;        /* 0x14 */
     u8 pixelFormat;    /* 0x16 */
-    u8 maxMipLevel;    /* 0x17 */
-    u16 lodParameters; /* 0x18 */
-    u8 unk1A;          /* 0x1A */
-    SdfTextureClampMode clampMode; /* 0x1B: serialized GS clamp mode */
+    u8 numOfMipmap;    /* 0x17 */
+    u16 mipmapParam;   /* 0x18 */
+    u8 flags;          /* 0x1A */
+    SdfTextureClampMode texWrapMode; /* 0x1B: serialized GS clamp mode */
+    /* The IDB calls 0x1C onward userArea and comment. These two are what this
+     * game puts in its user area; sdfTmx reads both as words. */
     s32 resourceKey;   /* 0x1C */
     s32 battleTextureSlot; /* 0x20: selects one of two battle-model texture headers */
     u8 pad24[0x1C];    /* 0x24 */
@@ -173,7 +175,7 @@ typedef struct Dds3AdminModeDispatch {
     s32 (*cleanup)(void);
 } Dds3AdminModeDispatch;
 
-void sdfTmxSetHeader(TMX_HEADER_t *header, s32 width, s32 height, s32 depth, s32 paletteCount, s32 clutFormat);
+void sdfTmxSetHeader(TMX_HEADER_t *aHeader, s32 aWidth, s32 aHeight, s32 aPixelFormat, s32 aNumOfCLUT, s32 aCLUTFormat);
 
 void sdfFileRpcContinueRead(void);
 
@@ -186,15 +188,15 @@ void sdfStartFileRpcServer(void);
 
 void LoadMcModules(const char *prefix, s32 moduleGroup);
 
-void sdfTmxSetHeader(TMX_HEADER_t *header, s32 width, s32 height, s32 depth, s32 paletteCount, s32 clutFormat) {
-    memset(header, 0, sizeof(TMX_HEADER_t));
-    header->clutFormat = clutFormat;
-    header->width = width;
-    header->height = height;
-    header->pixelFormat = depth;
-    header->paletteCount = paletteCount;
-    header->magic = SDF_TMX_MAGIC;
-    header->unk00 = 2;
+void sdfTmxSetHeader(TMX_HEADER_t *aHeader, s32 aWidth, s32 aHeight, s32 aPixelFormat, s32 aNumOfCLUT, s32 aCLUTFormat) {
+    memset(aHeader, 0, sizeof(TMX_HEADER_t));
+    aHeader->CLUTFormat = aCLUTFormat;
+    aHeader->width = aWidth;
+    aHeader->height = aHeight;
+    aHeader->pixelFormat = aPixelFormat;
+    aHeader->numOfCLUT = aNumOfCLUT;
+    aHeader->formatId = SDF_TMX_MAGIC;
+    aHeader->fileType = 2;
 }
 
 void sdfFileRpcContinueRead(void) {
