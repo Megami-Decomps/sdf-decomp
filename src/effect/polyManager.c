@@ -607,7 +607,41 @@ void dds3TrackPolyMove2(dds3TrackPoly_t *system, s32 cellIndex, const u128 *delt
 
 void dds3TrackPolyVCRefresh_ParType1(dds3TrackPoly_t *system, s32 cellIndex);
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCRefresh_ParType1);
+void dds3TrackPolyVCRefresh_ParType1(dds3TrackPoly_t *system, s32 cellIndex) {
+    u32 startCarrier[4];
+    u32 cellCarrier[4];
+    u32 packed[4];
+    dds3TrackPolyList_t *cell = (dds3TrackPolyList_t *)((u8 *)(cellIndex * sizeof(dds3TrackPolyList_t)) + (u32)system->list);
+    u32 *vc = cell->pVC;
+    u32 perCell = cell->count >> 1;
+    u32 color = vc[0];
+    u32 j;
+
+    if (perCell < 2) {
+        return;
+    }
+    startCarrier[0] = color & 0xFF000000;
+    MMI_RGBA_UNPACK(startCarrier, 1.0f / 128.0f);
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(D_003175B0);
+    VU0_LERP_VF10_VF11(1.0f / (f32)perCell);
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    cellCarrier[0] = color;
+    MMI_RGBA_UNPACK(cellCarrier, 1.0f / 128.0f);
+    for (j = 0; j < perCell; j++) {
+        u32 packedColor;
+
+        SDF_VU0_COPYVECTOR_A_TO_B();
+        MMI_RGBA_PACK_UNIT(packedColor, 0x43000000);
+        packed[0] = packedColor;
+        vc[0] = packedColor;
+        vc[1] = packedColor;
+        SDF_VU0_SUBVECTOR_B_C();
+        SDF_VU0_COPYVECTOR_B_TO_A();
+        vc += 2;
+    }
+}
+
 
 void dds3TrackPolyVCRefresh_ParType2(dds3TrackPoly_t *system, s32 cellIndex);
 
@@ -631,21 +665,217 @@ void dds3TrackPolyVCSet_Normal(dds3TrackPoly_t *hTrackPoly, u32 firstColor, u32 
     }
 }
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCSet_Acute);
+void dds3TrackPolyVCSet_Acute(dds3TrackPoly_t *system, u32 firstColor, u32 secondColor) {
+    u32 startCarrier[4];
+    u32 cellCarrier[4];
+    u32 packed[4];
+    u32 perCell = system->face >> 1;
+    u32 cellCount = system->number;
+    s32 i;
+
+    startCarrier[0] = firstColor & 0xFF000000;
+    MMI_RGBA_UNPACK(startCarrier, 1.0f / 128.0f);
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_LOADVECTOR(D_003175D0);
+    VU0_LERP_VF10_VF11(1.0f / (f32)perCell);
+    SDF_VU0_COPYVECTOR_A_TO_C();
+    for (i = 0; i < cellCount; i++) {
+        u32 *vc = system->list[i].pVC;
+        s32 j;
+
+        cellCarrier[0] = firstColor;
+        MMI_RGBA_UNPACK_NOMEM(cellCarrier, 0x3C000000);
+        for (j = 0; j < perCell; j++) {
+            u32 color;
+
+            SDF_VU0_COPYVECTOR_A_TO_B();
+            MMI_RGBA_PACK_UNIT(color, 0x43000000);
+            packed[0] = color;
+            vc[0] = color;
+            vc[1] = color;
+            SDF_VU0_SUBVECTOR_B_C();
+            SDF_VU0_COPYVECTOR_B_TO_A();
+            vc += 2;
+        }
+    }
+}
+
 
 INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCSet_AcuteW);
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCSet2_Normal);
+void dds3TrackPolyVCSet2_Normal(dds3TrackPoly_t *system, u32 firstColor, u32 secondColor) {
+    s32 cellCount = system->number;
+    s32 perCell = system->face / 3;
+    s32 i;
+
+    for (i = 0; i < cellCount; i++) {
+        u32 *vc = system->list[i].pVC;
+        s32 j;
+
+        for (j = 0; j < perCell; j++) {
+            vc[1] = firstColor;
+            vc[2] = secondColor;
+            vc[0] = secondColor;
+            vc += 3;
+        }
+    }
+}
+
 
 INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCSet2_Acute);
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCSet2_AcuteW);
+void dds3TrackPolyVCSet2_AcuteW(dds3TrackPoly_t *system, u32 firstColor, u32 secondColor) {
+    s32 cellCount = system->number;
+    s32 perCell = (system->face / 3) >> 1;
+    u32 firstAlpha = firstColor & 0xFF000000;
+    u32 secondAlpha = secondColor & 0xFF000000;
+    u32 firstStep = firstAlpha / perCell;
+    u32 secondStep = secondAlpha / perCell;
+    s32 i;
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVC3Set_Normal);
+    firstColor &= 0x00FFFFFF;
+    secondColor &= 0x00FFFFFF;
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVC3Set_Acute);
+    for (i = 0; i < cellCount; i++) {
+        u32 *vc = system->list[i].pVC;
+        u32 rampFirst = 0;
+        u32 rampSecond = 0;
+        s32 j;
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVC3Set_AcuteW);
+        for (j = 0; j < perCell; j++) {
+            vc[1] = firstColor | (rampFirst & 0xFF000000);
+            vc[2] = secondColor | (rampSecond & 0xFF000000);
+            vc[0] = secondColor | (rampSecond & 0xFF000000);
+            rampFirst += firstStep;
+            rampSecond += secondStep;
+            vc += 3;
+        }
+        rampFirst = firstAlpha;
+        rampSecond = secondAlpha;
+        for (j = 0; j < perCell; j++) {
+            rampFirst -= firstStep;
+            rampSecond -= secondStep;
+            vc[1] = firstColor | (rampFirst & 0xFF000000);
+            vc[2] = secondColor | (rampSecond & 0xFF000000);
+            vc[0] = secondColor | (rampSecond & 0xFF000000);
+            vc += 3;
+        }
+    }
+}
+
+
+void dds3TrackPolyVC3Set_Normal(dds3TrackPoly_t *system, u32 firstColor, u32 secondColor, u32 thirdColor) {
+    s32 cellCount = system->number;
+    s32 perCell = system->face / 6;
+    s32 i;
+
+    for (i = 0; i < cellCount; i++) {
+        u32 *vc = system->list[i].pVC;
+        s32 j;
+
+        for (j = 0; j < perCell; j++) {
+            vc[0] = thirdColor;
+            vc[1] = secondColor;
+            vc[2] = firstColor;
+            vc[3] = firstColor;
+            vc[4] = secondColor;
+            vc[5] = thirdColor;
+            vc += 6;
+        }
+    }
+}
+
+
+void dds3TrackPolyVC3Set_Acute(dds3TrackPoly_t *system, u32 firstColor, u32 secondColor, u32 thirdColor) {
+    s32 cellCount = system->number;
+    s32 perCell = system->face / 6;
+    u32 firstAlpha = firstColor & 0xFF000000;
+    u32 secondAlpha = secondColor & 0xFF000000;
+    u32 thirdAlpha = thirdColor & 0xFF000000;
+    u32 firstStep = firstAlpha / perCell;
+    u32 secondStep = secondAlpha / perCell;
+    u32 thirdStep = thirdAlpha / perCell;
+    s32 i;
+
+    firstColor &= 0x00FFFFFF;
+    secondColor &= 0x00FFFFFF;
+    thirdColor &= 0x00FFFFFF;
+
+    for (i = 0; i < cellCount; i++) {
+        u32 *vc = system->list[i].pVC;
+        u32 rampFirst = firstAlpha;
+        u32 rampSecond = secondAlpha;
+        u32 rampThird = thirdAlpha;
+        s32 j;
+
+        for (j = 0; j < perCell; j++) {
+            rampFirst -= firstStep;
+            rampSecond -= secondStep;
+            rampThird -= thirdStep;
+            vc[0] = thirdColor | (rampThird & 0xFF000000);
+            vc[1] = secondColor | (rampSecond & 0xFF000000);
+            vc[2] = firstColor | (rampFirst & 0xFF000000);
+            vc[3] = firstColor | (rampFirst & 0xFF000000);
+            vc[4] = secondColor | (rampSecond & 0xFF000000);
+            vc[5] = thirdColor | (rampThird & 0xFF000000);
+            vc += 6;
+        }
+    }
+}
+
+
+void dds3TrackPolyVC3Set_AcuteW(dds3TrackPoly_t *system, u32 firstColor, u32 secondColor, u32 thirdColor) {
+    s32 cellCount = system->number;
+    s32 perCell = (system->face / 6) >> 1;
+    u32 firstAlpha = firstColor & 0xFF000000;
+    u32 secondAlpha = secondColor & 0xFF000000;
+    u32 thirdAlpha = thirdColor & 0xFF000000;
+    u32 firstStep = firstAlpha / perCell;
+    u32 secondStep = secondAlpha / perCell;
+    u32 thirdStep = thirdAlpha / perCell;
+    s32 i;
+
+    firstColor &= 0x00FFFFFF;
+    secondColor &= 0x00FFFFFF;
+    thirdColor &= 0x00FFFFFF;
+
+    for (i = 0; i < cellCount; i++) {
+        u32 *vc = system->list[i].pVC;
+        u32 rampFirst = 0;
+        u32 rampSecond = 0;
+        u32 rampThird = 0;
+        s32 j;
+
+        for (j = 0; j < perCell; j++) {
+            vc[0] = thirdColor | (rampThird & 0xFF000000);
+            vc[1] = secondColor | (rampSecond & 0xFF000000);
+            vc[2] = firstColor | (rampFirst & 0xFF000000);
+            vc[3] = firstColor | (rampFirst & 0xFF000000);
+            vc[4] = secondColor | (rampSecond & 0xFF000000);
+            vc[5] = thirdColor | (rampThird & 0xFF000000);
+            rampFirst += firstStep;
+            rampSecond += secondStep;
+            rampThird += thirdStep;
+            vc += 6;
+        }
+        rampFirst = firstAlpha;
+        rampSecond = secondAlpha;
+        rampThird = thirdAlpha;
+        for (j = 0; j < perCell; j++) {
+            rampFirst -= firstStep;
+            rampSecond -= secondStep;
+            rampThird -= thirdStep;
+            vc[0] = thirdColor | (rampThird & 0xFF000000);
+            vc[1] = secondColor | (rampSecond & 0xFF000000);
+            vc[2] = firstColor | (rampFirst & 0xFF000000);
+            vc[3] = firstColor | (rampFirst & 0xFF000000);
+            vc[4] = secondColor | (rampSecond & 0xFF000000);
+            vc[5] = thirdColor | (rampThird & 0xFF000000);
+            vc += 6;
+        }
+    }
+}
+
 
 void dds3TrackPolyVCSet4_Normal(dds3TrackPoly_t *system, u32 firstColor, u32 secondColor) {
     s32 perCell = system->face >> 2;
@@ -667,17 +897,222 @@ void dds3TrackPolyVCSet4_Normal(dds3TrackPoly_t *system, u32 firstColor, u32 sec
     }
 }
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCSet4_Acute);
+void dds3TrackPolyVCSet4_Acute(dds3TrackPoly_t *system, u32 firstColor, u32 secondColor) {
+    s32 perCell = system->face >> 2;
+    u32 firstAlpha = firstColor & 0xFF000000;
+    u32 secondAlpha = secondColor & 0xFF000000;
+    s32 cellCount = system->number;
+    u32 firstStep = firstAlpha / perCell;
+    u32 secondStep = secondAlpha / perCell;
+    u32 firstRGB = firstColor & 0x00FFFFFF;
+    u32 secondRGB = secondColor & 0x00FFFFFF;
+    s32 i;
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCSet4_AcuteW);
+    for (i = 0; i < cellCount; i++) {
+        u32 *vc = system->list[i].pVC;
+        u32 alphaA = firstAlpha;
+        u32 alphaB = secondAlpha;
+        s32 j;
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVC5Set_Normal);
+        for (j = 0; j < perCell; j++) {
+            alphaA -= firstStep;
+            alphaB -= secondStep;
+            vc[2] = firstRGB | (alphaA & 0xFF000000);
+            vc[1] = firstRGB | (alphaA & 0xFF000000);
+            vc[3] = secondRGB | (alphaB & 0xFF000000);
+            vc[0] = secondRGB | (alphaB & 0xFF000000);
+            vc += 4;
+        }
+    }
+}
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVC5Set_Acute);
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVC5Set_AcuteR);
+void dds3TrackPolyVCSet4_AcuteW(dds3TrackPoly_t *system, u32 firstColor, u32 secondColor) {
+    s32 perCell = system->face >> 3;
+    u32 firstAlpha = firstColor & 0xFF000000;
+    u32 secondAlpha = secondColor & 0xFF000000;
+    s32 cellCount = system->number;
+    u32 firstStep = firstAlpha / perCell;
+    u32 secondStep = secondAlpha / perCell;
+    u32 firstRGB = firstColor & 0x00FFFFFF;
+    u32 secondRGB = secondColor & 0x00FFFFFF;
+    s32 i;
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVC5Set_AcuteW);
+    for (i = 0; i < cellCount; i++) {
+        u32 *vc = system->list[i].pVC;
+        u32 alphaA = 0;
+        u32 alphaB = 0;
+        s32 j;
+
+        for (j = 0; j < perCell; j++) {
+            vc[2] = firstRGB | (alphaA & 0xFF000000);
+            vc[1] = firstRGB | (alphaA & 0xFF000000);
+            vc[3] = secondRGB | (alphaB & 0xFF000000);
+            vc[0] = secondRGB | (alphaB & 0xFF000000);
+            alphaA += firstStep;
+            alphaB += secondStep;
+            vc += 4;
+        }
+        alphaA = firstAlpha;
+        alphaB = secondAlpha;
+        for (j = 0; j < perCell; j++) {
+            alphaA -= firstStep;
+            alphaB -= secondStep;
+            vc[2] = firstRGB | (alphaA & 0xFF000000);
+            vc[1] = firstRGB | (alphaA & 0xFF000000);
+            vc[3] = secondRGB | (alphaB & 0xFF000000);
+            vc[0] = secondRGB | (alphaB & 0xFF000000);
+            vc += 4;
+        }
+    }
+}
+
+
+void dds3TrackPolyVC5Set_Normal(dds3TrackPoly_t *system, u32 firstColor, u32 secondColor, u32 thirdColor) {
+    s32 cellCount = system->number;
+    s32 perCell = system->face / 5;
+    s32 i;
+
+    for (i = 0; i < cellCount; i++) {
+        u32 *vc = system->list[i].pVC;
+        s32 j;
+
+        for (j = 0; j < perCell; j++) {
+            vc[0] = thirdColor;
+            vc[1] = secondColor;
+            vc[2] = firstColor;
+            vc[3] = secondColor;
+            vc[4] = thirdColor;
+            vc += 5;
+        }
+    }
+}
+
+
+void dds3TrackPolyVC5Set_Acute(dds3TrackPoly_t *system, u32 firstColor, u32 secondColor, u32 thirdColor) {
+    s32 cellCount = system->number;
+    s32 perCell = system->face / 5;
+    u32 firstAlpha = firstColor & 0xFF000000;
+    u32 secondAlpha = secondColor & 0xFF000000;
+    u32 thirdAlpha = thirdColor & 0xFF000000;
+    u32 firstStep = firstAlpha / perCell;
+    u32 secondStep = secondAlpha / perCell;
+    u32 thirdStep = thirdAlpha / perCell;
+    s32 i;
+
+    firstColor &= 0x00FFFFFF;
+    secondColor &= 0x00FFFFFF;
+    thirdColor &= 0x00FFFFFF;
+
+    for (i = 0; i < cellCount; i++) {
+        u32 *vc = system->list[i].pVC;
+        u32 rampFirst = firstAlpha;
+        u32 rampSecond = secondAlpha;
+        u32 rampThird = thirdAlpha;
+        s32 j;
+
+        for (j = 0; j < perCell; j++) {
+            rampFirst -= firstStep;
+            rampSecond -= secondStep;
+            rampThird -= thirdStep;
+            vc[0] = thirdColor | (rampThird & 0xFF000000);
+            vc[1] = secondColor | (rampSecond & 0xFF000000);
+            vc[2] = firstColor | (rampFirst & 0xFF000000);
+            vc[3] = secondColor | (rampSecond & 0xFF000000);
+            vc[4] = thirdColor | (rampThird & 0xFF000000);
+            vc += 5;
+        }
+    }
+}
+
+
+void dds3TrackPolyVC5Set_AcuteR(dds3TrackPoly_t *system, u32 firstColor, u32 secondColor, u32 thirdColor) {
+    s32 cellCount = system->number;
+    s32 perCell = system->face / 5;
+    u32 firstAlpha = firstColor & 0xFF000000;
+    u32 secondAlpha = secondColor & 0xFF000000;
+    u32 thirdAlpha = thirdColor & 0xFF000000;
+    u32 firstStep = firstAlpha / perCell;
+    u32 secondStep = secondAlpha / perCell;
+    u32 thirdStep = thirdAlpha / perCell;
+    s32 i;
+
+    firstColor &= 0x00FFFFFF;
+    secondColor &= 0x00FFFFFF;
+    thirdColor &= 0x00FFFFFF;
+
+    for (i = 0; i < cellCount; i++) {
+        u32 *vc = system->list[i].pVC;
+        u32 rampFirst = 0;
+        u32 rampSecond = 0;
+        u32 rampThird = 0;
+        s32 j;
+
+        for (j = 0; j < perCell; j++) {
+            rampFirst += firstStep;
+            rampSecond += secondStep;
+            rampThird += thirdStep;
+            vc[0] = thirdColor | (rampThird & 0xFF000000);
+            vc[1] = secondColor | (rampSecond & 0xFF000000);
+            vc[2] = firstColor | (rampFirst & 0xFF000000);
+            vc[3] = secondColor | (rampSecond & 0xFF000000);
+            vc[4] = thirdColor | (rampThird & 0xFF000000);
+            vc += 5;
+        }
+    }
+}
+
+
+void dds3TrackPolyVC5Set_AcuteW(dds3TrackPoly_t *system, u32 firstColor, u32 secondColor, u32 thirdColor) {
+    s32 cellCount = system->number;
+    s32 perCell = (system->face / 5) >> 1;
+    u32 firstAlpha = firstColor & 0xFF000000;
+    u32 secondAlpha = secondColor & 0xFF000000;
+    u32 thirdAlpha = thirdColor & 0xFF000000;
+    u32 firstStep = firstAlpha / perCell;
+    u32 secondStep = secondAlpha / perCell;
+    u32 thirdStep = thirdAlpha / perCell;
+    s32 i;
+
+    firstColor &= 0x00FFFFFF;
+    secondColor &= 0x00FFFFFF;
+    thirdColor &= 0x00FFFFFF;
+
+    for (i = 0; i < cellCount; i++) {
+        u32 *vc = system->list[i].pVC;
+        u32 rampFirst = 0;
+        u32 rampSecond = 0;
+        u32 rampThird = 0;
+        s32 j;
+
+        for (j = 0; j < perCell; j++) {
+            vc[0] = thirdColor | (rampThird & 0xFF000000);
+            vc[1] = secondColor | (rampSecond & 0xFF000000);
+            vc[2] = firstColor | (rampFirst & 0xFF000000);
+            vc[3] = secondColor | (rampSecond & 0xFF000000);
+            vc[4] = thirdColor | (rampThird & 0xFF000000);
+            rampFirst += firstStep;
+            rampSecond += secondStep;
+            rampThird += thirdStep;
+            vc += 5;
+        }
+        rampFirst = firstAlpha;
+        rampSecond = secondAlpha;
+        rampThird = thirdAlpha;
+        for (j = 0; j < perCell; j++) {
+            rampFirst -= firstStep;
+            rampSecond -= secondStep;
+            rampThird -= thirdStep;
+            vc[0] = thirdColor | (rampThird & 0xFF000000);
+            vc[1] = secondColor | (rampSecond & 0xFF000000);
+            vc[2] = firstColor | (rampFirst & 0xFF000000);
+            vc[3] = secondColor | (rampSecond & 0xFF000000);
+            vc[4] = thirdColor | (rampThird & 0xFF000000);
+            vc += 5;
+        }
+    }
+}
+
 
 void dds3TrackPolySetMode(dds3TrackPoly_t *system, u16 bucket) {
     system->bucket = bucket;
@@ -1540,7 +1975,75 @@ void dds3SpPoly_RollRingSetScale(f32 scale, dds3SpPolyRollRing_t *rotatingBand) 
     rotatingBand->targetRadius = rotatingBand->targetRadius * scale;
 }
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3SpPoly_RollRingDraw);
+void dds3SpPoly_RollRingDraw(dds3SpPolyRollRing_t *rotatingBand) {
+    s32 recordIndex = 0;
+    u32 completed = 0;
+    u8 loop;
+    dds3TrackPoly_t *strip;
+    s32 count;
+    dds3SpPolyRollRecord_t *record;
+    s32 duration;
+    u32 color;
+    dds3TrackPolyList_t *entry;
+
+    strip = rotatingBand->strip;
+    count = rotatingBand->head.entryCount;
+    record = rotatingBand->records;
+    duration = rotatingBand->head.duration;
+    loop = rotatingBand->head.loop;
+    color = rotatingBand->head.color;
+    entry = strip->list;
+
+    if (count > 0) {
+        do {
+            s32 age = record->age;
+
+            if (age == POLY_INACTIVE_ENTRY_AGE) {
+                dds3SpPoly_RollRingBuffInit(rotatingBand, recordIndex);
+                age = record->age;
+            }
+            if (age < 0) {
+                age++;
+            } else {
+                if ((u32)age < rotatingBand->head.startColorRampFrames) {
+                    entry->color = dds3SpPoly_Color(age, rotatingBand->head.startColorRampFrames, color);
+                } else if (age <= duration &&
+                           (u32)age >= duration - rotatingBand->head.endColorRampFrames) {
+                    entry->color = dds3SpPoly_Color(duration - age, rotatingBand->head.endColorRampFrames, color);
+                } else {
+                    entry->color = color;
+                }
+
+                if (entry->color & 0xFF000000) {
+                    dds3SpPoly_RollRingMove(rotatingBand, recordIndex);
+                    age++;
+                } else {
+                    entry->count = 0;
+                    age++;
+                }
+            }
+
+            if (age >= duration) {
+                if (loop != 0) {
+                    age = POLY_INACTIVE_ENTRY_AGE;
+                } else {
+                    completed++;
+                    if (completed >= (u32)count) {
+                        rotatingBand->head.active = 0;
+                    }
+                }
+                entry->count = 0;
+            }
+
+            record->age = age;
+            recordIndex++;
+            entry++;
+            record++;
+        } while (recordIndex < count);
+    }
+    dds3TrackPolyDraw(rotatingBand->strip);
+}
+
 
 void dds3SpPoly_RollRingSetEndless(dds3SpPolyRollRing_t *rotatingBand) {
     u32 count;
