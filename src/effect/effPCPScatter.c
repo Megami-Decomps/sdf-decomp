@@ -1572,9 +1572,159 @@ void effPCPHamaCardScatterPartInit(PcpScatterRibbonWork *work, s32 index)
     particle->unk24 = direction[2];
 }
 
-void effPCPHamaCardScatterDraw(PcpScatterRibbonWork *work);
+/* vu0 routine: each particle sweeps three ribbon quads around its tilt angle,
+ * and the tilt reverses once it passes half its stored span. */
+void effPCPHamaCardScatterDraw(PcpScatterRibbonWork *work) {
+    f32 next[4];
+    f32 position[4];
+    f32 duplicatePosition[4];
+    f32 direction[4];
+    f32 axis[4];
+    f32 halfWidth[4];
+    f32 halfHeight[4];
+    f32 side[4];
+    s32 respawn;
+    s32 duplicates;
+    u32 i;
+    u32 count;
+    u32 fadeIn;
+    u32 fadeOut;
+    u32 color;
+    u32 baseColor;
+    u32 perGroup;
+    s32 duration;
+    s32 endAge;
+    s32 duplicateStart;
+    PcpScatterRibbonParticle *particle;
 
-INCLUDE_ASM(const s32, "effect/effPCPScatter", effPCPHamaCardScatterDraw);
+    i = 0;
+    duration = work->params.duration;
+    endAge = work->params.fadeDuration + duration;
+    duplicates = work->duplicatedHandles != NULL;
+    count = work->params.particleCount;
+    VEC3_SPLAT(halfWidth, work->params.width * 0.5f);
+    VEC3_SPLAT(halfHeight, work->params.height * 0.5f);
+    particle = work->particles;
+    respawn = work->params.respawn;
+    fadeIn = work->params.fadeIn;
+    fadeOut = work->params.fadeOut;
+    duplicateStart = work->params.duplicateStartAge;
+    perGroup = work->params.particlesPerGroup;
+    baseColor = work->color;
+
+    for (; i < count; i++, particle++) {
+        s32 age = particle->age;
+        u128 *vertices = dds3ScatterPolyListGetVertex(work->childWork, i);
+        u32 *colors = dds3ScatterPolyListGetVC(work->childWork, i);
+        if (age == 0) {
+            effPCPHamaCardScatterPartInit(work, i);
+        } else if (age > 0) {
+            f32 factor = 0.0f;
+            f32 angle;
+            f32 radius;
+            f32 height;
+            f32 heightStep;
+            f32 tiltStep;
+            u32 j;
+
+            if (age <= endAge) {
+                if (age < fadeIn && fadeIn != 0) {
+                    factor = (f32)age / fadeIn;
+                } else if (endAge - age <= fadeOut && fadeOut != 0) {
+                    factor = (f32)(endAge - age) / fadeOut;
+                } else {
+                    factor = 1.0f;
+                }
+            }
+            color = effColorBlend(baseColor & 0xFFFFFF, baseColor, factor);
+            radius = particle->radius;
+            height = particle->height;
+            heightStep = particle->heightStep;
+            angle = particle->tiltAngle - sdfAtan(halfWidth[0] / radius);
+            tiltStep = particle->tiltStep;
+            axis[0] = 0.0f;
+            axis[1] = 0.0f;
+            axis[2] = 1.0f;
+            position[0] = sdfSin(angle) * radius;
+            position[1] = sdfCos(angle) * radius + height;
+            position[2] = 0.0f;
+            SDF_VU0_LOADVECTOR(position);
+            SDF_VU0_COPYVECTOR_A_TO_C();
+            for (j = 0; j < 3; j++, vertices++, colors++) {
+                colors[0] = color;
+                colors[3] = color;
+                height += heightStep;
+                angle += sdfAtan(halfWidth[0] / radius);
+                next[0] = sdfSin(angle) * radius;
+                next[1] = sdfCos(angle) * radius + height;
+                next[2] = 0.0f;
+                SDF_VU0_LOADVECTOR(next);
+                SDF_VU0_LOADVECTOR_B(position);
+                SDF_VU0_SUBVECTOR();
+                SDF_VU0_NORMALIZE();
+                SDF_VU0_STOREVECTOR_NOMEM(direction);
+                SDF_VU0_LOADVECTOR_B(halfWidth);
+                SDF_VU0_MULVECTOR();
+                SDF_VU0_ADDVECTOR_A_C();
+                SDF_VU0_COPYVECTOR_A_TO_C();
+                SDF_VU0_STOREVECTOR_NOMEM(position);
+                SDF_VU0_LOADVECTOR(axis);
+                SDF_VU0_LOADVECTOR_B(halfHeight);
+                SDF_VU0_MULVECTOR();
+                SDF_VU0_STOREVECTOR_NOMEM(side);
+                SDF_VU0_LOADVECTOR(position);
+                SDF_VU0_LOADVECTOR_B(side);
+                SDF_VU0_ADDVECTOR();
+                SDF_VU0_STOREVECTOR_NOMEM(vertices);
+                SDF_VU0_SUBVECTOR();
+                SDF_VU0_SUBVECTOR();
+                SDF_VU0_STOREVECTOR_NOMEM(vertices + 3);
+                if (j == 1) {
+                    SDF_VU0_COPYVECTOR(duplicatePosition, position);
+                }
+                SDF_VU0_COPYVECTOR(position, next);
+            }
+            if (age < duration) {
+                f32 limit = particle->tiltHalfAngle * 0.5f;
+                f32 tilt = particle->tiltAngle + tiltStep;
+                f32 magnitude;
+
+                particle->tiltAngle = tilt;
+                particle->height = particle->height + heightStep;
+                EE_ABS_F32(magnitude, tilt);
+                if (limit < magnitude) {
+                    particle->tiltAngle = tilt - tiltStep;
+                    particle->tiltStep = -particle->tiltStep;
+                }
+            }
+        } else {
+            colors[0] = 0;
+            colors[1] = 0;
+            colors[2] = 0;
+            colors[3] = 0;
+            colors[4] = 0;
+            colors[5] = 0;
+        }
+        if (respawn && age >= endAge) {
+            particle->age = -1;
+        }
+        if (duplicates && age >= duplicateStart && age >= 0 && i % perGroup == 0) {
+            u32 group = i / perGroup;
+            dds3EffectPartSetColor(work->duplicatedHandles[group], baseColor);
+            SDF_VU0_LOADVECTOR(work->params.origin);
+            SDF_VU0_LOADVECTOR_B(duplicatePosition);
+            SDF_VU0_ADDVECTOR();
+            SDF_VU0_STOREVECTOR_NOMEM(duplicatePosition);
+            dds3EffectPartSetPosition(work->duplicatedHandles[group], duplicatePosition);
+            dds3EffectPartDraw(work->duplicatedHandles[group]);
+        }
+        particle->age++;
+    }
+    work->childWork->origin[0] = work->params.origin[0];
+    work->childWork->origin[1] = work->params.origin[1];
+    work->childWork->origin[2] = work->params.origin[2];
+    dds3ScatterPolyListDraw(work->childWork);
+}
 
 void effPCPHamaCardScatterSetPosition(void *destination, void *source) {
     SDF_VU0_COPYVECTOR(destination, source);
