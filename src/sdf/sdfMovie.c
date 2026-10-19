@@ -177,7 +177,8 @@ s32 movieReadChunk(void *aHandle, s32 aOp, void *aBuf, s32 aSize, movieStream_t 
 s32 movieCopyChunk(sdfIpuDecodeCb_t *aNode, movieStream_t *aMov, s32 aOp, void *aBuf, s32 aSize);
 s32 movieParseHeader(sdfIpuDecodeCb_t *aNode, movieStream_t *aMov, s32 aOp, void *aBuf, s32 aSize);
 extern s32 movieStreamSema;
-extern s32 movieSemaCount;
+extern u32 movieSemaCount;
+extern movieStream_t *movieSemaId;
 extern const char D_00551B50[];
 
 void movie_2C5080(const char *aStr)
@@ -185,7 +186,37 @@ void movie_2C5080(const char *aStr)
     puts(aStr);
 }
 
+/* NON_MATCHING: 39 of 53 words differ (first at +0xC). */
+#ifdef NON_MATCHING
+u8 *movieWaitSema(s32 aSize)
+{
+    movieStream_t *mov = movieSemaId;
+    MovPacStream *obj = mov->stream.pac;
+    u8 *ptr = NULL;
+
+    WaitSema(movieStreamSema);
+    if (obj->scratchSize > 0) {
+        ptr = obj->scratch;
+        obj->scratchSize -= aSize;
+        obj->scratch = ptr + aSize;
+    } else if (obj->ringLength < aSize) {
+        if (movieSemaCount != mov->soundNode.playbackFrameIndex) {
+            movieSemaCount = mov->soundNode.playbackFrameIndex;
+        }
+    } else {
+        ptr = obj->ringBuffer + obj->ringOffset;
+        obj->ringLength -= aSize;
+        obj->ringOffset += aSize;
+        if (obj->ringOffset > 0xFFFF) {
+            obj->ringOffset -= 0x10000;
+        }
+    }
+    SignalSema(movieStreamSema);
+    return ptr;
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfMovie", movieWaitSema);
+#endif
 
 INCLUDE_ASM(const s32, "sdf/sdfMovie", release_movieobj2);
 
