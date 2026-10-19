@@ -47,6 +47,13 @@ extern f32 sdfFaceDivSoften;
 extern f32 sdfFaceDivBias;
 extern const char D_00529428[];
 
+extern void *sdfGrAllocPacketBuff(s32 aSize);
+extern void sdfDrawTagLink2(sdfDrawTag_t *aTag, void *aPacket);
+
+extern sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
+extern void *sdfMemLock(sdfMemHandle_t *aHandle);
+extern void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *aRoot, void *aPacket);
+
 extern void *func_002B2628(void *aData, u32 aTag);
 extern void sdfModelEvalTm2(sdfModelRootNode_t *aRoot, s32 aIdx);
 extern void sdfModelLinkDrawPacket(sdfModelNode_t *aNode, void *aShape, s32 aOtIndex, s32 aMode,
@@ -63,6 +70,23 @@ extern void sdfPrimSetOpaquePacket(sdfPrimTransPacket_t *aPacket);
 extern void sdfPrimSetSemiTransPacket(sdfPrimTransPacket_t *aPacket);
 extern void sdfPrimSetAddTransPacket(sdfPrimTransPacket_t *aPacket);
 extern void sdfPrimSetSubTransPacket(sdfPrimTransPacket_t *aPacket);
+
+/* The shaped packet's header quadwords: the cnt tag, the two blend weights
+ * VU1 reads and the UNPACK that follows them. */
+typedef struct QWORD_ALIGNED
+{
+    sdfDmaTag_t dmatag;
+    f32 weight[2];
+    u32 code0;
+    u32 code1;
+} sdfModelShapedHeader_t;
+
+/* One frame's 128-byte VU1 transform packet. The 4-aligned element type is
+ * what gives retail's runtime 8-byte-alignment dispatch over the copy. */
+typedef struct
+{
+    s32 words[0x80 / 4];
+} sdfModelTmImage_t;
 
 /* An extra-data chunk: its four-character tag and its total size in bytes. */
 typedef struct
@@ -442,9 +466,131 @@ sdfDmaTag_t *sdfModelSetNormalDrawPacket(sdfModelNode_t *aNode, sdfShapePacket_t
     return body + 1;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelSetOneSkinDrawPacket);
+/* NON_MATCHING: 87 of 90 words differ, six words short; the 0x0FFFFFFF mask
+ * takes a saved register where retail spills it and keeps qwc. */
+#ifdef NON_MATCHING
+sdfDmaTag_t *sdfModelSetOneSkinDrawPacket(sdfModelNode_t *aNode, sdfShapeOneSkinPacket_t *aPacket,
+                                          sdfDmaTag_t *aTag, s32 aIdx)
+{
+    u32 mask = 0x0FFFFFFF;
+    u32 packed = *(u32 *)&aPacket->packetSize;
+    u16 matIndex = packed >> 16;
+    u16 qwc = packed;
+    s32 ofs = aIdx << 7;
+    s32 i = 0;
+    u32 vuAddr = 1;
+    sdfDmaTag_t *tag;
+    s32 count;
+    u16 *boneId;
+    u32 *words;
 
+    tag = sdfModelSetMatRefPacket(aNode->root, matIndex, aTag, aIdx);
+    count = aPacket->boneCount;
+    boneId = aPacket->boneId;
+    do {
+        sdfModelNode_t *node = sdfModelSearchNode(aNode->root, *boneId++);
+
+        i++;
+        tag->qwc = 7;
+        tag->id = 0x30;
+        tag->dat0 = 0;
+        tag->dat1 = vuAddr | 0x6C07C000;
+        tag->addr = (void *)(((u32)sdfModelAllocTmPacket(node) + ofs) & mask);
+        vuAddr += 7;
+        tag++;
+    } while (i != count);
+    tag->qwc = 1;
+    tag->id = 0x10;
+    tag->dat0 = 0;
+    tag->dat1 = 0;
+    words = (u32 *)(tag + 1);
+    words[0] = 0x6001C000;
+    words[1] = count;
+    words[2] = 0x0400000E;
+    words[3] = 0x14000000;
+    tag += 2;
+    tag->qwc = qwc;
+    tag->id = 0x30;
+    tag->dat0 = 0;
+    tag->dat1 = 0;
+    tag->addr = (void *)((u32)aPacket->dataBody & mask);
+    return tag + 1;
+}
+#else
+INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelSetOneSkinDrawPacket);
+#endif
+
+/* NON_MATCHING: 100 of 150 words differ (first at +0x0). */
+#ifdef NON_MATCHING
+void sdfModelLinkShapedDrawPacket(sdfModelNode_t *aNode, sdfShapeShapedPacket_t *aPacket,
+                                  sdfDrawTag_t *aTag, s32 aIdx)
+{
+    sdfModelMorphParm_t out[2];
+    s32 used = 0;
+    s32 j = 0;
+    s32 k;
+    s32 i;
+    u32 packed;
+    u16 matIndex;
+    u16 morphIndex;
+    s32 listCount;
+    sdfModelMorph_t *morph;
+    void *buf;
+    sdfDmaTag_t *tag;
+    sdfModelShapeList_t **cursor;
+
+    packed = *(u32 *)&aPacket->morphIndex;
+    morphIndex = packed;
+    morph = &aNode->root->morphList->items[morphIndex];
+    listCount = aPacket->listCount;
+    matIndex = packed >> 16;
+    do {
+        if (1e-6f < morph->target[j].blend) {
+            out[used] = morph->target[j];
+            used++;
+        }
+        j++;
+    } while (j != 2);
+    buf = sdfGrAllocPacketBuff((used * 16 + 0x10) * listCount + 0x40);
+    tag = sdfModelSetMatRefPacket(aNode->root, matIndex, buf, aIdx);
+    *(u64 *)tag = 0x10000001;
+    *(u64 *)&tag->dat0 = (u64)0x6002C000 << 32;
+    for (k = 0; k < used; k++) {
+        ((sdfModelShapedHeader_t *)tag)->weight[k] = out[k].blend;
+    }
+    for (; k < 2; k++) {
+        ((sdfModelShapedHeader_t *)tag)->weight[k] = 0.0f;
+    }
+    ((sdfModelShapedHeader_t *)tag)->code0 = 0x0400000A;
+    ((sdfModelShapedHeader_t *)tag)->code1 = 0x14000000;
+    tag += 2;
+    cursor = aPacket->shapeList;
+    i = 0;
+    do {
+        sdfModelShapeList_t *list = *cursor++;
+        s32 m;
+
+        for (m = 0; m < used; m++) {
+            sdfModelShapeEntry_t *entry =
+                (sdfModelShapeEntry_t *)((u8 *)(out[m].targetId * 8) + (u32)list);
+
+            *(u64 *)&tag->dat0 = 0;
+            *(u64 *)tag = (entry[1].qwc | 0x30000000) |
+                          ((u64)((u32)entry[1].dataPtr & 0x0FFFFFFF) << 32);
+            tag++;
+        }
+        *(u64 *)&tag->dat0 = 0;
+        *(u64 *)tag = (list->count | 0x30000000) |
+                      ((u64)((u32)list->next & 0x0FFFFFFF) << 32);
+        tag++;
+        i++;
+    } while (i != listCount);
+    QUAD_ZERO(*(u128 *)tag);
+    sdfDrawTagLink2(aTag, buf);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelLinkShapedDrawPacket);
+#endif
 
 sdfModelPacketHeader_t *sdfModelNewPacketHeader(sdfModelNode_t *aNode, s32 aOtIndex, s32 aIdx)
 {
@@ -462,7 +608,84 @@ sdfModelPacketHeader_t *sdfModelNewPacketHeader(sdfModelNode_t *aNode, s32 aOtIn
     return packet;
 }
 
+/* NON_MATCHING: 104 of 122 words differ (first at +0x14). */
+#ifdef NON_MATCHING
+void sdfModelLinkDrawPacket(sdfModelNode_t *aNode, void *aShape, s32 aOtIndex, s32 aMode, s32 aIdx)
+{
+    s32 numOfSkin;
+    s32 tempQwc;
+    s32 bytes;
+    u32 *cursor;
+    u32 packed;
+    s32 count;
+    sdfDmaTag_t *tag = NULL;
+    sdfShapePacket_t *packet;
+    sdfModelPacketHeader_t *header;
+
+    bytes = sdfModelGetDrawPacketSize(aShape, &numOfSkin, &tempQwc);
+    cursor = aShape;
+    if (bytes == 0 && numOfSkin == 0 && tempQwc == 0) {
+        return;
+    }
+    sdfModelAllocTmPacket(aNode);
+    packed = *cursor++;
+    count = packed & 0xFFFF;
+    if (aMode != 0) {
+        aOtIndex = packed >> 16;
+    }
+    if (bytes != 0) {
+        sdfMemHandle_t *handle = sdfMemAllocDirect(bytes);
+        sdfModelPacketHeader_t *chunk = (sdfModelPacketHeader_t *)sdfMemLock(handle);
+        sdfModelPacketHeader_t **head =
+            (sdfModelPacketHeader_t **)((u32)aIdx * sizeof(*aNode->drawPacket) + (u32)aNode +
+                                        (u32)&((sdfModelNode_t *)0)->drawPacket);
+
+        tag = (sdfDmaTag_t *)(chunk + 1);
+        chunk->otIndex = aOtIndex;
+        chunk->dataPtr = tag;
+        chunk->size = (bytes + 0xF) >> 4;
+        chunk->next = *head;
+        chunk->memHandle = handle;
+        *head = chunk;
+        chunk->type = 1;
+    }
+    do {
+        packet = (sdfShapePacket_t *)*cursor++;
+        switch (packet->packetType) {
+        case 1:
+            tag = sdfModelSetNormalDrawPacket(aNode, packet, tag, aIdx);
+            break;
+        case 2:
+            tag = sdfModelSetOneSkinDrawPacket(aNode, (sdfShapeOneSkinPacket_t *)packet, tag, aIdx);
+            break;
+        case 3:
+            header = sdfModelNewPacketHeader(aNode, aOtIndex, aIdx);
+            header->type = 2;
+            header->dataPtr = packet;
+            break;
+        case 4:
+        case 6:
+        case 8:
+            header = sdfModelNewPacketHeader(aNode, aOtIndex, aIdx);
+            header->type = 3;
+            header->dataPtr = packet;
+            break;
+        case 5:
+        case 7:
+            sdfCoreDrawScanOneSkinNodes(aNode->root, packet);
+            header = sdfModelNewPacketHeader(aNode, aOtIndex, aIdx);
+            header->type = 3;
+            header->dataPtr = packet;
+            break;
+        }
+    } while (--count != 0);
+    if (bytes != 0) {
+        sdfModelSetTermPacket(tag);
+    }
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelLinkDrawPacket);
+#endif
 
 /* vu0 routine: native SDK vector/matrix operations around model state. */
 void sdfModelMakeLocalTm(sdfModelNode_t *node) {
@@ -472,7 +695,19 @@ void sdfModelMakeLocalTm(sdfModelNode_t *node) {
     SDF_VU0_STOREMATRIX(&node->localNoScaledTm);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelNodeBaseSet);
+/* vu0 routine: native SDK vector/matrix operations around model state. */
+void sdfModelNodeBaseSet(sdfModelNode_t *aNode, sdfModelNodeDef_t *aDef)
+{
+    aNode->shape = aDef;
+    aNode->id = aDef->id;
+    FromEuler(aDef->rotate.x, aDef->rotate.y, aDef->rotate.z);
+    SDF_VU0_STOREVECTOR(&aNode->rotate);
+    SDF_VU0_COPYVECTOR(&aNode->pos, &aDef->pos);
+    SDF_VU0_COPYVECTOR(&aNode->scale, &aDef->scale);
+    aNode->pos.w = 1.0f;
+    sdfModelMakeLocalTm(aNode);
+    aNode->bounds = aDef->bounds;
+}
 
 void sdfModelNodeSet(sdfModelNode_t *aNode, sdfModelNodeDef_t *aDef)
 {
@@ -710,7 +945,52 @@ void sdfModelMorphListCopyStat(sdfModelMorphList_t *aDst, sdfModelMorphList_t *a
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelCopyStat);
+/* vu0 routine: native SDK vector/matrix operations around model state. */
+void sdfModelCopyStat(sdfModelRootNode_t *aDst, sdfModelRootNode_t *aSrc)
+{
+    s32 frame;
+    s32 count;
+    sdfModelNode_t **dstItems;
+    sdfModelNode_t **srcItems;
+    s32 i;
+
+    sdfMatListCopyStat(aDst->matList, aSrc->matList);
+    sdfModelMorphListCopyStat(aDst->morphList, aSrc->morphList);
+    aDst->flags = aSrc->flags;
+    aDst->drawAttr = aSrc->drawAttr;
+    aDst->color = aSrc->color;
+    SDF_VU0_LOADMATRIX(&aSrc->tm);
+    SDF_VU0_STOREMATRIX(&aDst->tm);
+    SDF_VU0_COPYVECTOR(&aDst->rotate, &aSrc->rotate);
+    SDF_VU0_COPYVECTOR(&aDst->scale, &aSrc->scale);
+    frame = (s8)sdfFrameId;
+    *(u32 *)&aDst->light = *(u32 *)&aSrc->light;
+    aDst->faceDivSoften = aSrc->faceDivSoften;
+    *(u32 *)&aDst->fog = *(u32 *)&aSrc->fog;
+    aDst->faceDivBias = aSrc->faceDivBias;
+    count = aDst->nodeList->count;
+    dstItems = aDst->nodeList->items;
+    srcItems = aSrc->nodeList->items;
+    for (i = 0; i < count; i++) {
+        sdfModelNode_t *src = srcItems[i];
+        sdfModelNode_t *dst = dstItems[i];
+
+        dst->flags = src->flags;
+        dst->color = src->color;
+        dst->drawAttr = src->drawAttr;
+        SDF_VU0_COPYVECTOR(&dst->rotate, &src->rotate);
+        SDF_VU0_COPYVECTOR(&dst->pos, &src->pos);
+        SDF_VU0_COPYVECTOR(&dst->scale, &src->scale);
+        SDF_VU0_LOADMATRIX(&src->localNoScaledTm);
+        SDF_VU0_STOREMATRIX(&dst->localNoScaledTm);
+        SDF_VU0_LOADMATRIX(&src->tm);
+        SDF_VU0_STOREMATRIX(&dst->tm);
+        if (dst->tmPacket != NULL) {
+            *(sdfModelTmImage_t *)((u8 *)dst->tmPacket + (frame << 7)) =
+                *(sdfModelTmImage_t *)((u8 *)src->tmPacket + (frame << 7));
+        }
+    }
+}
 
 void sdfModelSetDrawEnv(sdfModelDrawEnv_t *aEnv)
 {
