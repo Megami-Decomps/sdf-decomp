@@ -7,7 +7,7 @@
 static inline f32 ffabsf(f32 x)
 {
     f32 r;
-    EE_ABS_F32(r, x);
+    r = sdfFabs(x);
     return r;
 }
 
