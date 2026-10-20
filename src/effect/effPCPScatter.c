@@ -1691,7 +1691,7 @@ void effPCPHamaCardScatterDraw(PcpScatterRibbonWork *work) {
 
                 particle->tiltAngle = tilt;
                 particle->height = particle->height + heightStep;
-                EE_ABS_F32(magnitude, tilt);
+                magnitude = sdfFabs(tilt);
                 if (limit < magnitude) {
                     particle->tiltAngle = tilt - tiltStep;
                     particle->tiltStep = -particle->tiltStep;
