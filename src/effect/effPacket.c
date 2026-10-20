@@ -359,8 +359,7 @@ void dds3CrossfadeEnd(void) {
     dds3RenderTextureOFF();
     dds3FreeRenderTexture();
     dds3CrossfadeRunFlag = 0;
-    printf("dds3CrossfadeEnd
-");
+    printf("dds3CrossfadeEnd\n");
 }
 INCLUDE_SDATA(const s32, "effect/effPacket", dds3CrossfadeRunFlag);
 
