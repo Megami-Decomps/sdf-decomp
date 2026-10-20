@@ -396,8 +396,7 @@ sdfHandlerNode_t *DmacAddHandler(s32 kind, s32 channel, s32 handler, s32 arg, s3
         id = AddSbusIntcHandler(channel, handler);
         break;
     default:
-        FatalError("sdfAddHandler : unknown type %d
-", kind);
+        FatalError("sdfAddHandler : unknown type %d\n", kind);
         break;
     }
     node = sdfAllocAuto(sizeof(*node));

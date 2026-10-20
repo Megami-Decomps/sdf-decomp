@@ -818,8 +818,7 @@ void sdfDumpDmaChain(sdfDmaDumpTag_t *source) {
             break;
         }
         if (done != 0) {
-            sdfPrintf("<<< DMA normal end [%p] >>>
-", cursor);
+            sdfPrintf("<<< DMA normal end [%p] >>>\n", cursor);
             return;
         }
     }
