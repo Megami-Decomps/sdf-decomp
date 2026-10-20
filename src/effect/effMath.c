@@ -30,7 +30,7 @@ typedef struct
 {
     u32 word;
     u8 pad04[12];
-} EffColorWork_t;
+} effColorWork_t;
 
 /* Only the projection block from +0x30 on is read here: a 4x4 matrix, then the
  * viewport half-extent and centre as one quadword each. */
@@ -41,9 +41,9 @@ typedef struct
     QuadF32 scale;
     QuadF32 offset;
     u8 pad90[0x10];
-} Dds3ScreenParam_t;
+} dds3ScreenParam_t;
 
-extern Dds3ScreenParam_t dds3ScreenParam;
+extern dds3ScreenParam_t dds3ScreenParam;
 extern f32 D_002FA240[16];
 extern QuadF32 aViewEye;
 extern QuadF32 aViewDown;
@@ -104,7 +104,7 @@ s32 effPCPBlurScreenOffset(f32 scale) {
 /* vu0 routine: blend two colours, `amount` of `from` */
 u32 effColorBlend(u32 to, u32 from, f32 amount)
 {
-    EffColorWork_t work[3];
+    effColorWork_t work[3];
     u32 blended;
     u32 unit;
 
@@ -128,7 +128,7 @@ u32 effColorBlend(u32 to, u32 from, f32 amount)
 /* vu0 routine: unpack two colours, multiply and pack */
 u32 effMagaCylinderCalcColor(u32 color, u32 scale)
 {
-    EffColorWork_t work[3];
+    effColorWork_t work[3];
     u32 unit = EFF_RGBA_UNIT;
     u32 out;
 
