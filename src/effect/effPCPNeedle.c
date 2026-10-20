@@ -553,15 +553,13 @@ void dds3NeedleModelVNCListCreate(effNeedleWork_t *work, u32 segments, u32 cente
         normal++;
         position++;
     }
-    printf("dds3NeedleModelVNCListCreate[%p] ****
-", work->streamAllocation);
+    printf("dds3NeedleModelVNCListCreate[%p] ****\n", work->streamAllocation);
 }
 
 void dds3NeedleModelVNCListDelete(effNeedleWork_t *work)
 {
     if (work->streamAllocation != NULL) {
-        printf("dds3NeedleModelVNCListDelete[%p] ****
-", work->streamAllocation);
+        printf("dds3NeedleModelVNCListDelete[%p] ****\n", work->streamAllocation);
         sdfMemFreeDirect(work->streamAllocation);
     }
 }
