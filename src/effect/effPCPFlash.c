@@ -10,7 +10,7 @@ struct EffRingColorSlot;
 struct EffRingParticle;
 struct EffRingWork;
 struct EffThunderDrawParams;
-struct PcpFlashAccumulatingParticle;
+struct effPCPFlashPolyPipePart_tag;
 struct PcpFlashAccumulatingWork;
 struct PcpFlashColorSlot;
 struct PcpFlashFadingOrbitWork;
@@ -264,9 +264,9 @@ struct EffRingWork {
     EffRecordPool *recordPool;
 };
 
-typedef struct PcpFlashAccumulatingParticle PcpFlashAccumulatingParticle;
+typedef struct effPCPFlashPolyPipePart_tag effPCPFlashPolyPipePart_tag;
 
-struct PcpFlashAccumulatingParticle {
+struct effPCPFlashPolyPipePart_tag {
     u32 color;
     s32 age;
     f32 radialHalfThickness;
@@ -298,7 +298,7 @@ struct PcpFlashAccumulatingWork {
     f32 increment;
     f32 radialStep;
     u32 drawMode;
-    PcpFlashAccumulatingParticle *parts;
+    effPCPFlashPolyPipePart_tag *parts;
     u32 updateCount;
     u32 tintColor;
     f32 renderScale;
@@ -1712,7 +1712,7 @@ void effPCPFlashPolyRingDraw(PcpFlashScalingOrbitWork *work) {
 
 PcpFlashAccumulatingWork *effPCPFlashPolyPipeCreate(effFlashAccumulatingParam_t *params)
 {
-    sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashAccumulatingParticle) + sizeof(PcpFlashAccumulatingWork));
+    sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(effPCPFlashPolyPipePart_tag) + sizeof(PcpFlashAccumulatingWork));
     PcpFlashAccumulatingWork *work = (PcpFlashAccumulatingWork *)sdfMemLock(handle);
     EffRecordPool *record;
     f32 angle;
@@ -1721,7 +1721,7 @@ PcpFlashAccumulatingWork *effPCPFlashPolyPipeCreate(effFlashAccumulatingParam_t 
     u32 i;
 
     memcpy(work, params, 0x50);
-    work->parts = (PcpFlashAccumulatingParticle *)(work + 1);
+    work->parts = (effPCPFlashPolyPipePart_tag *)(work + 1);
     work->allocationHandle = handle;
     work->tintColor = EFF_NEUTRAL_COLOR;
     work->updateCount = 0;
@@ -1798,7 +1798,7 @@ void effPCPFlashPolyPipePartSetVC(PcpFlashAccumulatingWork *work, s32 index, u32
    accumulating particle, whose radius grows by the work record's radial step */
 void effPCPFlashPolyPipePartSetVertex(PcpFlashAccumulatingWork *work, s32 index)
 {
-    PcpFlashAccumulatingParticle *part = &work->parts[index];
+    effPCPFlashPolyPipePart_tag *part = &work->parts[index];
     f32 *quad = dds3FlashPolyList3GetVertex(work->resourceHandle, index * 2);
     f32 offset[4];
     f32 unit[4];
@@ -1882,7 +1882,7 @@ void effPCPFlashPolyPipePartSetVertex(PcpFlashAccumulatingWork *work, s32 index)
 
 void effPCPFlashPolyPipePartRotate(PcpFlashAccumulatingWork *work, s32 index)
 {
-    PcpFlashAccumulatingParticle *part;
+    effPCPFlashPolyPipePart_tag *part;
 
     part = &work->parts[index];
     part->orbitAngle += work->increment;
@@ -1892,7 +1892,7 @@ void effPCPFlashPolyPipeDraw(PcpFlashAccumulatingWork *work)
 {
     s32 index;
     s32 count;
-    PcpFlashAccumulatingParticle *part;
+    effPCPFlashPolyPipePart_tag *part;
     s32 lifetime;
     s32 fadeIn;
     s32 fadeOut;
