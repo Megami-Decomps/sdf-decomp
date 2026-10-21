@@ -5,14 +5,14 @@
 struct EffPacketParams;
 struct EffRandState;
 struct dds3WhirlwindPolyList_tag;
-struct PcpScatterInstanceA;
-struct PcpScatterInstanceB;
-struct PcpScatterInstanceC;
+struct effPCPWhirlwindPoly_tag;
+struct effPCPWhirlwind2Poly_tag;
+struct effPCPWhirlwind3Poly_tag;
 struct PcpScatterParamsA;
 struct PcpScatterParamsB;
 struct PcpScatterParamsC;
 struct PcpScatterParticle;
-struct PcpScatterPlainInstance;
+struct effPCPWwSpherePoly_tag;
 struct PcpScatterPlainParams;
 struct PcpScatterPlainParticle;
 struct dds3ScatterPolyList_tag;
@@ -21,7 +21,7 @@ struct PcpScatterRadialParticle;
 struct PcpScatterRadialWork;
 struct PcpScatterRibbonParams;
 struct PcpScatterRibbonParticle;
-struct PcpScatterRibbonWork;
+struct effPCPHamaCardScatter_tag;
 struct PcpScatterSpinParams;
 struct effPCPWwSpherePolyPart_tag;
 struct PcpScatterSpinWork;
@@ -39,21 +39,21 @@ typedef union sdfMatUvwParm_t sdfMatUvwParm_t;
 typedef struct dds3WhirlwindPolyList_tag dds3WhirlwindPolyList_tag;
 typedef struct PcpScatterParamsA PcpScatterParamsA;
 typedef struct PcpScatterParticle PcpScatterParticle;
-typedef struct PcpScatterInstanceA PcpScatterInstanceA;
+typedef struct effPCPWhirlwindPoly_tag effPCPWhirlwindPoly_tag;
 typedef struct PcpScatterParamsB PcpScatterParamsB;
-typedef struct PcpScatterInstanceB PcpScatterInstanceB;
+typedef struct effPCPWhirlwind2Poly_tag effPCPWhirlwind2Poly_tag;
 typedef struct PcpScatterParamsC PcpScatterParamsC;
-typedef struct PcpScatterInstanceC PcpScatterInstanceC;
+typedef struct effPCPWhirlwind3Poly_tag effPCPWhirlwind3Poly_tag;
 typedef struct PcpScatterPlainParams PcpScatterPlainParams;
 typedef struct PcpScatterPlainParticle PcpScatterPlainParticle;
-typedef struct PcpScatterPlainInstance PcpScatterPlainInstance;
+typedef struct effPCPWwSpherePoly_tag effPCPWwSpherePoly_tag;
 typedef struct effPartHandle_t effPartHandle_t;
 typedef struct PcpScatterRadialParams PcpScatterRadialParams;
 typedef struct PcpScatterRadialParticle PcpScatterRadialParticle;
 typedef struct PcpScatterRadialWork PcpScatterRadialWork;
 typedef struct PcpScatterRibbonParticle PcpScatterRibbonParticle;
 typedef struct PcpScatterRibbonParams PcpScatterRibbonParams;
-typedef struct PcpScatterRibbonWork PcpScatterRibbonWork;
+typedef struct effPCPHamaCardScatter_tag effPCPHamaCardScatter_tag;
 typedef struct PcpScatterSpinParams PcpScatterSpinParams;
 typedef struct effPCPWwSpherePolyPart_tag effPCPWwSpherePolyPart_tag;
 typedef struct PcpScatterSpinWork PcpScatterSpinWork;
@@ -280,7 +280,7 @@ struct PcpScatterParticle {
     f32 heightOffset;
 };
 
-struct PcpScatterInstanceA {
+struct effPCPWhirlwindPoly_tag {
     f32 matrix[16];
     PcpScatterParamsA params;
     PcpScatterParticle *particles;
@@ -326,7 +326,7 @@ struct PcpScatterParamsB {
     u8 padBC[0x80];
 };
 
-struct PcpScatterInstanceB {
+struct effPCPWhirlwind2Poly_tag {
     f32 matrix[16];
     PcpScatterParamsB params;
     PcpScatterParticle *particles;
@@ -374,7 +374,7 @@ struct PcpScatterParamsC {
     u8 padC4[0x80];
 };
 
-struct PcpScatterInstanceC {
+struct effPCPWhirlwind3Poly_tag {
     f32 matrix[16];
     PcpScatterParamsC params;
     PcpScatterParticle *particles;
@@ -427,7 +427,7 @@ struct PcpScatterPlainParticle {
     f32 height;
 };
 
-struct PcpScatterPlainInstance {
+struct effPCPWwSpherePoly_tag {
     f32 matrix[16];
     PcpScatterPlainParams params;
     PcpScatterPlainParticle *particles;
@@ -556,7 +556,7 @@ struct PcpScatterRibbonParams {
 };
 
 /* Runtime owner followed inline by its variable-length particle array. */
-struct PcpScatterRibbonWork {
+struct effPCPHamaCardScatter_tag {
     PcpScatterRibbonParams params;
     PcpScatterRibbonParticle *particles;
     f32 scale;
@@ -659,18 +659,18 @@ extern u32 dds3WhirlwindPolyListGetABGR(dds3WhirlwindPolyList_tag *object, s32 p
 f32 dds3GetRandFloatA(EffRandState *state);
 
 /* Constructors copy one serialized parameter variant into its runtime owner. */
-PcpScatterInstanceA *effPCPWhirlwindPolyCreate(
+effPCPWhirlwindPoly_tag *effPCPWhirlwindPolyCreate(
     PcpScatterParamsA *params, u32 resource);
 
-PcpScatterPlainInstance *effPCPWwSpherePolyCreate(
+effPCPWwSpherePoly_tag *effPCPWwSpherePolyCreate(
     PcpScatterPlainParams *params, u32 resource);
 
 extern dds3ScatterPolyListTexResource_tag *dds3ScatterPolyListTexResourceCopy(dds3ScatterPolyListTexResource_tag *res);
 
-PcpScatterInstanceB *effPCPWhirlwind2PolyCreate(
+effPCPWhirlwind2Poly_tag *effPCPWhirlwind2PolyCreate(
     PcpScatterParamsB *params, u32 resource);
 
-PcpScatterInstanceC *effPCPWhirlwind3PolyCreate(
+effPCPWhirlwind3Poly_tag *effPCPWhirlwind3PolyCreate(
     PcpScatterParamsC *params, u32 resource);
 
 extern EffPacketParams D_0056AD58;
@@ -763,7 +763,7 @@ extern void SetRotateMatrixAxis(f32 angle, const void *axis);
 extern void *memcpy(void *dst, const void *src, u32 size);
 PcpScatterRadialWork *effPCPHamaCardSpiralCreate(const PcpScatterRadialParams *params, u32 resource, void *particleParams);
 PcpScatterSpinWork *effPCPHamaCardSphereCreate(const PcpScatterSpinParams *params, u32 resource, void *particleParams);
-PcpScatterRibbonWork *effPCPHamaCardScatterCreate(const PcpScatterRibbonParams *params, u32 resource, void *particleParams);
+effPCPHamaCardScatter_tag *effPCPHamaCardScatterCreate(const PcpScatterRibbonParams *params, u32 resource, void *particleParams);
 dds3WhirlwindPolyList_tag *dds3WhirlwindPolyListCreate(u32 count, u32 pairs);
 void dds3WhirlwindPolyListSetRotateMatrix(dds3WhirlwindPolyList_tag *object, const void *src);
 dds3ScatterPolyList_tag *dds3ScatterPolyListCreate(s32 groups);
@@ -1432,12 +1432,12 @@ void effPCPHamaCardSphereSetScale(f32 scale, PcpScatterSpinWork *work)
     work->params.endRadius *= scale;
 }
 
-PcpScatterRibbonWork *effPCPHamaCardScatterCreate(params, resource, particleParams)
+effPCPHamaCardScatter_tag *effPCPHamaCardScatterCreate(params, resource, particleParams)
     const PcpScatterRibbonParams *params;
     u32 resource;
     void *particleParams;
 {
-    PcpScatterRibbonWork *work;
+    effPCPHamaCardScatter_tag *work;
     PcpScatterRibbonParticle *particle;
     sdfMemHandle_t *allocation;
     effPartHandle_t **handles;
@@ -1445,8 +1445,8 @@ PcpScatterRibbonWork *effPCPHamaCardScatterCreate(params, resource, particlePara
     u32 i;
     s32 delaySpread;
 
-    allocation = sdfMemAllocDirect(sizeof(PcpScatterRibbonWork) + params->particleCount * sizeof(PcpScatterRibbonParticle));
-    work = (PcpScatterRibbonWork *)sdfMemLock(allocation);
+    allocation = sdfMemAllocDirect(sizeof(effPCPHamaCardScatter_tag) + params->particleCount * sizeof(PcpScatterRibbonParticle));
+    work = (effPCPHamaCardScatter_tag *)sdfMemLock(allocation);
     work->particles = (PcpScatterRibbonParticle *)(work + 1);
     work->params = *params;
     work->color = EFF_SCATTER_NEUTRAL_COLOR;
@@ -1495,10 +1495,10 @@ void effPCPHamaCardScatterCreatePCF(void *parameterTable)
     effPCPHamaCardScatterCreate(dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_PARAM_BLOCK), (u32)dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_RESOURCE_BLOCK), dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_CHILD_BLOCK));
 }
 
-PcpScatterRibbonWork *effPCPHamaCardScatterCopy(source)
-    PcpScatterRibbonWork *source;
+effPCPHamaCardScatter_tag *effPCPHamaCardScatterCopy(source)
+    effPCPHamaCardScatter_tag *source;
 {
-    PcpScatterRibbonWork *work;
+    effPCPHamaCardScatter_tag *work;
     u32 count;
     sdfMemHandle_t *allocation;
     effPartHandle_t **handles;
@@ -1526,7 +1526,7 @@ PcpScatterRibbonWork *effPCPHamaCardScatterCopy(source)
     return work;
 }
 
-void effPCPHamaCardScatterDelete(PcpScatterRibbonWork *work)
+void effPCPHamaCardScatterDelete(effPCPHamaCardScatter_tag *work)
 {
     u32 duplicatedHandleIndex;
     u32 count;
@@ -1546,7 +1546,7 @@ void effPCPHamaCardScatterDelete(PcpScatterRibbonWork *work)
     sdfMemFreeDirect(work->allocation);
 }
 
-void effPCPHamaCardScatterPartInit(PcpScatterRibbonWork *work, s32 index)
+void effPCPHamaCardScatterPartInit(effPCPHamaCardScatter_tag *work, s32 index)
 {
     f32 rightAngle = EFF_SCATTER_RIGHT_ANGLE_DEGREES * EFF_SCATTER_DEGREES_TO_RADIANS;
     f32 diagonalAngle = EFF_SCATTER_DIAGONAL_ANGLE_DEGREES * EFF_SCATTER_DEGREES_TO_RADIANS;
@@ -1574,7 +1574,7 @@ void effPCPHamaCardScatterPartInit(PcpScatterRibbonWork *work, s32 index)
 
 /* vu0 routine: each particle sweeps three ribbon quads around its tilt angle,
  * and the tilt reverses once it passes half its stored span. */
-void effPCPHamaCardScatterDraw(PcpScatterRibbonWork *work) {
+void effPCPHamaCardScatterDraw(effPCPHamaCardScatter_tag *work) {
     f32 next[4];
     f32 position[4];
     f32 duplicatePosition[4];
@@ -1730,7 +1730,7 @@ void effPCPHamaCardScatterSetPosition(void *destination, void *source) {
     SDF_VU0_COPYVECTOR(destination, source);
 }
 
-void effPCPHamaCardScatterSetColor(PcpScatterRibbonWork *work, u32 color)
+void effPCPHamaCardScatterSetColor(effPCPHamaCardScatter_tag *work, u32 color)
 {
     work->color = color;
 }
@@ -1871,12 +1871,12 @@ dds3ScatterPolyListTexResource_tag *dds3ScatterPolyListTexResourceCopy(dds3Scatt
     return res;
 }
 
-PcpScatterInstanceA *effPCPWhirlwindPolyCreate(src, resource)
+effPCPWhirlwindPoly_tag *effPCPWhirlwindPolyCreate(src, resource)
     PcpScatterParamsA *src;
     u32 resource;
 {
-    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(PcpScatterParticle) + sizeof(PcpScatterInstanceA));
-    PcpScatterInstanceA *inst = (PcpScatterInstanceA *)sdfMemLock(allocation);
+    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(PcpScatterParticle) + sizeof(effPCPWhirlwindPoly_tag));
+    effPCPWhirlwindPoly_tag *inst = (effPCPWhirlwindPoly_tag *)sdfMemLock(allocation);
     PcpScatterParticle *particle;
     u32 delayModulus;
     u32 count;
@@ -1916,21 +1916,21 @@ void effPCPWhirlwindPolyCreatePCF(void *parameterTable)
     effPCPWhirlwindPolyCreate(dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_PARAM_BLOCK), (u32)dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_RESOURCE_BLOCK));
 }
 
-PcpScatterInstanceA *effPCPWhirlwindPolyCopy(PcpScatterInstanceA *work) {
-    PcpScatterInstanceA *child;
+effPCPWhirlwindPoly_tag *effPCPWhirlwindPolyCopy(effPCPWhirlwindPoly_tag *work) {
+    effPCPWhirlwindPoly_tag *child;
 
     child = effPCPWhirlwindPolyCreate(&work->params, NULL);
     dds3WhirlwindPolyListCopyTex(child->scatterObject, work->scatterObject);
     return child;
 }
 
-void effPCPWhirlwindPolyDelete(PcpScatterInstanceA *work)
+void effPCPWhirlwindPolyDelete(effPCPWhirlwindPoly_tag *work)
 {
     dds3WhirlwindPolyListDelete(work->scatterObject);
     sdfMemFreeDirect(work->allocationHandle);
 }
 
-void effPCPWhirlwindPolyPartInit(PcpScatterInstanceA *work, s32 index)
+void effPCPWhirlwindPolyPartInit(effPCPWhirlwindPoly_tag *work, s32 index)
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(work->scatterObject, index);
     f32 *uv = dds3WhirlwindPolyListGetUV(work->scatterObject, index);
@@ -2001,7 +2001,7 @@ void effPCPWhirlwindPolyPartInit(PcpScatterInstanceA *work, s32 index)
     }
 }
 
-void effPCPWhirlwindPolyPartMove(PcpScatterInstanceA *work, s32 index)
+void effPCPWhirlwindPolyPartMove(effPCPWhirlwindPoly_tag *work, s32 index)
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(work->scatterObject, index);
     PcpScatterParticle *ring;
@@ -2046,7 +2046,7 @@ void effPCPWhirlwindPolyPartMove(PcpScatterInstanceA *work, s32 index)
     }
 }
 
-void effPCPWhirlwindPolyDraw(PcpScatterInstanceA *work) {
+void effPCPWhirlwindPolyDraw(effPCPWhirlwindPoly_tag *work) {
     s32 loop;
     u32 i;
     u32 count = work->params.particleCount;
@@ -2095,22 +2095,22 @@ void effPCPWhirlwindPolyDraw(PcpScatterInstanceA *work) {
     dds3WhirlwindPolyListDraw(draw);
 }
 
-void effPCPWhirlwindPolySetPosition(PcpScatterInstanceA *work, void *source) {
+void effPCPWhirlwindPolySetPosition(effPCPWhirlwindPoly_tag *work, void *source) {
     SDF_VU0_COPYVECTOR(&work->params, source);
 }
 
-void effPCPWhirlwindPolySetScale(PcpScatterInstanceA *work, f32 scale)
+void effPCPWhirlwindPolySetScale(effPCPWhirlwindPoly_tag *work, f32 scale)
 {
     work->scale = scale;
 }
 
-void effPCPWhirlwindPolySetColor(PcpScatterInstanceA *work, u32 color)
+void effPCPWhirlwindPolySetColor(effPCPWhirlwindPoly_tag *work, u32 color)
 {
     work->color = color;
 }
 
 /* vu0 routine: compose params.matrix and source via the native product into work->matrix. */
-void effPCPWhirlwindPolySetRotateMatrix(PcpScatterInstanceA *work, void *source)
+void effPCPWhirlwindPolySetRotateMatrix(effPCPWhirlwindPoly_tag *work, void *source)
 {
     SDF_VU0_LOADMATRIX(source);
     SDF_VU0_LOADMATRIX_B(work->params.matrix);
@@ -2118,12 +2118,12 @@ void effPCPWhirlwindPolySetRotateMatrix(PcpScatterInstanceA *work, void *source)
     SDF_VU0_STOREMATRIX(work);
 }
 
-PcpScatterInstanceB *effPCPWhirlwind2PolyCreate(src, resource)
+effPCPWhirlwind2Poly_tag *effPCPWhirlwind2PolyCreate(src, resource)
     PcpScatterParamsB *src;
     u32 resource;
 {
-    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(PcpScatterParticle) + sizeof(PcpScatterInstanceB));
-    PcpScatterInstanceB *inst = (PcpScatterInstanceB *)sdfMemLock(allocation);
+    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(PcpScatterParticle) + sizeof(effPCPWhirlwind2Poly_tag));
+    effPCPWhirlwind2Poly_tag *inst = (effPCPWhirlwind2Poly_tag *)sdfMemLock(allocation);
     PcpScatterParticle *particle;
     u32 delayModulus;
     u32 count;
@@ -2167,22 +2167,22 @@ void effPCPWhirlwind2PolyCreatePCF(void *parameterTable)
     effPCPWhirlwind2PolyCreate(dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_PARAM_BLOCK), (u32)dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_RESOURCE_BLOCK));
 }
 
-PcpScatterInstanceB *effPCPWhirlwind2PolyCopy(PcpScatterInstanceB *work)
+effPCPWhirlwind2Poly_tag *effPCPWhirlwind2PolyCopy(effPCPWhirlwind2Poly_tag *work)
 {
-    PcpScatterInstanceB *child;
+    effPCPWhirlwind2Poly_tag *child;
 
     child = effPCPWhirlwind2PolyCreate(&work->params, NULL);
     dds3WhirlwindPolyListCopyTex(child->scatterObject, work->scatterObject);
     return child;
 }
 
-void effPCPWhirlwind2PolyDelete(PcpScatterInstanceB *work)
+void effPCPWhirlwind2PolyDelete(effPCPWhirlwind2Poly_tag *work)
 {
     dds3WhirlwindPolyListDelete(work->scatterObject);
     sdfMemFreeDirect(work->allocationHandle);
 }
 
-void effPCPWhirlwind2PolyPartInit(PcpScatterInstanceB *work, s32 index)
+void effPCPWhirlwind2PolyPartInit(effPCPWhirlwind2Poly_tag *work, s32 index)
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(work->scatterObject, index);
     f32 *uv = dds3WhirlwindPolyListGetUV(work->scatterObject, index);
@@ -2253,7 +2253,7 @@ void effPCPWhirlwind2PolyPartInit(PcpScatterInstanceB *work, s32 index)
     }
 }
 
-void effPCPWhirlwind2PolyPartMove(PcpScatterInstanceB *work, s32 index)
+void effPCPWhirlwind2PolyPartMove(effPCPWhirlwind2Poly_tag *work, s32 index)
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(work->scatterObject, index);
     PcpScatterParticle *ring;
@@ -2299,7 +2299,7 @@ void effPCPWhirlwind2PolyPartMove(PcpScatterInstanceB *work, s32 index)
     }
 }
 
-void effPCPWhirlwind2PolyDraw(PcpScatterInstanceB *work) {
+void effPCPWhirlwind2PolyDraw(effPCPWhirlwind2Poly_tag *work) {
     s32 loop;
     s32 duration = work->params.duration;
     dds3WhirlwindPolyList_tag *draw = work->scatterObject;
@@ -2366,22 +2366,22 @@ void effPCPWhirlwind2PolyDraw(PcpScatterInstanceB *work) {
     dds3WhirlwindPolyListDraw(draw);
 }
 
-void effPCPWhirlwind2PolySetPosition(PcpScatterInstanceB *work, void *source) {
+void effPCPWhirlwind2PolySetPosition(effPCPWhirlwind2Poly_tag *work, void *source) {
     SDF_VU0_COPYVECTOR(&work->params, source);
 }
 
-void effPCPWhirlwind2PolySetScale(PcpScatterInstanceB *work, f32 scale)
+void effPCPWhirlwind2PolySetScale(effPCPWhirlwind2Poly_tag *work, f32 scale)
 {
     work->scale = scale;
 }
 
-void effPCPWhirlwind2PolySetColor(PcpScatterInstanceB *work, u32 color)
+void effPCPWhirlwind2PolySetColor(effPCPWhirlwind2Poly_tag *work, u32 color)
 {
     work->color = color;
 }
 
 /* vu0 routine: compose params.matrix and source via the native product into work->matrix. */
-void effPCPWhirlwind2PolySetRotateMatrix(PcpScatterInstanceB *work, void *source)
+void effPCPWhirlwind2PolySetRotateMatrix(effPCPWhirlwind2Poly_tag *work, void *source)
 {
     SDF_VU0_LOADMATRIX(source);
     SDF_VU0_LOADMATRIX_B(work->params.matrix);
@@ -2389,12 +2389,12 @@ void effPCPWhirlwind2PolySetRotateMatrix(PcpScatterInstanceB *work, void *source
     SDF_VU0_STOREMATRIX(work);
 }
 
-PcpScatterInstanceC *effPCPWhirlwind3PolyCreate(src, resource)
+effPCPWhirlwind3Poly_tag *effPCPWhirlwind3PolyCreate(src, resource)
     PcpScatterParamsC *src;
     u32 resource;
 {
-    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(PcpScatterParticle) + sizeof(PcpScatterInstanceC));
-    PcpScatterInstanceC *inst = (PcpScatterInstanceC *)sdfMemLock(allocation);
+    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(PcpScatterParticle) + sizeof(effPCPWhirlwind3Poly_tag));
+    effPCPWhirlwind3Poly_tag *inst = (effPCPWhirlwind3Poly_tag *)sdfMemLock(allocation);
     PcpScatterParticle *particle;
     u32 delayModulus;
     u32 count;
@@ -2438,22 +2438,22 @@ void effPCPWhirlwind3PolyCreatePCF(void *parameterTable)
     effPCPWhirlwind3PolyCreate(dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_PARAM_BLOCK), (u32)dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_RESOURCE_BLOCK));
 }
 
-PcpScatterInstanceC *effPCPWhirlwind3PolyCopy(PcpScatterInstanceC *work)
+effPCPWhirlwind3Poly_tag *effPCPWhirlwind3PolyCopy(effPCPWhirlwind3Poly_tag *work)
 {
-    PcpScatterInstanceC *child;
+    effPCPWhirlwind3Poly_tag *child;
 
     child = effPCPWhirlwind3PolyCreate(&work->params, NULL);
     dds3WhirlwindPolyListCopyTex(child->scatterObject, work->scatterObject);
     return child;
 }
 
-void effPCPWhirlwind3PolyDelete(PcpScatterInstanceC *work)
+void effPCPWhirlwind3PolyDelete(effPCPWhirlwind3Poly_tag *work)
 {
     dds3WhirlwindPolyListDelete(work->scatterObject);
     sdfMemFreeDirect(work->allocationHandle);
 }
 
-void effPCPWhirlwind3PolyPartInit(PcpScatterInstanceC *work, s32 index)
+void effPCPWhirlwind3PolyPartInit(effPCPWhirlwind3Poly_tag *work, s32 index)
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(work->scatterObject, index);
     f32 *uv = dds3WhirlwindPolyListGetUV(work->scatterObject, index);
@@ -2522,7 +2522,7 @@ void effPCPWhirlwind3PolyPartInit(PcpScatterInstanceC *work, s32 index)
     }
 }
 
-void effPCPWhirlwind3PolyPartMove(PcpScatterInstanceC *work, s32 index)
+void effPCPWhirlwind3PolyPartMove(effPCPWhirlwind3Poly_tag *work, s32 index)
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(work->scatterObject, index);
     PcpScatterParticle *ring;
@@ -2568,7 +2568,7 @@ void effPCPWhirlwind3PolyPartMove(PcpScatterInstanceC *work, s32 index)
     }
 }
 
-void effPCPWhirlwind3PolyDraw(PcpScatterInstanceC *work) {
+void effPCPWhirlwind3PolyDraw(effPCPWhirlwind3Poly_tag *work) {
     s32 loop;
     s32 duration = work->params.duration;
     dds3WhirlwindPolyList_tag *draw = work->scatterObject;
@@ -2644,22 +2644,22 @@ void effPCPWhirlwind3PolyDraw(PcpScatterInstanceC *work) {
     dds3WhirlwindPolyListDraw(draw);
 }
 
-void effPCPWhirlwind3PolySetPosition(PcpScatterInstanceC *work, void *source) {
+void effPCPWhirlwind3PolySetPosition(effPCPWhirlwind3Poly_tag *work, void *source) {
     SDF_VU0_COPYVECTOR(&work->params, source);
 }
 
-void effPCPWhirlwind3PolySetScale(PcpScatterInstanceC *work, f32 scale)
+void effPCPWhirlwind3PolySetScale(effPCPWhirlwind3Poly_tag *work, f32 scale)
 {
     work->scale = scale;
 }
 
-void effPCPWhirlwind3PolySetColor(PcpScatterInstanceC *work, u32 color)
+void effPCPWhirlwind3PolySetColor(effPCPWhirlwind3Poly_tag *work, u32 color)
 {
     work->color = color;
 }
 
 /* vu0 routine: compose params.matrix and source via the native product into work->matrix. */
-void effPCPWhirlwind3PolySetRotateMatrix(PcpScatterInstanceC *work, void *source)
+void effPCPWhirlwind3PolySetRotateMatrix(effPCPWhirlwind3Poly_tag *work, void *source)
 {
     SDF_VU0_LOADMATRIX(source);
     SDF_VU0_LOADMATRIX_B(work->params.matrix);
@@ -2667,12 +2667,12 @@ void effPCPWhirlwind3PolySetRotateMatrix(PcpScatterInstanceC *work, void *source
     SDF_VU0_STOREMATRIX(work);
 }
 
-PcpScatterPlainInstance *effPCPWwSpherePolyCreate(src, resource)
+effPCPWwSpherePoly_tag *effPCPWwSpherePolyCreate(src, resource)
     PcpScatterPlainParams *src;
     u32 resource;
 {
-    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(PcpScatterPlainParticle) + sizeof(PcpScatterPlainInstance));
-    PcpScatterPlainInstance *inst = (PcpScatterPlainInstance *)sdfMemLock(allocation);
+    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(PcpScatterPlainParticle) + sizeof(effPCPWwSpherePoly_tag));
+    effPCPWwSpherePoly_tag *inst = (effPCPWwSpherePoly_tag *)sdfMemLock(allocation);
     PcpScatterPlainParticle *particle;
     u32 delayModulus;
     u32 count;
@@ -2712,22 +2712,22 @@ void effPCPWwSpherePolyCreatePCF(void *parameterTable)
     effPCPWwSpherePolyCreate(dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_PARAM_BLOCK), (u32)dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_RESOURCE_BLOCK));
 }
 
-PcpScatterPlainInstance *effPCPWwSpherePolyCopy(PcpScatterPlainInstance *work)
+effPCPWwSpherePoly_tag *effPCPWwSpherePolyCopy(effPCPWwSpherePoly_tag *work)
 {
-    PcpScatterPlainInstance *child;
+    effPCPWwSpherePoly_tag *child;
 
     child = effPCPWwSpherePolyCreate(&work->params, NULL);
     dds3WhirlwindPolyListCopyTex(child->scatterObject, work->scatterObject);
     return child;
 }
 
-void effPCPWwSpherePolyDelete(PcpScatterPlainInstance *work)
+void effPCPWwSpherePolyDelete(effPCPWwSpherePoly_tag *work)
 {
     dds3WhirlwindPolyListDelete(work->scatterObject);
     sdfMemFreeDirect(work->allocationHandle);
 }
 
-void effPCPWwSpherePolyPartInit(PcpScatterPlainInstance *work, s32 index) {
+void effPCPWwSpherePolyPartInit(effPCPWwSpherePoly_tag *work, s32 index) {
     f32 *uv = dds3WhirlwindPolyListGetUV(work->scatterObject, index);
     PcpScatterPlainParticle *ring;
     f32 angle;
@@ -2773,7 +2773,7 @@ void effPCPWwSpherePolyPartInit(PcpScatterPlainInstance *work, s32 index) {
     }
 }
 
-void effPCPWwSpherePolyPartMove(PcpScatterPlainInstance *work, s32 index)
+void effPCPWwSpherePolyPartMove(effPCPWwSpherePoly_tag *work, s32 index)
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(work->scatterObject, index);
     PcpScatterPlainParticle *ring;
@@ -2818,7 +2818,7 @@ void effPCPWwSpherePolyPartMove(PcpScatterPlainInstance *work, s32 index)
     }
 }
 
-void effPCPWwSpherePolyDraw(PcpScatterPlainInstance *work) {
+void effPCPWwSpherePolyDraw(effPCPWwSpherePoly_tag *work) {
     s32 loop;
     u32 i;
     u32 count = work->params.particleCount;
@@ -2867,20 +2867,20 @@ void effPCPWwSpherePolyDraw(PcpScatterPlainInstance *work) {
     dds3WhirlwindPolyListDraw(draw);
 }
 
-void effPCPWwSpherePolySetPosition(PcpScatterPlainInstance *work, void *src) {
+void effPCPWwSpherePolySetPosition(effPCPWwSpherePoly_tag *work, void *src) {
     SDF_VU0_COPYVECTOR(work->params.origin, src);
 }
 
-void effPCPWwSpherePolySetScale(PcpScatterPlainInstance *work, f32 scale) {
+void effPCPWwSpherePolySetScale(effPCPWwSpherePoly_tag *work, f32 scale) {
     work->scale = scale;
 }
 
-void effPCPWwSpherePolySetColor(PcpScatterPlainInstance *work, u32 color) {
+void effPCPWwSpherePolySetColor(effPCPWwSpherePoly_tag *work, u32 color) {
     work->color = color;
 }
 
 /* vu0 routine: copy four transform rows through the matrix bank. */
-void effPCPWwSpherePolySetRotateMatrix(PcpScatterPlainInstance *work, void *src) {
+void effPCPWwSpherePolySetRotateMatrix(effPCPWwSpherePoly_tag *work, void *src) {
     VU0_COPY_MATRIX(work->matrix, src);
 }
 
