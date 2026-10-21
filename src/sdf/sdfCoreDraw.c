@@ -143,7 +143,7 @@ typedef struct sdfModelRootNode_t {
     DevRequest *resources;
     DevRequest *slotPairs;
     struct sdfMotionCtrlr_t *motionList;
-    u8 unk18;
+    u8 complexNodeId;
     u8 flags;
     u16 drawFlags;
     u32 color;

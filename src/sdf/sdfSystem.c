@@ -130,7 +130,7 @@ typedef struct tagpipeBasic {
     void *base;
     mdlObj_t *mdl;
     u8 unk08[4];
-    s32 unk0C;
+    s32 enabled;
     f32 pos[4];
     f32 rot[4];
     f32 scl[4];
