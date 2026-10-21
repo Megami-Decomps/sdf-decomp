@@ -88,7 +88,7 @@ struct sdfGrDrawFramePacket_t;
 
 struct sdfGrClearPacket_t;
 
-struct SdfGsDrawDefaultsRegisters;
+struct sdfGrRefGifPacketHeader_t;
 
 struct SdfDmaReferenceChainPacket;
 
@@ -194,12 +194,12 @@ typedef struct sdfGrClearPacket_t {
 } sdfGrClearPacket_t;
 
 /* Shared A+D state for GS primitive modes, color clamping, dithering and TEXA. */
-typedef struct SdfGsDrawDefaultsRegisters {
+typedef struct sdfGrRefGifPacketHeader_t {
     sdfGrTagStdReg_t prmodecont;
     sdfGrTagStdReg_t colclamp;
     sdfGrTagStdReg_t dthe;
     sdfGrTagStdReg_t texa;
-} SdfGsDrawDefaultsRegisters;
+} sdfGrRefGifPacketHeader_t;
 
 /* GIF tag followed by a REF transfer and the patchable NEXT link. */
 typedef struct SdfDmaReferenceChainPacket {
@@ -225,7 +225,7 @@ typedef struct SdfGsSceneBlendRegisters {
 /* Complete DMA/GIF owner used by scene builders and held-texture draw banks. */
 typedef struct SdfSceneDrawPacket {
     sdfGrPacketHeader_t header;
-    SdfGsDrawDefaultsRegisters drawDefaults;
+    sdfGrRefGifPacketHeader_t drawDefaults;
     sdfGrDrawFramePacket_t contextOne;
     sdfGrDrawFramePacket_t contextTwo;
     sdfGrClearPacket_t centeredBounds;
@@ -315,7 +315,7 @@ typedef struct sdfSceneNode_t {
     sdfGrFrameSet_t *view;
     u8 unk0C[4];
     sdfGrPacketHeader_t header;
-    SdfGsDrawDefaultsRegisters drawDefaults;
+    sdfGrRefGifPacketHeader_t drawDefaults;
     sdfGrDrawFramePacket_t contextOne;
     sdfGrDrawFramePacket_t contextTwo;
     sdfGrClearPacket_t centeredBounds;
@@ -329,7 +329,7 @@ void sdfGrStdDrawEnvPredraw(sdfSceneNode_t *node, s32 bufferIndex);
 
 void sdfGrSetRefGifPacket(SdfDmaReferenceChainPacket *packet, u32 sourceAddress, s32 qwordCount);
 
-void sdfGrSetDrawDefParmPacket(SdfGsDrawDefaultsRegisters *packet);
+void sdfGrSetDrawDefParmPacket(sdfGrRefGifPacketHeader_t *packet);
 
 extern s32 EIntr(void);
 
@@ -765,7 +765,7 @@ void sdfGrSetClearPacket(sdfGrClearPacket_t *packet, s32 width, s32 height, s32 
     packet->xyz2[1].reg = SDF_GS_XYZ2;
 }
 
-void sdfGrSetDrawDefParmPacket(SdfGsDrawDefaultsRegisters *packet) {
+void sdfGrSetDrawDefParmPacket(sdfGrRefGifPacketHeader_t *packet) {
     packet->prmodecont.data = 1;
     packet->prmodecont.reg = SDF_GS_PRMODECONT;
     packet->colclamp.data = 1;

@@ -2,7 +2,7 @@
 #include "libsdf.h"
 
 struct movieStream_t;
-struct SoundFormat;
+struct sdfIpuInitParm_t;
 struct sdfGsMemSlice_t;
 struct SdfStreamInputDmaTag;
 
@@ -66,13 +66,13 @@ typedef struct sdfIpuDecodeCb_t
     IpuDmaState dma;
 } sdfIpuDecodeCb_t;
 
-typedef struct SoundFormat
+typedef struct sdfIpuInitParm_t
 {
     u8 output16Bit;
     u8 dither;
     u8 loopMode;
     u8 playbackCadenceStep;
-} SoundFormat;
+} sdfIpuInitParm_t;
 
 typedef struct MovOpenParam
 {
@@ -169,7 +169,7 @@ void *sdfChipAllocZeroDirect(s32 aSize);
 sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
 void *sdfMemLock(sdfMemHandle_t *aHandle);
 void *sdfFileCmdReadOpen(const char *aName, SdfStreamRead aRead, movieStream_t *aContext);
-void movieAttachDecodeTask(sdfIpuDecodeCb_t *aNode, SoundFormat *aFormat, SdfStreamRead aRead, movieStream_t *aContext, s32 aResourceWord);
+void movieAttachDecodeTask(sdfIpuDecodeCb_t *aNode, sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, movieStream_t *aContext, s32 aResourceWord);
 s32 sdfCreateSema(s32 aInit, s32 aMax, s32 aAttr);
 s32 WaitSema(s32 sema);
 s32 SignalSema(s32 sema);
@@ -544,7 +544,7 @@ s32 movieParseHeader(sdfIpuDecodeCb_t *aNode, movieStream_t *aMov, s32 aOp, void
 
 void movieOpenStream(movieStream_t *aMov, MovOpenParam *aParam, const char *aName)
 {
-    SoundFormat fmt;
+    sdfIpuInitParm_t fmt;
     MovLinearStream *linear;
     MovPacStream *pac;
     char *ext;

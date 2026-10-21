@@ -11,7 +11,7 @@ enum {
 
 struct movieStream_t;
 
-struct SoundFormat;
+struct sdfIpuInitParm_t;
 
 struct sdfGsMemSlice_t;
 
@@ -79,9 +79,9 @@ typedef struct sdfIpuDecodeCb_t
 
 typedef s32 (*SdfStreamRead)(sdfIpuDecodeCb_t *, struct movieStream_t *, s32, void *, s32);
 
-void sdfIpuStrmDecodeInit(sdfIpuDecodeCb_t *aNode, struct SoundFormat *aFormat, SdfStreamRead aRead, struct movieStream_t *aContext);
+void sdfIpuStrmDecodeInit(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct movieStream_t *aContext);
 
-void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *aNode, struct SoundFormat *aFormat, SdfStreamRead aRead, struct movieStream_t *aContext);
+void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct movieStream_t *aContext);
 
 void sdfIpuAttachTask(sdfIpuDecodeCb_t *aNode);
 
@@ -213,7 +213,7 @@ enum sdf_stream_output {
     SDF_STREAM_OUTPUT_RGBA16_DITHERED = 2
 };
 
-struct SoundFormat {
+struct sdfIpuInitParm_t {
     u8 output16Bit;
     u8 dither;
     u8 loopMode;
@@ -485,7 +485,7 @@ void sdfIpuMakeToIpuDmaTag(sdfIpuDecodeCb_t *node, u8 *source, s32 bytes) {
 INCLUDE_ASM(const s32, "sdf/sdfIpu", sdfIpuMakeBltPacket);
 
 /* Clear the decoder, choose 32-bit/16-bit/dithered output and copy playback options. */
-void sdfIpuInitCb(sdfIpuDecodeCb_t *node, struct SoundFormat *format) {
+void sdfIpuInitCb(sdfIpuDecodeCb_t *node, struct sdfIpuInitParm_t *format) {
     memset(node, 0, 0x8C);
     if (format->output16Bit == 0) {
         node->audioMode = SDF_STREAM_OUTPUT_RGBA32;
@@ -499,7 +499,7 @@ void sdfIpuInitCb(sdfIpuDecodeCb_t *node, struct SoundFormat *format) {
 }
 
 /* Decode the frame header, allocate its buffers, then queue the bytes after that header. */
-void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *node, struct SoundFormat *format, SdfStreamRead sourceAddress, struct movieStream_t *sourceContext) {
+void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *node, struct sdfIpuInitParm_t *format, SdfStreamRead sourceAddress, struct movieStream_t *sourceContext) {
     s32 sourceSize = (s32)sourceContext;
     s32 interruptsEnabled;
     u8 *frameBytes = (u8 *)sourceAddress;
@@ -518,7 +518,7 @@ void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *node, struct SoundFormat *format, S
 }
 
 /* Store the callback and movie context, then allocate the feed ring and leading mirror bytes. */
-void sdfIpuStrmDecodeInit(sdfIpuDecodeCb_t *node, struct SoundFormat *format, SdfStreamRead readSource, struct movieStream_t *readContext) {
+void sdfIpuStrmDecodeInit(sdfIpuDecodeCb_t *node, struct sdfIpuInitParm_t *format, SdfStreamRead readSource, struct movieStream_t *readContext) {
     sdfIpuInitCb(node, format);
     node->read = readSource;
     node->readContext = readContext;
@@ -848,15 +848,15 @@ INCLUDE_ASM(const s32, "sdf/sdfIpu", sdfIpuSetChainTag);
 
 INCLUDE_ASM(const s32, "sdf/sdfIpu", sdfIpuRunDecode);
 
-void sdfIpuStartDecodeTask(sdfIpuDecodeCb_t *aNode, struct SoundFormat *aFormat, SdfStreamRead aRead, struct movieStream_t *aContext, s32 aResourceWord)
+void sdfIpuStartDecodeTask(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct movieStream_t *aContext, s32 aResourceWord)
 {
     sdfIpuSetDecodeParams(aNode, aFormat, aRead, aContext);
     aNode->resourceWord = aResourceWord;
     sdfIpuAttachTask(aNode);
 }
 
-void sdfIpuSetOutputTex(sdfIpuDecodeCb_t *node, struct SoundFormat *params, u8 *sourceData, s32 sourceSize, sdfTexHandle_t *source) {
-    struct SoundFormat streamParams = *params;
+void sdfIpuSetOutputTex(sdfIpuDecodeCb_t *node, struct sdfIpuInitParm_t *params, u8 *sourceData, s32 sourceSize, sdfTexHandle_t *source) {
+    struct sdfIpuInitParm_t streamParams = *params;
     switch (source->pixelFormat) {
     case 0:
         streamParams.output16Bit = 0;
@@ -868,7 +868,7 @@ void sdfIpuSetOutputTex(sdfIpuDecodeCb_t *node, struct SoundFormat *params, u8 *
     sdfIpuStartDecodeTask(node, &streamParams, (SdfStreamRead)sourceData, (struct movieStream_t *)sourceSize, sdfTexGetPixelAddr(source));
 }
 
-void movieAttachDecodeTask(sdfIpuDecodeCb_t *aNode, struct SoundFormat *aFormat, SdfStreamRead aRead, struct movieStream_t *aContext, s32 aResourceWord)
+void movieAttachDecodeTask(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct movieStream_t *aContext, s32 aResourceWord)
 {
     sdfIpuStrmDecodeInit(aNode, aFormat, aRead, aContext);
     aNode->resourceWord = aResourceWord;
