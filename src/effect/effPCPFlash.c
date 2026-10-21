@@ -15,7 +15,7 @@ struct PcpFlashAccumulatingWork;
 struct PcpFlashColorSlot;
 struct PcpFlashFadingOrbitWork;
 struct PcpFlashMotionParticle;
-struct PcpFlashOffsetRadialParams;
+struct effPCPFlashPolyCircleParam_t;
 struct PcpFlashOffsetRadialWork;
 struct PcpFlashOrbitArcWork;
 struct PcpFlashOrbitParticle;
@@ -23,7 +23,7 @@ struct PcpFlashPulseParticle;
 struct PcpFlashQuadColorSlot;
 struct PcpFlashRadialStripParticle;
 struct PcpFlashRadialStripWork;
-struct PcpFlashRadialTriangleParams;
+struct effPCPFlashPolySphere2ExpParam_t;
 struct PcpFlashRadialTriangleWork;
 struct PcpFlashRotatingParticle;
 struct PcpFlashRotatingQuadParticle;
@@ -31,7 +31,7 @@ struct PcpFlashRotatingQuadWork;
 struct PcpFlashScalingOrbitWork;
 struct PcpFlashStreakParams;
 struct PcpFlashStreakWork;
-struct PcpFlashTrianglePulseParams;
+struct effPCPFlashPolySphere2Param_t;
 struct PcpFlashTrianglePulseWork;
 struct sdfVector3_t;
 struct sdfMatPacket_t;
@@ -49,12 +49,12 @@ typedef struct EffRingColorSlot EffRingColorSlot;
 typedef struct EffRingParticle EffRingParticle;
 typedef struct EffRingWork EffRingWork;
 typedef struct PcpFlashColorSlot PcpFlashColorSlot;
-typedef struct PcpFlashOffsetRadialParams PcpFlashOffsetRadialParams;
+typedef struct effPCPFlashPolyCircleParam_t effPCPFlashPolyCircleParam_t;
 typedef struct PcpFlashPulseParticle PcpFlashPulseParticle;
 typedef struct PcpFlashQuadColorSlot PcpFlashQuadColorSlot;
-typedef struct PcpFlashRadialTriangleParams PcpFlashRadialTriangleParams;
+typedef struct effPCPFlashPolySphere2ExpParam_t effPCPFlashPolySphere2ExpParam_t;
 typedef struct PcpFlashStreakParams PcpFlashStreakParams;
-typedef struct PcpFlashTrianglePulseParams PcpFlashTrianglePulseParams;
+typedef struct effPCPFlashPolySphere2Param_t effPCPFlashPolySphere2Param_t;
 typedef struct PcpFlashTrianglePulseWork PcpFlashTrianglePulseWork;
 typedef struct sdfGrOt_t sdfGrOt_t;
 typedef struct EffThunderDrawParams EffThunderDrawParams;
@@ -367,7 +367,7 @@ struct PcpFlashMotionParticle {
                        * accumulator; also read as the particle's height */
 };
 
-struct PcpFlashOffsetRadialParams {
+struct effPCPFlashPolyCircleParam_t {
     f32 origin[3];
     u8 pad0C[4];
     s32 particleCount;
@@ -505,7 +505,7 @@ struct PcpFlashRadialStripWork {
     dds3FlashPolyList_t *resourceHandle;
 };
 
-struct PcpFlashRadialTriangleParams {
+struct effPCPFlashPolySphere2ExpParam_t {
     f32 origin[3];
     u8 pad0C[4];
     s32 particleCount;
@@ -681,7 +681,7 @@ struct PcpFlashStreakWork {
 
 /* The factory copies this 0x30-byte parameter prefix into its larger work
  * allocation before appending particle and resource state. */
-struct PcpFlashTrianglePulseParams {
+struct effPCPFlashPolySphere2Param_t {
     f32 origin[3];
     u8 pad0C[4];
     s32 particleCount;
@@ -1026,7 +1026,7 @@ void dds3FlashPolyList2Delete(dds3FlashPolyList_t *group);
 void dds3FlashPolyList3Delete(dds3FlashPolyList_t *group);
 void dds3FlashPolyListHDelete(dds3FlashPolyList_t *pool);
 
-PcpFlashTrianglePulseWork *effPCPFlashPolySphere2Create(PcpFlashTrianglePulseParams *params)
+PcpFlashTrianglePulseWork *effPCPFlashPolySphere2Create(effPCPFlashPolySphere2Param_t *params)
 {
     sdfMemHandle_t *allocation = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashPulseParticle) + sizeof(PcpFlashTrianglePulseWork));
     PcpFlashTrianglePulseWork *work = (PcpFlashTrianglePulseWork *)sdfMemLock(allocation);
@@ -1050,10 +1050,10 @@ PcpFlashTrianglePulseWork *effPCPFlashPolySphere2Create(PcpFlashTrianglePulsePar
 
 void effPCPFlashPolySphere2CreatePCF(void *table)
 {
-    effPCPFlashPolySphere2Create((PcpFlashTrianglePulseParams *)dds3EffectPCPDataGetData(table, 0));
+    effPCPFlashPolySphere2Create((effPCPFlashPolySphere2Param_t *)dds3EffectPCPDataGetData(table, 0));
 }
 
-PcpFlashTrianglePulseWork *effPCPFlashPolySphere2Copy(PcpFlashTrianglePulseParams *params)
+PcpFlashTrianglePulseWork *effPCPFlashPolySphere2Copy(effPCPFlashPolySphere2Param_t *params)
 {
     return effPCPFlashPolySphere2Create(params);
 }
@@ -2477,7 +2477,7 @@ void effPCPFlashPolySphereExpDraw(PcpFlashRotatingQuadWork *work) {
     dds3FlashPolyListDraw(handle);
 }
 
-PcpFlashRadialTriangleWork *effPCPFlashPolySphere2ExpCreate(PcpFlashRadialTriangleParams *params)
+PcpFlashRadialTriangleWork *effPCPFlashPolySphere2ExpCreate(effPCPFlashPolySphere2ExpParam_t *params)
 {
     sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashMotionParticle) + sizeof(PcpFlashRadialTriangleWork));
     PcpFlashRadialTriangleWork *work = (PcpFlashRadialTriangleWork *)sdfMemLock(handle);
@@ -2504,7 +2504,7 @@ void effPCPFlashPolySphere2ExpCreatePCF(void *data)
     effPCPFlashPolySphere2ExpCreate(dds3EffectPCPDataGetData(data, 0));
 }
 
-PcpFlashRadialTriangleWork *effPCPFlashPolySphere2ExpCopy(PcpFlashRadialTriangleParams *params)
+PcpFlashRadialTriangleWork *effPCPFlashPolySphere2ExpCopy(effPCPFlashPolySphere2ExpParam_t *params)
 {
     return effPCPFlashPolySphere2ExpCreate(params);
 }
@@ -3173,7 +3173,7 @@ void effPCPFlashPolyRingExp2Draw(PcpFlashFadingOrbitWork *work) {
     dds3FlashPolyListDraw(handle);
 }
 
-PcpFlashOffsetRadialWork *effPCPFlashPolyCircleCreate(PcpFlashOffsetRadialParams *params)
+PcpFlashOffsetRadialWork *effPCPFlashPolyCircleCreate(effPCPFlashPolyCircleParam_t *params)
 {
     sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashMotionParticle) + sizeof(PcpFlashOffsetRadialWork));
     PcpFlashOffsetRadialWork *work = (PcpFlashOffsetRadialWork *)sdfMemLock(handle);
@@ -3200,7 +3200,7 @@ void effPCPFlashPolyCircleCreatePCF(void *data)
     effPCPFlashPolyCircleCreate(dds3EffectPCPDataGetData(data, 0));
 }
 
-PcpFlashOffsetRadialWork *effPCPFlashPolyCircleCopy(PcpFlashOffsetRadialParams *params)
+PcpFlashOffsetRadialWork *effPCPFlashPolyCircleCopy(effPCPFlashPolyCircleParam_t *params)
 {
     return effPCPFlashPolyCircleCreate(params);
 }
