@@ -20,7 +20,7 @@ struct PcpScatterRadialParams;
 struct PcpScatterRadialParticle;
 struct effPCPHamaCardSpiral_tag;
 struct PcpScatterRibbonParams;
-struct PcpScatterRibbonParticle;
+struct effPCPHamaCardScatterPart_tag;
 struct effPCPHamaCardScatter_tag;
 struct PcpScatterSpinParams;
 struct effPCPWwSpherePolyPart_tag;
@@ -51,7 +51,7 @@ typedef struct effPartHandle_t effPartHandle_t;
 typedef struct PcpScatterRadialParams PcpScatterRadialParams;
 typedef struct PcpScatterRadialParticle PcpScatterRadialParticle;
 typedef struct effPCPHamaCardSpiral_tag effPCPHamaCardSpiral_tag;
-typedef struct PcpScatterRibbonParticle PcpScatterRibbonParticle;
+typedef struct effPCPHamaCardScatterPart_tag effPCPHamaCardScatterPart_tag;
 typedef struct PcpScatterRibbonParams PcpScatterRibbonParams;
 typedef struct effPCPHamaCardScatter_tag effPCPHamaCardScatter_tag;
 typedef struct PcpScatterSpinParams PcpScatterSpinParams;
@@ -520,7 +520,7 @@ struct effPCPHamaCardSpiral_tag {
     sdfMemHandle_t *duplicateAllocation;
 };
 
-struct PcpScatterRibbonParticle {
+struct effPCPHamaCardScatterPart_tag {
     s32 age;
     f32 height;
     f32 heightStep;
@@ -528,7 +528,7 @@ struct PcpScatterRibbonParticle {
     f32 tiltHalfAngle;
     f32 tiltStep;
     f32 radius;
-    f32 unk1C;
+    f32 roll;
     f32 unk20;
     f32 unk24;
 };
@@ -558,7 +558,7 @@ struct PcpScatterRibbonParams {
 /* Runtime owner followed inline by its variable-length particle array. */
 struct effPCPHamaCardScatter_tag {
     PcpScatterRibbonParams params;
-    PcpScatterRibbonParticle *particles;
+    effPCPHamaCardScatterPart_tag *particles;
     f32 scale;
     u32 color;
     dds3ScatterPolyList_tag *childWork;
@@ -1438,16 +1438,16 @@ effPCPHamaCardScatter_tag *effPCPHamaCardScatterCreate(params, resource, particl
     void *particleParams;
 {
     effPCPHamaCardScatter_tag *work;
-    PcpScatterRibbonParticle *particle;
+    effPCPHamaCardScatterPart_tag *particle;
     sdfMemHandle_t *allocation;
     effPartHandle_t **handles;
     u32 count;
     u32 i;
     s32 delaySpread;
 
-    allocation = sdfMemAllocDirect(sizeof(effPCPHamaCardScatter_tag) + params->particleCount * sizeof(PcpScatterRibbonParticle));
+    allocation = sdfMemAllocDirect(sizeof(effPCPHamaCardScatter_tag) + params->particleCount * sizeof(effPCPHamaCardScatterPart_tag));
     work = (effPCPHamaCardScatter_tag *)sdfMemLock(allocation);
-    work->particles = (PcpScatterRibbonParticle *)(work + 1);
+    work->particles = (effPCPHamaCardScatterPart_tag *)(work + 1);
     work->params = *params;
     work->color = EFF_SCATTER_NEUTRAL_COLOR;
     work->allocation = allocation;
@@ -1551,7 +1551,7 @@ void effPCPHamaCardScatterPartInit(effPCPHamaCardScatter_tag *work, s32 index)
     f32 rightAngle = EFF_SCATTER_RIGHT_ANGLE_DEGREES * EFF_SCATTER_DEGREES_TO_RADIANS;
     f32 diagonalAngle = EFF_SCATTER_DIAGONAL_ANGLE_DEGREES * EFF_SCATTER_DEGREES_TO_RADIANS;
     f32 tiltStep = EFF_SCATTER_TILT_STEP_DEGREES * EFF_SCATTER_DEGREES_TO_RADIANS;
-    PcpScatterRibbonParticle *particle = &work->particles[index];
+    effPCPHamaCardScatterPart_tag *particle = &work->particles[index];
     f32 direction[4];
 
     particle->height = 0.0f;
@@ -1559,7 +1559,7 @@ void effPCPHamaCardScatterPartInit(effPCPHamaCardScatter_tag *work, s32 index)
     particle->tiltHalfAngle = rightAngle;
     particle->tiltAngle = diagonalAngle;
     particle->tiltStep = tiltStep;
-    particle->unk1C = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_FULL_TURN;
+    particle->roll = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_FULL_TURN;
     particle->radius = EFF_SCATTER_INITIAL_RIBBON_RADIUS;
 
     direction[0] = (dds3GetRandFloatA(dds3EffectBase) - EFF_SCATTER_RANDOM_MIDPOINT) * EFF_SCATTER_RANDOM_SPAN;
@@ -1595,7 +1595,7 @@ void effPCPHamaCardScatterDraw(effPCPHamaCardScatter_tag *work) {
     s32 duration;
     s32 endAge;
     s32 duplicateStart;
-    PcpScatterRibbonParticle *particle;
+    effPCPHamaCardScatterPart_tag *particle;
 
     i = 0;
     duration = work->params.duration;
