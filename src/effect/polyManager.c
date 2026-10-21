@@ -44,7 +44,7 @@ typedef struct dds3Polygon_t
     u128 *normals;
     u32 *colors;
     struct dds3Polygon_t *next;
-    s32 unk58;
+    s32 d_next;
 } dds3Polygon_t;
 
 typedef struct
