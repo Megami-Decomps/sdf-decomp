@@ -132,13 +132,13 @@ extern u8 corePktWorldLightMtxCache[];
 /* Native 0xA0-byte draw-entry block allocated by SDF_ASSET_DRAW_ENTRY_BYTES. */
 typedef struct sdfMatPacket_t {
     u32 pad00;             /* 0x00 */
-    u32 unk04;             /* 0x04 */
-    u32 unk08;             /* 0x08 */
+    u32 ambient;             /* 0x04 */
+    u32 diffuse;             /* 0x08 */
     u32 secondaryColor;    /* 0x0C: packed color applied by the secondary draw state */
     u32 primaryStateWordThird; /* 0x10: copied from the owning asset, or forced to zero. */
-    u32 unk14;             /* 0x14 */
+    u32 refmapColor;             /* 0x14 */
     u32 pad18;             /* 0x18 */
-    f32 unk1C;             /* 0x1C */
+    f32 constant;             /* 0x1C */
     u32 alphaState;        /* 0x20: packed GS ALPHA_2 state emitted by the VU transfer builder */
     u32 secondaryMode;     /* 0x24: secondary packet mode copied from sdfMat_t */
     f32 y;                 /* 0x28 */
@@ -341,8 +341,8 @@ void corePktMakeFaceDivParm(SdfVuColorTransform *result, u32 reference, u32 pack
 
 void corePktSetFaceDivParm(SdfVuColorTransform *out, sdfMatPacket_t *work, u32 packedColor, f32 deltaX, f32 deltaY) {
     corePktMakeFaceDivParm(out, corePktCurrLight, packedColor,
-                  work->unk08, work->unk04,
-                  work->unk1C,
+                  work->diffuse, work->ambient,
+                  work->constant,
                   work->x + deltaX,
                   work->y + deltaY);
 }
@@ -1071,7 +1071,7 @@ void corePktEmitMultiTexPass(VuWork *work) {
     node = work->node;
     mode = node->secondaryMode;
     secondaryColor = node->secondaryColor;
-    primaryStateWordSecond = node->unk08;
+    primaryStateWordSecond = node->diffuse;
     switch (mode) {
         case 0:
         case 1:
@@ -1080,7 +1080,7 @@ void corePktEmitMultiTexPass(VuWork *work) {
                 u128 parameters[3];
 
                 corePktMakeFaceDivParm((SdfVuColorTransform *)parameters, corePktCurrLight, work->packedColor,
-                              secondaryColor, node->unk04, node->unk1C,
+                              secondaryColor, node->ambient, node->constant,
                               node->x + work->offsetX, node->y + work->offsetY);
                 corePktApplyFaceDivColor(work, parameters);
             }
