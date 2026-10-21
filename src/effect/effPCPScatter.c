@@ -23,7 +23,7 @@ struct PcpScatterRibbonParams;
 struct PcpScatterRibbonParticle;
 struct PcpScatterRibbonWork;
 struct PcpScatterSpinParams;
-struct PcpScatterSpinParticle;
+struct effPCPWwSpherePolyPart_tag;
 struct PcpScatterSpinWork;
 struct sdfMatPacket_t;
 union SdfDrawTransform;
@@ -55,7 +55,7 @@ typedef struct PcpScatterRibbonParticle PcpScatterRibbonParticle;
 typedef struct PcpScatterRibbonParams PcpScatterRibbonParams;
 typedef struct PcpScatterRibbonWork PcpScatterRibbonWork;
 typedef struct PcpScatterSpinParams PcpScatterSpinParams;
-typedef struct PcpScatterSpinParticle PcpScatterSpinParticle;
+typedef struct effPCPWwSpherePolyPart_tag effPCPWwSpherePolyPart_tag;
 typedef struct PcpScatterSpinWork PcpScatterSpinWork;
 typedef struct sdfGrOt_t sdfGrOt_t;
 typedef struct EffRandState EffRandState;
@@ -597,7 +597,7 @@ struct PcpScatterSpinParams {
     u32 particlesPerGroup;
 };
 
-struct PcpScatterSpinParticle {
+struct effPCPWwSpherePolyPart_tag {
     s32 age;
     f32 radiusStep;
     f32 angleStep;
@@ -611,7 +611,7 @@ struct PcpScatterSpinParticle {
 /* Runtime owner followed inline by its variable-length particle array. */
 struct PcpScatterSpinWork {
     PcpScatterSpinParams params;
-    PcpScatterSpinParticle *particles;
+    effPCPWwSpherePolyPart_tag *particles;
     f32 scale;
     u32 color;
     dds3ScatterPolyList_tag *childWork;
@@ -1121,16 +1121,16 @@ PcpScatterSpinWork *effPCPHamaCardSphereCreate(params, resource, particleParams)
     void *particleParams;
 {
     PcpScatterSpinWork *work;
-    PcpScatterSpinParticle *particle;
+    effPCPWwSpherePolyPart_tag *particle;
     sdfMemHandle_t *allocation;
     effPartHandle_t **handles;
     u32 count;
     u32 i;
     s32 delaySpread;
 
-    allocation = sdfMemAllocDirect(sizeof(PcpScatterSpinWork) + params->particleCount * sizeof(PcpScatterSpinParticle));
+    allocation = sdfMemAllocDirect(sizeof(PcpScatterSpinWork) + params->particleCount * sizeof(effPCPWwSpherePolyPart_tag));
     work = (PcpScatterSpinWork *)sdfMemLock(allocation);
-    work->particles = (PcpScatterSpinParticle *)(work + 1);
+    work->particles = (effPCPWwSpherePolyPart_tag *)(work + 1);
     work->params = *params;
     work->color = EFF_SCATTER_NEUTRAL_COLOR;
     work->allocation = allocation;
@@ -1228,7 +1228,7 @@ void effPCPHamaCardSphereDelete(PcpScatterSpinWork *work)
 
 void effPCPHamaCardSpherePartInit(PcpScatterSpinWork *work, s32 index)
 {
-    PcpScatterSpinParticle *sprite = &work->particles[index];
+    effPCPWwSpherePolyPart_tag *sprite = &work->particles[index];
     f32 direction[4];
     f32 jitter;
 
@@ -1273,7 +1273,7 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
     s32 duration;
     s32 endAge;
     s32 duplicateStart;
-    PcpScatterSpinParticle *particle;
+    effPCPWwSpherePolyPart_tag *particle;
     f32 pulseAngle;
     f32 angleDamping;
 
