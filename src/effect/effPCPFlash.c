@@ -267,13 +267,13 @@ struct EffRingWork {
 typedef struct effPCPFlashPolyPipePart_tag effPCPFlashPolyPipePart_tag;
 
 struct effPCPFlashPolyPipePart_tag {
-    u32 color;
-    s32 age;
-    f32 radialHalfThickness;
-    f32 span;
-    f32 unk10;
-    f32 radius;
-    f32 orbitAngle;
+    u32 abgr;
+    s32 frame;
+    f32 length;
+    f32 width_in;
+    f32 width_out;
+    f32 up;
+    f32 rotate;
 };
 
 typedef struct PcpFlashAccumulatingWork PcpFlashAccumulatingWork;
@@ -1737,8 +1737,8 @@ PcpFlashAccumulatingWork *effPCPFlashPolyPipeCreate(effFlashAccumulatingParam_t 
     step = 3.14159265f * 2.0f / (f32)(u32)work->particleCount;
     range = work->randomRange;
     for (i = 0; i < (u32)work->particleCount; i++) {
-        work->parts[i].age = -(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
-        work->parts[i].orbitAngle = angle;
+        work->parts[i].frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
+        work->parts[i].rotate = angle;
         angle += step;
     }
     return work;
@@ -1814,18 +1814,18 @@ void effPCPFlashPolyPipePartSetVertex(PcpFlashAccumulatingWork *work, s32 index)
     f32 height;
     f32 *mirror;
 
-    center = part->radius;
+    center = part->up;
     VEC3_SPLAT(middle, center);
-    outerEdge = center + part->radialHalfThickness;
+    outerEdge = center + part->length;
     VEC3_SPLAT(outer, outerEdge);
-    innerEdge = center - part->radialHalfThickness;
+    innerEdge = center - part->length;
     VEC3_SPLAT(inner, innerEdge);
-    part->radius = part->radius + work->radialStep;
-    span = part->span;
+    part->up = part->up + work->radialStep;
+    span = part->width_in;
     VEC3_SPLAT(size, span);
-    unit[0] = sdfCos(part->orbitAngle);
+    unit[0] = sdfCos(part->rotate);
     unit[1] = 0;
-    sinv = sdfSin(part->orbitAngle);
+    sinv = sdfSin(part->rotate);
     unit[2] = sinv;
     offset[0] = unit[0] * work->orbitRadius;
     offset[1] = 0;
@@ -1885,7 +1885,7 @@ void effPCPFlashPolyPipePartRotate(PcpFlashAccumulatingWork *work, s32 index)
     effPCPFlashPolyPipePart_tag *part;
 
     part = &work->parts[index];
-    part->orbitAngle += work->increment;
+    part->rotate += work->increment;
 }
 
 void effPCPFlashPolyPipeDraw(PcpFlashAccumulatingWork *work)
@@ -1910,40 +1910,40 @@ void effPCPFlashPolyPipeDraw(PcpFlashAccumulatingWork *work)
     randomRange = work->randomRange;
     tintColor = work->tintColor;
     for (index = 0; index < count; index++, part++) {
-        s32 age = part->age;
+        s32 age = part->frame;
         s32 color;
         f32 factor;
 
         if (age == 0) {
             effPCPFlashPolyPipePartSetVertex(work, index);
             effPCPFlashPolyPipePartSetVC(work, index, 0);
-            part->color = EFF_NEUTRAL_COLOR;
+            part->abgr = EFF_NEUTRAL_COLOR;
             factor = dds3GetRandFloatA(dds3EffectBase) * 0.5f + 0.5f;
-            part->radialHalfThickness = work->radialHalfThicknessBase * factor;
+            part->length = work->radialHalfThicknessBase * factor;
             factor = dds3GetRandFloatA(dds3EffectBase) * 0.7f + 0.3f;
-            part->span = work->spanBase * factor;
-            part->unk10 = work->unk34 * factor;
-            part->radius = 0;
+            part->width_in = work->spanBase * factor;
+            part->width_out = work->unk34 * factor;
+            part->up = 0;
         } else if (age >= lifetime) {
             if (restart != 0) {
-                part->age = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % randomRange);
+                part->frame = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % randomRange);
             }
             color = 0;
             effPCPFlashPolyPipePartSetVC(work, index, color);
         } else if (age > 0) {
             effPCPFlashPolyPipePartRotate(work, index);
             effPCPFlashPolyPipePartSetVertex(work, index);
-            if (part->age < fadeIn && fadeIn != 0) {
-                factor = (f32)part->age / (f32)fadeIn;
-            } else if (fadeOut >= lifetime - part->age && fadeOut != 0) {
-                factor = (f32)(lifetime - part->age) / (f32)fadeOut;
+            if (part->frame < fadeIn && fadeIn != 0) {
+                factor = (f32)part->frame / (f32)fadeIn;
+            } else if (fadeOut >= lifetime - part->frame && fadeOut != 0) {
+                factor = (f32)(lifetime - part->frame) / (f32)fadeOut;
             } else {
                 factor = 1.0f;
             }
-            color = effMagaCylinderCalcColor(effColorBlend(0, part->color, factor), tintColor);
+            color = effMagaCylinderCalcColor(effColorBlend(0, part->abgr, factor), tintColor);
             effPCPFlashPolyPipePartSetVC(work, index, color);
         }
-        part->age = part->age + 1;
+        part->frame = part->frame + 1;
     }
     handle = work->resourceHandle;
     handle->origin[0] = work->origin[0];
