@@ -11,7 +11,7 @@ struct EffRingParticle;
 struct EffRingWork;
 struct effBezierDrawParam_t;
 struct effPCPFlashPolyPipePart_tag;
-struct PcpFlashAccumulatingWork;
+struct effPCPFlashPolyPipe_tag;
 struct PcpFlashColorSlot;
 struct PcpFlashFadingOrbitWork;
 struct PcpFlashMotionParticle;
@@ -276,9 +276,9 @@ struct effPCPFlashPolyPipePart_tag {
     f32 rotate;
 };
 
-typedef struct PcpFlashAccumulatingWork PcpFlashAccumulatingWork;
+typedef struct effPCPFlashPolyPipe_tag effPCPFlashPolyPipe_tag;
 
-struct PcpFlashAccumulatingWork {
+struct effPCPFlashPolyPipe_tag {
     f32 origin[3];
     u8 pad0C[0x04];
     s32 particleCount;
@@ -1710,10 +1710,10 @@ void effPCPFlashPolyRingDraw(PcpFlashScalingOrbitWork *work) {
     dds3FlashPolyListDraw(handle);
 }
 
-PcpFlashAccumulatingWork *effPCPFlashPolyPipeCreate(effFlashAccumulatingParam_t *params)
+effPCPFlashPolyPipe_tag *effPCPFlashPolyPipeCreate(effFlashAccumulatingParam_t *params)
 {
-    sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(effPCPFlashPolyPipePart_tag) + sizeof(PcpFlashAccumulatingWork));
-    PcpFlashAccumulatingWork *work = (PcpFlashAccumulatingWork *)sdfMemLock(handle);
+    sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(effPCPFlashPolyPipePart_tag) + sizeof(effPCPFlashPolyPipe_tag));
+    effPCPFlashPolyPipe_tag *work = (effPCPFlashPolyPipe_tag *)sdfMemLock(handle);
     dds3FlashPolyList_t *record;
     f32 angle;
     f32 step;
@@ -1749,12 +1749,12 @@ void effPCPFlashPolyPipeCreatePCF(void *data)
     effPCPFlashPolyPipeCreate(dds3EffectPCPDataGetData(data, 0));
 }
 
-PcpFlashAccumulatingWork *effPCPFlashPolyPipeCopy(effFlashAccumulatingParam_t *params)
+effPCPFlashPolyPipe_tag *effPCPFlashPolyPipeCopy(effFlashAccumulatingParam_t *params)
 {
     return effPCPFlashPolyPipeCreate(params);
 }
 
-void effPCPFlashPolyPipeDelete(PcpFlashAccumulatingWork *work)
+void effPCPFlashPolyPipeDelete(effPCPFlashPolyPipe_tag *work)
 {
     dds3FlashPolyList3Delete(work->resourceHandle);
     sdfMemFreeDirect(work->allocationHandle);
@@ -1764,17 +1764,17 @@ void effPCPFlashPolyPipeSetPosition(void *dst, void *src) {
     SDF_VU0_COPYVECTOR(dst, src);
 }
 
-void effPCPFlashPolyPipeSetColor(PcpFlashAccumulatingWork *work, u32 value)
+void effPCPFlashPolyPipeSetColor(effPCPFlashPolyPipe_tag *work, u32 value)
 {
     work->tintColor = value;
 }
 
-void effPCPFlashPolyPipeSetScale(PcpFlashAccumulatingWork *work, f32 value)
+void effPCPFlashPolyPipeSetScale(effPCPFlashPolyPipe_tag *work, f32 value)
 {
     work->renderScale = value;
 }
 
-void effPCPFlashPolyPipePartSetVC(PcpFlashAccumulatingWork *work, s32 index, u32 colorMultiplier) {
+void effPCPFlashPolyPipePartSetVC(effPCPFlashPolyPipe_tag *work, s32 index, u32 colorMultiplier) {
     u32 *colors;
     u32 colorA;
     u32 colorB;
@@ -1796,7 +1796,7 @@ void effPCPFlashPolyPipePartSetVC(PcpFlashAccumulatingWork *work, s32 index, u32
 
 /* vu0 routine: the orbit offset plus a tilted disc of corner offsets for an
    accumulating particle, whose radius grows by the work record's radial step */
-void effPCPFlashPolyPipePartSetVertex(PcpFlashAccumulatingWork *work, s32 index)
+void effPCPFlashPolyPipePartSetVertex(effPCPFlashPolyPipe_tag *work, s32 index)
 {
     effPCPFlashPolyPipePart_tag *part = &work->parts[index];
     f32 *quad = dds3FlashPolyList3GetVertex(work->resourceHandle, index * 2);
@@ -1880,7 +1880,7 @@ void effPCPFlashPolyPipePartSetVertex(PcpFlashAccumulatingWork *work, s32 index)
     SDF_VU0_STOREVECTOR(mirror);
 }
 
-void effPCPFlashPolyPipePartRotate(PcpFlashAccumulatingWork *work, s32 index)
+void effPCPFlashPolyPipePartRotate(effPCPFlashPolyPipe_tag *work, s32 index)
 {
     effPCPFlashPolyPipePart_tag *part;
 
@@ -1888,7 +1888,7 @@ void effPCPFlashPolyPipePartRotate(PcpFlashAccumulatingWork *work, s32 index)
     part->rotate += work->increment;
 }
 
-void effPCPFlashPolyPipeDraw(PcpFlashAccumulatingWork *work)
+void effPCPFlashPolyPipeDraw(effPCPFlashPolyPipe_tag *work)
 {
     s32 index;
     s32 count;
