@@ -34,7 +34,7 @@ enum {
 
 struct SdfPacket;
 
-struct SdfPacDecoder;
+struct sdfDecompCb_t;
 
 /* Load matrix into the VU0 scratch bank and postmultiply the primary bank. */
 void MultMatrixRev(const void *matrix);
@@ -56,7 +56,7 @@ extern u8 sdf3DScreenTm[];
 /* Incremental decoder access view shared by both providers. The backing
  * decoder block is allocated as 0x20 bytes; only this 0x14-byte prefix is
  * described here, and its trailing allocation bytes remain unknown. */
-typedef struct SdfPacDecoder {
+typedef struct sdfDecompCb_t {
     u8 state;             /* 0x00 */
     u8 command;           /* 0x01 */
     u16 pendingBytes;     /* 0x02 */
@@ -65,7 +65,7 @@ typedef struct SdfPacDecoder {
     s32 inputBytes;       /* 0x0C */
     u8 backrefLow;        /* 0x10 */
     u8 pad11[3];          /* 0x11: opaque */
-} SdfPacDecoder;
+} sdfDecompCb_t;
 
 /* Read the active packet cursor or restore it at a quadword boundary. */
 s32 sdfGrOpenPacketBuff(void);
@@ -85,9 +85,9 @@ typedef struct Dds3AdminModeDispatch {
 
 extern void *memcpy(void *, const void *, unsigned int);
 
-s32 sdfDecomp(SdfPacDecoder *decoder, const u8 *input, s32 inputBytes);
+s32 sdfDecomp(sdfDecompCb_t *decoder, const u8 *input, s32 inputBytes);
 
-void sdfDecompInit(SdfPacDecoder *decoder, u8 *output);
+void sdfDecompInit(sdfDecompCb_t *decoder, u8 *output);
 
 SdfPacket *sdfDrawModelWithMatrix(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags);
 
@@ -95,7 +95,7 @@ SdfPacket *effDebugDrawWireModel(const f32 vertices[][4], const u32 *colors, s32
 
 SdfPacket *sdfDrawRotatedModel(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags);
 
-s32 sdfDecomp(SdfPacDecoder *decoder, const u8 *input, s32 inputBytes) {
+s32 sdfDecomp(sdfDecompCb_t *decoder, const u8 *input, s32 inputBytes) {
     s32 count;
     s32 offset;
     u8 *output;
@@ -252,7 +252,7 @@ s32 sdfDecomp(SdfPacDecoder *decoder, const u8 *input, s32 inputBytes) {
     return 0;
 }
 
-void sdfDecompInit(SdfPacDecoder *decoder, u8 *output) {
+void sdfDecompInit(sdfDecompCb_t *decoder, u8 *output) {
     decoder->output = output;
     decoder->state = 1;
 }

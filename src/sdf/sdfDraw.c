@@ -114,7 +114,7 @@ struct SdfPacketSlot;
 
 struct sdfPreDrawTag_t;
 
-struct SdfPacketChain;
+struct sdfPreDrawChain_t;
 
 /* The frame worker passes the node and queued buffer index. The registered
  * handlers project the node into their distinct complete packet owners. */
@@ -304,10 +304,10 @@ typedef struct sdfPreDrawTag_t {
 } sdfPreDrawTag_t;
 
 /* Frame submission joins these 0x10-byte linked owners through head/tail. */
-typedef struct SdfPacketChain {
+typedef struct sdfPreDrawChain_t {
     sdfPreDrawTag_t *head;
     sdfPreDrawTag_t *tail;
-} SdfPacketChain;
+} sdfPreDrawChain_t;
 
 /* Linked draw environment, including its two frame-mask writes and textures. */
 typedef struct sdfSceneNode_t {
@@ -385,7 +385,7 @@ sdfDrawTag_t *sdfGrOtClose(sdfGrOt_t *node);
 
 void sdfPreDrawTagLink(sdfPreDrawTag_t *list, SdfPacketPatchLink *node);
 
-void sdfPreDrawChainLink(SdfPacketChain *chain, sdfPreDrawTag_t *node);
+void sdfPreDrawChainLink(sdfPreDrawChain_t *chain, sdfPreDrawTag_t *node);
 
 void sdfGrSetRegsPacketHeader(sdfGrPacketHeader_t *header, s32 payloadQwords);
 
@@ -677,12 +677,12 @@ void sdfPreDrawTagLink(sdfPreDrawTag_t *list, SdfPacketPatchLink *node) {
     node->next = NULL;
 }
 
-void sdfPreDrawChainInit(SdfPacketChain *chain) {
+void sdfPreDrawChainInit(sdfPreDrawChain_t *chain) {
     chain->head = NULL;
     chain->tail = NULL;
 }
 
-void sdfPreDrawChainLink(SdfPacketChain *chain, sdfPreDrawTag_t *node) {
+void sdfPreDrawChainLink(sdfPreDrawChain_t *chain, sdfPreDrawTag_t *node) {
     if (chain->tail == NULL) {
         chain->head = node;
     }
@@ -896,7 +896,7 @@ void sdfGrSetFramePacket(sdfGrFramePacket_t *packet, sdfGrFrameSet_t *source, u3
     packet->prepare = sdfGrFramePacketPredraw;
 }
 
-void sdfGrReqDraw(sdfDrawTag_t *list, SdfPacketChain *chain) {
+void sdfGrReqDraw(sdfDrawTag_t *list, sdfPreDrawChain_t *chain) {
     u32 start = sdfGetRunTimeCountBase();
     s32 interrupts;
     s32 index;
