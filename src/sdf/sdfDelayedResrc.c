@@ -5,7 +5,7 @@
 
 struct sdfDelayedResrcCB_t;
 
-struct SdfPendingBuffer;
+struct sdfDelayedResrcItems_t;
 
 typedef struct sdfDelayedResrcChunk_t sdfDelayedResrcChunk_t;
 
@@ -28,10 +28,10 @@ typedef struct sdfDelayedResrcCB_t {
 } sdfDelayedResrcCB_t;
 
 /* A queued batch links its next chunk before 63 deferred owner addresses. */
-typedef struct SdfPendingBuffer {
-    struct SdfPendingBuffer *next;
+typedef struct sdfDelayedResrcItems_t {
+    struct sdfDelayedResrcItems_t *next;
     void *entry[SDF_PENDING_BUFFER_CAPACITY];
-} SdfPendingBuffer;
+} sdfDelayedResrcItems_t;
 
 extern sdfDelayedResrcChunk_t *sdfDelayedResrcLink;
 
@@ -66,7 +66,7 @@ typedef struct EffPacketParams {
 struct sdfDelayedResrcChunk_t {
     sdfDelayedResrcChunk_t *next;
     sdfDelayedResrcCB_t *owner;
-    SdfPendingBuffer *buffer;
+    sdfDelayedResrcItems_t *buffer;
     s32 remaining;
 };
 
@@ -92,7 +92,7 @@ void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *request, SdfPendingCallback call
 
 void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *owner, void *entry) {
     sdfDelayedResrcChunk_t *pendingNode;
-    SdfPendingBuffer *entryBuffer;
+    sdfDelayedResrcItems_t *entryBuffer;
     s32 freeEntries;
 
     if (entry != NULL) {
@@ -110,7 +110,7 @@ void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *owner, void *entry) {
         freeEntries = pendingNode->remaining;
         entryBuffer = pendingNode->buffer;
         if (freeEntries == 0) {
-            SdfPendingBuffer *newBuffer = (SdfPendingBuffer *)sdfChipAllocDirect(sizeof(SdfPendingBuffer));
+            sdfDelayedResrcItems_t *newBuffer = (sdfDelayedResrcItems_t *)sdfChipAllocDirect(sizeof(sdfDelayedResrcItems_t));
             newBuffer->next = entryBuffer;
             pendingNode->buffer = newBuffer;
             entryBuffer = newBuffer;
@@ -135,8 +135,8 @@ sdfDelayedResrcChunk_t *sdfDelayedResrcClose(void) {
 
 void sdfDelayedResrcRelease(sdfDelayedResrcChunk_t *pendingNode) {
     sdfDelayedResrcChunk_t *nextPendingNode;
-    SdfPendingBuffer *entryBuffer;
-    SdfPendingBuffer *nextEntryBuffer;
+    sdfDelayedResrcItems_t *entryBuffer;
+    sdfDelayedResrcItems_t *nextEntryBuffer;
     SdfPendingCallback entryHandler;
     s32 entryCount;
     s32 entryIndex;
