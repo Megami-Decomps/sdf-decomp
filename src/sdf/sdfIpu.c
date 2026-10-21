@@ -214,10 +214,10 @@ enum sdf_stream_output {
 };
 
 struct sdfIpuInitParm_t {
-    u8 output16Bit;
-    u8 dither;
+    u8 rgbMode;
+    u8 ditherMode;
     u8 loopMode;
-    u8 playbackCadenceStep;
+    u8 fps;
 };
 
 typedef struct sdfStreamFrameHeader_t {
@@ -487,15 +487,15 @@ INCLUDE_ASM(const s32, "sdf/sdfIpu", sdfIpuMakeBltPacket);
 /* Clear the decoder, choose 32-bit/16-bit/dithered output and copy playback options. */
 void sdfIpuInitCb(sdfIpuDecodeCb_t *node, struct sdfIpuInitParm_t *format) {
     memset(node, 0, 0x8C);
-    if (format->output16Bit == 0) {
+    if (format->rgbMode == 0) {
         node->audioMode = SDF_STREAM_OUTPUT_RGBA32;
-    } else if (format->dither == 0) {
+    } else if (format->ditherMode == 0) {
         node->audioMode = SDF_STREAM_OUTPUT_RGBA16;
     } else {
         node->audioMode = SDF_STREAM_OUTPUT_RGBA16_DITHERED;
     }
     node->loopMode = format->loopMode;
-    node->playbackCadenceStep = format->playbackCadenceStep;
+    node->playbackCadenceStep = format->fps;
 }
 
 /* Decode the frame header, allocate its buffers, then queue the bytes after that header. */
@@ -859,10 +859,10 @@ void sdfIpuSetOutputTex(sdfIpuDecodeCb_t *node, struct sdfIpuInitParm_t *params,
     struct sdfIpuInitParm_t streamParams = *params;
     switch (source->pixelFormat) {
     case 0:
-        streamParams.output16Bit = 0;
+        streamParams.rgbMode = 0;
         break;
     case 2:
-        streamParams.output16Bit = 1;
+        streamParams.rgbMode = 1;
         break;
     }
     sdfIpuStartDecodeTask(node, &streamParams, (SdfStreamRead)sourceData, (struct movieStream_t *)sourceSize, sdfTexGetPixelAddr(source));

@@ -68,10 +68,10 @@ typedef struct sdfIpuDecodeCb_t
 
 typedef struct sdfIpuInitParm_t
 {
-    u8 output16Bit;
-    u8 dither;
+    u8 rgbMode;
+    u8 ditherMode;
     u8 loopMode;
-    u8 playbackCadenceStep;
+    u8 fps;
 } sdfIpuInitParm_t;
 
 typedef struct MovOpenParam
@@ -565,9 +565,9 @@ void movieOpenStream(movieStream_t *aMov, MovOpenParam *aParam, const char *aNam
     aMov->unk06 = aParam->unk02;
     aMov->unk0C = aParam->unk08;
     aMov->unk0E = aParam->unk0A;
-    fmt.output16Bit = aParam->unk10;
-    fmt.dither = aParam->unk11;
-    fmt.playbackCadenceStep = aParam->unk12;
+    fmt.rgbMode = aParam->unk10;
+    fmt.ditherMode = aParam->unk11;
+    fmt.fps = aParam->unk12;
     if (isPac == 0) {
         sdfMemHandle_t *handle;
         u8 *base;

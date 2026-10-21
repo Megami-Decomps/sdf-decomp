@@ -195,10 +195,10 @@ typedef struct sdfGrClearPacket_t {
 
 /* Shared A+D state for GS primitive modes, color clamping, dithering and TEXA. */
 typedef struct sdfGrRefGifPacketHeader_t {
-    sdfGrTagStdReg_t prmodecont;
-    sdfGrTagStdReg_t colclamp;
-    sdfGrTagStdReg_t dthe;
-    sdfGrTagStdReg_t texa;
+    sdfGrTagStdReg_t dmatag;
+    sdfGrTagStdReg_t giftag;
+    sdfGrTagStdReg_t reftag;
+    sdfGrTagStdReg_t linktag;
 } sdfGrRefGifPacketHeader_t;
 
 /* GIF tag followed by a REF transfer and the patchable NEXT link. */
@@ -766,14 +766,14 @@ void sdfGrSetClearPacket(sdfGrClearPacket_t *packet, s32 width, s32 height, s32 
 }
 
 void sdfGrSetDrawDefParmPacket(sdfGrRefGifPacketHeader_t *packet) {
-    packet->prmodecont.data = 1;
-    packet->prmodecont.reg = SDF_GS_PRMODECONT;
-    packet->colclamp.data = 1;
-    packet->colclamp.reg = SDF_GS_COLCLAMP;
-    packet->dthe.data = 0;
-    packet->dthe.reg = SDF_GS_DTHE;
-    packet->texa.data = SDF_GS_DEFAULT_TEXA;
-    packet->texa.reg = SDF_GS_TEXA;
+    packet->dmatag.data = 1;
+    packet->dmatag.reg = SDF_GS_PRMODECONT;
+    packet->giftag.data = 1;
+    packet->giftag.reg = SDF_GS_COLCLAMP;
+    packet->reftag.data = 0;
+    packet->reftag.reg = SDF_GS_DTHE;
+    packet->linktag.data = SDF_GS_DEFAULT_TEXA;
+    packet->linktag.reg = SDF_GS_TEXA;
 }
 
 void sdfGrSetDrawFrame(sdfGrDrawFrame_t *packet, s32 frameAddress, s32 width, s32 height,
