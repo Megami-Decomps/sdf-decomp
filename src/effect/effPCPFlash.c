@@ -3,13 +3,13 @@
 #include "sdf_resource.h"
 #include "sdf_types.h"
 
-struct EffPacketParams;
+struct effDebugPolyParams_t;
 struct EffRandState;
 struct dds3FlashPolyList_t;
 struct EffRingColorSlot;
 struct EffRingParticle;
 struct EffRingWork;
-struct EffThunderDrawParams;
+struct effBezierDrawParam_t;
 struct effPCPFlashPolyPipePart_tag;
 struct PcpFlashAccumulatingWork;
 struct PcpFlashColorSlot;
@@ -57,8 +57,8 @@ typedef struct PcpFlashStreakParams PcpFlashStreakParams;
 typedef struct effPCPFlashPolySphere2Param_t effPCPFlashPolySphere2Param_t;
 typedef struct PcpFlashTrianglePulseWork PcpFlashTrianglePulseWork;
 typedef struct sdfGrOt_t sdfGrOt_t;
-typedef struct EffThunderDrawParams EffThunderDrawParams;
-typedef struct EffPacketParams EffPacketParams;
+typedef struct effBezierDrawParam_t effBezierDrawParam_t;
+typedef struct effDebugPolyParams_t effDebugPolyParams_t;
 
 #define EFF_POOL_HEADER_BYTES 0x70
 
@@ -746,7 +746,7 @@ struct sdfGrOt_t {
 /* Vertex-draw descriptor used by the thunder history and end-cap packets.
  * Both title providers clear the first 0x2C bytes and keep these globals in
  * 0x30-byte slots; the final four bytes remain opaque. */
-struct EffThunderDrawParams {
+struct effBezierDrawParam_t {
     s16 primitiveCount; /* 0x00 */
     s16 pointCount;     /* 0x02 */
     u16 flags;          /* 0x04 */
@@ -759,7 +759,7 @@ struct EffThunderDrawParams {
     u8 opaque_24[0xC];
 };
 
-extern void *effPkt3DPrimMakePoly(EffThunderDrawParams *);
+extern void *effPkt3DPrimMakePoly(effBezierDrawParam_t *);
 
 extern EffRandState dds3EffectBase[];
 
@@ -782,7 +782,7 @@ extern sdfGrOt_t *D_0031F298[];
 
 extern u32 D_0031F250[];
 
-struct EffPacketParams {
+struct effDebugPolyParams_t {
     s16 parameterCount;
     s16 vertexCount;
     u16 primitive;
@@ -798,7 +798,7 @@ struct EffPacketParams {
     f32 depth;
 };
 
-extern EffPacketParams D_0056ACF8[];
+extern effDebugPolyParams_t D_0056ACF8[];
 
 extern f32 effPCPFlashPolyRingExpHVertex[];
 
