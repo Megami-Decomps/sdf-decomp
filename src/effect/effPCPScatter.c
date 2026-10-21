@@ -598,14 +598,14 @@ struct PcpScatterSpinParams {
 };
 
 struct effPCPWwSpherePolyPart_tag {
-    s32 age;
-    f32 radiusStep;
-    f32 angleStep;
-    f32 radius;
-    f32 angle;
+    s32 rot;
+    f32 frame;
+    f32 radian;
+    f32 radian_s;
+    f32 radian_add;
     f32 dirX;
-    f32 dirY;
-    f32 dirZ;
+    f32 radius_s;
+    f32 width;
 };
 
 /* Runtime owner followed inline by its variable-length particle array. */
@@ -1168,7 +1168,7 @@ PcpScatterSpinWork *effPCPHamaCardSphereCreate(params, resource, particleParams)
         delaySpread = 1;
     }
     for (i = 0; i < count; i++, particle++) {
-        particle->age = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delaySpread);
+        particle->rot = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delaySpread);
     }
     return work;
 }
@@ -1232,22 +1232,22 @@ void effPCPHamaCardSpherePartInit(PcpScatterSpinWork *work, s32 index)
     f32 direction[4];
     f32 jitter;
 
-    sprite->angle = dds3GetRandFloatA(dds3EffectBase) * (EFF_SCATTER_HALF_TURN * 2.0f);
+    sprite->radian_add = dds3GetRandFloatA(dds3EffectBase) * (EFF_SCATTER_HALF_TURN * 2.0f);
     jitter = work->params.startRadiusJitter;
-    sprite->radius = work->params.startRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
+    sprite->radian_s = work->params.startRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     jitter = work->params.endRadiusJitter;
-    sprite->radiusStep = (work->params.endRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) - sprite->radius) / (f32)work->params.duration;
-    sprite->angleStep = work->params.angleStep;
+    sprite->frame = (work->params.endRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) - sprite->radian_s) / (f32)work->params.duration;
+    sprite->radian = work->params.angleStep;
     direction[0] = (dds3GetRandFloatA(dds3EffectBase) - EFF_SCATTER_RANDOM_MIDPOINT) * EFF_SCATTER_RANDOM_SPAN;
     direction[1] = (dds3GetRandFloatA(dds3EffectBase) - EFF_SCATTER_RANDOM_MIDPOINT) * EFF_SCATTER_RANDOM_SPAN;
     direction[2] = (dds3GetRandFloatA(dds3EffectBase) - EFF_SCATTER_RANDOM_MIDPOINT) * EFF_SCATTER_RANDOM_SPAN;
     SDF_VU0_LOADVECTOR(direction);
     SDF_VU0_NORMALIZE();
     SDF_VU0_STOREVECTOR(direction);
-    sprite->age = 0;
+    sprite->rot = 0;
     sprite->dirX = direction[0];
-    sprite->dirY = direction[1];
-    sprite->dirZ = direction[2];
+    sprite->radius_s = direction[1];
+    sprite->width = direction[2];
 }
 
 void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
@@ -1296,7 +1296,7 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
     baseColor = work->color;
 
     for (; i < count; i++, particle++) {
-        s32 age = particle->age;
+        s32 age = particle->rot;
         u128 *vertices = dds3ScatterPolyListGetVertex(work->childWork, i);
         u32 *colors = dds3ScatterPolyListGetVC(work->childWork, i);
         if (age == 0) {
@@ -1320,9 +1320,9 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
             }
             moving = age < duration;
             color = effColorBlend(baseColor & 0xFFFFFF, baseColor, factor);
-            angle = particle->angle;
-            radius = particle->radius;
-            angleStep = particle->angleStep;
+            angle = particle->radian_add;
+            radius = particle->radian_s;
+            angleStep = particle->radian;
             if (!moving && pulse) {
                 if (age == duration) {
                     angle += pulseAngle;
@@ -1331,8 +1331,8 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
                 }
             }
             axis[0] = particle->dirX;
-            axis[1] = particle->dirY;
-            axis[2] = particle->dirZ;
+            axis[1] = particle->radius_s;
+            axis[2] = particle->width;
             SetRotateMatrixAxis(angle, (const void *)axis);
             position[0] = radius;
             position[1] = 0.0f;
@@ -1384,9 +1384,9 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
                 SDF_VU0_COPYVECTOR(position, next);
             }
             if (moving) {
-                particle->radius += particle->radiusStep;
-                particle->angle += angleStep;
-                particle->angleStep = angleStep * angleDamping;
+                particle->radian_s += particle->frame;
+                particle->radian_add += angleStep;
+                particle->radian = angleStep * angleDamping;
             }
         } else {
             colors[0] = 0;
@@ -1397,7 +1397,7 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
             colors[5] = 0;
         }
         if (respawn && age >= endAge) {
-            particle->age = -1;
+            particle->rot = -1;
         }
         if (duplicates && age >= duplicateStart && age >= 0 && i % perGroup == 0) {
             u32 group = i / perGroup;
@@ -1409,7 +1409,7 @@ void effPCPHamaCardSphereDraw(PcpScatterSpinWork *work) {
             dds3EffectPartSetPosition(work->duplicatedHandles[group], duplicatePosition);
             dds3EffectPartDraw(work->duplicatedHandles[group]);
         }
-        particle->age++;
+        particle->rot++;
     }
     work->childWork->origin[0] = work->params.origin[0];
     work->childWork->origin[1] = work->params.origin[1];
