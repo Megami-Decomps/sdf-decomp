@@ -5,7 +5,7 @@
 
 struct EffPacketParams;
 struct EffRandState;
-struct EffRecordPool;
+struct dds3FlashPolyList_t;
 struct EffRingColorSlot;
 struct EffRingParticle;
 struct EffRingWork;
@@ -108,7 +108,7 @@ struct EffRandState {
     u32 words[4];
 };
 
-typedef struct EffRecordPool EffRecordPool;
+typedef struct dds3FlashPolyList_t dds3FlashPolyList_t;
 
 struct sdfMat_t;
 
@@ -204,7 +204,7 @@ struct sdfMemHandle_t;
 
 
 /* Position/color arrays precede this render pool; constructors clear the full allocation. */
-typedef struct EffRecordPool {
+typedef struct dds3FlashPolyList_t {
     f32 matrix[16];
     f32 origin[3];
     u8 pad4C[4];
@@ -216,7 +216,7 @@ typedef struct EffRecordPool {
     u8 *auxRecordBase;
     sdfMat_t *resource;
     sdfMemHandle_t *buffer;
-} EffRecordPool; /* 0x70 */
+} dds3FlashPolyList_t; /* 0x70 */
 
 struct EffRingColorSlot {
     s32 colors[5];
@@ -261,7 +261,7 @@ struct EffRingWork {
     f32 currentSideOffsetB;
     f32 currentSideOffsetA;
     sdfMemHandle_t *allocationHandle;
-    EffRecordPool *recordPool;
+    dds3FlashPolyList_t *recordPool;
 };
 
 typedef struct effPCPFlashPolyPipePart_tag effPCPFlashPolyPipePart_tag;
@@ -303,7 +303,7 @@ struct PcpFlashAccumulatingWork {
     u32 tintColor;
     f32 renderScale;
     sdfMemHandle_t *allocationHandle;
-    EffRecordPool *resourceHandle;
+    dds3FlashPolyList_t *resourceHandle;
 };
 
 /* Paired Flash runtime owners and their variable particle records.
@@ -352,7 +352,7 @@ struct PcpFlashFadingOrbitWork {
     u32 tintColor;
     f32 renderScale;
     sdfMemHandle_t *allocationHandle;
-    EffRecordPool *resourceHandle;
+    dds3FlashPolyList_t *resourceHandle;
 };
 
 /* Shared 0x10-byte motion state: accumulator is an angle for orbit arcs and
@@ -408,7 +408,7 @@ struct PcpFlashOffsetRadialWork {
     u32 tintColor;
     f32 renderScale;
     sdfMemHandle_t *allocationHandle;
-    EffRecordPool *resourceHandle;
+    dds3FlashPolyList_t *resourceHandle;
 };
 
 typedef struct PcpFlashOrbitArcWork PcpFlashOrbitArcWork;
@@ -447,7 +447,7 @@ struct PcpFlashOrbitArcWork {
     f32 upSpan;
     f32 acrossSpan;
     sdfMemHandle_t *allocationHandle;
-    EffRecordPool *resourceHandle;
+    dds3FlashPolyList_t *resourceHandle;
 };
 
 struct PcpFlashPulseParticle {
@@ -502,7 +502,7 @@ struct PcpFlashRadialStripWork {
     u32 tintColor;
     f32 renderScale;
     sdfMemHandle_t *allocationHandle;
-    EffRecordPool *resourceHandle;
+    dds3FlashPolyList_t *resourceHandle;
 };
 
 struct PcpFlashRadialTriangleParams {
@@ -544,7 +544,7 @@ struct PcpFlashRadialTriangleWork {
     u32 tintColor;
     f32 renderScale;
     sdfMemHandle_t *allocationHandle;
-    EffRecordPool *resourceHandle;
+    dds3FlashPolyList_t *resourceHandle;
 };
 
 typedef struct PcpFlashRotatingParticle PcpFlashRotatingParticle;
@@ -600,7 +600,7 @@ struct PcpFlashRotatingQuadWork {
     u32 tintColor;
     f32 renderScale;
     sdfMemHandle_t *allocationHandle;
-    EffRecordPool *resourceHandle;
+    dds3FlashPolyList_t *resourceHandle;
 };
 
 typedef struct PcpFlashScalingOrbitWork PcpFlashScalingOrbitWork;
@@ -628,7 +628,7 @@ struct PcpFlashScalingOrbitWork {
     u32 tintColor;
     f32 renderScale;
     sdfMemHandle_t *allocationHandle;
-    EffRecordPool *resourceHandle;
+    dds3FlashPolyList_t *resourceHandle;
 };
 
 /* The rotating-streak factory copies this 0x40-byte parameter prefix into
@@ -676,7 +676,7 @@ struct PcpFlashStreakWork {
     u32 tintColor;
     f32 renderScale;
     sdfMemHandle_t *allocationHandle;
-    EffRecordPool *resourceHandle;
+    dds3FlashPolyList_t *resourceHandle;
 };
 
 /* The factory copies this 0x30-byte parameter prefix into its larger work
@@ -714,7 +714,7 @@ struct PcpFlashTrianglePulseWork {
     u32 tintColor;
     f32 renderScale;
     sdfMemHandle_t *allocationHandle;
-    EffRecordPool *resourceHandle;
+    dds3FlashPolyList_t *resourceHandle;
 };
 
 
@@ -1002,35 +1002,35 @@ typedef struct effFlashOrbitArcBlock_t {
     PcpFlashMotionParticle parts[1];
 } effFlashOrbitArcBlock_t;
 
-EffRecordPool *dds3FlashPolyListCreate(u32 count);
-void dds3FlashPolyListDraw(EffRecordPool *work);
-void *dds3FlashPolyListGetVertex(EffRecordPool *group, s32 groupIndex);
-void *dds3FlashPolyListGetVC(EffRecordPool *group, s32 groupIndex);
-EffRecordPool *dds3FlashPolyList2Create(s32 triangleCount);
-void dds3FlashPolyList2Draw(EffRecordPool *pool);
-void *dds3FlashPolyList2GetVertex(EffRecordPool *group, s32 groupIndex);
-void *dds3FlashPolyList2GetVC(EffRecordPool *group, s32 groupIndex);
-EffRecordPool *dds3FlashPolyList3Create(s32 quadCount);
-void dds3FlashPolyList3Draw(EffRecordPool *pool);
-void *dds3FlashPolyList3GetVertex(EffRecordPool *group, s32 groupIndex);
-void *dds3FlashPolyList3GetVC(EffRecordPool *group, s32 groupIndex);
-EffRecordPool *dds3FlashPolyListHCreate(u32 fanCount);
-void dds3FlashPolyListHDraw(EffRecordPool *work);
-void *dds3FlashPolyListHGetVertex(EffRecordPool *group, s32 groupIndex);
-u32 *dds3FlashPolyListHGetVC(EffRecordPool *group, s32 groupIndex);
-void dds3FlashPolyListDelete(EffRecordPool *group);
-void dds3FlashPolyListSetBlend(EffRecordPool *pool, u32 mode);
-void dds3FlashPolyListSetABGR(EffRecordPool *group, u32 color);
-void dds3FlashPolyListSetScale(EffRecordPool *work, f32 scale);
-void dds3FlashPolyList2Delete(EffRecordPool *group);
-void dds3FlashPolyList3Delete(EffRecordPool *group);
-void dds3FlashPolyListHDelete(EffRecordPool *pool);
+dds3FlashPolyList_t *dds3FlashPolyListCreate(u32 count);
+void dds3FlashPolyListDraw(dds3FlashPolyList_t *work);
+void *dds3FlashPolyListGetVertex(dds3FlashPolyList_t *group, s32 groupIndex);
+void *dds3FlashPolyListGetVC(dds3FlashPolyList_t *group, s32 groupIndex);
+dds3FlashPolyList_t *dds3FlashPolyList2Create(s32 triangleCount);
+void dds3FlashPolyList2Draw(dds3FlashPolyList_t *pool);
+void *dds3FlashPolyList2GetVertex(dds3FlashPolyList_t *group, s32 groupIndex);
+void *dds3FlashPolyList2GetVC(dds3FlashPolyList_t *group, s32 groupIndex);
+dds3FlashPolyList_t *dds3FlashPolyList3Create(s32 quadCount);
+void dds3FlashPolyList3Draw(dds3FlashPolyList_t *pool);
+void *dds3FlashPolyList3GetVertex(dds3FlashPolyList_t *group, s32 groupIndex);
+void *dds3FlashPolyList3GetVC(dds3FlashPolyList_t *group, s32 groupIndex);
+dds3FlashPolyList_t *dds3FlashPolyListHCreate(u32 fanCount);
+void dds3FlashPolyListHDraw(dds3FlashPolyList_t *work);
+void *dds3FlashPolyListHGetVertex(dds3FlashPolyList_t *group, s32 groupIndex);
+u32 *dds3FlashPolyListHGetVC(dds3FlashPolyList_t *group, s32 groupIndex);
+void dds3FlashPolyListDelete(dds3FlashPolyList_t *group);
+void dds3FlashPolyListSetBlend(dds3FlashPolyList_t *pool, u32 mode);
+void dds3FlashPolyListSetABGR(dds3FlashPolyList_t *group, u32 color);
+void dds3FlashPolyListSetScale(dds3FlashPolyList_t *work, f32 scale);
+void dds3FlashPolyList2Delete(dds3FlashPolyList_t *group);
+void dds3FlashPolyList3Delete(dds3FlashPolyList_t *group);
+void dds3FlashPolyListHDelete(dds3FlashPolyList_t *pool);
 
 PcpFlashTrianglePulseWork *effPCPFlashPolySphere2Create(PcpFlashTrianglePulseParams *params)
 {
     sdfMemHandle_t *allocation = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashPulseParticle) + sizeof(PcpFlashTrianglePulseWork));
     PcpFlashTrianglePulseWork *work = (PcpFlashTrianglePulseWork *)sdfMemLock(allocation);
-    EffRecordPool *record;
+    dds3FlashPolyList_t *record;
     u32 i;
 
     memcpy(work, params, 0x30);
@@ -1144,7 +1144,7 @@ void effPCPFlashPolySphere2Draw(PcpFlashTrianglePulseWork *work) {
     s32 restart;
     s32 tintColor;
     PcpFlashPulseParticle *part;
-    EffRecordPool *handle;
+    dds3FlashPolyList_t *handle;
 
     SDF_VU0_LOADVECTOR(aViewTarget);
     SDF_VU0_LOADVECTOR_B(aViewEye);
@@ -1213,7 +1213,7 @@ void effPCPFlashPolySphere2Draw(PcpFlashTrianglePulseWork *work) {
 PcpFlashStreakWork *effPCPFlashPolySphereCreate(PcpFlashStreakParams *src) {
     sdfMemHandle_t *handle = sdfMemAllocDirect(src->particleCount * sizeof(PcpFlashRotatingParticle) + sizeof(PcpFlashStreakWork));
     PcpFlashStreakWork *work = (PcpFlashStreakWork *)sdfMemLock(handle);
-    EffRecordPool *record;
+    dds3FlashPolyList_t *record;
     u32 range;
     u32 particleIndex;
 
@@ -1403,7 +1403,7 @@ void effPCPFlashPolySphereDraw(PcpFlashStreakWork *work) {
     s32 tintColor;
     u32 range;
     PcpFlashRotatingParticle *part;
-    EffRecordPool *handle;
+    dds3FlashPolyList_t *handle;
 
     SDF_VU0_LOADVECTOR(aViewTarget);
     SDF_VU0_LOADVECTOR_B(aViewEye);
@@ -1475,7 +1475,7 @@ PcpFlashScalingOrbitWork *effPCPFlashPolyRingCreate(effFlashScalingOrbitParam_t 
 {
     sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashOrbitParticle) + sizeof(PcpFlashScalingOrbitWork));
     PcpFlashScalingOrbitWork *work = (PcpFlashScalingOrbitWork *)sdfMemLock(handle);
-    EffRecordPool *record;
+    dds3FlashPolyList_t *record;
     f32 angle;
     f32 step;
     u32 range;
@@ -1646,7 +1646,7 @@ void effPCPFlashPolyRingDraw(PcpFlashScalingOrbitWork *work) {
     s32 tintColor;
     u32 range;
     PcpFlashOrbitParticle *part;
-    EffRecordPool *handle;
+    dds3FlashPolyList_t *handle;
 
     lifetime = work->lifetime;
     count = work->particleCount;
@@ -1714,7 +1714,7 @@ PcpFlashAccumulatingWork *effPCPFlashPolyPipeCreate(effFlashAccumulatingParam_t 
 {
     sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(effPCPFlashPolyPipePart_tag) + sizeof(PcpFlashAccumulatingWork));
     PcpFlashAccumulatingWork *work = (PcpFlashAccumulatingWork *)sdfMemLock(handle);
-    EffRecordPool *record;
+    dds3FlashPolyList_t *record;
     f32 angle;
     f32 step;
     u32 range;
@@ -1899,7 +1899,7 @@ void effPCPFlashPolyPipeDraw(PcpFlashAccumulatingWork *work)
     u32 randomRange;
     s32 restart;
     s32 tintColor;
-    EffRecordPool *handle;
+    dds3FlashPolyList_t *handle;
 
     count = work->particleCount;
     part = work->parts;
@@ -1959,7 +1959,7 @@ PcpFlashOrbitArcWork *effPCPFlashPolyRingExpCreate(effFlashOrbitArcParam_t *para
     sdfMemHandle_t *handle;
     effFlashOrbitArcBlock_t *block;
     PcpFlashOrbitArcWork *ring;
-    EffRecordPool *record;
+    dds3FlashPolyList_t *record;
     f32 angle;
     f32 step;
     u32 spread;
@@ -2129,7 +2129,7 @@ void effPCPFlashPolyRingExpDraw(PcpFlashOrbitArcWork *work)
     u32 randomRange;
     s32 restart;
     s32 tintColor;
-    EffRecordPool *handle;
+    dds3FlashPolyList_t *handle;
     f32 heightDelta;
     f32 delta;
     f32 progress;
@@ -2226,7 +2226,7 @@ PcpFlashRotatingQuadWork *effPCPFlashPolySphereExpCreate(effFlashRotatingQuadPar
 {
     sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashRotatingQuadParticle) + sizeof(PcpFlashRotatingQuadWork));
     PcpFlashRotatingQuadWork *work = (PcpFlashRotatingQuadWork *)sdfMemLock(handle);
-    EffRecordPool *record;
+    dds3FlashPolyList_t *record;
     u32 range;
     u32 i;
 
@@ -2400,7 +2400,7 @@ void effPCPFlashPolySphereExpDraw(PcpFlashRotatingQuadWork *work) {
     s32 tintColor;
     u32 range;
     PcpFlashRotatingQuadParticle *part;
-    EffRecordPool *handle;
+    dds3FlashPolyList_t *handle;
 
     SDF_VU0_LOADVECTOR(aViewTarget);
     SDF_VU0_LOADVECTOR_B(aViewEye);
@@ -2481,7 +2481,7 @@ PcpFlashRadialTriangleWork *effPCPFlashPolySphere2ExpCreate(PcpFlashRadialTriang
 {
     sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashMotionParticle) + sizeof(PcpFlashRadialTriangleWork));
     PcpFlashRadialTriangleWork *work = (PcpFlashRadialTriangleWork *)sdfMemLock(handle);
-    EffRecordPool *record;
+    dds3FlashPolyList_t *record;
     u32 i;
 
     memcpy(work, params, 0x3C);
@@ -2598,7 +2598,7 @@ void effPCPFlashPolySphere2ExpDraw(PcpFlashRadialTriangleWork *work) {
     f32 startB;
     f32 decay;
     PcpFlashMotionParticle *part;
-    EffRecordPool *handle;
+    dds3FlashPolyList_t *handle;
 
     SDF_VU0_LOADVECTOR(aViewTarget);
     SDF_VU0_LOADVECTOR_B(aViewEye);
@@ -2671,7 +2671,7 @@ PcpFlashRadialStripWork *effPCPFlashPolySphere3Create(effFlashRadialStripParam_t
 {
     sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashRadialStripParticle) + sizeof(PcpFlashRadialStripWork));
     PcpFlashRadialStripWork *work = (PcpFlashRadialStripWork *)sdfMemLock(handle);
-    EffRecordPool *record;
+    dds3FlashPolyList_t *record;
     u32 range;
     u32 i;
 
@@ -2855,7 +2855,7 @@ void effPCPFlashPolySphere3Draw(PcpFlashRadialStripWork *work) {
     u32 range;
     s32 tintColor;
     PcpFlashRadialStripParticle *part;
-    EffRecordPool *handle;
+    dds3FlashPolyList_t *handle;
 
     SDF_VU0_LOADVECTOR(aViewTarget);
     SDF_VU0_LOADVECTOR_B(aViewEye);
@@ -2930,7 +2930,7 @@ PcpFlashFadingOrbitWork *effPCPFlashPolyRingExp2Create(effFlashFadingOrbitParam_
 {
     sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashOrbitParticle) + sizeof(PcpFlashFadingOrbitWork));
     PcpFlashFadingOrbitWork *work = (PcpFlashFadingOrbitWork *)sdfMemLock(handle);
-    EffRecordPool *record;
+    dds3FlashPolyList_t *record;
     f32 angle;
     f32 step;
     u32 range;
@@ -3102,7 +3102,7 @@ void effPCPFlashPolyRingExp2Draw(PcpFlashFadingOrbitWork *work) {
     f32 maxScale;
     u32 range;
     PcpFlashOrbitParticle *part;
-    EffRecordPool *handle;
+    dds3FlashPolyList_t *handle;
 
     count = work->particleCount;
     part = work->parts;
@@ -3177,7 +3177,7 @@ PcpFlashOffsetRadialWork *effPCPFlashPolyCircleCreate(PcpFlashOffsetRadialParams
 {
     sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashMotionParticle) + sizeof(PcpFlashOffsetRadialWork));
     PcpFlashOffsetRadialWork *work = (PcpFlashOffsetRadialWork *)sdfMemLock(handle);
-    EffRecordPool *record;
+    dds3FlashPolyList_t *record;
     u32 i;
 
     memcpy(work, params, 0x40);
@@ -3295,7 +3295,7 @@ void effPCPFlashPolyCircleDraw(PcpFlashOffsetRadialWork *work) {
     f32 decay;
     f32 scale;
     PcpFlashMotionParticle *part;
-    EffRecordPool *handle;
+    dds3FlashPolyList_t *handle;
 
     SDF_VU0_LOADVECTOR(aViewTarget);
     SDF_VU0_LOADVECTOR_B(aViewEye);
@@ -3542,7 +3542,7 @@ void effPCPFlashPolyRingExpHDraw(EffRingWork *work)
     u32 randomRange;
     s32 restart;
     s32 tintColor;
-    EffRecordPool *handle;
+    dds3FlashPolyList_t *handle;
     f32 heightDelta;
     f32 delta;
     f32 progress;
@@ -3635,8 +3635,8 @@ void effPCPFlashPolyRingExpHDraw(EffRingWork *work)
     dds3FlashPolyListHDraw(handle);
 }
 
-EffRecordPool *dds3FlashPolyListCreate(u32 count) {
-    EffRecordPool *pool;
+dds3FlashPolyList_t *dds3FlashPolyListCreate(u32 count) {
+    dds3FlashPolyList_t *pool;
     sdfMemHandle_t *handle;
     u8 *block;
     s32 vertexCount;
@@ -3652,7 +3652,7 @@ EffRecordPool *dds3FlashPolyListCreate(u32 count) {
     handle = sdfMemAllocDirect(size);
     block = (u8 *)sdfMemLock(handle);
     memset(block, 0, size);
-    pool = (EffRecordPool *)(block + recordBytes);
+    pool = (dds3FlashPolyList_t *)(block + recordBytes);
     pool->recordBase = (u8 *)block;
     pool->auxRecordBase = (u8 *)(block + vertexCount * 16);
     pool->color = EFF_NEUTRAL_COLOR;
@@ -3667,12 +3667,12 @@ EffRecordPool *dds3FlashPolyListCreate(u32 count) {
     return pool;
 }
 
-void dds3FlashPolyListDelete(EffRecordPool *group) {
+void dds3FlashPolyListDelete(dds3FlashPolyList_t *group) {
     sdfMatFreeDelayed(group->resource);
     sdfMemFreeDirect(group->buffer);
 }
 
-void dds3FlashPolyListDraw(EffRecordPool *work)
+void dds3FlashPolyListDraw(dds3FlashPolyList_t *work)
 {
     f32 matrix[EFF_MATRIX_WORD_COUNT] __attribute__((aligned(16)));
     sdfDrawTag_t *list;
@@ -3738,28 +3738,28 @@ void dds3FlashPolyListDraw(EffRecordPool *work)
     }
 }
 
-void *dds3FlashPolyListGetVertex(EffRecordPool *group, s32 groupIndex) {
+void *dds3FlashPolyListGetVertex(dds3FlashPolyList_t *group, s32 groupIndex) {
     return group->recordBase + groupIndex * EFF_FAN_POSITION_BYTES;
 }
 
-void *dds3FlashPolyListGetVC(EffRecordPool *group, s32 groupIndex) {
+void *dds3FlashPolyListGetVC(dds3FlashPolyList_t *group, s32 groupIndex) {
     return group->auxRecordBase + groupIndex * EFF_FAN_COLOR_BYTES;
 }
 
-void dds3FlashPolyListSetBlend(EffRecordPool *pool, u32 mode) {
+void dds3FlashPolyListSetBlend(dds3FlashPolyList_t *pool, u32 mode) {
     pool->drawMode = mode;
 }
 
-void dds3FlashPolyListSetABGR(EffRecordPool *group, u32 color) {
+void dds3FlashPolyListSetABGR(dds3FlashPolyList_t *group, u32 color) {
     group->color = color;
 }
 
-void dds3FlashPolyListSetScale(EffRecordPool *work, f32 scale) {
+void dds3FlashPolyListSetScale(dds3FlashPolyList_t *work, f32 scale) {
     work->scale = scale;
 }
 
-EffRecordPool *dds3FlashPolyList2Create(s32 triangleCount) {
-    EffRecordPool *pool;
+dds3FlashPolyList_t *dds3FlashPolyList2Create(s32 triangleCount) {
+    dds3FlashPolyList_t *pool;
     sdfMemHandle_t *handle;
     u32 *block;
     s32 vertexCount;
@@ -3774,7 +3774,7 @@ EffRecordPool *dds3FlashPolyList2Create(s32 triangleCount) {
     handle = sdfMemAllocDirect(size);
     block = (u32 *)sdfMemLock(handle);
     memset(block, 0, size);
-    pool = (EffRecordPool *)(block + (positionWordCount + colorWordCount));
+    pool = (dds3FlashPolyList_t *)(block + (positionWordCount + colorWordCount));
     pool->recordBase = (u8 *)block;
     pool->auxRecordBase = (u8 *)(block + positionWordCount);
     pool->color = EFF_NEUTRAL_COLOR;
@@ -3789,12 +3789,12 @@ EffRecordPool *dds3FlashPolyList2Create(s32 triangleCount) {
     return pool;
 }
 
-void dds3FlashPolyList2Delete(EffRecordPool *group) {
+void dds3FlashPolyList2Delete(dds3FlashPolyList_t *group) {
     sdfMatFreeDelayed(group->resource);
     sdfMemFreeDirect(group->buffer);
 }
 
-void dds3FlashPolyList2Draw(EffRecordPool *pool)
+void dds3FlashPolyList2Draw(dds3FlashPolyList_t *pool)
 {
     f32 matrix[EFF_MATRIX_WORD_COUNT];
     sdfDrawTag_t *packet = (sdfDrawTag_t *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
@@ -3834,16 +3834,16 @@ void dds3FlashPolyList2Draw(EffRecordPool *pool)
     surface->regFunc(surface, packet);
 }
 
-void *dds3FlashPolyList2GetVertex(EffRecordPool *group, s32 groupIndex) {
+void *dds3FlashPolyList2GetVertex(dds3FlashPolyList_t *group, s32 groupIndex) {
     return group->recordBase + groupIndex * EFF_TRIANGLE_POSITION_BYTES;
 }
 
-void *dds3FlashPolyList2GetVC(EffRecordPool *group, s32 groupIndex) {
+void *dds3FlashPolyList2GetVC(dds3FlashPolyList_t *group, s32 groupIndex) {
     return group->auxRecordBase + groupIndex * EFF_TRIANGLE_COLOR_BYTES;
 }
 
-EffRecordPool *dds3FlashPolyList3Create(s32 quadCount) {
-    EffRecordPool *pool;
+dds3FlashPolyList_t *dds3FlashPolyList3Create(s32 quadCount) {
+    dds3FlashPolyList_t *pool;
     sdfMemHandle_t *handle;
     u32 *block;
     s32 positionWordCount;
@@ -3856,7 +3856,7 @@ EffRecordPool *dds3FlashPolyList3Create(s32 quadCount) {
     handle = sdfMemAllocDirect(size);
     block = (u32 *)sdfMemLock(handle);
     memset(block, 0, size);
-    pool = (EffRecordPool *)(block + (positionWordCount + colorWordCount));
+    pool = (dds3FlashPolyList_t *)(block + (positionWordCount + colorWordCount));
     pool->recordBase = (u8 *)block;
     pool->drawMode = 2;
     pool->auxRecordBase = (u8 *)(block + positionWordCount);
@@ -3871,12 +3871,12 @@ EffRecordPool *dds3FlashPolyList3Create(s32 quadCount) {
     return pool;
 }
 
-void dds3FlashPolyList3Delete(EffRecordPool *group) {
+void dds3FlashPolyList3Delete(dds3FlashPolyList_t *group) {
     sdfMatFreeDelayed(group->resource);
     sdfMemFreeDirect(group->buffer);
 }
 
-void dds3FlashPolyList3Draw(EffRecordPool *pool)
+void dds3FlashPolyList3Draw(dds3FlashPolyList_t *pool)
 {
     f32 matrix[EFF_MATRIX_WORD_COUNT];
     sdfDrawTag_t *packet = (sdfDrawTag_t *)sdfGrAllocPacketBuff(EFF_PACKET_LIST_BYTES);
@@ -3916,26 +3916,26 @@ void dds3FlashPolyList3Draw(EffRecordPool *pool)
     surface->regFunc(surface, packet);
 }
 
-void *dds3FlashPolyList3GetVertex(EffRecordPool *group, s32 groupIndex) {
+void *dds3FlashPolyList3GetVertex(dds3FlashPolyList_t *group, s32 groupIndex) {
     return group->recordBase + groupIndex * EFF_QUAD_POSITION_BYTES;
 }
 
-void *dds3FlashPolyList3GetVC(EffRecordPool *group, s32 groupIndex) {
+void *dds3FlashPolyList3GetVC(dds3FlashPolyList_t *group, s32 groupIndex) {
     return group->auxRecordBase + groupIndex * EFF_QUAD_COLOR_BYTES;
 }
 
-EffRecordPool *dds3FlashPolyListHCreate(u32 fanCount) {
-    EffRecordPool *pool = dds3FlashPolyListCreate(fanCount);
+dds3FlashPolyList_t *dds3FlashPolyListHCreate(u32 fanCount) {
+    dds3FlashPolyList_t *pool = dds3FlashPolyListCreate(fanCount);
 
     SDF_VU0_STOREIDENTITY(pool->matrix);
     return pool;
 }
 
-void dds3FlashPolyListHDelete(EffRecordPool *pool) {
+void dds3FlashPolyListHDelete(dds3FlashPolyList_t *pool) {
     dds3FlashPolyListDelete(pool);
 }
 
-void dds3FlashPolyListHDraw(EffRecordPool *work)
+void dds3FlashPolyListHDraw(dds3FlashPolyList_t *work)
 {
     f32 matrix[EFF_MATRIX_WORD_COUNT] __attribute__((aligned(16)));
     sdfDrawTag_t *list;
@@ -3998,22 +3998,22 @@ void dds3FlashPolyListHDraw(EffRecordPool *work)
     }
 }
 
-void *dds3FlashPolyListHGetVertex(EffRecordPool *group, s32 groupIndex) {
+void *dds3FlashPolyListHGetVertex(dds3FlashPolyList_t *group, s32 groupIndex) {
     return group->recordBase + groupIndex * EFF_FAN_POSITION_BYTES;
 }
 
-u32 *dds3FlashPolyListHGetVC(EffRecordPool *group, s32 groupIndex) {
+u32 *dds3FlashPolyListHGetVC(dds3FlashPolyList_t *group, s32 groupIndex) {
     return (u32 *)(group->auxRecordBase + groupIndex * EFF_FAN_COLOR_BYTES);
 }
 
-void dds3FlashPolyListHSetBlend(EffRecordPool *pool, u32 mode) {
+void dds3FlashPolyListHSetBlend(dds3FlashPolyList_t *pool, u32 mode) {
     pool->drawMode = mode;
 }
 
-void dds3FlashPolyListHSetABGR(EffRecordPool *pool, u32 color) {
+void dds3FlashPolyListHSetABGR(dds3FlashPolyList_t *pool, u32 color) {
     pool->color = color;
 }
 
-void dds3FlashPolyListHSetScale(EffRecordPool *work, f32 scale) {
+void dds3FlashPolyListHSetScale(dds3FlashPolyList_t *work, f32 scale) {
     work->scale = scale;
 }
