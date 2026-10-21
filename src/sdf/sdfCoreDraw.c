@@ -187,13 +187,13 @@ typedef struct sdfMotionCtrlr_t {
     struct sdfMotionCtrlr_t *next;
     sdfModelRootNode_t *owner;
     MotionTable *motionTable;
-    s32 unkC;
+    s32 playbookMemHandle;
     DevRequest *request;
     f32 blendDurationFrames;
     f32 blendStartFrame;
     f32 currentFrame;
     f32 frameStep;
-    s32 unk24;
+    s32 userData;
     s16 searchId;
     s16 slotIndex;
     u16 motionIndex;

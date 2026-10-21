@@ -374,7 +374,7 @@ typedef struct sdfPrimBitBltPacket_t {
 /* Graph target: two color buffers followed by the auxiliary/depth buffer (0x14). */
 typedef struct sdfGrFrameSet_t {
     s16 width;
-    s16 unk2;
+    s16 h;
     s16 height;
     u8 bufferFormat;
     u8 auxiliaryFormat;

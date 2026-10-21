@@ -69,7 +69,7 @@ typedef struct sdfLoadImagePacket_t {
 /* Graph target: two color buffers followed by the auxiliary/depth buffer (0x14). */
 typedef struct sdfGrFrameSet_t {
     s16 width;
-    s16 unk2;
+    s16 h;
     s16 height;
     u8 bufferFormat;
     u8 auxiliaryFormat;
@@ -85,9 +85,9 @@ typedef struct sdfStoreImagePacket_t {
     u64 header[14];
     sdfPrimBitBltElem_t transfer;
     s32 quadwordCount;
-    u32 unkB4;
-    u32 unkB8;
-    u32 unkBC;
+    u32 addr;
+    u32 callback;
+    u32 callbackParam;
     u64 tail[6];
 } sdfStoreImagePacket_t;
 
@@ -180,9 +180,9 @@ void sdfSetStoreImage(sdfStoreImagePacket_t *packet, sdfGsMemSlice_t *source,
         sourceX, sourceY, width, height, 1);
     quadwordCount = (sdfGetTexelBitCount(source->pixelFormat) * width * height) >> 7;
     packet->quadwordCount = quadwordCount;
-    packet->unkB4 = resourceAddress;
-    packet->unkB8 = arg7;
-    packet->unkBC = arg8;
+    packet->addr = resourceAddress;
+    packet->callback = arg7;
+    packet->callbackParam = arg8;
     packet->tail[0] = 0x20000002ULL;
     packet->tail[1] = 0x5000000206000000ULL;
     packet->tail[2] = 0x1000000000008001ULL;
