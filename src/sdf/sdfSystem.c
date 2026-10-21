@@ -150,9 +150,9 @@ typedef struct tagPipeObject {
 } tagPipeObject;
 
 typedef struct tagPipeTexture {
-    sdfTexHandle_t *handle;
-    sdfMemHandle_t *allocation;
-    struct pipeTextureFile_t *resourceData;
+    sdfTexHandle_t *th;
+    sdfMemHandle_t *mh;
+    struct pipeTextureFile_t *mp;
     u32 unk0C;
 } tagPipeTexture;
 

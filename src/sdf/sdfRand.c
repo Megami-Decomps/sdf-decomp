@@ -73,7 +73,7 @@ enum SdfFileIOCmd {
 };
 
 typedef struct sdfRandCB_t {
-    u32 words[4];
+    u32 v[4];
 } sdfRandCB_t;
 
 typedef struct sdfClock_t {
@@ -177,15 +177,15 @@ void sdfRandomize(sdfRandCB_t *state, u32 seed) {
         state = &sdfDefaultRandCB;
     }
     seed ^= 0x0AED1A0C;
-    state->words[0] = seed;
+    state->v[0] = seed;
     seed = (seed << 24) | (seed >> 8);
-    state->words[1] = seed;
+    state->v[1] = seed;
     seed ^= 0xAA5A02FE;
     seed = (seed << 24) | (seed >> 8);
-    state->words[2] = seed;
+    state->v[2] = seed;
     seed ^= 0x11BE81C7;
     seed = (seed << 24) | (seed >> 8);
-    state->words[3] = seed;
+    state->v[3] = seed;
 }
 
 /* Seeds the generator at `state` from the current clock (time of day in seconds since an epoch). */
