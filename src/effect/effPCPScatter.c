@@ -2,7 +2,7 @@
 #include "ps2asm.h"
 #include "sdf_resource.h"
 
-struct EffPacketParams;
+struct effDebugPolyParams_t;
 struct EffRandState;
 struct dds3WhirlwindPolyList_tag;
 struct effPCPWhirlwindPoly_tag;
@@ -30,7 +30,7 @@ union SdfDrawTransform;
 struct SdfGsTextureStateValues;
 struct sdfGsMemSlice_t;
 
-typedef struct EffPacketParams EffPacketParams;
+typedef struct effDebugPolyParams_t effDebugPolyParams_t;
 typedef struct sdfTexPacket_t sdfTexPacket_t;
 typedef union SdfDrawTransform SdfDrawTransform;
 typedef struct SdfGsTextureStateValues SdfGsTextureStateValues;
@@ -95,7 +95,7 @@ typedef struct EffRandState EffRandState;
 #define EFF_SCATTER_DRAW_TEMPLATE_BYTES 0x2C
 
 
-struct EffPacketParams {
+struct effDebugPolyParams_t {
     s16 parameterCount;
     s16 vertexCount;
     u16 primitive;
@@ -642,7 +642,7 @@ struct TMX_HEADER_t;
 
 
 
-extern void *effPkt3DPrimMakePoly(EffPacketParams *params);
+extern void *effPkt3DPrimMakePoly(effDebugPolyParams_t *params);
 
 /* Four ordered 32-bit words in the shared effect random-number state. */
 struct EffRandState {
@@ -673,11 +673,11 @@ effPCPWhirlwind2Poly_tag *effPCPWhirlwind2PolyCreate(
 effPCPWhirlwind3Poly_tag *effPCPWhirlwind3PolyCreate(
     PcpScatterParamsC *params, u32 resource);
 
-extern EffPacketParams D_0056AD58;
+extern effDebugPolyParams_t D_0056AD58;
 
 extern sdfGrOt_t *D_0031F440[];
 
-extern EffPacketParams D_0056AD28[];
+extern effDebugPolyParams_t D_0056AD28[];
 
 extern sdfGrOt_t *D_0031F3D0[];
 
@@ -2937,7 +2937,7 @@ dds3WhirlwindPolyList_tag *dds3WhirlwindPolyListCreate(u32 count, u32 pairs) {
             right -= 2;
         }
     }
-    memset(&D_0056AD58, 0, sizeof(EffPacketParams));
+    memset(&D_0056AD58, 0, sizeof(effDebugPolyParams_t));
     D_0056AD58.primitive = 0x4000;
     return object;
 }
@@ -2957,7 +2957,7 @@ void dds3WhirlwindPolyListDelete(dds3WhirlwindPolyList_tag *object) {
 void dds3WhirlwindPolyListDraw(dds3WhirlwindPolyList_tag *object) {
     f32 matrix[16] __attribute__((aligned(16)));
     sdfDrawTag_t *packet;
-    EffPacketParams *draw;
+    effDebugPolyParams_t *draw;
     s32 count;
     s32 remaining;
     s32 particleIndex;
