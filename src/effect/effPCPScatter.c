@@ -12,13 +12,13 @@ struct PcpScatterParamsA;
 struct PcpScatterParamsB;
 struct PcpScatterParamsC;
 struct PcpScatterParticle;
-struct effPCPWwSpherePoly_tag;
+struct PcpScatterPlainInstance;
 struct PcpScatterPlainParams;
 struct PcpScatterPlainParticle;
 struct dds3ScatterPolyList_tag;
 struct PcpScatterRadialParams;
 struct PcpScatterRadialParticle;
-struct PcpScatterRadialWork;
+struct effPCPHamaCardSpiral_tag;
 struct PcpScatterRibbonParams;
 struct PcpScatterRibbonParticle;
 struct effPCPHamaCardScatter_tag;
@@ -46,11 +46,11 @@ typedef struct PcpScatterParamsC PcpScatterParamsC;
 typedef struct effPCPWhirlwind3Poly_tag effPCPWhirlwind3Poly_tag;
 typedef struct PcpScatterPlainParams PcpScatterPlainParams;
 typedef struct PcpScatterPlainParticle PcpScatterPlainParticle;
-typedef struct effPCPWwSpherePoly_tag effPCPWwSpherePoly_tag;
+typedef struct PcpScatterPlainInstance PcpScatterPlainInstance;
 typedef struct effPartHandle_t effPartHandle_t;
 typedef struct PcpScatterRadialParams PcpScatterRadialParams;
 typedef struct PcpScatterRadialParticle PcpScatterRadialParticle;
-typedef struct PcpScatterRadialWork PcpScatterRadialWork;
+typedef struct effPCPHamaCardSpiral_tag effPCPHamaCardSpiral_tag;
 typedef struct PcpScatterRibbonParticle PcpScatterRibbonParticle;
 typedef struct PcpScatterRibbonParams PcpScatterRibbonParams;
 typedef struct effPCPHamaCardScatter_tag effPCPHamaCardScatter_tag;
@@ -427,7 +427,7 @@ struct PcpScatterPlainParticle {
     f32 height;
 };
 
-struct effPCPWwSpherePoly_tag {
+struct PcpScatterPlainInstance {
     f32 matrix[16];
     PcpScatterPlainParams params;
     PcpScatterPlainParticle *particles;
@@ -508,7 +508,7 @@ struct PcpScatterRadialParticle {
 };
 
 /* Runtime owner followed inline by its variable-length particle array. */
-struct PcpScatterRadialWork {
+struct effPCPHamaCardSpiral_tag {
     PcpScatterRadialParams params;
     PcpScatterRadialParticle *particles;
     f32 scale;
@@ -662,7 +662,7 @@ f32 dds3GetRandFloatA(EffRandState *state);
 effPCPWhirlwindPoly_tag *effPCPWhirlwindPolyCreate(
     PcpScatterParamsA *params, u32 resource);
 
-effPCPWwSpherePoly_tag *effPCPWwSpherePolyCreate(
+PcpScatterPlainInstance *effPCPWwSpherePolyCreate(
     PcpScatterPlainParams *params, u32 resource);
 
 extern dds3ScatterPolyListTexResource_tag *dds3ScatterPolyListTexResourceCopy(dds3ScatterPolyListTexResource_tag *res);
@@ -761,7 +761,7 @@ extern s32 effMagaCylinderCalcColor(s32 color, s32 tint);
 extern f32 sdfAtan(f32 ratio);
 extern void SetRotateMatrixAxis(f32 angle, const void *axis);
 extern void *memcpy(void *dst, const void *src, u32 size);
-PcpScatterRadialWork *effPCPHamaCardSpiralCreate(const PcpScatterRadialParams *params, u32 resource, void *particleParams);
+effPCPHamaCardSpiral_tag *effPCPHamaCardSpiralCreate(const PcpScatterRadialParams *params, u32 resource, void *particleParams);
 PcpScatterSpinWork *effPCPHamaCardSphereCreate(const PcpScatterSpinParams *params, u32 resource, void *particleParams);
 effPCPHamaCardScatter_tag *effPCPHamaCardScatterCreate(const PcpScatterRibbonParams *params, u32 resource, void *particleParams);
 dds3WhirlwindPolyList_tag *dds3WhirlwindPolyListCreate(u32 count, u32 pairs);
@@ -791,12 +791,12 @@ f32 *dds3WhirlwindPolyListGetUV(dds3WhirlwindPolyList_tag *object, s32 particleI
 
 #define VEC3_SPLAT(v, x) ((v)[0] = (x), (v)[1] = (x), (v)[2] = (x))
 
-PcpScatterRadialWork *effPCPHamaCardSpiralCreate(params, resource, particleParams)
+effPCPHamaCardSpiral_tag *effPCPHamaCardSpiralCreate(params, resource, particleParams)
     const PcpScatterRadialParams *params;
     u32 resource;
     void *particleParams;
 {
-    PcpScatterRadialWork *work;
+    effPCPHamaCardSpiral_tag *work;
     PcpScatterRadialParticle *particle;
     sdfMemHandle_t *handle;
     effPartHandle_t **handles;
@@ -806,8 +806,8 @@ PcpScatterRadialWork *effPCPHamaCardSpiralCreate(params, resource, particleParam
     s32 ageOffset;
     u32 segments;
 
-    handle = sdfMemAllocDirect(sizeof(PcpScatterRadialWork) + params->particleCount * sizeof(PcpScatterRadialParticle));
-    work = (PcpScatterRadialWork *)sdfMemLock(handle);
+    handle = sdfMemAllocDirect(sizeof(effPCPHamaCardSpiral_tag) + params->particleCount * sizeof(PcpScatterRadialParticle));
+    work = (effPCPHamaCardSpiral_tag *)sdfMemLock(handle);
     work->particles = (PcpScatterRadialParticle *)(work + 1);
     work->params = *params;
     work->color = EFF_SCATTER_NEUTRAL_COLOR;
@@ -863,10 +863,10 @@ void effPCPHamaCardSpiralCreatePCF(void *parameterTable)
         dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_CHILD_BLOCK));
 }
 
-PcpScatterRadialWork *effPCPHamaCardSpiralCopy(source)
-    PcpScatterRadialWork *source;
+effPCPHamaCardSpiral_tag *effPCPHamaCardSpiralCopy(source)
+    effPCPHamaCardSpiral_tag *source;
 {
-    PcpScatterRadialWork *work;
+    effPCPHamaCardSpiral_tag *work;
     u32 count;
     sdfMemHandle_t *allocation;
     effPartHandle_t **handles;
@@ -891,7 +891,7 @@ PcpScatterRadialWork *effPCPHamaCardSpiralCopy(source)
     return work;
 }
 
-void effPCPHamaCardSpiralDelete(PcpScatterRadialWork *work)
+void effPCPHamaCardSpiralDelete(effPCPHamaCardSpiral_tag *work)
 {
     u32 duplicatedHandleIndex;
     u32 count;
@@ -911,7 +911,7 @@ void effPCPHamaCardSpiralDelete(PcpScatterRadialWork *work)
     sdfMemFreeDirect(work->allocation);
 }
 
-void effPCPHamaCardSpiralPartInit(PcpScatterRadialWork *work, u32 index) {
+void effPCPHamaCardSpiralPartInit(effPCPHamaCardSpiral_tag *work, u32 index) {
     u32 segments = work->params.radialSegments;
     PcpScatterRadialParticle *particle = &work->particles[index];
     f32 angleStep;
@@ -933,7 +933,7 @@ void effPCPHamaCardSpiralPartInit(PcpScatterRadialWork *work, u32 index) {
     particle->angleStep = work->params.initialAngleStep;
 }
 
-void effPCPHamaCardSpiralDraw(PcpScatterRadialWork *work) {
+void effPCPHamaCardSpiralDraw(effPCPHamaCardSpiral_tag *work) {
     f32 next[4];
     f32 position[4];
     f32 duplicatePosition[4];
@@ -1103,12 +1103,12 @@ void effPCPHamaCardSpiralSetPosition(void *destination, void *source) {
     SDF_VU0_COPYVECTOR(destination, source);
 }
 
-void effPCPHamaCardSpiralSetColor(PcpScatterRadialWork *work, u32 color)
+void effPCPHamaCardSpiralSetColor(effPCPHamaCardSpiral_tag *work, u32 color)
 {
     work->color = color;
 }
 
-void effPCPHamaCardSpiralSetScale(f32 scale, PcpScatterRadialWork *work)
+void effPCPHamaCardSpiralSetScale(f32 scale, effPCPHamaCardSpiral_tag *work)
 {
     work->params.initialHeightStep *= scale;
     work->params.startRadius *= scale;
@@ -2667,12 +2667,12 @@ void effPCPWhirlwind3PolySetRotateMatrix(effPCPWhirlwind3Poly_tag *work, void *s
     SDF_VU0_STOREMATRIX(work);
 }
 
-effPCPWwSpherePoly_tag *effPCPWwSpherePolyCreate(src, resource)
+PcpScatterPlainInstance *effPCPWwSpherePolyCreate(src, resource)
     PcpScatterPlainParams *src;
     u32 resource;
 {
-    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(PcpScatterPlainParticle) + sizeof(effPCPWwSpherePoly_tag));
-    effPCPWwSpherePoly_tag *inst = (effPCPWwSpherePoly_tag *)sdfMemLock(allocation);
+    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(PcpScatterPlainParticle) + sizeof(PcpScatterPlainInstance));
+    PcpScatterPlainInstance *inst = (PcpScatterPlainInstance *)sdfMemLock(allocation);
     PcpScatterPlainParticle *particle;
     u32 delayModulus;
     u32 count;
@@ -2712,22 +2712,22 @@ void effPCPWwSpherePolyCreatePCF(void *parameterTable)
     effPCPWwSpherePolyCreate(dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_PARAM_BLOCK), (u32)dds3EffectPCPDataGetData(parameterTable, EFF_SCATTER_RESOURCE_BLOCK));
 }
 
-effPCPWwSpherePoly_tag *effPCPWwSpherePolyCopy(effPCPWwSpherePoly_tag *work)
+PcpScatterPlainInstance *effPCPWwSpherePolyCopy(PcpScatterPlainInstance *work)
 {
-    effPCPWwSpherePoly_tag *child;
+    PcpScatterPlainInstance *child;
 
     child = effPCPWwSpherePolyCreate(&work->params, NULL);
     dds3WhirlwindPolyListCopyTex(child->scatterObject, work->scatterObject);
     return child;
 }
 
-void effPCPWwSpherePolyDelete(effPCPWwSpherePoly_tag *work)
+void effPCPWwSpherePolyDelete(PcpScatterPlainInstance *work)
 {
     dds3WhirlwindPolyListDelete(work->scatterObject);
     sdfMemFreeDirect(work->allocationHandle);
 }
 
-void effPCPWwSpherePolyPartInit(effPCPWwSpherePoly_tag *work, s32 index) {
+void effPCPWwSpherePolyPartInit(PcpScatterPlainInstance *work, s32 index) {
     f32 *uv = dds3WhirlwindPolyListGetUV(work->scatterObject, index);
     PcpScatterPlainParticle *ring;
     f32 angle;
@@ -2773,7 +2773,7 @@ void effPCPWwSpherePolyPartInit(effPCPWwSpherePoly_tag *work, s32 index) {
     }
 }
 
-void effPCPWwSpherePolyPartMove(effPCPWwSpherePoly_tag *work, s32 index)
+void effPCPWwSpherePolyPartMove(PcpScatterPlainInstance *work, s32 index)
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(work->scatterObject, index);
     PcpScatterPlainParticle *ring;
@@ -2818,7 +2818,7 @@ void effPCPWwSpherePolyPartMove(effPCPWwSpherePoly_tag *work, s32 index)
     }
 }
 
-void effPCPWwSpherePolyDraw(effPCPWwSpherePoly_tag *work) {
+void effPCPWwSpherePolyDraw(PcpScatterPlainInstance *work) {
     s32 loop;
     u32 i;
     u32 count = work->params.particleCount;
@@ -2867,20 +2867,20 @@ void effPCPWwSpherePolyDraw(effPCPWwSpherePoly_tag *work) {
     dds3WhirlwindPolyListDraw(draw);
 }
 
-void effPCPWwSpherePolySetPosition(effPCPWwSpherePoly_tag *work, void *src) {
+void effPCPWwSpherePolySetPosition(PcpScatterPlainInstance *work, void *src) {
     SDF_VU0_COPYVECTOR(work->params.origin, src);
 }
 
-void effPCPWwSpherePolySetScale(effPCPWwSpherePoly_tag *work, f32 scale) {
+void effPCPWwSpherePolySetScale(PcpScatterPlainInstance *work, f32 scale) {
     work->scale = scale;
 }
 
-void effPCPWwSpherePolySetColor(effPCPWwSpherePoly_tag *work, u32 color) {
+void effPCPWwSpherePolySetColor(PcpScatterPlainInstance *work, u32 color) {
     work->color = color;
 }
 
 /* vu0 routine: copy four transform rows through the matrix bank. */
-void effPCPWwSpherePolySetRotateMatrix(effPCPWwSpherePoly_tag *work, void *src) {
+void effPCPWwSpherePolySetRotateMatrix(PcpScatterPlainInstance *work, void *src) {
     VU0_COPY_MATRIX(work->matrix, src);
 }
 
