@@ -111,7 +111,7 @@ extern sdfGrFrameSet_t D_00529388;
 
 s32 sdfGetTexelBitCount(u32 format);
 
-typedef struct EffPacketParams {
+typedef struct effDebugPolyParams_t {
     s16 parameterCount;
     s16 vertexCount;
     u16 primitive;
@@ -125,7 +125,7 @@ typedef struct EffPacketParams {
     u32 *colors;
     void *(*allocate)(s32);
     f32 depth;
-} EffPacketParams;
+} effDebugPolyParams_t;
 
 void sdfSetStoreImage(sdfStoreImagePacket_t *packet, sdfGsMemSlice_t *source,
     s32 sourceX, s32 sourceY, s32 width, s32 height, u32 resourceAddress, u32 arg7, u32 arg8);

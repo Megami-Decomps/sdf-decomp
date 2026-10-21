@@ -25,7 +25,7 @@ extern s32 sdfGrPacketBuffPtr;
 
 extern s32 sdfGrPacketBuffLimit;
 
-typedef struct EffPacketParams {
+typedef struct effDebugPolyParams_t {
     s16 parameterCount;
     s16 vertexCount;
     u16 primitive;
@@ -39,7 +39,7 @@ typedef struct EffPacketParams {
     u32 *colors;
     void *(*allocate)(s32);
     f32 depth;
-} EffPacketParams;
+} effDebugPolyParams_t;
 
 void sdfGrMakePacketBuff(s32 bufferBytes);
 

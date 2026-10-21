@@ -47,7 +47,7 @@ extern s32 sdfDelayedResrcSemaId;
 
 extern s32 sdfCreateSema(u32, u32, u32);
 
-typedef struct EffPacketParams {
+typedef struct effDebugPolyParams_t {
     s16 parameterCount;
     s16 vertexCount;
     u16 primitive;
@@ -61,7 +61,7 @@ typedef struct EffPacketParams {
     u32 *colors;
     void *(*allocate)(s32);
     f32 depth;
-} EffPacketParams;
+} effDebugPolyParams_t;
 
 struct sdfDelayedResrcChunk_t {
     sdfDelayedResrcChunk_t *next;

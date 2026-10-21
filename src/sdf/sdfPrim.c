@@ -413,7 +413,7 @@ extern s32 sdfDrawReqQueueIndex;
 
 extern sdfGrFrameSet_t D_00529388;
 
-typedef struct EffPacketParams {
+typedef struct effDebugPolyParams_t {
     s16 parameterCount;
     s16 vertexCount;
     u16 primitive;
@@ -427,7 +427,7 @@ typedef struct EffPacketParams {
     u32 *colors;
     void *(*allocate)(s32);
     f32 depth;
-} EffPacketParams;
+} effDebugPolyParams_t;
 
 s32 sdfGrAllocPacketBuff(s32 size);
 
