@@ -47,7 +47,7 @@ extern volatile u8 sdfDrawSyncFlag;
 
 struct SdfGsGouraudTexturedVertex;
 
-struct SdfGsTwoVertexPayload;
+struct sdfPrimRectElem_t;
 
 struct SdfGsTexturedVertex;
 
@@ -131,13 +131,13 @@ typedef struct SdfGsGouraudTexturedVertex {
 } SdfGsGouraudTexturedVertex;
 
 /* GIF REGLIST stream: PRIM, RGBAQ and two packed XYZ2 vertices. */
-typedef struct SdfGsTwoVertexPayload {
+typedef struct sdfPrimRectElem_t {
     u64 gifTag;
     u64 gifRegisters;
     u64 primitive;
     u64 rgbaq;
     u64 xyz2[2];
-} SdfGsTwoVertexPayload;
+} sdfPrimRectElem_t;
 
 /* GIF REGLIST stream: PRIM, RGBAQ, then UV/XYZ2 for each vertex. */
 typedef struct SdfGsTexturedVertex {
@@ -234,7 +234,7 @@ typedef struct sdfPrimGt4Elem_t {
 typedef struct SdfGsTwoVertexPacket {
     u64 dmaTag;
     u64 vifCommands;
-    SdfGsTwoVertexPayload drawing;
+    sdfPrimRectElem_t drawing;
 } SdfGsTwoVertexPacket;
 
 typedef struct sdfPrimSpriteElem_t {
@@ -557,11 +557,11 @@ void sdfPrimLinkGt4(sdfDrawTag_t *aTag, s32 aPrim, s32 aX0, s32 aY0, s32 aU0, s3
                    s32 aX2, s32 aY2, s32 aU2, s32 aV2, s32 aColor2, s32 aX3, s32 aY3,
                    s32 aU3, s32 aV3, s32 aColor3, s32 aZ, s32 (*aAllocator)(s32));
 
-void sdfPrimSetRectElem(SdfGsTwoVertexPayload *aElem, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aX1, s32 aY1, s32 aZ);
+void sdfPrimSetRectElem(sdfPrimRectElem_t *aElem, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aX1, s32 aY1, s32 aZ);
 
 void sdfPrimLinkRect(sdfDrawTag_t *aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aX1, s32 aY1, s32 aZ, s32 (*aAllocator)(s32));
 
-void sdfPrimSetLineElem(SdfGsTwoVertexPayload *aElem, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aX1, s32 aY1, s32 aZ);
+void sdfPrimSetLineElem(sdfPrimRectElem_t *aElem, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aX1, s32 aY1, s32 aZ);
 
 void sdfPrimLinkLine(sdfDrawTag_t *aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aX1, s32 aY1, s32 aZ, s32 (*aAllocator)(s32));
 
@@ -1074,7 +1074,7 @@ void sdfPrimLinkGt4(sdfDrawTag_t *aTag, s32 aPrim, s32 aX0, s32 aY0, s32 aU0, s3
     sdfDrawTagLink(aTag, (s32)packet);
 }
 
-void sdfPrimSetRectElem(SdfGsTwoVertexPayload *aElem, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aX1, s32 aY1, s32 aZ) {
+void sdfPrimSetRectElem(sdfPrimRectElem_t *aElem, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aX1, s32 aY1, s32 aZ) {
     u64 depthHigh = (u64)(u32)aZ << 32;
     u32 first = ((u32)aX0 & 0xFFFF) | ((u32)aY0 << 16);
     u32 second = ((u32)aX1 & 0xFFFF) | ((u32)aY1 << 16);
@@ -1100,7 +1100,7 @@ void sdfPrimLinkRect(sdfDrawTag_t *aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0
     sdfDrawTagLink(aTag, (u32)packet);
 }
 
-void sdfPrimSetLineElem(SdfGsTwoVertexPayload *aElem, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aX1, s32 aY1, s32 aZ) {
+void sdfPrimSetLineElem(sdfPrimRectElem_t *aElem, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aX1, s32 aY1, s32 aZ) {
     u64 depthHigh = (u64)(u32)aZ << 32;
     u32 first = ((u32)aX0 & 0xFFFF) | ((u32)aY0 << 16);
     u32 second = ((u32)aX1 & 0xFFFF) | ((u32)aY1 << 16);
