@@ -663,15 +663,15 @@ effPCPWhirlwindPoly_tag *effPCPWhirlwindPolyCreate(
     PcpScatterParamsA *pParam, u32 pTex);
 
 PcpScatterPlainInstance *effPCPWwSpherePolyCreate(
-    PcpScatterPlainParams *params, u32 resource);
+    PcpScatterPlainParams *pParam, u32 pTex);
 
 extern dds3ScatterPolyListTexResource_tag *dds3ScatterPolyListTexResourceCopy(dds3ScatterPolyListTexResource_tag *hSplTexResSrc);
 
 effPCPWhirlwind2Poly_tag *effPCPWhirlwind2PolyCreate(
-    PcpScatterParamsB *params, u32 resource);
+    PcpScatterParamsB *pParam, u32 pTex);
 
 effPCPWhirlwind3Poly_tag *effPCPWhirlwind3PolyCreate(
-    PcpScatterParamsC *params, u32 resource);
+    PcpScatterParamsC *pParam, u32 pTex);
 
 extern effDebugPolyParams_t D_0056AD58;
 
