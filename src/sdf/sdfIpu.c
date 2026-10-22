@@ -83,7 +83,7 @@ void sdfIpuStrmDecodeInit(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFor
 
 void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *cb, struct sdfIpuInitParm_t *parm, SdfStreamRead hdr, struct movieStream_t *leng);
 
-void sdfIpuAttachTask(sdfIpuDecodeCb_t *aNode);
+void sdfIpuAttachTask(sdfIpuDecodeCb_t *cb);
 
 s32 SleepThread(void);
 
@@ -366,21 +366,21 @@ extern s32 DisableDmac(s32);
 
 extern s32 (*p2sdSmgBuf)(void);
 
-void sdfIpuExecQueue(s32 skipInterruptGuard);
+void sdfIpuExecQueue(s32 critical);
 
-void sdfIpuMakeBltPacket(sdfIpuDecodeCb_t *node);
+void sdfIpuMakeBltPacket(sdfIpuDecodeCb_t *cb);
 
 /* Remove a queued node without clearing its old links; the caller may own the interrupt guard. */
-void sdfIpuDetachQueue(sdfIpuDecodeCb_t *node, s32 skipInterruptGuard) {
+void sdfIpuDetachQueue(sdfIpuDecodeCb_t *cb, s32 critical) {
     s32 interruptsEnabled = 0;
     sdfIpuDecodeCb_t *previousNode;
     sdfIpuDecodeCb_t *nextNode;
-    if (skipInterruptGuard == 0) {
+    if (critical == 0) {
         interruptsEnabled = DIntr();
     }
-    if (node->queued != 0) {
-        previousNode = node->streamPrev;
-        nextNode = node->streamNext;
+    if (cb->queued != 0) {
+        previousNode = cb->streamPrev;
+        nextNode = cb->streamNext;
         if (previousNode == 0) {
             sdfIpuQueueHead = nextNode;
         } else {
@@ -391,9 +391,9 @@ void sdfIpuDetachQueue(sdfIpuDecodeCb_t *node, s32 skipInterruptGuard) {
         } else {
             nextNode->streamPrev = previousNode;
         }
-        node->queued = 0;
+        cb->queued = 0;
     }
-    if (skipInterruptGuard == 0 && interruptsEnabled != 0) {
+    if (critical == 0 && interruptsEnabled != 0) {
         EIntr();
     }
 }
@@ -421,7 +421,7 @@ void sdfIpuAttachQueue(sdfIpuDecodeCb_t *cb, s32 critical) {
     }
 }
 
-void sdfIpuAttachTask(sdfIpuDecodeCb_t *aNode)
+void sdfIpuAttachTask(sdfIpuDecodeCb_t *cb)
 {
     sdfIpuDecodeCb_t **link = &sdfIpuTaskLink;
     sdfIpuDecodeCb_t *cur;
@@ -429,17 +429,17 @@ void sdfIpuAttachTask(sdfIpuDecodeCb_t *aNode)
     for (cur = *link; cur != NULL; cur = *link) {
         link = &cur->next;
     }
-    *link = aNode;
-    aNode->next = NULL;
+    *link = cb;
+    cb->next = NULL;
 }
 
-void sdfIpuDetachTask(sdfIpuDecodeCb_t *aNode)
+void sdfIpuDetachTask(sdfIpuDecodeCb_t *cb)
 {
     sdfIpuDecodeCb_t **link = &sdfIpuTaskLink;
     sdfIpuDecodeCb_t *cur;
 
     for (cur = *link; cur != NULL; cur = *link) {
-        if (cur == aNode) {
+        if (cur == cb) {
             *link = cur->next;
             return;
         }
@@ -448,27 +448,27 @@ void sdfIpuDetachTask(sdfIpuDecodeCb_t *aNode)
 }
 
 /* Allocate two width-by-height frames, using four bytes per pixel for mode zero, two otherwise. */
-void sdfIpuAllocBuff(sdfIpuDecodeCb_t *node) {
+void sdfIpuAllocBuff(sdfIpuDecodeCb_t *cb) {
     s32 bytesPerPixel = 4;
     s32 size;
-    if (node->audioMode != SDF_STREAM_OUTPUT_RGBA32) {
+    if (cb->audioMode != SDF_STREAM_OUTPUT_RGBA32) {
         bytesPerPixel = 2;
     }
-    size = node->width * node->height;
+    size = cb->width * cb->height;
     size *= bytesPerPixel;
-    node->bufferSize = size;
-    node->frameBuffers[0] = sdfAllocAuto(size);
-    node->frameBuffers[1] = sdfAllocAuto(size);
+    cb->bufferSize = size;
+    cb->frameBuffers[0] = sdfAllocAuto(size);
+    cb->frameBuffers[1] = sdfAllocAuto(size);
 }
 
 /* Each 16-byte DMA tag holds control/address bits and a zero reserved half. */
-void sdfIpuMakeToIpuDmaTag(sdfIpuDecodeCb_t *cb, u8 *srcAddr, s32 leng) {
+void sdfIpuMakeToIpuDmaTag(sdfIpuDecodeCb_t *cb, u8 *data, s32 leng) {
     s32 remaining = (leng + 15) & ~15;
     struct SdfStreamInputDmaTag *tag;
     u32 address;
     tag = sdfAllocAuto(((remaining + 0xFFEFF) / 0xFFF00) * 16);
     cb->inputDmaChain = tag;
-    address = (u32)srcAddr & 0x0FFFFFFF;
+    address = (u32)data & 0x0FFFFFFF;
     do {
         s32 chunk = remaining > 0xFFF00 ? 0xFFF00 : remaining;
         u32 id;
@@ -485,17 +485,17 @@ void sdfIpuMakeToIpuDmaTag(sdfIpuDecodeCb_t *cb, u8 *srcAddr, s32 leng) {
 INCLUDE_ASM(const s32, "sdf/sdfIpu", sdfIpuMakeBltPacket);
 
 /* Clear the decoder, choose 32-bit/16-bit/dithered output and copy playback options. */
-void sdfIpuInitCb(sdfIpuDecodeCb_t *node, struct sdfIpuInitParm_t *format) {
-    memset(node, 0, 0x8C);
-    if (format->rgbMode == 0) {
-        node->audioMode = SDF_STREAM_OUTPUT_RGBA32;
-    } else if (format->ditherMode == 0) {
-        node->audioMode = SDF_STREAM_OUTPUT_RGBA16;
+void sdfIpuInitCb(sdfIpuDecodeCb_t *cb, struct sdfIpuInitParm_t *parm) {
+    memset(cb, 0, 0x8C);
+    if (parm->rgbMode == 0) {
+        cb->audioMode = SDF_STREAM_OUTPUT_RGBA32;
+    } else if (parm->ditherMode == 0) {
+        cb->audioMode = SDF_STREAM_OUTPUT_RGBA16;
     } else {
-        node->audioMode = SDF_STREAM_OUTPUT_RGBA16_DITHERED;
+        cb->audioMode = SDF_STREAM_OUTPUT_RGBA16_DITHERED;
     }
-    node->loopMode = format->loopMode;
-    node->playbackCadenceStep = format->fps;
+    cb->loopMode = parm->loopMode;
+    cb->playbackCadenceStep = parm->fps;
 }
 
 /* Decode the frame header, allocate its buffers, then queue the bytes after that header. */
@@ -711,13 +711,13 @@ s32 IpuWriteCommand(void) {
 INCLUDE_ASM(const s32, "sdf/sdfIpu", sdfIpuDecode);
 
 /* Remove and advance the first list item matching the IPU cleanup test. */
-void sdfIpuExecQueue(s32 skipInterruptGuard) {
+void sdfIpuExecQueue(s32 critical) {
     sdfIpuDecodeCb_t *node;
     s32 interruptsEnabled = 0;
     if (sdfCurrIpuDecodeCb != NULL) {
         return;
     }
-    if (skipInterruptGuard == 0) {
+    if (critical == 0) {
         interruptsEnabled = DIntr();
     }
     node = sdfIpuQueueHead;
@@ -730,7 +730,7 @@ void sdfIpuExecQueue(s32 skipInterruptGuard) {
         }
         node = node->streamNext;
     }
-    if (skipInterruptGuard == 0 && interruptsEnabled != 0) {
+    if (critical == 0 && interruptsEnabled != 0) {
         EIntr();
     }
 }
@@ -804,39 +804,39 @@ s32 sdfIpuToDmacHandler(void) {
     return 0;
 }
 
-void *sdfIpuGetActivePacket(sdfIpuDecodeCb_t *aNode)
+void *sdfIpuGetActivePacket(sdfIpuDecodeCb_t *cb)
 {
     void *packet = NULL;
 
-    if (aNode->completedBufferCount != 0) {
-        packet = aNode->frameBuffers[aNode->transferPacketIndex];
+    if (cb->completedBufferCount != 0) {
+        packet = cb->frameBuffers[cb->transferPacketIndex];
     }
     return packet;
 }
 
-void *sdfIpuGetActiveFrame(sdfIpuDecodeCb_t *aNode)
+void *sdfIpuGetActiveFrame(sdfIpuDecodeCb_t *cb)
 {
     void *frame = NULL;
 
-    if (aNode->completedBufferCount != 0) {
-        frame = aNode->transferPacketBuffers[aNode->transferPacketIndex];
+    if (cb->completedBufferCount != 0) {
+        frame = cb->transferPacketBuffers[cb->transferPacketIndex];
     }
     return frame;
 }
 
 /* Consume a pending buffer when present, but always advance processed; loop only on exact equality. */
-void sdfIpuFinishActiveFrame(sdfIpuDecodeCb_t *node) {
+void sdfIpuFinishActiveFrame(sdfIpuDecodeCb_t *cb) {
     s32 interruptsEnabled = DIntr();
-    s32 pendingBuffers = node->completedBufferCount;
+    s32 pendingBuffers = cb->completedBufferCount;
     s32 remainingBuffers = pendingBuffers - 1;
     if (pendingBuffers > 0) {
-        node->completedBufferCount = remainingBuffers;
-        node->transferPacketIndex ^= 1;
-        node->pendingPlaybackSubmissions++;
+        cb->completedBufferCount = remainingBuffers;
+        cb->transferPacketIndex ^= 1;
+        cb->pendingPlaybackSubmissions++;
     }
-    node->playbackFrameIndex++;
-    if (node->playbackFrameIndex == node->cycleLength && node->loopMode != 0) {
-        node->playbackFrameIndex = 0;
+    cb->playbackFrameIndex++;
+    if (cb->playbackFrameIndex == cb->cycleLength && cb->loopMode != 0) {
+        cb->playbackFrameIndex = 0;
     }
     if (interruptsEnabled != 0) {
         EIntr();

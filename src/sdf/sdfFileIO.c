@@ -26,7 +26,7 @@ void sdfFileCmdThreadSetPrio(s32 prio);
 s32 sdfFileCmdRead(void *aHandle, void *aBuffer, s32 aLength);
 
 
-s32 sdfFileCmdUnlink(void *aCmd);
+s32 sdfFileCmdUnlink(void *aHandle);
 
 s32 sdfFileCmdDequeue(void *aCmd);
 
@@ -179,15 +179,15 @@ INCLUDE_ASM(const s32, "sdf/sdfFileIO", sdfFileCmdUnlink);
 
 INCLUDE_ASM(const s32, "sdf/sdfFileIO", sdfFileCmdDequeue);
 
-s32 sdfFileCmdReleaseHandle(sdfFileCmd_t *aCmd)
+s32 sdfFileCmdReleaseHandle(sdfFileCmd_t *aHandle)
 {
-    s32 fd = aCmd->fd;
+    s32 fd = aHandle->fd;
 
-    aCmd->fd = -1;
+    aHandle->fd = -1;
     if (fd >= 0) {
         sceClose(fd);
     }
-    return sdfFileCmdDequeue(aCmd);
+    return sdfFileCmdDequeue(aHandle);
 }
 
 /* Store an error/result, release the request, and notify its callback of inactivity. */

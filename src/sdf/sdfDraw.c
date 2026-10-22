@@ -327,7 +327,7 @@ typedef struct sdfSceneNode_t {
 
 void sdfGrStdDrawEnvPredraw(sdfSceneNode_t *aPre, s32 aEvenOdd);
 
-void sdfGrSetRefGifPacket(SdfDmaReferenceChainPacket *aPacket, u32 aData, s32 aQwords);
+void sdfGrSetRefGifPacket(SdfDmaReferenceChainPacket *aPacket, u32 aRegs, s32 aNumRegs);
 
 void sdfGrSetDrawDefParmPacket(sdfGrRefGifPacketHeader_t *aDef);
 
@@ -702,12 +702,12 @@ void sdfGrSetRegsPacketHeader(sdfGrPacketHeader_t *header, s32 payloadQwords) {
     header->giftag.regs = SDF_GIF_REGISTER_AD;
 }
 
-void sdfGrSetRefGifPacket(SdfDmaReferenceChainPacket *aPacket, u32 aData, s32 aQwords) {
+void sdfGrSetRefGifPacket(SdfDmaReferenceChainPacket *aPacket, u32 aRegs, s32 aNumRegs) {
     aPacket->header.dmaWords.tag = SDF_DMA_CNT_ONE_WORD;
     aPacket->header.dmaWords.vif = SDF_VIF_DIRECT_ONE_FLUSHE;
-    aPacket->header.giftag.parm = (u64)aQwords | SDF_GIF_PACKED_AD_BITS;
+    aPacket->header.giftag.parm = (u64)aNumRegs | SDF_GIF_PACKED_AD_BITS;
     aPacket->header.giftag.regs = SDF_GIF_REGISTER_AD;
-    aPacket->referenceTag = (u32)((aQwords & SDF_DMA_QWC_MASK) | SDF_DMA_TAG_REF_WORD) | ((u64)(aData & SDF_DMA_ADDRESS_MASK) << 32);
+    aPacket->referenceTag = (u32)((aNumRegs & SDF_DMA_QWC_MASK) | SDF_DMA_TAG_REF_WORD) | ((u64)(aRegs & SDF_DMA_ADDRESS_MASK) << 32);
     aPacket->referenceVifCommands = SDF_VIF_DIRECT_ONE_NOP;
     aPacket->nextTag = SDF_DMA_TAG_NEXT_WORD;
     aPacket->zeroTailWord = 0;

@@ -295,10 +295,10 @@ void sdfPadSetAct1(s32 pad, u8 value) {
     sdfPadCb[pad].largeMotor = value;
 }
 
-void sdfPadSetAct(s32 padIndex, s32 smallMotor, s32 largeMotor) {
-    SdfPadEntry *entry = &sdfPadCb[padIndex];
-    entry->smallMotor = smallMotor & 0xFF;
-    sdfPadCb[padIndex].largeMotor = largeMotor & 0xFF;
+void sdfPadSetAct(s32 pad, s32 value0, s32 value1) {
+    SdfPadEntry *entry = &sdfPadCb[pad];
+    entry->smallMotor = value0 & 0xFF;
+    sdfPadCb[pad].largeMotor = value1 & 0xFF;
 }
 
 void sdfPadInitManager(void) {
