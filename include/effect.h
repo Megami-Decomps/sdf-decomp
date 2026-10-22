@@ -157,8 +157,8 @@ typedef struct {
 } dds3Effect_PartialMultiFilterParam_t;
 
 typedef struct {
-    dds3Effect_PartialMultiFilterParam_t params;
-    sdfTexHandle_t *texture;
+    dds3Effect_PartialMultiFilterParam_t param;
+    sdfTexHandle_t *hAlphaTex;
 } dds3Effect_PartialMultiFilter_t;
 
 typedef struct dds3Effect_Filter_t {
