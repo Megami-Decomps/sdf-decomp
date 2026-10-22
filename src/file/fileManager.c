@@ -22,7 +22,7 @@ typedef void (*fileTransferCallback_t)(void *request, u32 arg);
     u32 top; \
     u32 ptr; \
     Link *donenext; \
-    sdfPacState_t pac; \
+    sdfPacDecodeCb_t pac; \
     u16 pacrest; \
     u16 slot; \
     Link *cbnext;
@@ -33,7 +33,7 @@ typedef struct fileRequest {
 
 typedef struct fileTransferJob {
     FILE_REQUEST_FIELDS(struct fileTransferJob, fileTransferCallback_t)
-} fileTransferJob_t;
+} fileCb_t;
 
 typedef struct pacFileRequest {
     FILE_REQUEST_FIELDS(struct pacFileRequest, void *)
@@ -47,36 +47,36 @@ typedef struct fileSlot {
 } fileSlot_t;
 
 typedef struct fileQueue {
-    /* 0x00 */ s32 sema;
-    /* 0x04 */ u8 readslot;
+    /* 0x00 */ s32 semaId;
+    /* 0x04 */ u8 index;
     /* 0x05 */ u8 nextslot;
-    /* 0x06 */ u8 fullcnt;
-    /* 0x07 */ u8 freecnt;
+    /* 0x06 */ u8 activeCount;
+    /* 0x07 */ u8 freeCount;
     /* 0x08 */ fileRequest_t *head;
     /* 0x0C */ fileRequest_t *tail;
-    /* 0x10 */ fileTransferJob_t *done;
-    /* 0x14 */ pacFileRequest_t *pacdone;
-    /* 0x18 */ fileRequest_t *closewait;
+    /* 0x10 */ fileCb_t *done;
+    /* 0x14 */ pacFileRequest_t *pacEndCallbackLink;
+    /* 0x18 */ fileRequest_t *closeLink;
     /* 0x1C */ u8 *buf;
     /* 0x20 */ fileSlot_t slots[4];
-} fileQueue_t;
+} fileMngCb_tag;
 
 
-extern fileQueue_t fileQueueHead;
+extern fileMngCb_tag fileQueueHead;
 extern u32 fileCallbackStatus;
 extern s32 (*p2sdSmgBuf)(void);
 extern char D_00551650[];
 
 void fileLinkQueue(fileRequest_t *req, s32 kind, const char *name, void *callback, void *arg);
-void fileLinkCloseWait(fileQueue_t *cb, fileRequest_t *fileHandle);
-void fileUnlinkCloseWait(fileQueue_t *cb, fileRequest_t *fileHandle);
+void fileLinkCloseWait(fileMngCb_tag *cb, fileRequest_t *fileHandle);
+void fileUnlinkCloseWait(fileMngCb_tag *cb, fileRequest_t *fileHandle);
 fileRequest_t *pacLoadEx(const char *filename, u32 headOrTail, u32 callback, u32 pendCallback, u32 callbackParm);
 s32 pacFileCheckEnd(const fileRequest_t *pacFileHandle);
 void pacRead(fileRequest_t *pacHandle);
-s32 pacLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTransferJob_t *data);
-s32 fileLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTransferJob_t *data);
-s32 fileSaveCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTransferJob_t *data);
-void fileRead(fileTransferJob_t *fileHandle);
+s32 pacLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileCb_t *data);
+s32 fileLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileCb_t *data);
+s32 fileSaveCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileCb_t *data);
+void fileRead(fileCb_t *fileHandle);
 void fileExecQueue(void);
 s32 fileManager(void);
 s32 fileManagerProc(dds3ProcessID_t *procId);
@@ -105,10 +105,10 @@ void sdfFileCmdThreadSetHiPrio(void);
 s32 sdfPrintf(const char *str, ...);
 void *memset(void *a, s32 b, u32 c);
 void sdfChipFreeDirect(void *aPtr);
-void sdfPacFree(sdfPacState_t *cb);
-s32 sdfPacDecode(sdfPacState_t *cb, const u8 *data, s32 length);
+void sdfPacFree(sdfPacDecodeCb_t *cb);
+s32 sdfPacDecode(sdfPacDecodeCb_t *cb, const u8 *data, s32 length);
 void *sdfMemAllocFromTailDirect(u32 aSize);
-void fileWrite(fileTransferJob_t *fileHandle);
+void fileWrite(fileCb_t *fileHandle);
 void fileExecCallback(void);
 
 s32 pacFileHandleFree(fileRequest_t *pacHandle)
@@ -146,7 +146,7 @@ s32 fileHandleFree(fileRequest_t *fileHandle) {
 }
 
 void fileLinkQueue(fileRequest_t *req, s32 kind, const char *name, void *callback, void *arg) {
-    fileQueue_t *q = &fileQueueHead;
+    fileMngCb_tag *q = &fileQueueHead;
     char *dup;
     s32 first;
 
@@ -156,7 +156,7 @@ void fileLinkQueue(fileRequest_t *req, s32 kind, const char *name, void *callbac
     req->name = dup;
     req->arg = arg;
 
-    WaitSema(q->sema);
+    WaitSema(q->semaId);
     if (q->tail == NULL) {
         q->head = req;
         first = 1;
@@ -165,7 +165,7 @@ void fileLinkQueue(fileRequest_t *req, s32 kind, const char *name, void *callbac
         first = 0;
     }
     q->tail = req;
-    SignalSema(q->sema);
+    SignalSema(q->semaId);
 
     if (first != 0) {
         fileExecQueue();
@@ -173,12 +173,12 @@ void fileLinkQueue(fileRequest_t *req, s32 kind, const char *name, void *callbac
 }
 
 void fileUnlinkQueue(fileRequest_t *fileHandle) {
-    fileQueue_t *work = &fileQueueHead;
+    fileMngCb_tag *work = &fileQueueHead;
     fileRequest_t *previousNode;
     fileRequest_t *currentNode;
     s32 slotIndex;
 
-    WaitSema(work->sema);
+    WaitSema(work->semaId);
     for (slotIndex = 0; slotIndex != 4; slotIndex++) {
         if (work->slots[slotIndex].req == fileHandle) {
             work->slots[slotIndex].req = NULL;
@@ -201,16 +201,16 @@ void fileUnlinkQueue(fileRequest_t *fileHandle) {
         previousNode = currentNode;
         currentNode = currentNode->next;
     }
-    SignalSema(work->sema);
+    SignalSema(work->semaId);
 }
 
-void fileLinkCloseWait(fileQueue_t *cb, fileRequest_t *fileHandle) {
-    fileHandle->next = cb->closewait;
-    cb->closewait = fileHandle;
+void fileLinkCloseWait(fileMngCb_tag *cb, fileRequest_t *fileHandle) {
+    fileHandle->next = cb->closeLink;
+    cb->closeLink = fileHandle;
 }
 
-void fileUnlinkCloseWait(fileQueue_t *cb, fileRequest_t *fileHandle) {
-    fileRequest_t **link = &cb->closewait;
+void fileUnlinkCloseWait(fileMngCb_tag *cb, fileRequest_t *fileHandle) {
+    fileRequest_t **link = &cb->closeLink;
     fileRequest_t *p;
 
     while ((p = *link) != fileHandle) {
@@ -304,8 +304,8 @@ void pacSync(fileRequest_t *pacFileHandle) {
 }
 
 void fileSyncAll(void) {
-    fileQueue_t *work = &fileQueueHead;
-    while (work->head != 0 || work->closewait != 0) {
+    fileMngCb_tag *work = &fileQueueHead;
+    while (work->head != 0 || work->closeLink != 0) {
         fileManager();
     }
 }
@@ -326,17 +326,17 @@ fileRequest_t *fileSave(const char *filename, const void *buff, s32 size) {
 }
 
 void pacRead(fileRequest_t *pacHandle) {
-    fileQueue_t *work = &fileQueueHead;
+    fileMngCb_tag *work = &fileQueueHead;
     u8 slotIndex;
     s32 chunkBytes;
 
-    WaitSema(work->sema);
-    if (work->freecnt == 0) {
-        SignalSema(work->sema);
+    WaitSema(work->semaId);
+    if (work->freeCount == 0) {
+        SignalSema(work->semaId);
         return;
     }
     if (pacHandle->state != 3) {
-        SignalSema(work->sema);
+        SignalSema(work->semaId);
         return;
     }
     pacHandle->state = 4;
@@ -347,19 +347,19 @@ void pacRead(fileRequest_t *pacHandle) {
         work->nextslot = slotIndex + 1;
     }
     pacHandle->slot = slotIndex;
-    work->freecnt--;
+    work->freeCount--;
     work->slots[slotIndex].req = pacHandle;
     chunkBytes = pacHandle->rest;
     if (chunkBytes > 0x10000) {
         chunkBytes = 0x10000;
     }
-    SignalSema(work->sema);
+    SignalSema(work->semaId);
     sdfFileCmdRead((sdfFileCmd_t *)pacHandle->dev,
                     work->buf + (slotIndex << 16), chunkBytes);
 }
 
-s32 pacLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTransferJob_t *data) {
-    fileQueue_t *work = &fileQueueHead;
+s32 pacLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileCb_t *data) {
+    fileMngCb_tag *work = &fileQueueHead;
     s32 saved;
 
     switch (cause) {
@@ -375,7 +375,7 @@ s32 pacLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTra
         pacRead((fileRequest_t *)data);
         break;
     case 5:
-        WaitSema(work->sema);
+        WaitSema(work->semaId);
         if (data->pacrest != 0) {
             data->state = 5;
         } else {
@@ -391,13 +391,13 @@ s32 pacLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTra
                 data->state = 3;
             }
         }
-        work->fullcnt++;
+        work->activeCount++;
         if (data->state == 5) {
             fileLinkCloseWait(work, (fileRequest_t *)data);
-            SignalSema(work->sema);
+            SignalSema(work->semaId);
             sdfFileCmdClose(fileHandle);
         } else {
-            SignalSema(work->sema);
+            SignalSema(work->semaId);
         }
         saved = fileCallbackStatus;
         fileCallbackStatus = 1;
@@ -405,9 +405,9 @@ s32 pacLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTra
         fileCallbackStatus = saved;
         break;
     case 7:
-        WaitSema(work->sema);
+        WaitSema(work->semaId);
         fileUnlinkCloseWait(work, (fileRequest_t *)data);
-        SignalSema(work->sema);
+        SignalSema(work->semaId);
         sdfFileCmdFree(fileHandle);
         data->dev = NULL;
         data->state = 6;
@@ -416,21 +416,21 @@ s32 pacLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTra
     return 0;
 }
 
-void fileRead(fileTransferJob_t *fileHandle) {
-    fileQueue_t *q = &fileQueueHead;
+void fileRead(fileCb_t *fileHandle) {
+    fileMngCb_tag *q = &fileQueueHead;
 
-    WaitSema(q->sema);
+    WaitSema(q->semaId);
     if (fileHandle->state != 3) {
-        SignalSema(q->sema);
+        SignalSema(q->semaId);
         return;
     }
     fileHandle->state = 4;
-    SignalSema(q->sema);
+    SignalSema(q->semaId);
     sdfFileCmdRead(fileHandle->dev, (void *)fileHandle->ptr, fileHandle->rest <= 0x8000 ? fileHandle->rest : 0x8000);
 }
 
-s32 fileLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTransferJob_t *data) {
-    fileQueue_t *work = &fileQueueHead;
+s32 fileLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileCb_t *data) {
+    fileMngCb_tag *work = &fileQueueHead;
     s32 saved;
 
     switch (cause) {
@@ -467,7 +467,7 @@ s32 fileLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTr
         break;
     }
     case 5:
-        WaitSema(work->sema);
+        WaitSema(work->semaId);
         data->rest -= length;
         if (data->rest == 0) {
             data->state = 5;
@@ -483,14 +483,14 @@ s32 fileLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTr
         }
         if (data->state == 5) {
             fileLinkCloseWait(work, (fileRequest_t *)data);
-            SignalSema(work->sema);
+            SignalSema(work->semaId);
             sdfFileCmdClose(fileHandle);
             saved = fileCallbackStatus;
             fileCallbackStatus = 2;
             fileExecQueue();
             fileCallbackStatus = saved;
         } else {
-            SignalSema(work->sema);
+            SignalSema(work->semaId);
             fileRead(data);
         }
         break;
@@ -498,38 +498,38 @@ s32 fileLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTr
         sdfFileCmdFree(fileHandle);
         data->dev = NULL;
         data->state = 6;
-        WaitSema(work->sema);
+        WaitSema(work->semaId);
         fileUnlinkCloseWait(work, (fileRequest_t *)data);
         if (data->callback != NULL) {
-            fileTransferJob_t **link = &work->done;
-            fileTransferJob_t *next;
+            fileCb_t **link = &work->done;
+            fileCb_t *next;
 
             while ((next = *link) != NULL) {
                 link = &next->donenext;
             }
             *link = data;
         }
-        SignalSema(work->sema);
+        SignalSema(work->semaId);
         break;
     }
     return 0;
 }
 
-void fileWrite(fileTransferJob_t *fileHandle) {
-    fileQueue_t *q = &fileQueueHead;
+void fileWrite(fileCb_t *fileHandle) {
+    fileMngCb_tag *q = &fileQueueHead;
 
-    WaitSema(q->sema);
+    WaitSema(q->semaId);
     if (fileHandle->state != 3) {
-        SignalSema(q->sema);
+        SignalSema(q->semaId);
         return;
     }
     fileHandle->state = 4;
-    SignalSema(q->sema);
+    SignalSema(q->semaId);
     sdfFileCmdWrite(fileHandle->dev, (void *)fileHandle->ptr, fileHandle->rest <= 0x8000 ? fileHandle->rest : 0x8000);
 }
 
-s32 fileSaveCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTransferJob_t *data) {
-    fileQueue_t *work = &fileQueueHead;
+s32 fileSaveCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileCb_t *data) {
+    fileMngCb_tag *work = &fileQueueHead;
     s32 saved;
 
     switch (cause) {
@@ -538,7 +538,7 @@ s32 fileSaveCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTr
         fileWrite(data);
         break;
     case 6:
-        WaitSema(work->sema);
+        WaitSema(work->semaId);
         data->ptr += length;
         data->rest -= length;
         if (data->rest == 0) {
@@ -554,14 +554,14 @@ s32 fileSaveCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTr
         }
         if (data->state == 5) {
             fileLinkCloseWait(work, (fileRequest_t *)data);
-            SignalSema(work->sema);
+            SignalSema(work->semaId);
             sdfFileCmdClose(fileHandle);
             saved = fileCallbackStatus;
             fileCallbackStatus = 3;
             fileExecQueue();
             fileCallbackStatus = saved;
         } else {
-            SignalSema(work->sema);
+            SignalSema(work->semaId);
             fileWrite(data);
         }
         break;
@@ -569,32 +569,32 @@ s32 fileSaveCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTr
         sdfFileCmdFree(fileHandle);
         data->dev = NULL;
         data->state = 6;
-        WaitSema(work->sema);
+        WaitSema(work->semaId);
         fileUnlinkCloseWait(work, (fileRequest_t *)data);
         if (data->callback != NULL) {
-            fileTransferJob_t **link = &work->done;
-            fileTransferJob_t *next;
+            fileCb_t **link = &work->done;
+            fileCb_t *next;
 
             while ((next = *link) != NULL) {
                 link = &next->donenext;
             }
             *link = data;
         }
-        SignalSema(work->sema);
+        SignalSema(work->semaId);
         break;
     }
     return 0;
 }
 
 void fileExecQueue(void) {
-    fileQueue_t *work = &fileQueueHead;
-    fileTransferJob_t *job;
+    fileMngCb_tag *work = &fileQueueHead;
+    fileCb_t *job;
     s32 locked;
 
-    WaitSema(work->sema);
-    job = (fileTransferJob_t *)work->head;
+    WaitSema(work->semaId);
+    job = (fileCb_t *)work->head;
     if (job == NULL) {
-        SignalSema(work->sema);
+        SignalSema(work->semaId);
         return;
     }
     locked = 1;
@@ -604,7 +604,7 @@ void fileExecQueue(void) {
         case 0:
             job->state = 1;
             locked = 0;
-            SignalSema(work->sema);
+            SignalSema(work->semaId);
             job->dev = sdfFileCmdReadOpen(job->name, fileLoadCallback, job);
             break;
         case 7:
@@ -629,12 +629,12 @@ void fileExecQueue(void) {
         case 0:
             job->state = 1;
             locked = 0;
-            SignalSema(work->sema);
+            SignalSema(work->semaId);
             job->dev = sdfFileCmdReadOpen(job->name, pacLoadCallback, job);
             break;
         case 3:
             locked = 0;
-            SignalSema(work->sema);
+            SignalSema(work->semaId);
             pacRead((fileRequest_t *)job);
             break;
         }
@@ -643,42 +643,42 @@ void fileExecQueue(void) {
         if (job->state == 0) {
             job->state = 1;
             locked = 0;
-            SignalSema(work->sema);
+            SignalSema(work->semaId);
             job->dev = sdfFileCmdWriteOpen(job->name, fileSaveCallback, job, 0x180);
         }
         break;
     }
     if (locked != 0) {
-        SignalSema(work->sema);
+        SignalSema(work->semaId);
     }
 }
 
 void fileExecCallback(void) {
-    fileQueue_t *work = &fileQueueHead;
-    fileTransferJob_t *node;
+    fileMngCb_tag *work = &fileQueueHead;
+    fileCb_t *node;
 
-    WaitSema(work->sema);
+    WaitSema(work->semaId);
     while ((node = work->done) != NULL) {
         work->done = node->donenext;
-        SignalSema(work->sema);
+        SignalSema(work->semaId);
         node->callback(node, (u32)node->arg);
-        WaitSema(work->sema);
+        WaitSema(work->semaId);
     }
-    SignalSema(work->sema);
+    SignalSema(work->semaId);
 }
 
 s32 fileManager(void) {
-    fileQueue_t *work = &fileQueueHead;
+    fileMngCb_tag *work = &fileQueueHead;
     u32 fullcnt;
     pacFileRequest_t **link;
     pacFileRequest_t *req;
 
     fileExecCallback();
-    fullcnt = work->fullcnt;
+    fullcnt = work->activeCount;
     while (fullcnt != 0) {
-        u32 slot = work->readslot;
+        u32 slot = work->index;
         const u8 *input = work->buf + (slot << 16);
-        fileTransferJob_t *job = (fileTransferJob_t *)work->slots[slot].req;
+        fileCb_t *job = (fileCb_t *)work->slots[slot].req;
         u8 kind = job->kind;
 
         if (kind == 1) {
@@ -688,7 +688,7 @@ s32 fileManager(void) {
                 fileUnlinkQueue((fileRequest_t *)req);
                 req->pacrest = kind;
                 if (req->callback != NULL) {
-                    pacFileRequest_t **append = &work->pacdone;
+                    pacFileRequest_t **append = &work->pacEndCallbackLink;
                     pacFileRequest_t *next;
 
                     while ((next = *append) != NULL) {
@@ -697,20 +697,20 @@ s32 fileManager(void) {
                     *append = req;
                 }
             }
-            WaitSema(work->sema);
+            WaitSema(work->semaId);
             slot++;
             if (slot == 4) {
                 slot = 0;
             }
-            work->readslot = slot;
-            work->freecnt++;
-            work->fullcnt--;
-            SignalSema(work->sema);
-            fullcnt = work->fullcnt;
+            work->index = slot;
+            work->freeCount++;
+            work->activeCount--;
+            SignalSema(work->semaId);
+            fullcnt = work->activeCount;
         }
     }
     fileExecQueue();
-    link = &work->pacdone;
+    link = &work->pacEndCallbackLink;
     while ((req = *link) != NULL) {
         if (req->state == 6) {
             *link = req->cbnext;
@@ -729,8 +729,8 @@ s32 fileManagerProc(dds3ProcessID_t *procId) {
 
 void fileSysInit(void) {
     memset(&fileQueueHead, 0, 0x40);
-    fileQueueHead.freecnt = 4;
-    fileQueueHead.sema = sdfCreateSema(1, 0x7F, 0);
+    fileQueueHead.freeCount = 4;
+    fileQueueHead.semaId = sdfCreateSema(1, 0x7F, 0);
     fileQueueHead.buf = (u8 *)sdfMemLock(sdfMemAllocDirect(0x40000));
     dds3StartProcess(D_00551650, 0x384, 1, 0, fileManagerProc, 0, 0);
     p2sdSmgBuf = fileManager;
