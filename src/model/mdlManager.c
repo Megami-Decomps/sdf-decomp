@@ -49,58 +49,58 @@ extern s32 mdlManagerWork;
 extern mdlResrc_t *mdlResrcMajorList[MDL_GROUP_COUNT];
 extern mdlLoadingEntry_t *mdlLoadingMajorList[MDL_GROUP_COUNT];
 
-extern s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 attr);
+extern s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
 extern s32 WaitSema(s32 sema);
 extern s32 SignalSema(s32 sema);
-extern void *sdfChipAllocDirect(u32 size);
-extern void *sdfChipAllocZeroDirect(u32 size);
-extern void sdfChipFreeDirect(void *block);
-extern void sdfMemFreeDirect(sdfMemHandle_t *handle);
-extern void sdfMemFreeDelayedDirect(sdfMemHandle_t *handle);
-extern void sdfTexListFree(sdfModelTexList_t *list, s32 freeData);
-extern sdfModelTexList_t *sdfTexListDup(sdfModelTexList_t *list);
-extern sdfModelRootNode_t *sdfModelMake(sdfModelTexList_t *texList, sdfModelDef_t *def);
-extern void sdfModelRootFree(sdfModelRootNode_t *root, s32 a, s32 b);
-extern sdfMotionCtrlr_t *sdfMotionCtrlrNew(sdfModelRootNode_t *root,
-                                           sdfMotionPlayBook_t *playbook);
-extern void sdfMotionCtrlrFree(sdfMotionCtrlr_t *ctrlr);
-extern void sdfMotionPause(sdfMotionCtrlr_t *ctrlr);
-extern void sdfMotionPauseOff(sdfMotionCtrlr_t *ctrlr);
+extern void *sdfChipAllocDirect(u32 aSize);
+extern void *sdfChipAllocZeroDirect(u32 aSize);
+extern void sdfChipFreeDirect(void *aPtr);
+extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
+extern void sdfMemFreeDelayedDirect(sdfMemHandle_t *aHandle);
+extern void sdfTexListFree(sdfModelTexList_t *aList, s32 aReleaseItems);
+extern sdfModelTexList_t *sdfTexListDup(sdfModelTexList_t *aList);
+extern sdfModelRootNode_t *sdfModelMake(sdfModelTexList_t *aTexList, sdfModelDef_t *aModelData);
+extern void sdfModelRootFree(sdfModelRootNode_t *aRoot, s32 aReleaseNodes, s32 aReleaseMatList);
+extern sdfMotionCtrlr_t *sdfMotionCtrlrNew(sdfModelRootNode_t *aModel,
+                                           sdfMotionPlayBook_t *aBook);
+extern void sdfMotionCtrlrFree(sdfMotionCtrlr_t *aCtrlr);
+extern void sdfMotionPause(sdfMotionCtrlr_t *aCtrlr);
+extern void sdfMotionPauseOff(sdfMotionCtrlr_t *aCtrlr);
 extern void fileManager(void);
-extern void mdlSetEffectColorSub(mdlObj_t *ctx, mdlEffectResrc_t *item, u32 value);
-extern void mdlSetEffectScaleSub(mdlObj_t *ctx, mdlEffectResrc_t *item, f32 amount);
+extern void mdlSetEffectColorSub(mdlObj_t *aHandle, mdlEffectResrc_t *aEffect, u32 aColor);
+extern void mdlSetEffectScaleSub(mdlObj_t *aHandle, mdlEffectResrc_t *aEffect, f32 aScale);
 extern void ToMatrix(void);
 
-void mdlUnRegist(s32 group, s32 type);
-void mdlUnRegistResrc(mdlResrc_t *groupNode);
-void mdlFree(mdlObj_t *ctx);
-void mdlFreeMotion(mdlObj_t *ctx, s32 searchId);
-void mdlUnRegistResrcMotion(mdlResrc_t *owner, s32 searchId);
-void mdlRegistMotion(s32 group, s32 id, u32 mode, s32 motionIndex, s32 searchId, s32 slotIndex,
-                     sdfMotionPlayBook_t *data, sdfMemHandle_t *resourceHandle);
-mdlResrc_t *mdlSearchResrc(s32 group, s32 type);
-void mdlMotion(mdlObj_t *ctx, s32 searchId, s32 motionIndex, s32 loop, f32 blendLeadFrames,
-               f32 blendDurationFrames);
-sdfMotionCtrlr_t *mdlGetMotionCtrlr(mdlObj_t *ctx, s32 searchId);
-void mdlSetEffectColor(mdlObj_t *ctx, u32 value);
+void mdlUnRegist(s32 aMajor, s32 aMinor);
+void mdlUnRegistResrc(mdlResrc_t *resrc_p);
+void mdlFree(mdlObj_t *aHandle);
+void mdlFreeMotion(mdlObj_t *aHandle, s32 aGroup);
+void mdlUnRegistResrcMotion(mdlResrc_t *aResrc, s32 aGroup);
+void mdlRegistMotion(s32 aMajor, s32 aMinor, u32 aFlags, s32 aFirstMotion, s32 aGroup, s32 aPlayGroup,
+                     sdfMotionPlayBook_t *aData, sdfMemHandle_t *aHandle);
+mdlResrc_t *mdlSearchResrc(s32 aMajor, s32 aMinor);
+void mdlMotion(mdlObj_t *aHandle, s32 aGroup, s32 aNumber, s32 aType, f32 aBeforeLeng,
+               f32 aSmoothLeng);
+sdfMotionCtrlr_t *mdlGetMotionCtrlr(mdlObj_t *aHandle, s32 aGroup);
+void mdlSetEffectColor(mdlObj_t *aHandle, u32 aColor);
 
 
 typedef struct fileRequest_t fileRequest_t;
 
-extern void *fileGetLoadPtr(fileRequest_t *request);
-extern sdfMemHandle_t *fileGetMemHandle(fileRequest_t *request);
-extern void fileHandleFree(fileRequest_t *request);
-extern sdfModelTexList_t *sdfTexSetTB(void *data);
-extern sdfModelDef_t *sdfFixupModelBinary(void *data);
-extern sdfMotionPlayBook_t *sdfFixupMotionBinary(void *data);
+extern void *fileGetLoadPtr(fileRequest_t *fileHandle);
+extern sdfMemHandle_t *fileGetMemHandle(fileRequest_t *fileHandle);
+extern void fileHandleFree(fileRequest_t *fileHandle);
+extern sdfModelTexList_t *sdfTexSetTB(void *aData);
+extern sdfModelDef_t *sdfFixupModelBinary(void *aData);
+extern sdfMotionPlayBook_t *sdfFixupMotionBinary(void *aData);
 
-void TbMbAbLoadEnd(mdlLoadRequest_t *request);
-void mdlFreeBlur(mdlObj_t *ctx);
+void TbMbAbLoadEnd(mdlLoadRequest_t *tmaCb);
+void mdlFreeBlur(mdlObj_t *aHandle);
 
 
 extern mdlResrc_t *mdlLoadPrepare(u32 group, u32 id);
-extern void mdlGenEffect(mdlObj_t *ctx, s32 a, s32 b);
-extern void mdlFreeEffect(mdlEffectResrc_t *item);
+extern void mdlGenEffect(mdlObj_t *aHandle, s32 aGroup, s32 aPlayGroup);
+extern void mdlFreeEffect(mdlEffectResrc_t *aCtrlr);
 
 
 typedef struct
@@ -121,30 +121,30 @@ typedef struct
 
 extern char *strcpy(char *dst, const char *src);
 extern void sdfTexListSetClutColor(sdfModelTexList_t *list, s32 a, s32 b, s32 c);
-extern void pacFileHandleFree_(void *request);
+extern void pacFileHandleFree_(void *pacHandle);
 
-s32 mdlPrepare(s32 group, s32 id, s32 blocking);
-void mdlFreeMotionCtrlr(mdlObj_t *ctx, sdfMotionCtrlr_t *node);
+s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode);
+void mdlFreeMotionCtrlr(mdlObj_t *aHandle, sdfMotionCtrlr_t *aCtrlr);
 
 
-extern void sdfPacInit(sdfPacState_t *state, sdfPacCallbackFunc callback);
-extern void sdfPacSetStay(sdfPacState_t *state);
-extern s32 sdfPacDecode(sdfPacState_t *state, const u8 *data, s32 size);
-extern void sdfPacFree(sdfPacState_t *state);
+extern void sdfPacInit(sdfPacState_t *cb, sdfPacCallbackFunc callback);
+extern void sdfPacSetStay(sdfPacState_t *cb);
+extern s32 sdfPacDecode(sdfPacState_t *cb, const u8 *data, s32 length);
+extern void sdfPacFree(sdfPacState_t *cb);
 
-sdfPacWork_t *mdlPackSet(sdfPacWork_t *work, s32 group, s32 id, s32 mode);
+sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags);
 
-extern filePacRequest_t *pacLoadEx(const char *path, s32 a, s32 b, void *callback, void *arg);
+extern filePacRequest_t *pacLoadEx(const char *filename, s32 headOrTail, s32 callback, void *pendCallback, void *callbackParm);
 extern void pacSync(filePacRequest_t *request);
 
-void mdlFileCbFree(mdlDoneJob_t *job);
+void mdlFileCbFree(mdlDoneJob_t *cb);
 
-extern void sdfMotionNext(sdfMotionCtrlr_t *ctrlr);
-extern void sdfModelEvalTm(sdfModelRootNode_t *root);
-extern void sdfModelLinkOt(void *surfaces, sdfModelRootNode_t *root);
+extern void sdfMotionNext(sdfMotionCtrlr_t *aCtrlr);
+extern void sdfModelEvalTm(sdfModelRootNode_t *aRoot);
+extern void sdfModelLinkOt(void *aOt, sdfModelRootNode_t *aRoot);
 extern void mdlLinkEffect(mdlObj_t *ctx, mdlEffectResrc_t *item);
 extern void mdlLinkBlur(mdlObj_t *ctx, sdfGrOt_t **surfaces);
-void mdlLoopMotion(mdlObj_t *ctx, s32 searchId, s32 motionIndex);
+void mdlLoopMotion(mdlObj_t *aHandle, s32 aGroup, s32 aNumber);
 
 typedef struct
 {
@@ -177,14 +177,14 @@ extern mdlFileSlot_t modelFileTable[];
 extern mdlFileKindSlot_t modelFileKindTable[];
 extern mdlFileKind_t *D_00551F04;
 extern mdlHddFile_t *mdlHddFileList;
-extern sdfMemHandle_t *sdfMemAllocDirect(u32 size);
-extern void *sdfMemLock(sdfMemHandle_t *handle);
+extern sdfMemHandle_t *sdfMemAllocDirect(u32 aSize);
+extern void *sdfMemLock(sdfMemHandle_t *aHandle);
 extern s32 strlen(const char *s);
 
 void mdlReleaseHddFileList(void);
 extern sdfMemHandle_t *D_0054F634;
 extern sdfMemHandle_t *D_0054F638;
-extern void sdfMemFreeHandleDirect(sdfMemHandle_t **handle);
+extern void sdfMemFreeHandleDirect(sdfMemHandle_t **aHandlePtr);
 
 typedef struct
 {
@@ -256,25 +256,25 @@ extern s32 sceDopen(const char *name);
 extern s32 sceDread(s32 handle, mdlDirectoryEntry_t *entry);
 extern s32 sceDclose(s32 handle);
 extern s32 memcmp(const void *first, const void *second, u32 size);
-extern void *memcpy(void *dst, const void *src, u32 size);
-extern void *memset(void *dst, s32 value, u32 size);
+extern void *memcpy(void *a, const void *b, u32 c);
+extern void *memset(void *a, s32 b, u32 c);
 extern char *strcat(char *dst, const char *src);
 extern char *strrchr(const char *text, s32 character);
 extern s32 strcasecmp(const char *first, const char *second);
 extern void sdfDummyFunc(void);
-extern fileRequest_t *fileLoadEx(const char *name, s32 mode, u32 callback, u32 context);
-extern void sdfModelCopyStat(sdfModelRootNode_t *dst, sdfModelRootNode_t *src);
-extern void sdfMotionChangeBlend(sdfMotionCtrlr_t *ctrlr, s32 motion, s32 loop, f32 lead, f32 duration);
-extern void mdlStopEffect(mdlObj_t *ctx, s32 slot);
+extern fileRequest_t *fileLoadEx(const char *filename, s32 headOrTail, u32 endCallback, u32 callbackParm);
+extern void sdfModelCopyStat(sdfModelRootNode_t *aDstRoot, sdfModelRootNode_t *aSrcRoot);
+extern void sdfMotionChangeBlend(sdfMotionCtrlr_t *aCtrlr, s32 aCutNum, s32 aType, f32 aPreFrame, f32 aBlendLeng);
+extern void mdlStopEffect(mdlObj_t *aHandle, s32 aPlayGroup);
 extern s32 mdlPibGetEffectCount(mdlPibRecord_t *record);
 extern s32 mdlPibGetMotionCount(mdlPibRecord_t *record);
 extern s32 mdlPibGetVersion(mdlPibRecord_t *record);
-extern sdfPacWork_t *sdfPacFreeResrc(sdfPacWork_t *work);
+extern sdfPacWork_t *sdfPacFreeResrc(sdfPacWork_t *resrc);
 extern sdfMatrix4_t D_002FA240;
 extern sdf3DScreenParam_t dds3ScreenParam;
-extern void MultMatrixRev(sdfMatrix4_t *matrix);
+extern void MultMatrixRev(sdfMatrix4_t *aMatrix);
 extern void MultMatrixRevNoArg(void);
-s32 mdlFileLoad(s32 group, s32 id, s32 arg, const char *path, void (*onComplete)(u32), u32 callbackArg);
+s32 mdlFileLoad(s32 major, s32 minor, s32 regFlags, const char *filename, void (*callback)(u32), u32 parm);
 
 #define MDL_CHAR_IS_LOWER(c) ((D_0054B550 + 1)[(unsigned)(c)] & 2)
 
@@ -309,14 +309,14 @@ void mdlInitManager(void)
     }
 }
 
-mdlResrc_t *mdlSearchResrc(s32 group, s32 type)
+mdlResrc_t *mdlSearchResrc(s32 aMajor, s32 aMinor)
 {
     mdlResrc_t *entry;
 
-    entry = mdlResrcMajorList[group];
+    entry = mdlResrcMajorList[aMajor];
     while (entry != NULL)
     {
-        if (entry->type == type)
+        if (entry->type == aMinor)
         {
             break;
         }
@@ -325,14 +325,14 @@ mdlResrc_t *mdlSearchResrc(s32 group, s32 type)
     return entry;
 }
 
-s32 mdlCheckLoading(s32 groupIndex, s32 wantedId)
+s32 mdlCheckLoading(s32 aMajor, s32 aMinor)
 {
     mdlLoadingEntry_t *cursor;
 
-    cursor = mdlLoadingMajorList[groupIndex];
+    cursor = mdlLoadingMajorList[aMajor];
     while (cursor != NULL)
     {
-        if (cursor->id == wantedId)
+        if (cursor->id == aMinor)
         {
             return 1;
         }
@@ -341,24 +341,24 @@ s32 mdlCheckLoading(s32 groupIndex, s32 wantedId)
     return 0;
 }
 
-void mdlRegLoading(s32 groupIndex, s32 newId)
+void mdlRegLoading(s32 aMajor, s32 aMinor)
 {
     mdlLoadingEntry_t *entry;
     mdlLoadingEntry_t **head;
 
     entry = sdfChipAllocDirect(sizeof(mdlLoadingEntry_t));
-    head = &mdlLoadingMajorList[groupIndex];
-    entry->id = newId;
+    head = &mdlLoadingMajorList[aMajor];
+    entry->id = aMinor;
     entry->next = *head;
     *head = entry;
 }
 
-void mdlUnRegLoading(s32 groupIndex, s32 wantedId)
+void mdlUnRegLoading(s32 aMajor, s32 aMinor)
 {
     mdlLoadingEntry_t **link;
     mdlLoadingEntry_t *cursor;
 
-    link = &mdlLoadingMajorList[groupIndex];
+    link = &mdlLoadingMajorList[aMajor];
     cursor = *link;
     if (cursor == NULL)
     {
@@ -366,7 +366,7 @@ void mdlUnRegLoading(s32 groupIndex, s32 wantedId)
     }
     do
     {
-        if (cursor->id == wantedId)
+        if (cursor->id == aMinor)
         {
             *link = cursor->next;
             sdfChipFreeDirect(cursor);
@@ -380,28 +380,28 @@ void mdlUnRegLoading(s32 groupIndex, s32 wantedId)
     } while (cursor != NULL);
 }
 
-void mdlRegist(s32 groupIndex, s32 entityType, s32 ownershipFlags,
-               sdfModelTexList_t *resourceList, sdfModelDef_t *itemList,
-               sdfMemHandle_t *requestAllocation)
+void mdlRegist(s32 aMajor, s32 aMinor, s32 aFlag,
+               sdfModelTexList_t *aTexList, sdfModelDef_t *aData,
+               sdfMemHandle_t *aHandle)
 {
     mdlResrc_t *groupNode;
     mdlResrc_t *previousHead;
     s32 slotIndex;
 
-    mdlUnRegist(groupIndex, entityType);
+    mdlUnRegist(aMajor, aMinor);
     groupNode = sdfChipAllocDirect(sizeof(mdlResrc_t));
-    previousHead = mdlResrcMajorList[groupIndex];
+    previousHead = mdlResrcMajorList[aMajor];
     if (previousHead != NULL)
     {
         previousHead->prev = groupNode;
     }
-    mdlResrcMajorList[groupIndex] = groupNode;
+    mdlResrcMajorList[aMajor] = groupNode;
     groupNode->next = previousHead;
-    groupNode->group = groupIndex;
-    groupNode->type = entityType;
-    groupNode->resourceList = resourceList;
-    groupNode->itemList = itemList;
-    groupNode->requestAllocation = requestAllocation;
+    groupNode->group = aMajor;
+    groupNode->type = aMinor;
+    groupNode->resourceList = aTexList;
+    groupNode->itemList = aData;
+    groupNode->requestAllocation = aHandle;
     groupNode->prev = NULL;
     groupNode->modelContext = NULL;
     for (slotIndex = 0; slotIndex != MDL_SLOT_COUNT; slotIndex++)
@@ -410,7 +410,7 @@ void mdlRegist(s32 groupIndex, s32 entityType, s32 ownershipFlags,
         groupNode->slots[slotIndex].motionTable = NULL;
         groupNode->slots[slotIndex].resourceHandle = NULL;
     }
-    groupNode->ownsResources = ownershipFlags & 1;
+    groupNode->ownsResources = aFlag & 1;
     groupNode->resourceHandle = NULL;
     groupNode->partInfo = NULL;
     groupNode->partList = NULL;
@@ -418,22 +418,22 @@ void mdlRegist(s32 groupIndex, s32 entityType, s32 ownershipFlags,
     groupNode->objectRadius = 100.0f;
 }
 
-void mdlUnRegistResrc(mdlResrc_t *groupNode)
+void mdlUnRegistResrc(mdlResrc_t *resrc_p)
 {
     mdlResrc_t *previousNode;
     mdlResrc_t *nextNode;
     u8 ownsResources;
     s32 slotIndex;
 
-    if (groupNode == NULL)
+    if (resrc_p == NULL)
     {
         return;
     }
-    previousNode = groupNode->prev;
-    nextNode = groupNode->next;
+    previousNode = resrc_p->prev;
+    nextNode = resrc_p->next;
     if (previousNode == NULL)
     {
-        mdlResrcMajorList[groupNode->group] = nextNode;
+        mdlResrcMajorList[resrc_p->group] = nextNode;
     }
     else
     {
@@ -443,35 +443,35 @@ void mdlUnRegistResrc(mdlResrc_t *groupNode)
     {
         nextNode->prev = previousNode;
     }
-    ownsResources = groupNode->ownsResources;
-    groupNode->ownsResources = 0;
-    if (groupNode->modelContext != NULL)
+    ownsResources = resrc_p->ownsResources;
+    resrc_p->ownsResources = 0;
+    if (resrc_p->modelContext != NULL)
     {
         do
         {
-            mdlFree(groupNode->modelContext);
-        } while (groupNode->modelContext != NULL);
+            mdlFree(resrc_p->modelContext);
+        } while (resrc_p->modelContext != NULL);
     }
     if (ownsResources != 0)
     {
-        sdfTexListFree(groupNode->resourceList, 1);
-        sdfMemFreeDelayedDirect(groupNode->requestAllocation);
+        sdfTexListFree(resrc_p->resourceList, 1);
+        sdfMemFreeDelayedDirect(resrc_p->requestAllocation);
         for (slotIndex = 0; slotIndex != MDL_SLOT_COUNT; slotIndex++)
         {
-            if (groupNode->slots[slotIndex].resourceHandle != NULL)
+            if (resrc_p->slots[slotIndex].resourceHandle != NULL)
             {
-                sdfMemFreeDirect(groupNode->slots[slotIndex].resourceHandle);
+                sdfMemFreeDirect(resrc_p->slots[slotIndex].resourceHandle);
             }
         }
     }
-    mdlEffectResrcListFree(groupNode->partList);
-    sdfMemFreeDirect(groupNode->resourceHandle);
-    sdfChipFreeDirect(groupNode);
+    mdlEffectResrcListFree(resrc_p->partList);
+    sdfMemFreeDirect(resrc_p->resourceHandle);
+    sdfChipFreeDirect(resrc_p);
 }
 
-void mdlUnRegist(s32 group, s32 type)
+void mdlUnRegist(s32 aMajor, s32 aMinor)
 {
-    mdlUnRegistResrc(mdlSearchResrc(group, type));
+    mdlUnRegistResrc(mdlSearchResrc(aMajor, aMinor));
 }
 
 void mdlUnRegistAll(void)
@@ -497,172 +497,172 @@ void mdlUnRegistAll(void)
     } while (groupIndex < MDL_GROUP_COUNT);
 }
 
-sdfMotionCtrlr_t *mdlCreateMotion(mdlObj_t *owner, s32 searchId)
+sdfMotionCtrlr_t *mdlCreateMotion(mdlObj_t *aHandle, s32 aGroup)
 {
     sdfMotionPlayBook_t *motionTable;
     s16 motionSlotIndex;
     sdfMotionCtrlr_t *object;
 
-    motionTable = owner->sub->slots[searchId].motionTable;
-    motionSlotIndex = owner->sub->slots[searchId].motionSlotIndex;
-    object = sdfMotionCtrlrNew(owner->inner, motionTable);
-    object->userId = searchId;
-    owner->slots[motionSlotIndex] = object;
+    motionTable = aHandle->sub->slots[aGroup].motionTable;
+    motionSlotIndex = aHandle->sub->slots[aGroup].motionSlotIndex;
+    object = sdfMotionCtrlrNew(aHandle->inner, motionTable);
+    object->userId = aGroup;
+    aHandle->slots[motionSlotIndex] = object;
     object->userId2 = motionSlotIndex;
     if (motionSlotIndex == 0)
     {
-        owner->first = object;
+        aHandle->first = object;
     }
     return object;
 }
 
-void mdlFreeMotionCtrlr(mdlObj_t *ctx, sdfMotionCtrlr_t *node)
+void mdlFreeMotionCtrlr(mdlObj_t *aHandle, sdfMotionCtrlr_t *aCtrlr)
 {
-    if (ctx->slots[node->userId2] == node)
+    if (aHandle->slots[aCtrlr->userId2] == aCtrlr)
     {
-        ctx->slots[node->userId2] = NULL;
+        aHandle->slots[aCtrlr->userId2] = NULL;
     }
-    sdfMotionCtrlrFree(node);
+    sdfMotionCtrlrFree(aCtrlr);
 }
 
-void mdlFreeMotion(mdlObj_t *ctx, s32 searchId) {
-    sdfMotionCtrlr_t *node = ctx->inner->motion;
+void mdlFreeMotion(mdlObj_t *aHandle, s32 aGroup) {
+    sdfMotionCtrlr_t *node = aHandle->inner->motion;
 
     while (node != NULL) {
-        if (node->userId == searchId) {
-            mdlFreeMotionCtrlr(ctx, node);
+        if (node->userId == aGroup) {
+            mdlFreeMotionCtrlr(aHandle, node);
             break;
         }
         node = node->next;
     }
 }
 
-void mdlUnRegistResrcMotion(mdlResrc_t *owner, s32 searchId)
+void mdlUnRegistResrcMotion(mdlResrc_t *aResrc, s32 aGroup)
 {
     mdlObj_t *ctx;
 
-    if (owner != NULL)
+    if (aResrc != NULL)
     {
-        if (owner->slots[searchId].motionTable == NULL)
+        if (aResrc->slots[aGroup].motionTable == NULL)
         {
             return;
         }
-        for (ctx = owner->modelContext; ctx != NULL; ctx = ctx->next)
+        for (ctx = aResrc->modelContext; ctx != NULL; ctx = ctx->next)
         {
-            mdlFreeMotion(ctx, searchId);
+            mdlFreeMotion(ctx, aGroup);
         }
-        if (owner->ownsResources != 0)
+        if (aResrc->ownsResources != 0)
         {
-            if (owner->slots[searchId].resourceHandle != NULL)
+            if (aResrc->slots[aGroup].resourceHandle != NULL)
             {
-                sdfMemFreeDirect(owner->slots[searchId].resourceHandle);
+                sdfMemFreeDirect(aResrc->slots[aGroup].resourceHandle);
             }
         }
-        owner->slots[searchId].motionTable = NULL;
-        owner->slots[searchId].resourceHandle = NULL;
+        aResrc->slots[aGroup].motionTable = NULL;
+        aResrc->slots[aGroup].resourceHandle = NULL;
     }
 }
 
-void mdlUnRegistMotion(s32 group, s32 id, s32 searchId)
+void mdlUnRegistMotion(s32 aMajor, s32 aMinor, s32 aGroup)
 {
     mdlResrc_t *entity;
 
-    entity = mdlSearchResrc(group, id);
-    mdlUnRegistResrcMotion(entity, searchId);
+    entity = mdlSearchResrc(aMajor, aMinor);
+    mdlUnRegistResrcMotion(entity, aGroup);
 }
 
-void mdlRegistMotion(s32 group, s32 id, u32 mode, s32 motionIndex, s32 searchId, s32 slotIndex,
-                     sdfMotionPlayBook_t *data, sdfMemHandle_t *resourceHandle)
+void mdlRegistMotion(s32 aMajor, s32 aMinor, u32 aFlags, s32 aFirstMotion, s32 aGroup, s32 aPlayGroup,
+                     sdfMotionPlayBook_t *aData, sdfMemHandle_t *aHandle)
 {
     mdlResrc_t *owner;
     mdlResrcSlot_t *slot;
 
-    owner = mdlSearchResrc(group, id);
-    mdlUnRegistResrcMotion(owner, searchId);
-    slot = &owner->slots[searchId];
-    slot->motionSlotIndex = slotIndex;
-    slot->motionIndex = motionIndex;
-    slot->motionTable = data;
-    slot->resourceHandle = resourceHandle;
+    owner = mdlSearchResrc(aMajor, aMinor);
+    mdlUnRegistResrcMotion(owner, aGroup);
+    slot = &owner->slots[aGroup];
+    slot->motionSlotIndex = aPlayGroup;
+    slot->motionIndex = aFirstMotion;
+    slot->motionTable = aData;
+    slot->resourceHandle = aHandle;
     slot->flags = 0;
-    if (mode & 0x100)
+    if (aFlags & 0x100)
     {
         slot->flags = 1;
     }
-    if (mode & 0x200)
+    if (aFlags & 0x200)
     {
         slot->flags |= 2;
     }
 }
 
-void mdlRegistModelSet(s32 group, s32 id, s32 mode, mdlLoadPayload_t *setup)
+void mdlRegistModelSet(s32 aMajor, s32 aMinor, s32 aFlag, mdlLoadPayload_t *aSet)
 {
     mdlResrc_t *entity;
 
-    mdlRegist(group, id, mode, setup->resourceList, setup->itemList, setup->requestAllocation);
-    if (setup->motionTable != NULL)
+    mdlRegist(aMajor, aMinor, aFlag, aSet->resourceList, aSet->itemList, aSet->requestAllocation);
+    if (aSet->motionTable != NULL)
     {
-        mdlRegistMotion(group, id, mode, 0, 0, 0, setup->motionTable, setup->motionResource);
+        mdlRegistMotion(aMajor, aMinor, aFlag, 0, 0, 0, aSet->motionTable, aSet->motionResource);
     }
-    if (setup->partInfo != NULL)
+    if (aSet->partInfo != NULL)
     {
-        entity = mdlSearchResrc(group, id);
-        entity->partInfo = setup->partInfo;
-        entity->resourceHandle = setup->resourceHandle;
-        entity->partList = setup->partList;
+        entity = mdlSearchResrc(aMajor, aMinor);
+        entity->partInfo = aSet->partInfo;
+        entity->resourceHandle = aSet->resourceHandle;
+        entity->partList = aSet->partList;
     }
 }
 
-mdlResrc_t *mdlWaitLoadEnd(s32 group, s32 id)
+mdlResrc_t *mdlWaitLoadEnd(s32 aMajor, s32 aMinor)
 {
-    while (mdlCheckLoading(group, id))
+    while (mdlCheckLoading(aMajor, aMinor))
     {
         fileManager();
     }
-    return mdlSearchResrc(group, id);
+    return mdlSearchResrc(aMajor, aMinor);
 }
 
-void TbMbAbLoadEnd(mdlLoadRequest_t *request)
+void TbMbAbLoadEnd(mdlLoadRequest_t *tmaCb)
 {
-    mdlRegistModelSet(request->group, request->id, request->options, &request->payload);
+    mdlRegistModelSet(tmaCb->group, tmaCb->id, tmaCb->options, &tmaCb->payload);
     WaitSema(mdlManagerWork);
-    mdlUnRegLoading(request->group, request->id);
+    mdlUnRegLoading(tmaCb->group, tmaCb->id);
     SignalSema(mdlManagerWork);
-    sdfChipFreeDirect(request);
+    sdfChipFreeDirect(tmaCb);
 }
 
-void TbLoadCallback(fileRequest_t *request, mdlLoadRequest_t *destination)
+void TbLoadCallback(fileRequest_t *fileHandle, mdlLoadRequest_t *parm)
 {
-    destination->payload.resourceList = sdfTexSetTB(fileGetLoadPtr(request));
-    sdfMemFreeDirect(fileGetMemHandle(request));
-    fileHandleFree(request);
+    parm->payload.resourceList = sdfTexSetTB(fileGetLoadPtr(fileHandle));
+    sdfMemFreeDirect(fileGetMemHandle(fileHandle));
+    fileHandleFree(fileHandle);
 }
 
-void MbLoadCallback(fileRequest_t *request, mdlLoadRequest_t *destination)
+void MbLoadCallback(fileRequest_t *fileHandle, mdlLoadRequest_t *parm)
 {
-    destination->payload.requestAllocation = fileGetMemHandle(request);
-    destination->payload.itemList = sdfFixupModelBinary(fileGetLoadPtr(request));
-    fileHandleFree(request);
-    if (destination->deferred == 0)
+    parm->payload.requestAllocation = fileGetMemHandle(fileHandle);
+    parm->payload.itemList = sdfFixupModelBinary(fileGetLoadPtr(fileHandle));
+    fileHandleFree(fileHandle);
+    if (parm->deferred == 0)
     {
-        TbMbAbLoadEnd(destination);
+        TbMbAbLoadEnd(parm);
     }
 }
 
-void AbLoadCallback(fileRequest_t *request, mdlLoadRequest_t *destination)
+void AbLoadCallback(fileRequest_t *fileHandle, mdlLoadRequest_t *parm)
 {
-    destination->payload.motionResource = fileGetMemHandle(request);
-    destination->payload.motionTable = sdfFixupMotionBinary(fileGetLoadPtr(request));
-    fileHandleFree(request);
-    TbMbAbLoadEnd(destination);
+    parm->payload.motionResource = fileGetMemHandle(fileHandle);
+    parm->payload.motionTable = sdfFixupMotionBinary(fileGetLoadPtr(fileHandle));
+    fileHandleFree(fileHandle);
+    TbMbAbLoadEnd(parm);
 }
 
-char *mdlSetFileName(char *dst, const char *src) {
-    *(mdlPathPrefix_t *)dst = *(mdlPathPrefix_t *)D_0054F628;
-    return strcat(dst, src);
+char *mdlSetFileName(char *buff, const char *fname) {
+    *(mdlPathPrefix_t *)buff = *(mdlPathPrefix_t *)D_0054F628;
+    return strcat(buff, fname);
 }
 
-s32 mdlPrepare(s32 group, s32 id, s32 blocking) {
+s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
     char requestPath[0x80];
     mdlResrc_t *entity;
     mdlFileKind_t *selection;
@@ -672,37 +672,37 @@ s32 mdlPrepare(s32 group, s32 id, s32 blocking) {
     s32 packedBundle;
 
     WaitSema(mdlManagerWork);
-    entity = mdlSearchResrc(group, id);
+    entity = mdlSearchResrc(aMajor, aMinor);
     if (entity != NULL) {
         SignalSema(mdlManagerWork);
         return (s32)entity;
     }
-    if (mdlCheckLoading(group, id)) {
+    if (mdlCheckLoading(aMajor, aMinor)) {
         SignalSema(mdlManagerWork);
-        if (blocking != 0) {
-            return (s32)mdlWaitLoadEnd(group, id);
+        if (aBlockMode != 0) {
+            return (s32)mdlWaitLoadEnd(aMajor, aMinor);
         }
         return -1;
     }
-    selection = (mdlFileKind_t *)modelFileKindTable[group].entries;
-    selection += id;
+    selection = (mdlFileKind_t *)modelFileKindTable[aMajor].entries;
+    selection += aMinor;
     paths = &((mdlHddFile_t *)modelFileTable[selection->kind].entries)[selection->index];
     packedBundle = 0;
     extension = strrchr(paths->mbName, '.');
     if (extension != NULL) {
         packedBundle = strcasecmp(extension, D_0054F630) == 0;
     }
-    mdlRegLoading(group, id);
+    mdlRegLoading(aMajor, aMinor);
     SignalSema(mdlManagerWork);
     if (packedBundle != 0) {
         mdlSetFileName(requestPath, paths->mbName);
-        mdlFileLoad(group, id, 0x101, requestPath,
+        mdlFileLoad(aMajor, aMinor, 0x101, requestPath,
                                   (void (*)(u32))sdfDummyFunc, 0);
     } else {
         request = sdfChipAllocZeroDirect(sizeof(*request));
         request->options = 0x101;
-        request->group = group;
-        request->id = id;
+        request->group = aMajor;
+        request->id = aMinor;
         if (paths->abName != NULL) {
             request->deferred = 1;
         }
@@ -719,8 +719,8 @@ s32 mdlPrepare(s32 group, s32 id, s32 blocking) {
             fileLoadEx(requestPath, 0, (u32)AbLoadCallback, (u32)request);
         }
     }
-    if (blocking != 0) {
-        return (s32)mdlWaitLoadEnd(group, id);
+    if (aBlockMode != 0) {
+        return (s32)mdlWaitLoadEnd(aMajor, aMinor);
     }
     return 0;
 }
@@ -730,14 +730,14 @@ mdlResrc_t *mdlLoadPrepare(u32 group, u32 id)
     return (mdlResrc_t *)mdlPrepare(group, id, 1);
 }
 
-void mdlUnlinkResrc(mdlObj_t *ctx)
+void mdlUnlinkResrc(mdlObj_t *aHandle)
 {
     mdlObj_t *nextContext;
     mdlObj_t *previousContext;
     mdlResrc_t *group;
 
-    nextContext = ctx->next;
-    previousContext = ctx->prev;
+    nextContext = aHandle->next;
+    previousContext = aHandle->prev;
     if (nextContext != NULL)
     {
         nextContext->prev = previousContext;
@@ -748,7 +748,7 @@ void mdlUnlinkResrc(mdlObj_t *ctx)
     }
     else
     {
-        group = ctx->sub;
+        group = aHandle->sub;
         if (nextContext != NULL)
         {
             group->modelContext = nextContext;
@@ -764,30 +764,30 @@ void mdlUnlinkResrc(mdlObj_t *ctx)
     }
 }
 
-void mdlSetBlur(mdlObj_t *ctx, s32 stride, s32 capacity,
-                         u32 endColor, u32 startColor) {
+void mdlSetBlur(mdlObj_t *aHandle, s32 interval, s32 count,
+                         u32 startColor, u32 endColor) {
     mdlDevList_t *deviceList;
     f32 inverseSpan;
     /* Both retail versions home the packed colors 16 bytes apart. */
     u32 startCarrier[4];
     u32 endCarrier[4];
 
-    mdlFreeBlur(ctx);
-    if (capacity > 0) {
+    mdlFreeBlur(aHandle);
+    if (count > 0) {
         deviceList = sdfChipAllocZeroDirect(sizeof(mdlDevList_t));
         deviceList->growStep = 1;
-        ctx->devList = deviceList;
-        deviceList->usedCount = capacity;
-        deviceList->capacity = capacity;
-        deviceList->stride = stride;
+        aHandle->devList = deviceList;
+        deviceList->usedCount = count;
+        deviceList->capacity = count;
+        deviceList->stride = interval;
         /* Final argument use: see docs/idioms.md, "Final argument use: mdlSetBlur". */
-        deviceList->byteCount = capacity * stride;
+        deviceList->byteCount = count * interval;
         inverseSpan = 1.0f / deviceList->byteCount;
-        startCarrier[0] = startColor;
+        startCarrier[0] = endColor;
         EE_MMI_RGBA_UNPACK(startCarrier, 0.0078125f);
         SDF_VU0_STOREVECTOR(deviceList->color);
         SDF_VU0_COPYVECTOR_A_TO_B_EXTENDED();
-        endCarrier[0] = endColor;
+        endCarrier[0] = startColor;
         EE_MMI_RGBA_UNPACK(endCarrier, 0.0078125f);
         SDF_VU0_SUBVECTOR_EXTENDED();
         SDF_VU0_SCALEVECTOR_V0(inverseSpan);
@@ -795,13 +795,13 @@ void mdlSetBlur(mdlObj_t *ctx, s32 stride, s32 capacity,
     }
 }
 
-void mdlFreeBlur(mdlObj_t *ctx)
+void mdlFreeBlur(mdlObj_t *aHandle)
 {
     mdlDevList_t *list;
     mdlDevSlot_t *slot;
     mdlDevSlot_t *next;
 
-    list = ctx->devList;
+    list = aHandle->devList;
     if (list == NULL)
     {
         return;
@@ -815,7 +815,7 @@ void mdlFreeBlur(mdlObj_t *ctx)
         sdfChipFreeDirect(slot);
     }
     sdfChipFreeDirect(list);
-    ctx->devList = NULL;
+    aHandle->devList = NULL;
 }
 
 void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
@@ -864,7 +864,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
     }
 }
 
-mdlObj_t *mdlLoad(u32 group, u32 id)
+mdlObj_t *mdlLoad(u32 aMajor, u32 aMinor)
 {
     mdlResrc_t *node;
     mdlObj_t *ctx;
@@ -874,7 +874,7 @@ mdlObj_t *mdlLoad(u32 group, u32 id)
     f32 scale[4];
     s32 searchId;
 
-    node = mdlLoadPrepare(group, id);
+    node = mdlLoadPrepare(aMajor, aMinor);
     ctx = sdfChipAllocZeroDirect(sizeof(mdlObj_t));
     ctx->sub = node;
     head = node->modelContext;
@@ -914,37 +914,37 @@ mdlObj_t *mdlLoad(u32 group, u32 id)
     return ctx;
 }
 
-void mdlFree(mdlObj_t *ctx)
+void mdlFree(mdlObj_t *aHandle)
 {
     sdfModelRootNode_t *inner;
     mdlEffectResrc_t *item;
     mdlEffectResrc_t *next;
 
-    inner = ctx->inner;
+    inner = aHandle->inner;
     while (inner->motion != NULL)
     {
         sdfMotionCtrlrFree(inner->motion);
     }
     sdfTexListFree(inner->texList, 1);
-    for (item = ctx->resourceItems; item != NULL; item = next)
+    for (item = aHandle->resourceItems; item != NULL; item = next)
     {
         next = item->next;
         mdlFreeEffect(item);
     }
-    mdlFreeBlur(ctx);
+    mdlFreeBlur(aHandle);
     sdfModelRootFree(inner, 1, 1);
-    mdlUnlinkResrc(ctx);
-    sdfChipFreeDirect(ctx);
+    mdlUnlinkResrc(aHandle);
+    sdfChipFreeDirect(aHandle);
 }
 
-void mdlLink(mdlObj_t *ctx, void *surfaces)
+void mdlLink(mdlObj_t *aHandle, void *aModelOt)
 {
     sdfMotionCtrlr_t **slot;
     sdfModelRootNode_t *inner;
     mdlEffectResrc_t *item;
     s32 i;
 
-    slot = ctx->slots;
+    slot = aHandle->slots;
     for (i = 0; i != 4; i++)
     {
         if (*slot != NULL)
@@ -956,102 +956,102 @@ void mdlLink(mdlObj_t *ctx, void *surfaces)
         }
         slot++;
     }
-    if (ctx->flags & 1)
+    if (aHandle->flags & 1)
     {
         return;
     }
-    inner = ctx->inner;
+    inner = aHandle->inner;
     sdfModelEvalTm(inner);
-    sdfModelLinkOt(surfaces, inner);
-    if (ctx->flags & 2)
+    sdfModelLinkOt(aModelOt, inner);
+    if (aHandle->flags & 2)
     {
         return;
     }
-    if (ctx->flags & 4)
+    if (aHandle->flags & 4)
     {
         if ((inner->flags & 0x10) == 0)
         {
             return;
         }
     }
-    for (item = ctx->resourceItems; item != NULL; item = item->next)
+    for (item = aHandle->resourceItems; item != NULL; item = item->next)
     {
-        mdlLinkEffect(ctx, item);
+        mdlLinkEffect(aHandle, item);
     }
-    if (ctx->devList == NULL)
+    if (aHandle->devList == NULL)
     {
         return;
     }
-    mdlLinkBlur(ctx, surfaces);
+    mdlLinkBlur(aHandle, aModelOt);
 }
 
-void mdlHideAllNode(mdlObj_t *ctx)
+void mdlHideAllNode(mdlObj_t *aHandle)
 {
     sdfModelNode_t **items;
     s32 count;
     s32 i;
 
-    count = ctx->inner->nodeList->count;
-    items = ctx->inner->nodeList->items;
+    count = aHandle->inner->nodeList->count;
+    items = aHandle->inner->nodeList->items;
     for (i = 0; i < count; i++) {
         items[i]->flags = 1;
     }
 }
 
-void mdlMotion(mdlObj_t *ctx, s32 searchId, s32 motionIndex, s32 loopEnabled,
-                                     f32 blendLeadFrames, f32 blendDurationFrames) {
+void mdlMotion(mdlObj_t *aHandle, s32 aGroup, s32 aNumber, s32 aType,
+                                     f32 aBeforeLeng, f32 aSmoothLeng) {
     sdfMotionCtrlr_t *node;
     s16 slotIndex;
 
-    for (node = ctx->inner->motion; node != NULL; node = node->next) {
-        if (node->userId == searchId) {
+    for (node = aHandle->inner->motion; node != NULL; node = node->next) {
+        if (node->userId == aGroup) {
             break;
         }
     }
     if (node == NULL) {
-        node = mdlCreateMotion(ctx, searchId);
+        node = mdlCreateMotion(aHandle, aGroup);
     }
     slotIndex = node->userId2;
-    ctx->slots[slotIndex] = node;
+    aHandle->slots[slotIndex] = node;
     if (slotIndex == 0) {
-        ctx->first = node;
+        aHandle->first = node;
     }
-    sdfMotionChangeBlend(node, motionIndex, loopEnabled, blendLeadFrames, blendDurationFrames);
-    ctx->current.h.id = searchId;
-    ctx->current.h.motionIndex = motionIndex;
-    mdlStopEffect(ctx, slotIndex);
-    mdlGenEffect(ctx, motionIndex, slotIndex);
+    sdfMotionChangeBlend(node, aNumber, aType, aBeforeLeng, aSmoothLeng);
+    aHandle->current.h.id = aGroup;
+    aHandle->current.h.motionIndex = aNumber;
+    mdlStopEffect(aHandle, slotIndex);
+    mdlGenEffect(aHandle, aNumber, slotIndex);
 }
 
-void mdlLoopMotion(mdlObj_t *ctx, s32 searchId, s32 motionIndex)
+void mdlLoopMotion(mdlObj_t *aHandle, s32 aGroup, s32 aNumber)
 {
-    mdlMotion(ctx, searchId, motionIndex, 1, 0.0f, 0.0f);
+    mdlMotion(aHandle, aGroup, aNumber, 1, 0.0f, 0.0f);
 }
 
-void mdlSingleMotion(mdlObj_t *ctx, s32 searchId, s32 motionIndex)
+void mdlSingleMotion(mdlObj_t *aHandle, s32 aGroup, s32 aNumber)
 {
-    mdlMotion(ctx, searchId, motionIndex, 0, 0.0f, 0.0f);
+    mdlMotion(aHandle, aGroup, aNumber, 0, 0.0f, 0.0f);
 }
 
-void mdlSmoothLoopMotion(mdlObj_t *ctx, s32 searchId, s32 motionIndex, f32 blendLeadFrames,
-                         f32 blendDurationFrames)
+void mdlSmoothLoopMotion(mdlObj_t *aHandle, s32 aGroup, s32 aNumber, f32 aBeforeLeng,
+                         f32 aSmoothLeng)
 {
-    mdlMotion(ctx, searchId, motionIndex, 1, blendLeadFrames, blendDurationFrames);
+    mdlMotion(aHandle, aGroup, aNumber, 1, aBeforeLeng, aSmoothLeng);
 }
 
-void mdlSmoothSingleMotion(mdlObj_t *ctx, s32 searchId, s32 motionIndex, f32 blendLeadFrames,
-                           f32 blendDurationFrames)
+void mdlSmoothSingleMotion(mdlObj_t *aHandle, s32 aGroup, s32 aNumber, f32 aBeforeLeng,
+                           f32 aSmoothLeng)
 {
-    mdlMotion(ctx, searchId, motionIndex, 0, blendLeadFrames, blendDurationFrames);
+    mdlMotion(aHandle, aGroup, aNumber, 0, aBeforeLeng, aSmoothLeng);
 }
 
-sdfMotionCtrlr_t *mdlGetMotionCtrlr(mdlObj_t *ctx, s32 searchId)
+sdfMotionCtrlr_t *mdlGetMotionCtrlr(mdlObj_t *aHandle, s32 aGroup)
 {
     sdfMotionCtrlr_t *node;
 
-    for (node = ctx->inner->motion; node != NULL; node = node->next)
+    for (node = aHandle->inner->motion; node != NULL; node = node->next)
     {
-        if (node->userId == searchId)
+        if (node->userId == aGroup)
         {
             return node;
         }
@@ -1059,11 +1059,11 @@ sdfMotionCtrlr_t *mdlGetMotionCtrlr(mdlObj_t *ctx, s32 searchId)
     return NULL;
 }
 
-s32 mdlGetMotionNum(mdlObj_t *ctx, s32 searchId)
+s32 mdlGetMotionNum(mdlObj_t *aHandle, s32 aGroup)
 {
     sdfMotionCtrlr_t *matched;
 
-    matched = mdlGetMotionCtrlr(ctx, searchId);
+    matched = mdlGetMotionCtrlr(aHandle, aGroup);
     if (matched == NULL)
     {
         return -1;
@@ -1071,11 +1071,11 @@ s32 mdlGetMotionNum(mdlObj_t *ctx, s32 searchId)
     return matched->cutNumber;
 }
 
-u16 mdlGetMotionLengthEx(mdlObj_t *ctx, s32 searchId)
+u16 mdlGetMotionLengthEx(mdlObj_t *aHandle, s32 aGroup)
 {
     sdfMotionCtrlr_t *matched;
 
-    matched = mdlGetMotionCtrlr(ctx, searchId);
+    matched = mdlGetMotionCtrlr(aHandle, aGroup);
     if (matched == NULL)
     {
         return 0;
@@ -1083,11 +1083,11 @@ u16 mdlGetMotionLengthEx(mdlObj_t *ctx, s32 searchId)
     return matched->frameLength;
 }
 
-s32 mdlGetMotionFrameEx(mdlObj_t *ctx, s32 searchId)
+s32 mdlGetMotionFrameEx(mdlObj_t *aHandle, s32 aGroup)
 {
     sdfMotionCtrlr_t *matched;
 
-    matched = mdlGetMotionCtrlr(ctx, searchId);
+    matched = mdlGetMotionCtrlr(aHandle, aGroup);
     if (matched == NULL)
     {
         return 0;
@@ -1095,11 +1095,11 @@ s32 mdlGetMotionFrameEx(mdlObj_t *ctx, s32 searchId)
     return (s32)matched->frame;
 }
 
-s32 mdlChkMotionEndEx(mdlObj_t *ctx, s32 searchId)
+s32 mdlChkMotionEndEx(mdlObj_t *aHandle, s32 aGroup)
 {
     sdfMotionCtrlr_t *matched;
 
-    matched = mdlGetMotionCtrlr(ctx, searchId);
+    matched = mdlGetMotionCtrlr(aHandle, aGroup);
     if (matched == NULL)
     {
         return 2;
@@ -1107,12 +1107,12 @@ s32 mdlChkMotionEndEx(mdlObj_t *ctx, s32 searchId)
     return matched->stat == 5;
 }
 
-f32 mdlGetMotionSpeedEx(mdlObj_t *ctx, s32 searchId)
+f32 mdlGetMotionSpeedEx(mdlObj_t *aHandle, s32 aGroup)
 {
     sdfMotionCtrlr_t *matched;
     f32 result;
 
-    matched = mdlGetMotionCtrlr(ctx, searchId);
+    matched = mdlGetMotionCtrlr(aHandle, aGroup);
     result = 0.0f;
     if (matched != NULL)
     {
@@ -1121,99 +1121,99 @@ f32 mdlGetMotionSpeedEx(mdlObj_t *ctx, s32 searchId)
     return result;
 }
 
-void mdlSetMotionSpeedEx(mdlObj_t *ctx, s32 searchId, f32 frameStep)
+void mdlSetMotionSpeedEx(mdlObj_t *aHandle, s32 aGroup, f32 speed)
 {
     sdfMotionCtrlr_t *matched;
 
-    matched = mdlGetMotionCtrlr(ctx, searchId);
+    matched = mdlGetMotionCtrlr(aHandle, aGroup);
     if (matched != NULL)
     {
-        matched->speed = frameStep;
+        matched->speed = speed;
     }
 }
 
-void mdlGetPosition(mdlObj_t *ctx)
+void mdlGetPosition(mdlObj_t *aHandle)
 {
-    SDF_VU0_LOADVECTOR_BARRIER(&ctx->inner->tm.m[12]);
+    SDF_VU0_LOADVECTOR_BARRIER(&aHandle->inner->tm.m[12]);
 }
 
-void mdlSetPosition(mdlObj_t *ctx)
+void mdlSetPosition(mdlObj_t *aHandle)
 {
     SDF_VU0_VECTOR_W_SET_ONE();
-    SDF_VU0_STOREVECTOR(&ctx->inner->tm.m[12]);
+    SDF_VU0_STOREVECTOR(&aHandle->inner->tm.m[12]);
 }
 
-void mdlGetRotate(mdlObj_t *ctx)
+void mdlGetRotate(mdlObj_t *aHandle)
 {
-    SDF_VU0_LOADVECTOR_BARRIER(&ctx->inner->rotate);
+    SDF_VU0_LOADVECTOR_BARRIER(&aHandle->inner->rotate);
 }
 
-void mdlSetRotate(mdlObj_t *ctx)
+void mdlSetRotate(mdlObj_t *aHandle)
 {
-    SDF_VU0_STOREVECTOR(&ctx->inner->rotate);
+    SDF_VU0_STOREVECTOR(&aHandle->inner->rotate);
     ToMatrix();
-    SDF_VU0_STORE_ROW0(&ctx->inner->tm.m[0]);
-    SDF_VU0_STORE_ROW1(&ctx->inner->tm.m[4]);
-    SDF_VU0_STORE_ROW2(&ctx->inner->tm.m[8]);
+    SDF_VU0_STORE_ROW0(&aHandle->inner->tm.m[0]);
+    SDF_VU0_STORE_ROW1(&aHandle->inner->tm.m[4]);
+    SDF_VU0_STORE_ROW2(&aHandle->inner->tm.m[8]);
 }
 
-void mdlGetScale(mdlObj_t *ctx)
+void mdlGetScale(mdlObj_t *aHandle)
 {
-    SDF_VU0_LOADVECTOR_BARRIER(&ctx->inner->scale);
+    SDF_VU0_LOADVECTOR_BARRIER(&aHandle->inner->scale);
 }
 
-void mdlSetScale(mdlObj_t *ctx)
+void mdlSetScale(mdlObj_t *aHandle)
 {
-    SDF_VU0_STOREVECTOR(&ctx->inner->scale);
+    SDF_VU0_STOREVECTOR(&aHandle->inner->scale);
 }
 
-u32 mdlGetColor(mdlObj_t *ctx)
+u32 mdlGetColor(mdlObj_t *aHandle)
 {
-    return ctx->inner->color;
+    return aHandle->inner->color;
 }
 
-void mdlSetEffectColor(mdlObj_t *ctx, u32 value)
+void mdlSetEffectColor(mdlObj_t *aHandle, u32 aColor)
 {
     mdlEffectResrc_t *item;
 
-    for (item = ctx->resourceItems; item != NULL; item = item->next)
+    for (item = aHandle->resourceItems; item != NULL; item = item->next)
     {
-        mdlSetEffectColorSub(ctx, item, value);
+        mdlSetEffectColorSub(aHandle, item, aColor);
     }
 }
 
-void mdlSetColor(mdlObj_t *ctx, u32 value)
+void mdlSetColor(mdlObj_t *aHandle, u32 aColor)
 {
-    ctx->inner->color = value;
-    mdlSetEffectColor(ctx, (value & 0xFF000000) | 0x808080);
+    aHandle->inner->color = aColor;
+    mdlSetEffectColor(aHandle, (aColor & 0xFF000000) | 0x808080);
 }
 
-void mdlSetColorWithEffect(mdlObj_t *ctx, u32 value)
+void mdlSetColorWithEffect(mdlObj_t *aHandle, u32 aColor)
 {
-    ctx->inner->color = value;
-    mdlSetEffectColor(ctx, value);
+    aHandle->inner->color = aColor;
+    mdlSetEffectColor(aHandle, aColor);
 }
 
-void mdlSetEffectScale(mdlObj_t *ctx, f32 amount)
+void mdlSetEffectScale(mdlObj_t *aHandle, f32 aScale)
 {
     mdlEffectResrc_t *item;
 
-    for (item = ctx->resourceItems; item != NULL; item = item->next)
+    for (item = aHandle->resourceItems; item != NULL; item = item->next)
     {
-        mdlSetEffectScaleSub(ctx, item, amount);
+        mdlSetEffectScaleSub(aHandle, item, aScale);
     }
 }
 
 /* vu0 routine: project the point through the view and model matrices into vf10. */
-void mdlGetScreenOffset(mdlObj_t *ctx, void *point)
+void mdlGetScreenOffset(mdlObj_t *aHandle, void *aOfs)
 {
     SDF_VU0_LOADMATRIX(&D_002FA240);
     MultMatrixRev(&dds3ScreenParam.TM);
     SDF_VU0_COPYMATRIX_A_TO_B();
-    SDF_VU0_LOADMATRIX(&ctx->inner->tm);
+    SDF_VU0_LOADMATRIX(&aHandle->inner->tm);
     SDF_VU0_SCALE_XYZ();
     MultMatrixRevNoArg();
-    SDF_VU0_LOADVECTOR_BARRIER(point);
+    SDF_VU0_LOADVECTOR_BARRIER(aOfs);
     SDF_VU0_APPLYMATRIX_XYZ1();
     SDF_VU0_PERSVECTOR();
     SDF_VU0_LOADVECTOR_B(&dds3ScreenParam.scale);
@@ -1244,39 +1244,39 @@ void mdl_1DD9C0(mdlObj_t *ctx, f32 (*inputPoints)[4], f32 (*outputPoints)[4], s3
     }
 }
 
-void mdlMotionPause(mdlObj_t *ctx)
+void mdlMotionPause(mdlObj_t *aHandle)
 {
     sdfMotionCtrlr_t *node;
 
-    for (node = ctx->inner->motion; node != NULL; node = node->next)
+    for (node = aHandle->inner->motion; node != NULL; node = node->next)
     {
         sdfMotionPause(node);
     }
 }
 
-void mdlMotionPauseOff(mdlObj_t *ctx)
+void mdlMotionPauseOff(mdlObj_t *aHandle)
 {
     sdfMotionCtrlr_t *node;
 
-    for (node = ctx->inner->motion; node != NULL; node = node->next)
+    for (node = aHandle->inner->motion; node != NULL; node = node->next)
     {
         sdfMotionPauseOff(node);
     }
 }
 
-s32 mdlHasMotionEx(mdlObj_t *ctx, s32 searchId)
+s32 mdlHasMotionEx(mdlObj_t *aHandle, s32 aGroup)
 {
-    return mdlGetMotionCtrlr(ctx, searchId) != NULL;
+    return mdlGetMotionCtrlr(aHandle, aGroup) != NULL;
 }
 
-s32 mdlGetMajorNum(mdlObj_t *ctx)
+s32 mdlGetMajorNum(mdlObj_t *aHandle)
 {
-    return ctx->sub->group;
+    return aHandle->sub->group;
 }
 
-s32 mdlGetMinorNum(mdlObj_t *ctx)
+s32 mdlGetMinorNum(mdlObj_t *aHandle)
 {
-    return ctx->sub->type;
+    return aHandle->sub->type;
 }
 
 s32 mdlGetNumOfMajor(void)
@@ -1284,16 +1284,16 @@ s32 mdlGetNumOfMajor(void)
     return 7;
 }
 
-s32 mdlGetNumOfMinor(s32 tableIndex)
+s32 mdlGetNumOfMinor(s32 aMajor)
 {
-    return modelFileKindTable[tableIndex].count;
+    return modelFileKindTable[aMajor].count;
 }
 
-s32 mdlGetNumOfCut(mdlObj_t *ctx, s32 searchId)
+s32 mdlGetNumOfCut(mdlObj_t *aHandle, s32 aGroup)
 {
     sdfMotionCtrlr_t *matched;
 
-    matched = mdlGetMotionCtrlr(ctx, searchId);
+    matched = mdlGetMotionCtrlr(aHandle, aGroup);
     if (matched == NULL)
     {
         return 0;
@@ -1306,7 +1306,7 @@ void mdlSetClutColor(mdlObj_t *ctx, s32 a, s32 b, s32 c)
     sdfTexListSetClutColor(ctx->inner->texList, a, b, c);
 }
 
-void mdlGetFilebase(s32 selectionListIndex, s32 selectionIndex, char *destination, s32 capacity) {
+void mdlGetFilebase(s32 aMajor, s32 aMinor, char *aName, s32 aNameLeng) {
     mdlFileKind_t *selection;
     mdlHddFile_t *pathEntry;
     const char *path;
@@ -1316,8 +1316,8 @@ void mdlGetFilebase(s32 selectionListIndex, s32 selectionIndex, char *destinatio
     s32 endIndex;
     s32 copyLength;
 
-    selection = (mdlFileKind_t *)modelFileKindTable[selectionListIndex].entries;
-    selection += selectionIndex;
+    selection = (mdlFileKind_t *)modelFileKindTable[aMajor].entries;
+    selection += aMinor;
     pathEntry = (mdlHddFile_t *)modelFileTable[selection->kind].entries;
     pathEntry += selection->index;
     path = pathEntry->mbName;
@@ -1347,79 +1347,79 @@ void mdlGetFilebase(s32 selectionListIndex, s32 selectionIndex, char *destinatio
     } while (path[endIndex] != '.');
 
     copyLength = endIndex - startIndex;
-    capacity--;
-    if (capacity < copyLength) {
-        copyLength = capacity;
+    aNameLeng--;
+    if (aNameLeng < copyLength) {
+        copyLength = aNameLeng;
     }
-    memcpy(destination, basename, copyLength);
-    destination[copyLength] = '\0';
+    memcpy(aName, basename, copyLength);
+    aName[copyLength] = '\0';
 }
 
-s32 mdlPackCheck(sdfPacWork_t *work)
+s32 mdlPackCheck(sdfPacWork_t *resrc)
 {
     s32 result;
 
     result = 0;
-    if (((sdfPacPacketHeader_t *)work->header)->command == DDS3_FT_EFFECT)
+    if (((sdfPacPacketHeader_t *)resrc->header)->command == DDS3_FT_EFFECT)
     {
-        result = ((sdfPacPacketHeader_t *)work->header)->tag == PIB_TAG_PIB0;
+        result = ((sdfPacPacketHeader_t *)resrc->header)->tag == PIB_TAG_PIB0;
     }
     return result;
 }
 
-sdfPacWork_t *mdlPackSetOld(sdfPacWork_t *work, s32 group, s32 id, s32 mode) {
+sdfPacWork_t *mdlPackSetOld(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags) {
     mdlLoadPayload_t setup;
     sdfItemArray_t *parts;
     s32 count;
 
     memset(&setup, 0, sizeof(setup));
     parts = NULL;
-    while (work != NULL) {
-        switch (((sdfPacPacketHeader_t *)work->header)->command) {
+    while (resrc != NULL) {
+        switch (((sdfPacPacketHeader_t *)resrc->header)->command) {
         case DDS3_FT_EFFECT:
-            switch (((sdfPacPacketHeader_t *)work->header)->tag) {
+            switch (((sdfPacPacketHeader_t *)resrc->header)->tag) {
             case PIB_TAG_PIB0:
-                setup.partInfo = work->data;
-                setup.resourceHandle = (sdfMemHandle_t *)work->resrc;
-                count = mdlPibGetEffectCount((mdlPibRecord_t *)work->data);
+                setup.partInfo = resrc->data;
+                setup.resourceHandle = (sdfMemHandle_t *)resrc->resrc;
+                count = mdlPibGetEffectCount((mdlPibRecord_t *)resrc->data);
                 if (count > 0) {
                     parts = mdlEffectResrcListNew(count);
                     setup.partList = parts;
                 }
                 break;
             case PIB_TAG_P2A:
-                mdlCreateEffectResrc_P2A(parts, work->data);
-                sdfMemFreeDirect((sdfMemHandle_t *)work->resrc);
+                mdlCreateEffectResrc_P2A(parts, resrc->data);
+                sdfMemFreeDirect((sdfMemHandle_t *)resrc->resrc);
                 break;
             case PIB_TAG_D3P:
-                mdlCreateEffectResrc_D3P(parts, (struct mdlEffectDescriptor_t *)work->data);
-                sdfMemFreeDirect((sdfMemHandle_t *)work->resrc);
+                mdlCreateEffectResrc_D3P(parts, (struct mdlEffectDescriptor_t *)resrc->data);
+                sdfMemFreeDirect((sdfMemHandle_t *)resrc->resrc);
                 break;
             }
             break;
         case DDS3_FT_TEXLIST:
-            setup.resourceList = (sdfModelTexList_t *)work->resrc;
+            setup.resourceList = (sdfModelTexList_t *)resrc->resrc;
             break;
         case DDS3_FT_MODEL:
             if (setup.requestAllocation == NULL) {
-                setup.requestAllocation = (sdfMemHandle_t *)work->resrc;
-                setup.itemList = (sdfModelDef_t *)work->data;
+                setup.requestAllocation = (sdfMemHandle_t *)resrc->resrc;
+                setup.itemList = (sdfModelDef_t *)resrc->data;
             }
             break;
         case DDS3_FT_MOTION:
             if (setup.motionResource == NULL) {
-                setup.motionResource = (sdfMemHandle_t *)work->resrc;
-                setup.motionTable = (sdfMotionPlayBook_t *)work->data;
+                setup.motionResource = (sdfMemHandle_t *)resrc->resrc;
+                setup.motionTable = (sdfMotionPlayBook_t *)resrc->data;
             }
             break;
         }
-        work = sdfPacFreeResrc(work);
+        resrc = sdfPacFreeResrc(resrc);
     }
-    mdlRegistModelSet(group, id, mode, &setup);
-    return work;
+    mdlRegistModelSet(major, minor, regFlags, &setup);
+    return resrc;
 }
 
-sdfPacWork_t *mdlPackSet(sdfPacWork_t *packetWork, s32 group, s32 id, s32 mode) {
+sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags) {
     mdlLoadPayload_t groupSetup;
     mdlPartTagRecord_t partTagRecord;
     sdfPacPacketHeader_t *packetHeader;
@@ -1432,19 +1432,19 @@ sdfPacWork_t *mdlPackSet(sdfPacWork_t *packetWork, s32 group, s32 id, s32 mode) 
     s32 remainingParts;
     s32 payloadValue;
 
-    if (mdlPackCheck(packetWork) == 0) {
-        return mdlPackSetOld(packetWork, group, id, mode);
+    if (mdlPackCheck(resrc) == 0) {
+        return mdlPackSetOld(resrc, major, minor, regFlags);
     }
-    record = (mdlPibRecord_t *)packetWork->data;
+    record = (mdlPibRecord_t *)resrc->data;
     payloadValue = mdlPibGetVersion(record);
     if (payloadValue <= 0) {
-        return mdlPackSetOld(packetWork, group, id, mode);
+        return mdlPackSetOld(resrc, major, minor, regFlags);
     }
 
     memset(&groupSetup, 0, sizeof(groupSetup));
     groupSetup.partInfo = record;
-    groupSetup.resourceHandle = (sdfMemHandle_t *)packetWork->resrc;
-    packetWork = sdfPacFreeResrc(packetWork);
+    groupSetup.resourceHandle = (sdfMemHandle_t *)resrc->resrc;
+    resrc = sdfPacFreeResrc(resrc);
     partCount = mdlPibGetEffectCount(record);
     remainingParts = partCount;
     if (partCount > 0) {
@@ -1453,95 +1453,95 @@ sdfPacWork_t *mdlPackSet(sdfPacWork_t *packetWork, s32 group, s32 id, s32 mode) 
     }
     if (remainingParts > 0) {
         do {
-            switch (((sdfPacPacketHeader_t *)packetWork->header)->tag) {
+            switch (((sdfPacPacketHeader_t *)resrc->header)->tag) {
             case PIB_TAG_P2A:
-                mdlCreateEffectResrc_P2A(partList, packetWork->data);
-                sdfMemFreeDirect((sdfMemHandle_t *)packetWork->resrc);
+                mdlCreateEffectResrc_P2A(partList, resrc->data);
+                sdfMemFreeDirect((sdfMemHandle_t *)resrc->resrc);
                 break;
             case PIB_TAG_D3P:
-                mdlCreateEffectResrc_D3P(partList, (struct mdlEffectDescriptor_t *)packetWork->data);
-                sdfMemFreeDirect((sdfMemHandle_t *)packetWork->resrc);
+                mdlCreateEffectResrc_D3P(partList, (struct mdlEffectDescriptor_t *)resrc->data);
+                sdfMemFreeDirect((sdfMemHandle_t *)resrc->resrc);
                 break;
             case PIB_TAG_IPU:
-                objectSize = ((sdfPacPacketHeader_t *)packetWork->header)->decodedSize;
+                objectSize = ((sdfPacPacketHeader_t *)resrc->header)->decodedSize;
                 if (objectSize == 0) {
-                    objectSize = ((sdfPacPacketHeader_t *)packetWork->header)->size
-                               + (((sdfPacPacketHeader_t *)packetWork->header)->flags & 0xF0) - 0x10;
+                    objectSize = ((sdfPacPacketHeader_t *)resrc->header)->size
+                               + (((sdfPacPacketHeader_t *)resrc->header)->flags & 0xF0) - 0x10;
                 }
-                mdlCreateEffectResrc_IPU(partList, packetWork->data,
-                                    (sdfMemHandle_t *)packetWork->resrc, objectSize);
+                mdlCreateEffectResrc_IPU(partList, resrc->data,
+                                    (sdfMemHandle_t *)resrc->resrc, objectSize);
                 break;
             default:
                 /* Retained metadata stores: SMT3 1DE078/1DE07C and
                  * DDS1 2188E0/2188E4 (same otherwise-unused local record). */
-                packetHeader = (sdfPacPacketHeader_t *)packetWork->header;
+                packetHeader = (sdfPacPacketHeader_t *)resrc->header;
                 partTagRecord.tag = packetHeader->tag;
                 partTagRecord.state = 0;
                 break;
             }
-            packetWork = sdfPacFreeResrc(packetWork);
+            resrc = sdfPacFreeResrc(resrc);
             remainingParts--;
         } while (remainingParts != 0);
     }
 
-    if (((sdfPacPacketHeader_t *)packetWork->header)->command == DDS3_FT_TEXLIST) {
-        groupSetup.resourceList = (sdfModelTexList_t *)packetWork->resrc;
-        packetWork = sdfPacFreeResrc(packetWork);
+    if (((sdfPacPacketHeader_t *)resrc->header)->command == DDS3_FT_TEXLIST) {
+        groupSetup.resourceList = (sdfModelTexList_t *)resrc->resrc;
+        resrc = sdfPacFreeResrc(resrc);
     }
-    groupSetup.requestAllocation = (sdfMemHandle_t *)packetWork->resrc;
-    groupSetup.itemList = (sdfModelDef_t *)packetWork->data;
-    packetWork = sdfPacFreeResrc(packetWork);
-    mdlRegistModelSet(group, id, mode, &groupSetup);
+    groupSetup.requestAllocation = (sdfMemHandle_t *)resrc->resrc;
+    groupSetup.itemList = (sdfModelDef_t *)resrc->data;
+    resrc = sdfPacFreeResrc(resrc);
+    mdlRegistModelSet(major, minor, regFlags, &groupSetup);
 
     slotCount = mdlPibGetMotionCount(record);
     while (slotCount > 0) {
-        slotRecord = (mdlPibRecord_t *)(packetWork->data - (u32)&((mdlPibRecord_t *)0)->tail);
-        mdlRegistMotion(group, id, mode, (s16)slotRecord->parameter.word,
+        slotRecord = (mdlPibRecord_t *)(resrc->data - (u32)&((mdlPibRecord_t *)0)->tail);
+        mdlRegistMotion(major, minor, regFlags, (s16)slotRecord->parameter.word,
                                       slotRecord->payload.stream.selectorA,
                                       slotRecord->payload.stream.selectorB,
-                                      (sdfMotionPlayBook_t *)packetWork->data,
-                                      (sdfMemHandle_t *)packetWork->resrc);
-        packetWork = sdfPacFreeResrc(packetWork);
+                                      (sdfMotionPlayBook_t *)resrc->data,
+                                      (sdfMemHandle_t *)resrc->resrc);
+        resrc = sdfPacFreeResrc(resrc);
         slotCount--;
     }
-    return packetWork;
+    return resrc;
 }
 
-void mdlFileCbFree(mdlDoneJob_t *job)
+void mdlFileCbFree(mdlDoneJob_t *cb)
 {
-    pacFileHandleFree_(job->owner);
-    sdfChipFreeDirect(job);
+    pacFileHandleFree_(cb->owner);
+    sdfChipFreeDirect(cb);
 }
 
-void mdlFileLoadCallback(filePacRequest_t *request, mdlDoneJob_t *job)
+void mdlFileLoadCallback(filePacRequest_t *pacHandle, mdlDoneJob_t *data)
 {
-    job->owner = request;
-    mdlPackSet(request->queueHead, job->group, job->id, job->arg);
+    data->owner = pacHandle;
+    mdlPackSet(pacHandle->queueHead, data->group, data->id, data->arg);
     WaitSema(mdlManagerWork);
-    mdlUnRegLoading(job->group, job->id);
+    mdlUnRegLoading(data->group, data->id);
     SignalSema(mdlManagerWork);
-    if (job->done != NULL)
+    if (data->done != NULL)
     {
-        job->done(job->doneArg);
-        mdlFileCbFree(job);
+        data->done(data->doneArg);
+        mdlFileCbFree(data);
     }
 }
 
-s32 mdlFileLoad(s32 group, s32 id, s32 arg, const char *path, void (*onComplete)(u32),
-                u32 callbackArg)
+s32 mdlFileLoad(s32 major, s32 minor, s32 regFlags, const char *filename, void (*callback)(u32),
+                u32 parm)
 {
     mdlDoneJob_t *job;
     filePacRequest_t *request;
 
     job = sdfChipAllocZeroDirect(sizeof(mdlDoneJob_t));
-    job->group = group;
-    job->id = id;
-    job->arg = arg;
-    job->doneArg = callbackArg;
-    job->done = onComplete;
-    request = pacLoadEx(path, 0, 0, mdlFileLoadCallback, job);
+    job->group = major;
+    job->id = minor;
+    job->arg = regFlags;
+    job->doneArg = parm;
+    job->done = callback;
+    request = pacLoadEx(filename, 0, 0, mdlFileLoadCallback, job);
     job->owner = request;
-    if (onComplete == NULL)
+    if (callback == NULL)
     {
         pacSync(request);
         mdlFileCbFree(job);
@@ -1549,23 +1549,23 @@ s32 mdlFileLoad(s32 group, s32 id, s32 arg, const char *path, void (*onComplete)
     return 0;
 }
 
-void mdlPackDecode(s32 group, s32 id, s32 mode, const u8 *data, s32 size)
+void mdlPackDecode(s32 major, s32 minor, s32 regFlags, const u8 *buff, s32 leng)
 {
     sdfPacState_t state;
 
     sdfPacInit(&state, 0);
-    if (mode & 2)
+    if (regFlags & 2)
     {
         sdfPacSetStay(&state);
     }
-    sdfPacDecode(&state, data, size);
-    mdlPackSet(state.head, group, id, mode);
+    sdfPacDecode(&state, buff, leng);
+    mdlPackSet(state.head, major, minor, regFlags);
     sdfPacFree(&state);
 }
 
-void mdlFreeFileItem(void *item)
+void mdlFreeFileItem(void *aItem)
 {
-    sdfChipFreeDirect(item);
+    sdfChipFreeDirect(aItem);
 }
 
 void mdlReleaseHddFileList(void)

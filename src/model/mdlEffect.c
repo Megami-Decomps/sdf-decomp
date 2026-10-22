@@ -235,11 +235,11 @@ extern u8 D_0032C4C8[];
 
 extern u16 D_0032C498[];
 
-extern void *sdfChipAllocZeroDirect(u32 size);
+extern void *sdfChipAllocZeroDirect(u32 aSize);
 
-extern void sdfChipFreeDirect(void *ptr);
+extern void sdfChipFreeDirect(void *aPtr);
 
-extern void sdfMemFreeDirect(sdfMemHandle_t *handle);
+extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
 
 extern void *dds3BillboardCreate(s32, u32);
 
@@ -247,13 +247,13 @@ extern void dds3BillboardDelete(mdlBillboard_t *);
 
 extern mdlBillboard_t *dds3BillboardCopy(mdlBillboard_t *);
 
-extern void *dds3EffectLoad(void *descriptor);
+extern void *dds3EffectLoad(void *pD3P);
 
 extern void dds3EffectDelete(mdlEffect_t *);
 
 extern mdlEffect_t *dds3EffectCopy(mdlEffect_t *);
 
-extern void sdfIpuFree(void *ipu);
+extern void sdfIpuFree(void *cb);
 
 extern void sdfIpuSetOutputTex(void *, mdlIpuParams_t *, u8 *, s32, sdfTexHandle_t *);
 
@@ -271,7 +271,7 @@ extern void Eff_ModelTrackPolyDraw(mdlTrackWork_t *);
 
 extern void mdlSetBlur(mdlObj_t *, s32, s32, u32, u32);
 
-extern sdfTexHandle_t *sdfTexSearch(s32 dataId);
+extern sdfTexHandle_t *sdfTexSearch(s32 id);
 
 extern sdfModelNode_t *sdfModelSearchNode(sdfModelRootNode_t *, u32);
 
@@ -396,8 +396,8 @@ u16 mdlPibGetChunkCount(mdlPibItem_t *record) {
 }
 
 /* Follow the relative links in a resource's record table to find an ID. */
-mdlPibItem_t *mdlPibGetChunk(mdlObj_t *resource, s32 recordId) {
-    mdlPibItem_t *recordTable = resource->sub->partInfo;
+mdlPibItem_t *mdlPibGetChunk(mdlObj_t *handle, s32 group) {
+    mdlPibItem_t *recordTable = handle->sub->partInfo;
     mdlPibItem_t *recordCursor;
     s32 remainingRecords;
 
@@ -412,13 +412,13 @@ mdlPibItem_t *mdlPibGetChunk(mdlObj_t *resource, s32 recordId) {
         if (remainingRecords == -1) {
             return NULL;
         }
-    } while (recordCursor->kind != recordId);
+    } while (recordCursor->kind != group);
     return recordCursor;
 }
 
 /* The first eight bytes belong to the enclosing list, not its first record. */
-mdlPibItem_t *mdlPibGetFirstChunkItem(mdlPibItem_t *listHeader) {
-    mdlPibItem_t *firstRecord = (mdlPibItem_t *)((u8 *)listHeader + MDL_RECORD_LIST_HEADER_BYTES);
+mdlPibItem_t *mdlPibGetFirstChunkItem(mdlPibItem_t *data) {
+    mdlPibItem_t *firstRecord = (mdlPibItem_t *)((u8 *)data + MDL_RECORD_LIST_HEADER_BYTES);
 
     if (firstRecord->kind == MDL_RECORD_END_KIND) {
         firstRecord = NULL;
@@ -427,8 +427,8 @@ mdlPibItem_t *mdlPibGetFirstChunkItem(mdlPibItem_t *listHeader) {
 }
 
 /* A terminal kind returns NULL; the link is a byte offset, not a pointer. */
-mdlPibItem_t *mdlPibGetNextChunkItem(mdlPibItem_t *currentRecord) {
-    mdlPibItem_t *nextRecord = (mdlPibItem_t *)((s32)currentRecord + currentRecord->nextOffset);
+mdlPibItem_t *mdlPibGetNextChunkItem(mdlPibItem_t *data) {
+    mdlPibItem_t *nextRecord = (mdlPibItem_t *)((s32)data + data->nextOffset);
 
     if (nextRecord->kind == MDL_RECORD_END_KIND) {
         nextRecord = NULL;
@@ -437,14 +437,14 @@ mdlPibItem_t *mdlPibGetNextChunkItem(mdlPibItem_t *currentRecord) {
 }
 
 /* Count relative-offset records until the 0xffff sentinel. */
-s32 mdlPibGetChunkItemCount(mdlPibItem_t *listHeader) {
+s32 mdlPibGetChunkItemCount(mdlPibItem_t *data) {
     s32 recordCount;
     mdlPibItem_t *recordCursor;
 
-    if (listHeader == NULL) {
+    if (data == NULL) {
         return 0;
     }
-    recordCursor = mdlPibGetFirstChunkItem(listHeader);
+    recordCursor = mdlPibGetFirstChunkItem(data);
     recordCount = 0;
     while (recordCursor != NULL) {
         recordCount++;
@@ -453,8 +453,8 @@ s32 mdlPibGetChunkItemCount(mdlPibItem_t *listHeader) {
     return recordCount;
 }
 
-s32 mdlPibCheckItemType(mdlPibItem_t *record, s32 kind) {
-    return record->kind == kind;
+s32 mdlPibCheckItemType(mdlPibItem_t *data, s32 type) {
+    return data->kind == type;
 }
 
 u16 mdlPibGetEffectCount(mdlPibItem_t *record) {
@@ -466,81 +466,81 @@ u16 mdlPibGetMotionCount(const mdlPibItem_t *record) {
     return record->tail.half.slotCount;
 }
 
-void mdlPibDrawEffectInfo(sdfDrawTag_t *packetList, s32 x, s32 y, s32 depth, s32 textStyle, mdlPibItem_t *record) {
-    if (record->kind >= PIB_CHUNK_TYPE_P2A &&
-        record->kind <= IPU) {
-        switch (record->kind) {
+void mdlPibDrawEffectInfo(sdfDrawTag_t *tag, s32 x, s32 y, s32 z, s32 attr, mdlPibItem_t *data) {
+    if (data->kind >= PIB_CHUNK_TYPE_P2A &&
+        data->kind <= IPU) {
+        switch (data->kind) {
         case PIB_CHUNK_TYPE_P2A:
         case PIB_CHUNK_TYPE_D3P: {
-            char *label = record->kind == PIB_CHUNK_TYPE_P2A ? D_0054F648 : D_0054F650;
+            char *label = data->kind == PIB_CHUNK_TYPE_P2A ? D_0054F648 : D_0054F650;
 
-            if (record->parameter.part.count == 1) {
-                sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(x, y, depth, textStyle,
-                                                                    "%s %d,%d", label, record->payload.word,
-                                                                    record->parameter.part.partIndex)));
+            if (data->parameter.part.count == 1) {
+                sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
+                                                                    "%s %d,%d", label, data->payload.word,
+                                                                    data->parameter.part.partIndex)));
                 return;
             }
-            sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(x, y, depth, textStyle,
-                                                                "%s %d~%d,%d", label, record->payload.word,
-                                                                record->payload.word + record->parameter.part.count - 1,
-                                                                record->parameter.part.partIndex)));
+            sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
+                                                                "%s %d~%d,%d", label, data->payload.word,
+                                                                data->payload.word + data->parameter.part.count - 1,
+                                                                data->parameter.part.partIndex)));
             return;
         }
         case PIB_CHUNK_TYPE_TRACK:
-            sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(x, y, depth, textStyle,
-                                                                "TRACK %d~%d", record->payload.word,
-                                                                record->parameter.word)));
+            sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
+                                                                "TRACK %d~%d", data->payload.word,
+                                                                data->parameter.word)));
             return;
         case PIB_CHUNK_TYPE_BLUR:
-            sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(x, y, depth, textStyle,
-                                                                "BLUR %d,%d", record->payload.stream.selectorA,
-                                                                record->payload.stream.selectorB)));
+            sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
+                                                                "BLUR %d,%d", data->payload.stream.selectorA,
+                                                                data->payload.stream.selectorB)));
             return;
         case IPU:
-            sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(x, y, depth, textStyle,
-                                                                "IPU %08x", record->payload.word)));
+            sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
+                                                                "IPU %08x", data->payload.word)));
             return;
         }
     } else {
-        sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(x, y, depth, textStyle,
-                                                            "UNKNOWN[%3d]", record->kind)));
+        sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
+                                                            "UNKNOWN[%3d]", data->kind)));
     }
 }
 
 /* Draw the scalar marker fields, then four colors with four byte channels each; negative selection hides the cursor. */
-void mdlPibDrawTrackInfo(sdfDrawTag_t *packetList, s32 x, s32 y, s32 depth, mdlTrackParams_t *params, s32 selectedField) {
+void mdlPibDrawTrackInfo(sdfDrawTag_t *tag, s32 x, s32 y, s32 z, mdlTrackParams_t *data, s32 cursor) {
     s32 colorY = y + 0x300;
     s32 labelX = x + 0xC0;
     u32 packedColor;
     s32 colorIndex;
     s32 channelIndex;
 
-    sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(labelX, y, depth, 0, "MARK0:%d", params->mark0)));
-    sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(labelX, y + 0x60, depth, 0, "MARK1:%d", params->mark1)));
-    sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(labelX, y + 0xC0, depth, 0, "START:%d", params->start)));
-    sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(labelX, y + 0x120, depth, 0, "END  :%d", params->end)));
-    sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(labelX, y + 0x180, depth, 0, "ITRVL:%d", params->interval)));
-    sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(labelX, y + 0x1E0, depth, 0, "FACE :%d", params->face)));
-    sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(labelX, y + 0x240, depth, 0, "BLEND:%d", params->blend)));
+    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y, z, 0, "MARK0:%d", data->mark0)));
+    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y + 0x60, z, 0, "MARK1:%d", data->mark1)));
+    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y + 0xC0, z, 0, "START:%d", data->start)));
+    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y + 0x120, z, 0, "END  :%d", data->end)));
+    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y + 0x180, z, 0, "ITRVL:%d", data->interval)));
+    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y + 0x1E0, z, 0, "FACE :%d", data->face)));
+    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y + 0x240, z, 0, "BLEND:%d", data->blend)));
     for (colorIndex = 0; colorIndex != MDL_MARK_COLOR_COUNT; colorIndex++) {
-        packedColor = params->colors[colorIndex];
-        sdfDrawTagLink(packetList, (u32)(dds3PrimFrameRect(x + 0x480, colorY, depth, 0x300, 0x180, (packedColor & 0xFFFFFF) | 0x80000000, 0x60404040)));
+        packedColor = data->colors[colorIndex];
+        sdfDrawTagLink(tag, (u32)(dds3PrimFrameRect(x + 0x480, colorY, z, 0x300, 0x180, (packedColor & 0xFFFFFF) | 0x80000000, 0x60404040)));
         for (channelIndex = 0; channelIndex != MDL_COLOR_CHANNEL_COUNT; channelIndex++) {
-            sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(labelX, colorY, depth, D_0032C4C8[channelIndex], D_0032C4D0[channelIndex])));
-            sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(x + 0x240, colorY, depth, 0, D_0054F678, packedColor & MDL_COLOR_BYTE_MASK)));
+            sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, colorY, z, D_0032C4C8[channelIndex], D_0032C4D0[channelIndex])));
+            sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x + 0x240, colorY, z, 0, D_0054F678, packedColor & MDL_COLOR_BYTE_MASK)));
             packedColor >>= MDL_COLOR_BYTE_BITS;
             colorY += 0x60;
         }
         colorY += 0x60;
     }
-    if (selectedField >= 0) {
-        sdfDrawTagLink(packetList, (u32)(sdfDevPrintf(x, y + D_0032C498[selectedField], depth, 0, D_0054F680)));
+    if (cursor >= 0) {
+        sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y + D_0032C498[cursor], z, 0, D_0054F680)));
     }
 }
 
 /* Edit the marker parameters with the pad: rows 0-6 are the scalar fields, 7-22 the color bytes. */
-void mdlPibEditTrackInfo(mdlTrackParams_t *params, s16 *fieldCursor) {
-    s32 selectedField = *fieldCursor;
+void mdlPibEditTrackInfo(mdlTrackParams_t *data, s16 *cursor_p) {
+    s32 selectedField = *cursor_p;
     u8 *colorChannel;
 
     if (dds3PadButtonState[0x27] < 0) {
@@ -554,28 +554,28 @@ void mdlPibEditTrackInfo(mdlTrackParams_t *params, s16 *fieldCursor) {
     } else {
         switch (selectedField) {
         case 0:
-            dds3DebugIntEditEx(&params->mark0, 4, 0, 99999, 0, 1, dds3PadButtonState);
+            dds3DebugIntEditEx(&data->mark0, 4, 0, 99999, 0, 1, dds3PadButtonState);
             break;
         case 1:
-            dds3DebugIntEditEx(&params->mark1, 4, 0, 99999, 0, 1, dds3PadButtonState);
+            dds3DebugIntEditEx(&data->mark1, 4, 0, 99999, 0, 1, dds3PadButtonState);
             break;
         case 2:
-            dds3DebugIntEditEx(&params->start, 2, 0, 9999, 0, 1, dds3PadButtonState);
+            dds3DebugIntEditEx(&data->start, 2, 0, 9999, 0, 1, dds3PadButtonState);
             break;
         case 3:
-            dds3DebugIntEditEx(&params->end, 2, 0, 9999, 0, 1, dds3PadButtonState);
+            dds3DebugIntEditEx(&data->end, 2, 0, 9999, 0, 1, dds3PadButtonState);
             break;
         case 4:
-            dds3DebugIntEditEx(&params->interval, 2, 1, 10, 0, 1, dds3PadButtonState);
+            dds3DebugIntEditEx(&data->interval, 2, 1, 10, 0, 1, dds3PadButtonState);
             break;
         case 5:
-            dds3DebugIntEditEx(&params->face, 1, 1, 10, 0, 1, dds3PadButtonState);
+            dds3DebugIntEditEx(&data->face, 1, 1, 10, 0, 1, dds3PadButtonState);
             break;
         case 6:
-            dds3DebugIntEditEx(&params->blend, 1, 0, 4, 0, 1, dds3PadButtonState);
+            dds3DebugIntEditEx(&data->blend, 1, 0, 4, 0, 1, dds3PadButtonState);
             break;
         default:
-            colorChannel = (u8 *)params->colors + selectedField - MDL_MARK_COLOR_FIRST_FIELD;
+            colorChannel = (u8 *)data->colors + selectedField - MDL_MARK_COLOR_FIRST_FIELD;
             if (dds3PadButtonState[0x25] < 0) {
                 *colorChannel += 1;
             } else if (((u8)dds3PadButtonState[0x25] & MDL_PAD_REPEAT_FLAG) != 0 && *colorChannel < MDL_COLOR_BYTE_MASK) {
@@ -588,7 +588,7 @@ void mdlPibEditTrackInfo(mdlTrackParams_t *params, s16 *fieldCursor) {
             break;
         }
     }
-    *fieldCursor = selectedField;
+    *cursor_p = selectedField;
 }
 
 /* Append a newly created billboard to the next part-list slot. */
@@ -624,32 +624,32 @@ void mdlCreateEffectResrc_IPU(sdfItemArray_t *list, u8 *sourceAddress, sdfMemHan
     list->count += 1;
 }
 
-void mdlDeleteEffectResrc_IPU(mdlIpuResrc_t *obj) {
-    if (obj->initialized != 0) {
-        sdfIpuFree(&obj->ipuState);
+void mdlDeleteEffectResrc_IPU(mdlIpuResrc_t *ipu) {
+    if (ipu->initialized != 0) {
+        sdfIpuFree(&ipu->ipuState);
     }
-    sdfMemFreeDirect(obj->backingAllocation);
-    sdfChipFreeDirect(obj);
+    sdfMemFreeDirect(ipu->backingAllocation);
+    sdfChipFreeDirect(ipu);
 }
 
-void mdlStartEffectResrc_IPU(mdlIpuResrc_t *obj, sdfTexHandle_t *resource, mdlIpuParams_t *params) {
-    if (obj->initialized == 0) {
-        obj->initialized = 1;
-        sdfIpuSetOutputTex(&obj->ipuState, params, (u8 *)obj->sourceAddress, obj->sourceSize, resource);
+void mdlStartEffectResrc_IPU(mdlIpuResrc_t *ipu, sdfTexHandle_t *tex, mdlIpuParams_t *parm) {
+    if (ipu->initialized == 0) {
+        ipu->initialized = 1;
+        sdfIpuSetOutputTex(&ipu->ipuState, parm, (u8 *)ipu->sourceAddress, ipu->sourceSize, tex);
     }
 }
 
-sdfItemArray_t *mdlEffectResrcListNew(u32 request) {
-    return sdfItemArrayNew(request, 0x10, 4);
+sdfItemArray_t *mdlEffectResrcListNew(u32 initCapa) {
+    return sdfItemArrayNew(initCapa, 0x10, 4);
 }
 
 /* Destroy each part according to its stored kind, then release the owning request. */
-void mdlEffectResrcListFree(sdfItemArray_t *partList) {
+void mdlEffectResrcListFree(sdfItemArray_t *efcResList) {
     s32 partIndex;
 
-    if (partList != NULL) {
-        for (partIndex = 0; partIndex < partList->count; partIndex++) {
-            mdlPartSlot_t *partEntry = &((mdlPartSlot_t *)partList->items)[partIndex];
+    if (efcResList != NULL) {
+        for (partIndex = 0; partIndex < efcResList->count; partIndex++) {
+            mdlPartSlot_t *partEntry = &((mdlPartSlot_t *)efcResList->items)[partIndex];
 
             switch (partEntry->kind) {
             case MDL_PART_BILLBOARD:
@@ -663,45 +663,45 @@ void mdlEffectResrcListFree(sdfItemArray_t *partList) {
                 break;
             }
         }
-        sdfItemArrayFree(partList);
+        sdfItemArrayFree(efcResList);
     }
 }
 
 /* Prepend a cleared, typed resource item to the owner's list. */
-mdlEffectResrc_t *mdlCreateEffectCtrlr(mdlObj_t *owner, s32 type, s32 motionSlotIndex) {
+mdlEffectResrc_t *mdlCreateEffectCtrlr(mdlObj_t *aHandle, s32 aType, s32 aPlayGroup) {
     mdlEffectResrc_t *item = sdfChipAllocZeroDirect(sizeof(mdlEffectResrc_t));
-    mdlEffectResrc_t *previousHead = owner->resourceItems;
-    item->type = type;
+    mdlEffectResrc_t *previousHead = aHandle->resourceItems;
+    item->type = aType;
     item->next = previousHead;
-    item->motionSlotIndex = motionSlotIndex;
-    owner->resourceItems = item;
+    item->motionSlotIndex = aPlayGroup;
+    aHandle->resourceItems = item;
     return item;
 }
 
-void *mdlEffectDup_P2A(mdlPartSlot_t *entry) {
-    struct mdlBillboard_t *clone = dds3BillboardCopy(entry->object);
-    entry->state = entry->state + 1;
+void *mdlEffectDup_P2A(mdlPartSlot_t *efcResPtr) {
+    struct mdlBillboard_t *clone = dds3BillboardCopy(efcResPtr->object);
+    efcResPtr->state = efcResPtr->state + 1;
     return clone;
 }
 
-void *mdlEffectDup_D3P(mdlPartSlot_t *entry) {
-    mdlEffect_t *clone = dds3EffectCopy(entry->object);
-    entry->state = entry->state + 1;
+void *mdlEffectDup_D3P(mdlPartSlot_t *efcResPtr) {
+    mdlEffect_t *clone = dds3EffectCopy(efcResPtr->object);
+    efcResPtr->state = efcResPtr->state + 1;
     return clone;
 }
 
 /* Resolve a 16-byte part slot; retail checks only the upper index bound. */
-mdlPartSlot_t *mdlGetEffectResrc(mdlObj_t *resource, s32 slotIndex) {
+mdlPartSlot_t *mdlGetEffectResrc(mdlObj_t *handle, s32 effectIndex) {
     sdfItemArray_t *slotTable;
 
-    slotTable = resource->sub->partList;
+    slotTable = handle->sub->partList;
     if (slotTable == NULL) {
         return NULL;
     }
-    if (slotIndex >= slotTable->count) {
+    if (effectIndex >= slotTable->count) {
         return NULL;
     }
-    return (mdlPartSlot_t *)((u8 *)slotTable->items + slotIndex * MDL_PART_SLOT_BYTES);
+    return (mdlPartSlot_t *)((u8 *)slotTable->items + effectIndex * MDL_PART_SLOT_BYTES);
 }
 
 /* Bind each consecutive record ID to a newly created part when the chunk contains it. */
@@ -762,43 +762,43 @@ void mdlCreateEffect_BLUR(mdlObj_t *owner, mdlPibItem_t *record) {
 }
 
 /* Claim an unused object only after its data resource resolves, retaining record flags and deferred-init parameters. */
-void mdlCreateEffect_IPU(mdlObj_t *owner, mdlPibIpu_t *entryRecord, s32 motionSlotIndex) {
-    mdlPartSlot_t *partSlot = mdlGetEffectResrc(owner, entryRecord->index);
+void mdlCreateEffect_IPU(mdlObj_t *aHandle, mdlPibIpu_t *aData, s32 aPlayGroup) {
+    mdlPartSlot_t *partSlot = mdlGetEffectResrc(aHandle, aData->index);
 
     if (partSlot != 0) {
         mdlIpuResrc_t *object = partSlot->object;
         if (object->inUse == 0) {
-            sdfTexHandle_t *texture = sdfTexSearch(entryRecord->dataId);
+            sdfTexHandle_t *texture = sdfTexSearch(aData->dataId);
             if (texture != 0) {
                 mdlEffectResrc_t *resourceItem;
                 u8 *attributes;
                 object->inUse = 1;
-                resourceItem = mdlCreateEffectCtrlr(owner, dds3ModelEffectType_IPU, motionSlotIndex);
+                resourceItem = mdlCreateEffectCtrlr(aHandle, dds3ModelEffectType_IPU, aPlayGroup);
                 /* Fill the object and resource data before attaching the owner. */
                 resourceItem->payload.object.object = object;
                 attributes = resourceItem->payload.object.attributes;
                 resourceItem->payload.object.texture = texture;
-                resourceItem->payload.object.owner = owner;
-                resourceItem->payload.object.minimumTime = entryRecord->minimumTime;
+                resourceItem->payload.object.owner = aHandle;
+                resourceItem->payload.object.minimumTime = aData->minimumTime;
                 attributes[1] = 1;
-                attributes[2] = entryRecord->loopMode;
-                attributes[3] = entryRecord->playbackCadenceStep;
+                attributes[2] = aData->loopMode;
+                attributes[3] = aData->playbackCadenceStep;
             }
         }
     }
 }
 
 /* Start the IPU once its owner reaches the stored motion-frame threshold. */
-void mdlDrawEffect_IPU(mdlEffectResrc_t *item) {
-    mdlIpuResrc_t *object = item->payload.object.object;
+void mdlDrawEffect_IPU(mdlEffectResrc_t *effect) {
+    mdlIpuResrc_t *object = effect->payload.object.object;
     if (object->initialized == 0) {
-        s32 minimumTime = item->payload.object.minimumTime;
-        f32 motionTime = item->payload.object.owner->first->frame;
+        s32 minimumTime = effect->payload.object.minimumTime;
+        f32 motionTime = effect->payload.object.owner->first->frame;
         if ((u32)(s32)motionTime < (u32)minimumTime) {
             return;
         }
-        mdlStartEffectResrc_IPU(object, item->payload.object.texture,
-                   (mdlIpuParams_t *)item->payload.object.attributes);
+        mdlStartEffectResrc_IPU(object, effect->payload.object.texture,
+                   (mdlIpuParams_t *)effect->payload.object.attributes);
     }
 }
 
@@ -824,39 +824,39 @@ void mdlCreateEffect(mdlObj_t *owner, mdlPibItem_t *record, s32 motionSlotIndex)
 }
 
 /* Find the requested record list and associate each entry with this motion slot. */
-void mdlGenEffect(mdlObj_t *owner, s32 recordId, s32 motionSlotIndex) {
-    mdlPibItem_t *recordList = mdlPibGetChunk(owner, recordId);
+void mdlGenEffect(mdlObj_t *aHandle, s32 aGroup, s32 aPlayGroup) {
+    mdlPibItem_t *recordList = mdlPibGetChunk(aHandle, aGroup);
     if (recordList != NULL) {
         mdlPibItem_t *recordCursor = mdlPibGetFirstChunkItem(recordList);
         while (recordCursor != NULL) {
-            mdlCreateEffect(owner, recordCursor, motionSlotIndex);
+            mdlCreateEffect(aHandle, recordCursor, aPlayGroup);
             recordCursor = mdlPibGetNextChunkItem(recordCursor);
         }
     }
 }
 
 /* Release billboard, effect, or tracked-poly handles when applicable, then always free the list item. */
-void mdlFreeEffect(mdlEffectResrc_t *item) {
-    switch (item->type) {
+void mdlFreeEffect(mdlEffectResrc_t *aCtrlr) {
+    switch (aCtrlr->type) {
     case dds3ModelEffectType_P2A:
-        dds3BillboardDelete((mdlBillboard_t *)item->payload.part.instance);
+        dds3BillboardDelete((mdlBillboard_t *)aCtrlr->payload.part.instance);
         break;
     case dds3ModelEffectType_D3P:
-        dds3EffectDelete((mdlEffect_t *)item->payload.part.instance);
+        dds3EffectDelete((mdlEffect_t *)aCtrlr->payload.part.instance);
         break;
     case dds3ModelEffectType_TRACK:
-        Eff_ModelTrackPolyDelete(item->payload.part.track);
+        Eff_ModelTrackPolyDelete(aCtrlr->payload.part.track);
         break;
     }
-    sdfChipFreeDirect((void *)item);
+    sdfChipFreeDirect((void *)aCtrlr);
 }
 
 /* Release all items for this slot without losing the link across consecutive matches. */
-void mdlStopEffect(mdlObj_t *owner, s32 motionSlotIndex) {
-    mdlEffectResrc_t **itemLink = &owner->resourceItems;
+void mdlStopEffect(mdlObj_t *aHandle, s32 aPlayGroup) {
+    mdlEffectResrc_t **itemLink = &aHandle->resourceItems;
     mdlEffectResrc_t *item = *itemLink;
     while (item != 0) {
-        if (item->motionSlotIndex == motionSlotIndex) {
+        if (item->motionSlotIndex == aPlayGroup) {
             mdlEffectResrc_t *nextItem = item->next;
             mdlFreeEffect(item);
             *itemLink = nextItem;
@@ -869,10 +869,10 @@ void mdlStopEffect(mdlObj_t *owner, s32 motionSlotIndex) {
 }
 
 /* vu0 routine: transform an anchor, then offset it away from the eye. */
-void mdlEffect_P2A_D3P_GetPos(sdfModelRootNode_t *model, mdlEffectResrc_t *anchorRecord, f32 *positionOut) {
-    mdlMarkPos_t *mapPosition = anchorRecord->payload.part.mapPositionRecord;
+void mdlEffect_P2A_D3P_GetPos(sdfModelRootNode_t *model, mdlEffectResrc_t *effect, f32 *vect) {
+    mdlMarkPos_t *mapPosition = effect->payload.part.mapPositionRecord;
     sdfModelNode_t *drawNode = sdfModelSearchNode(model, mapPosition->nodeId);
-    f32 scale = anchorRecord->payload.part.anchorScale;
+    f32 scale = effect->payload.part.anchorScale;
 
     SDF_VU0_LOADMATRIX(&drawNode->tm);
         SDF_VU0_LOADVECTOR( &mapPosition->position);
@@ -883,7 +883,7 @@ void mdlEffect_P2A_D3P_GetPos(sdfModelRootNode_t *model, mdlEffectResrc_t *ancho
     SDF_VU0_NORMALIZE();
     SDF_VU0_SCALEVECTOR_BITS(scale);
     SDF_VU0_ADDVECTOR();
-    SDF_VU0_STOREVECTOR_NOMEM( positionOut);
+    SDF_VU0_STOREVECTOR_NOMEM( vect);
 }
 
 /* Update anchored billboard/effect positions, tracked polygons, or deferred object initialization by type. */
@@ -915,25 +915,25 @@ void mdlLinkEffect(mdlObj_t *owner, mdlEffectResrc_t *anchorRecord) {
 }
 
 /* Set billboard/effect color; other controller kinds have no RGBA dispatch. */
-void mdlSetEffectColorSub(mdlObj_t *owner, mdlEffectResrc_t *item, u32 color) {
-    switch (item->type) {
+void mdlSetEffectColorSub(mdlObj_t *aHandle, mdlEffectResrc_t *aEffect, u32 aColor) {
+    switch (aEffect->type) {
     case dds3ModelEffectType_P2A:
-        dds3BillboardSetRGBA((mdlBillboard_t *)item->payload.part.instance, color);
+        dds3BillboardSetRGBA((mdlBillboard_t *)aEffect->payload.part.instance, aColor);
         return;
     case dds3ModelEffectType_D3P:
-        dds3EffectSetRGBA((mdlEffect_t *)item->payload.part.instance, color);
+        dds3EffectSetRGBA((mdlEffect_t *)aEffect->payload.part.instance, aColor);
         break;
     }
 }
 
 /* Set billboard/effect scale; other controller kinds have no scale dispatch. */
-void mdlSetEffectScaleSub(mdlObj_t *owner, mdlEffectResrc_t *item, float amount) {
-    switch (item->type) {
+void mdlSetEffectScaleSub(mdlObj_t *aHandle, mdlEffectResrc_t *aEffect, float aScale) {
+    switch (aEffect->type) {
     case dds3ModelEffectType_P2A:
-        dds3BillboardSetScale((struct mdlBillboard_t *)item->payload.part.instance, amount, amount);
+        dds3BillboardSetScale((struct mdlBillboard_t *)aEffect->payload.part.instance, aScale, aScale);
         return;
     case dds3ModelEffectType_D3P:
-        dds3EffectSetScale((mdlEffect_t *)item->payload.part.instance, amount);
+        dds3EffectSetScale((mdlEffect_t *)aEffect->payload.part.instance, aScale);
         break;
     }
 }
