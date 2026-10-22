@@ -12,11 +12,11 @@ typedef struct
     sdfModelMorph_t previous;
 } sdfMotNodeMorph_t;
 
-extern void FromEuler(f32 x, f32 y, f32 z);
-extern void Lerp(f32 rate);
+extern void FromEuler(f32 aRotateX, f32 aRotateY, f32 aRotateZ);
+extern void Lerp(f32 aRatio);
 extern void ToMatrix(void);
 extern sdfMotionNodeVTBL_t sdfMotMorphTable;
-void sdfMotionSeek(sdfMotionCtrlr_t *motion, f32 frame);
+void sdfMotionSeek(sdfMotionCtrlr_t *aCtrlr, f32 aFrame);
 
 typedef sdfMotionNode_t *(*sdfMotGenNodeFunc)(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId);
 
@@ -223,7 +223,7 @@ void sdfMotionChange(sdfMotionCtrlr_t *aCtrlr, s32 aCutNum, s32 aType)
     sdfMotionChangeBlend(aCtrlr, aCutNum, aType, 0.0f, 0.0f);
 }
 
-void sdfMotionSeek(sdfMotionCtrlr_t *motion, f32 frame) {
+void sdfMotionSeek(sdfMotionCtrlr_t *aCtrlr, f32 aFrame) {
     s32 i;
     s32 count;
     f32 elapsed;
@@ -231,39 +231,39 @@ void sdfMotionSeek(sdfMotionCtrlr_t *motion, f32 frame) {
     f32 weight;
     sdfMotionNode_t *binding;
 
-    motion->stat = SDF_MOTION_STAT_SEEK;
-    duration = motion->blendLength;
-    elapsed = frame - motion->blendPreLength;
-    motion->frame = frame;
+    aCtrlr->stat = SDF_MOTION_STAT_SEEK;
+    duration = aCtrlr->blendLength;
+    elapsed = aFrame - aCtrlr->blendPreLength;
+    aCtrlr->frame = aFrame;
     if (elapsed < duration) {
         if (elapsed < 0.0f) {
             weight = 0.0f;
         } else {
             weight = elapsed / duration;
         }
-        if (frame < 0.0f) {
-            frame = 0.0f;
+        if (aFrame < 0.0f) {
+            aFrame = 0.0f;
         }
-        for (i = 0; i < motion->nodeList->count; i++) {
-            binding = motion->nodeList->items[i];
-            ((void (*)(sdfMotionNode_t *, f32, f32))binding->vtbl->blendSeek)(binding, frame, weight);
+        for (i = 0; i < aCtrlr->nodeList->count; i++) {
+            binding = aCtrlr->nodeList->items[i];
+            ((void (*)(sdfMotionNode_t *, f32, f32))binding->vtbl->blendSeek)(binding, aFrame, weight);
         }
     } else {
-        count = motion->nodeList->count;
+        count = aCtrlr->nodeList->count;
         for (i = 0; i < count; i++) {
-            binding = motion->nodeList->items[i];
-            ((void (*)(sdfMotionNode_t *, f32))binding->vtbl->seek)(binding, frame);
+            binding = aCtrlr->nodeList->items[i];
+            ((void (*)(sdfMotionNode_t *, f32))binding->vtbl->seek)(binding, aFrame);
         }
     }
 }
 
-s32 sdfMotionNext(sdfMotionCtrlr_t *motion) {
+s32 sdfMotionNext(sdfMotionCtrlr_t *aCtrlr) {
     s32 result;
     f32 frame;
     f32 frameLength;
 
     result = 0;
-    switch (motion->stat) {
+    switch (aCtrlr->stat) {
     case 0:
     case 2:
     case 3:
@@ -271,27 +271,27 @@ s32 sdfMotionNext(sdfMotionCtrlr_t *motion) {
     case SDF_MOTION_STAT_PAUSE:
         break;
     case SDF_MOTION_STAT_SET:
-        sdfMotionSeek(motion, motion->blendPreLength);
+        sdfMotionSeek(aCtrlr, aCtrlr->blendPreLength);
         break;
     case SDF_MOTION_STAT_SEEK:
-        frame = motion->frame + motion->speed;
-        frameLength = motion->frameLength;
-        if (motion->playType == 0) {
+        frame = aCtrlr->frame + aCtrlr->speed;
+        frameLength = aCtrlr->frameLength;
+        if (aCtrlr->playType == 0) {
             if (frameLength <= frame) {
-                sdfMotionSeek(motion, frameLength);
-                motion->stat = SDF_MOTION_STAT_NOCUT;
+                sdfMotionSeek(aCtrlr, frameLength);
+                aCtrlr->stat = SDF_MOTION_STAT_NOCUT;
                 result = 1;
                 break;
             }
         } else if (frameLength <= frame) {
-            motion->blendLength = 0.0f;
+            aCtrlr->blendLength = 0.0f;
             result = 2;
-            motion->blendPreLength = 0.0f;
+            aCtrlr->blendPreLength = 0.0f;
             do {
                 frame -= frameLength;
             } while (frameLength <= frame);
         }
-        sdfMotionSeek(motion, frame);
+        sdfMotionSeek(aCtrlr, frame);
         break;
     default:
         break;
@@ -398,8 +398,8 @@ f32 sdfMotInterpolateKeyFloat(sdfMotGetKeyIf_t *aItf)
 }
 
 /* vu0 routine: sample and blend the channel using the SDK packed operations. */
-void sdfMotInterpolateKeyXYZ(sdfMotGetKeyIf_t *interval) {
-    VU0_LERP_VEC3_KEYS(interval->key0, interval->key1, interval->rate);
+void sdfMotInterpolateKeyXYZ(sdfMotGetKeyIf_t *aItf) {
+    VU0_LERP_VEC3_KEYS(aItf->key0, aItf->key1, aItf->rate);
 }
 
 /* vu0 routine: blend the two colour keys */
@@ -450,27 +450,27 @@ sdfMotionNode_t *sdfMotGenModelLinerPos(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u
 }
 
 /* vu0 routine: sample and blend the channel using the SDK packed operations. */
-void sdfMotCLBK_modelLinerPosSeek(sdfMotNodeModelVec_t *binding, f32 frame) {
+void sdfMotCLBK_modelLinerPosSeek(sdfMotNodeModelVec_t *aThis, f32 aFrame) {
     sdfMotGetKeyIf_t keyInterval;
 
-    sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
+    sdfMotGetKey((sdfMotionNode_t *)aThis, aFrame, &keyInterval);
     SDF_VU0_LOADVECTOR_UNALIGN(keyInterval.key0);
     SDF_VU0_LOADVECTOR_UNALIGN_B(keyInterval.key1);
     VU0_LERP_VF10_W(keyInterval.rate);
-    SDF_VU0_STOREVECTOR_NOMEM(&binding->modelBase.modelNode->pos);
+    SDF_VU0_STOREVECTOR_NOMEM(&aThis->modelBase.modelNode->pos);
 }
 
 /* vu0 routine: sample and blend the channel using the SDK packed operations. */
-void sdfMotCLBK_modelLinerPosBlendSeek(sdfMotNodeModelVec_t *binding, f32 frame, f32 blendWeight) {
+void sdfMotCLBK_modelLinerPosBlendSeek(sdfMotNodeModelVec_t *aThis, f32 aFrame, f32 aBlendRate) {
     sdfMotGetKeyIf_t keyInterval;
 
-    sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
+    sdfMotGetKey((sdfMotionNode_t *)aThis, aFrame, &keyInterval);
     SDF_VU0_LOADVECTOR_UNALIGN(keyInterval.key0);
     SDF_VU0_LOADVECTOR_UNALIGN_B(keyInterval.key1);
     VU0_LERP_VF10_COPY(keyInterval.rate);
-    SDF_VU0_LOADVECTOR(&binding->blendFrom);
-    VU0_LERP_VF10_W(blendWeight);
-    SDF_VU0_STOREVECTOR_NOMEM(&binding->modelBase.modelNode->pos);
+    SDF_VU0_LOADVECTOR(&aThis->blendFrom);
+    VU0_LERP_VF10_W(aBlendRate);
+    SDF_VU0_STOREVECTOR_NOMEM(&aThis->modelBase.modelNode->pos);
 }
 
 sdfMotionNode_t *sdfMotGenModelLinerRotXYZ(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
@@ -483,7 +483,7 @@ sdfMotionNode_t *sdfMotGenModelLinerRotXYZ(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId
 }
 
 /* vu0 routine: sample and blend the channel using the SDK packed operations. */
-void sdfMotCLBK_modelLinerRotXYZSeek(sdfMotNodeModelVec_t *binding, f32 frame) {
+void sdfMotCLBK_modelLinerRotXYZSeek(sdfMotNodeModelVec_t *aThis, f32 aFrame) {
     sdfMotGetKeyIf_t keyInterval;
     /* volatile: retail reads the three angles with the call's delay slot left
      * empty, which only a volatile local reaches. */
@@ -491,14 +491,14 @@ void sdfMotCLBK_modelLinerRotXYZSeek(sdfMotNodeModelVec_t *binding, f32 frame) {
     sdfModelNode_t *drawNode;
     f32 (*matrix)[4];
 
-    sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
+    sdfMotGetKey((sdfMotionNode_t *)aThis, aFrame, &keyInterval);
     SDF_VU0_LOADVECTOR_UNALIGN(keyInterval.key0);
     SDF_VU0_LOADVECTOR_UNALIGN_B(keyInterval.key1);
     VU0_LERP_VF10_VF11(keyInterval.rate);
     SDF_VU0_VECTOR_W_SET_ZERO();
     SDF_VU0_STOREVECTOR_NOMEM(&euler);
     FromEuler(euler.x, euler.y, euler.z);
-    drawNode = binding->modelBase.modelNode;
+    drawNode = aThis->modelBase.modelNode;
     SDF_VU0_STOREVECTOR_NOMEM(&drawNode->rotate);
     matrix = (f32 (*)[4])drawNode->localNoScaledTm.m;
     ToMatrix();
@@ -508,13 +508,13 @@ void sdfMotCLBK_modelLinerRotXYZSeek(sdfMotNodeModelVec_t *binding, f32 frame) {
 }
 
 /* vu0 routine: sample and blend the channel using the SDK packed operations. */
-void sdfMotCLBK_modelLinerRotXYZBlendSeek(sdfMotNodeModelVec_t *binding, f32 frame, f32 blendWeight) {
+void sdfMotCLBK_modelLinerRotXYZBlendSeek(sdfMotNodeModelVec_t *aThis, f32 aFrame, f32 aBlendRate) {
     sdfMotGetKeyIf_t keyInterval;
     volatile sdfVector4_t euler;
     sdfModelNode_t *drawNode;
     f32 (*matrix)[4];
 
-    sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
+    sdfMotGetKey((sdfMotionNode_t *)aThis, aFrame, &keyInterval);
     SDF_VU0_LOADVECTOR_UNALIGN(keyInterval.key0);
     SDF_VU0_LOADVECTOR_UNALIGN_B(keyInterval.key1);
     VU0_LERP_VF10_VF11(keyInterval.rate);
@@ -522,9 +522,9 @@ void sdfMotCLBK_modelLinerRotXYZBlendSeek(sdfMotNodeModelVec_t *binding, f32 fra
     SDF_VU0_STOREVECTOR_NOMEM(&euler);
     FromEuler(euler.x, euler.y, euler.z);
     SDF_VU0_COPYVECTOR_A_TO_B();
-    SDF_VU0_LOADVECTOR(&binding->blendFrom);
-    Lerp(blendWeight);
-    drawNode = binding->modelBase.modelNode;
+    SDF_VU0_LOADVECTOR(&aThis->blendFrom);
+    Lerp(aBlendRate);
+    drawNode = aThis->modelBase.modelNode;
     SDF_VU0_STOREVECTOR_NOMEM(&drawNode->rotate);
     matrix = (f32 (*)[4])drawNode->localNoScaledTm.m;
     ToMatrix();
@@ -543,27 +543,27 @@ sdfMotionNode_t *sdfMotGenModelLinerScale(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId,
 }
 
 /* vu0 routine: sample and blend the channel using the SDK packed operations. */
-void sdfMotCLBK_modelLinerScaleSeek(sdfMotNodeModelVec_t *binding, f32 frame) {
+void sdfMotCLBK_modelLinerScaleSeek(sdfMotNodeModelVec_t *aThis, f32 aFrame) {
     sdfMotGetKeyIf_t keyInterval;
 
-    sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
+    sdfMotGetKey((sdfMotionNode_t *)aThis, aFrame, &keyInterval);
     SDF_VU0_LOADVECTOR_UNALIGN(keyInterval.key0);
     SDF_VU0_LOADVECTOR_UNALIGN_B(keyInterval.key1);
     VU0_LERP_VF10_W(keyInterval.rate);
-    SDF_VU0_STOREVECTOR(&binding->modelBase.modelNode->scale);
+    SDF_VU0_STOREVECTOR(&aThis->modelBase.modelNode->scale);
 }
 
 /* vu0 routine: sample and blend the channel using the SDK packed operations. */
-void sdfMotCLBK_modelLinerScaleBlendSeek(sdfMotNodeModelVec_t *binding, f32 frame, f32 blendWeight) {
+void sdfMotCLBK_modelLinerScaleBlendSeek(sdfMotNodeModelVec_t *aThis, f32 aFrame, f32 aBlendRate) {
     sdfMotGetKeyIf_t keyInterval;
 
-    sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
+    sdfMotGetKey((sdfMotionNode_t *)aThis, aFrame, &keyInterval);
     SDF_VU0_LOADVECTOR_UNALIGN(keyInterval.key0);
     SDF_VU0_LOADVECTOR_UNALIGN_B(keyInterval.key1);
     VU0_LERP_VF10_COPY(keyInterval.rate);
-    SDF_VU0_LOADVECTOR(&binding->blendFrom);
-    VU0_LERP_VF10_W(blendWeight);
-    SDF_VU0_STOREVECTOR(&binding->modelBase.modelNode->scale);
+    SDF_VU0_LOADVECTOR(&aThis->blendFrom);
+    VU0_LERP_VF10_W(aBlendRate);
+    SDF_VU0_STOREVECTOR(&aThis->modelBase.modelNode->scale);
 }
 
 sdfMotionNode_t *sdfMotGenModelLerpRotQuat(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
@@ -576,19 +576,19 @@ sdfMotionNode_t *sdfMotGenModelLerpRotQuat(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId
 }
 
 /* vu0 routine: sample and blend the channel using the SDK packed operations. */
-void sdfMotCLBK_modelLerpRotQuatSeek(sdfMotNodeModelVec_t *binding, f32 frame) {
+void sdfMotCLBK_modelLerpRotQuatSeek(sdfMotNodeModelVec_t *aThis, f32 aFrame) {
     sdfMotGetKeyIf_t keyInterval;
     sdfModelNode_t *drawNode;
     f32 (*matrix)[4];
     f32 *keyData;
 
-    sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
+    sdfMotGetKey((sdfMotionNode_t *)aThis, aFrame, &keyInterval);
     keyData = keyInterval.key0;
     SDF_VU0_LOADSHORTVECTOR(keyData);
     keyData = keyInterval.key1;
     SDF_VU0_LOADSHORTVECTOR_B(keyData);
     Lerp(keyInterval.rate);
-    drawNode = binding->modelBase.modelNode;
+    drawNode = aThis->modelBase.modelNode;
     SDF_VU0_STOREVECTOR_NOMEM(&drawNode->rotate);
     matrix = (f32 (*)[4])drawNode->localNoScaledTm.m;
     ToMatrix();
@@ -598,22 +598,22 @@ void sdfMotCLBK_modelLerpRotQuatSeek(sdfMotNodeModelVec_t *binding, f32 frame) {
 }
 
 /* vu0 routine: sample and blend the channel using the SDK packed operations. */
-void sdfMotCLBK_modelLerpRotQuatBlendSeek(sdfMotNodeModelVec_t *binding, f32 frame, f32 blendWeight) {
+void sdfMotCLBK_modelLerpRotQuatBlendSeek(sdfMotNodeModelVec_t *aThis, f32 aFrame, f32 aBlendRate) {
     sdfMotGetKeyIf_t keyInterval;
     sdfModelNode_t *drawNode;
     f32 (*matrix)[4];
     f32 *keyData;
 
-    sdfMotGetKey((sdfMotionNode_t *)binding, frame, &keyInterval);
+    sdfMotGetKey((sdfMotionNode_t *)aThis, aFrame, &keyInterval);
     keyData = keyInterval.key0;
     SDF_VU0_LOADSHORTVECTOR(keyData);
     keyData = keyInterval.key1;
     SDF_VU0_LOADSHORTVECTOR_B(keyData);
     Lerp(keyInterval.rate);
-    drawNode = binding->modelBase.modelNode;
+    drawNode = aThis->modelBase.modelNode;
     SDF_VU0_COPYVECTOR_A_TO_B();
-    SDF_VU0_LOADVECTOR(&binding->blendFrom);
-    Lerp(blendWeight);
+    SDF_VU0_LOADVECTOR(&aThis->blendFrom);
+    Lerp(aBlendRate);
     SDF_VU0_STOREVECTOR_NOMEM(&drawNode->rotate);
     matrix = (f32 (*)[4])drawNode->localNoScaledTm.m;
     ToMatrix();
@@ -1031,22 +1031,22 @@ sdfMotionNode_t *sdfMotGenMorphNode(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 a
     return D_00529600[aTypeId & 0xFFFF](aCtrlr, aTypeId, aNodeId);
 }
 
-void sdfMotGenMorphInit(sdfMotNodeMorph_t *destination,
-                                 sdfMotionCtrlr_t *motion, sdfMotionNodeVTBL_t *dispatch, s32 entryIndex) {
-    sdfMotionNodeBaseInit((sdfMotionNode_t *)&destination->nodeBase,
-                            motion, dispatch);
-    destination->current = &((sdfModelMorph_t *)motion->rootNode->morphList->items)[entryIndex];
+void sdfMotGenMorphInit(sdfMotNodeMorph_t *aBase,
+                                 sdfMotionCtrlr_t *aCtrlr, sdfMotionNodeVTBL_t *aVTBL, s32 aNodeId) {
+    sdfMotionNodeBaseInit((sdfMotionNode_t *)&aBase->nodeBase,
+                            aCtrlr, aVTBL);
+    aBase->current = &((sdfModelMorph_t *)aCtrlr->rootNode->morphList->items)[aNodeId];
 }
 
-sdfMotionNode_t *sdfMotGenMorph(sdfMotionCtrlr_t *motion,
-                                                           s32 unused, s32 entryIndex) {
+sdfMotionNode_t *sdfMotGenMorph(sdfMotionCtrlr_t *aCtrlr,
+                                                           s32 aTypeId, s32 aNodeId) {
     sdfMotNodeMorph_t *entry = sdfChipAllocDirect(sizeof(sdfMotNodeMorph_t));
 
-    sdfMotGenMorphInit(entry, motion, &sdfMotMorphTable, entryIndex);
+    sdfMotGenMorphInit(entry, aCtrlr, &sdfMotMorphTable, aNodeId);
     return &entry->nodeBase;
 }
 
-void sdfMotCLBK_morphSeek(sdfMotNodeMorph_t *motion, f32 frame) {
+void sdfMotCLBK_morphSeek(sdfMotNodeMorph_t *aThis, f32 aFrame) {
     sdfMotGetKeyIf_t sample;
     sdfModelMorphParm_t *out;
     s32 firstId;
@@ -1056,14 +1056,14 @@ void sdfMotCLBK_morphSeek(sdfMotNodeMorph_t *motion, f32 frame) {
     f32 weight;
     f32 inverse;
 
-    sdfMotGetKey(&motion->nodeBase, frame, &sample);
+    sdfMotGetKey(&aThis->nodeBase, aFrame, &sample);
     firstId = ((sdfModelMorphParm_t *)sample.key0)->targetId;
     secondId = ((sdfModelMorphParm_t *)sample.key1)->targetId;
     firstValue = ((sdfModelMorphParm_t *)sample.key0)->blend;
     secondValue = ((sdfModelMorphParm_t *)sample.key1)->blend;
     weight = sample.rate;
     inverse = 1.0f - weight;
-    out = motion->current->target;
+    out = aThis->current->target;
     if (firstId == secondId) {
         out[0].targetId = firstId;
         out[0].blend = firstValue * inverse + secondValue * weight;
@@ -1077,7 +1077,7 @@ void sdfMotCLBK_morphSeek(sdfMotNodeMorph_t *motion, f32 frame) {
     }
 }
 
-void sdfMotCLBK_morphBlendSeek(sdfMotNodeMorph_t *motion, f32 frame, f32 amount) {
+void sdfMotCLBK_morphBlendSeek(sdfMotNodeMorph_t *aThis, f32 aFrame, f32 aBlendRate) {
     sdfMotGetKeyIf_t sample;
     sdfModelMorph_t *current;
     sdfModelMorphParm_t *previous;
@@ -1090,7 +1090,7 @@ void sdfMotCLBK_morphBlendSeek(sdfMotNodeMorph_t *motion, f32 frame, f32 amount)
     f32 contributionWeight;
     f32 secondWeight;
 
-    sdfMotGetKey(&motion->nodeBase, frame, &sample);
+    sdfMotGetKey(&aThis->nodeBase, aFrame, &sample);
     firstId = ((sdfModelMorphParm_t *)sample.key0)->targetId;
     secondId = ((sdfModelMorphParm_t *)sample.key1)->targetId;
     firstValue = ((sdfModelMorphParm_t *)sample.key0)->blend;
@@ -1098,10 +1098,10 @@ void sdfMotCLBK_morphBlendSeek(sdfMotNodeMorph_t *motion, f32 frame, f32 amount)
     secondWeight = sample.rate;
     {
         const f32 sampleComplement = 1.0f - secondWeight;
-        contributionWeight = sampleComplement * amount;
+        contributionWeight = sampleComplement * aBlendRate;
     }
-    secondWeight *= amount;
-    current = motion->current;
+    secondWeight *= aBlendRate;
+    current = aThis->current;
 
     if (firstId == secondId) {
         current->target[0].targetId = secondId;
@@ -1115,8 +1115,8 @@ void sdfMotCLBK_morphBlendSeek(sdfMotNodeMorph_t *motion, f32 frame, f32 amount)
         count = 2;
     }
 
-    contributionWeight = 1.0f - amount;
-    for (previous = motion->previous.target, previousPairIndex = 0;
+    contributionWeight = 1.0f - aBlendRate;
+    for (previous = aThis->previous.target, previousPairIndex = 0;
          previousPairIndex < 2; previousPairIndex++, previous++) {
         f32 previousContributionWeight = previous->blend * contributionWeight;
 
@@ -1157,6 +1157,6 @@ void sdfMotCLBK_morphBlendSeek(sdfMotNodeMorph_t *motion, f32 frame, f32 amount)
 
 }
 
-void sdfMotCLBK_morphInitBlend(sdfMotNodeMorph_t *motion) {
-    motion->previous = *motion->current;
+void sdfMotCLBK_morphInitBlend(sdfMotNodeMorph_t *aThis) {
+    aThis->previous = *aThis->current;
 }

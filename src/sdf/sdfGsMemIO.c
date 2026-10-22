@@ -77,8 +77,8 @@ typedef struct sdfGrFrameSet_t {
 } sdfGrFrameSet_t;
 
 
-void sdfDrawTagLink2(struct sdfDrawTag_t *list, u32 packetAddress,
-                          u32 rangeTailAddress);
+void sdfDrawTagLink2(struct sdfDrawTag_t *aTag, u32 aHeadPacket,
+                          u32 aTailPacket);
 
 /* Resource upload payload and its terminal primitive-reset tag (0xF0). */
 typedef struct sdfStoreImagePacket_t {
@@ -109,7 +109,7 @@ typedef struct sdfPreDrawTag_t {
 
 extern sdfGrFrameSet_t D_00529388;
 
-s32 sdfGetTexelBitCount(u32 format);
+s32 sdfGetTexelBitCount(u32 aFormat);
 
 typedef struct effDebugPolyParams_t {
     s16 parameterCount;
@@ -127,146 +127,146 @@ typedef struct effDebugPolyParams_t {
     f32 depth;
 } effDebugPolyParams_t;
 
-void sdfSetStoreImage(sdfStoreImagePacket_t *packet, sdfGsMemSlice_t *source,
-    s32 sourceX, s32 sourceY, s32 width, s32 height, u32 resourceAddress, u32 arg7, u32 arg8);
+void sdfSetStoreImage(sdfStoreImagePacket_t *aPacket, sdfGsMemSlice_t *aGsHandle,
+    s32 aSrcX, s32 aSrcY, s32 aWidth, s32 aHeight, u32 aBuffer, u32 aCallback, u32 aCallbackParam);
 
-void sdfLinkStoreImage(sdfDrawTag_t *list, sdfGsMemSlice_t *source, s32 sourceX,
-                   s32 sourceY, s32 width, s32 height, s32 resourceAddress, s32 arg7,
-                   s32 arg8, s32 (*allocate)(s32));
+void sdfLinkStoreImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle, s32 aSrcX,
+                   s32 aSrcY, s32 aWidth, s32 aHeight, s32 aBuffer, s32 aCallback,
+                   s32 aCallbackParam, s32 (*aAllocator)(s32));
 
-void sdfLinkStoreFrameImagePredraw(SdfPatchableResourcePacket *packet, s32 entryIndex);
+void sdfLinkStoreFrameImagePredraw(SdfPatchableResourcePacket *aPre, s32 aEvenOdd);
 
-void sdfLinkStoreFrameImage(sdfDrawTag_t *list, sdfPreDrawTag_t *linkedList, s32 sourceX, s32 sourceY,
-                   s32 width, s32 height, s32 resourceAddress, s32 arg7, s32 arg8,
-                   s32 (*allocatePacket)(s32));
+void sdfLinkStoreFrameImage(sdfDrawTag_t *aDrawTag, sdfPreDrawTag_t *aPreDrawTag, s32 aSrcX, s32 aSrcY,
+                   s32 aWidth, s32 aHeight, s32 aBuffer, s32 aCallback, s32 aCallbackParam,
+                   s32 (*aAllocator)(s32));
 
-void sdfSetLoadImage(sdfLoadImagePacket_t *packet, sdfGsMemSlice_t *source,
-                   s64 destinationX, s64 destinationY, s32 transferWidth,
-                   s32 transferHeight, u32 sourceAddress);
+void sdfSetLoadImage(sdfLoadImagePacket_t *aPacket, sdfGsMemSlice_t *aGsHandle,
+                   s64 aDstX, s64 aDstY, s32 aWidth,
+                   s32 aHeight, u32 aBuffer);
 
-void sdfLinkLoadImage(sdfDrawTag_t *list, sdfGsMemSlice_t *source,
-                   s32 destinationX, s32 destinationY, s32 width, s32 height,
-                   s32 sourceAddress, s32 (*allocatePacket)(s32));
+void sdfLinkLoadImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle,
+                   s32 aDstX, s32 aDstY, s32 aWidth, s32 aHeight,
+                   s32 aBuffer, s32 (*aAllocator)(s32));
 
-s32 sdfGrAllocPacketBuff(s32 size);
+s32 sdfGrAllocPacketBuff(s32 aSize);
 
-void sdfPreDrawTagLink(sdfPreDrawTag_t *list, SdfPacketPatchLink *node);
+void sdfPreDrawTagLink(sdfPreDrawTag_t *aTag, SdfPacketPatchLink *aHook);
 
-void sdfPrimSetBitBltElem(sdfPrimBitBltElem_t *packet, u32 destinationBufferAddress, s32 destinationBufferWidth,
-                  s64 destinationFormat, s64 destinationX, s64 destinationY,
-                  u32 sourceBufferAddress, s32 sourceBufferWidth, s32 sourceFormat,
-                  s32 sourceX, s32 sourceY, s32 transferWidth, s32 transferHeight, s32 transferDirection);
+void sdfPrimSetBitBltElem(sdfPrimBitBltElem_t *aElem, u32 aDstGsAddr, s32 aDstBuffWidth,
+                  s64 aDstPixelFormat, s64 aDstX, s64 aDstY,
+                  u32 aSrcGsAddr, s32 aSrcBuffWidth, s32 aSrcPixelFormat,
+                  s32 aSrcX, s32 aSrcY, s32 aWidth, s32 aHeight, s32 aDirMode);
 
-void sdfSetStoreImage(sdfStoreImagePacket_t *packet, sdfGsMemSlice_t *source,
-    s32 sourceX, s32 sourceY, s32 width, s32 height, u32 resourceAddress, u32 arg7, u32 arg8) {
+void sdfSetStoreImage(sdfStoreImagePacket_t *aPacket, sdfGsMemSlice_t *aGsHandle,
+    s32 aSrcX, s32 aSrcY, s32 aWidth, s32 aHeight, u32 aBuffer, u32 aCallback, u32 aCallbackParam) {
     s32 quadwordCount;
 
-    packet->header[0] = 0x90000001ULL;
-    packet->header[1] = 0x10000000ULL;
-    packet->header[2] = 0;
-    packet->header[3] = 0;
-    packet->header[4] = 0x90000002ULL;
-    packet->header[5] = 0x5000000206008000ULL;
-    packet->header[6] = 0x1000000000000001ULL;
-    packet->header[7] = 0xE;
-    packet->header[8] = 0;
-    packet->header[9] = 0x61;
-    packet->header[10] = ((u64)((u32)packet->tail & SDF_DMA_ADDRESS_MASK) << 32) | 0xA0000005ULL;
-    packet->header[11] = 0x5000000500000000ULL;
-    packet->header[12] = 0x1000000000000004ULL;
-    packet->header[13] = 0xE;
-    sdfPrimSetBitBltElem(&packet->transfer, 0, 0, 0, 0, 0,
-        source->addr, source->w, source->pixelFormat,
-        sourceX, sourceY, width, height, 1);
-    quadwordCount = (sdfGetTexelBitCount(source->pixelFormat) * width * height) >> 7;
-    packet->quadwordCount = quadwordCount;
-    packet->addr = resourceAddress;
-    packet->callback = arg7;
-    packet->callbackParam = arg8;
-    packet->tail[0] = 0x20000002ULL;
-    packet->tail[1] = 0x5000000206000000ULL;
-    packet->tail[2] = 0x1000000000008001ULL;
-    packet->tail[3] = 0xE;
-    packet->tail[4] = 0x46;
-    packet->tail[5] = 0;
+    aPacket->header[0] = 0x90000001ULL;
+    aPacket->header[1] = 0x10000000ULL;
+    aPacket->header[2] = 0;
+    aPacket->header[3] = 0;
+    aPacket->header[4] = 0x90000002ULL;
+    aPacket->header[5] = 0x5000000206008000ULL;
+    aPacket->header[6] = 0x1000000000000001ULL;
+    aPacket->header[7] = 0xE;
+    aPacket->header[8] = 0;
+    aPacket->header[9] = 0x61;
+    aPacket->header[10] = ((u64)((u32)aPacket->tail & SDF_DMA_ADDRESS_MASK) << 32) | 0xA0000005ULL;
+    aPacket->header[11] = 0x5000000500000000ULL;
+    aPacket->header[12] = 0x1000000000000004ULL;
+    aPacket->header[13] = 0xE;
+    sdfPrimSetBitBltElem(&aPacket->transfer, 0, 0, 0, 0, 0,
+        aGsHandle->addr, aGsHandle->w, aGsHandle->pixelFormat,
+        aSrcX, aSrcY, aWidth, aHeight, 1);
+    quadwordCount = (sdfGetTexelBitCount(aGsHandle->pixelFormat) * aWidth * aHeight) >> 7;
+    aPacket->quadwordCount = quadwordCount;
+    aPacket->addr = aBuffer;
+    aPacket->callback = aCallback;
+    aPacket->callbackParam = aCallbackParam;
+    aPacket->tail[0] = 0x20000002ULL;
+    aPacket->tail[1] = 0x5000000206000000ULL;
+    aPacket->tail[2] = 0x1000000000008001ULL;
+    aPacket->tail[3] = 0xE;
+    aPacket->tail[4] = 0x46;
+    aPacket->tail[5] = 0;
 }
 
-void sdfLinkStoreImage(sdfDrawTag_t *list, sdfGsMemSlice_t *source, s32 sourceX,
-                   s32 sourceY, s32 width, s32 height, s32 resourceAddress, s32 arg7,
-                   s32 arg8, s32 (*allocate)(s32)) {
+void sdfLinkStoreImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle, s32 aSrcX,
+                   s32 aSrcY, s32 aWidth, s32 aHeight, s32 aBuffer, s32 aCallback,
+                   s32 aCallbackParam, s32 (*aAllocator)(s32)) {
     s32 packetAddress;
 
-    if (allocate == NULL) {
-        allocate = sdfGrAllocPacketBuff;
+    if (aAllocator == NULL) {
+        aAllocator = sdfGrAllocPacketBuff;
     }
-    packetAddress = allocate(0xf0);
-    sdfSetStoreImage((sdfStoreImagePacket_t *)packetAddress, source,
-        sourceX, sourceY, width, height, resourceAddress, arg7, arg8);
-    sdfDrawTagLink2(list, packetAddress, packetAddress + 0xc0);
+    packetAddress = aAllocator(0xf0);
+    sdfSetStoreImage((sdfStoreImagePacket_t *)packetAddress, aGsHandle,
+        aSrcX, aSrcY, aWidth, aHeight, aBuffer, aCallback, aCallbackParam);
+    sdfDrawTagLink2(aDrawTag, packetAddress, packetAddress + 0xc0);
 }
 
-void sdfLinkStoreFrameImagePredraw(SdfPatchableResourcePacket *packet, s32 entryIndex) {
-    packet->resourcePacket.transfer.bitbltbuf.data =
-        (packet->resourcePacket.transfer.bitbltbuf.data & ~0x3FFF) |
-        (u64)(u32)(D_00529388.buffers[entryIndex]->addr >> 6);
+void sdfLinkStoreFrameImagePredraw(SdfPatchableResourcePacket *aPre, s32 aEvenOdd) {
+    aPre->resourcePacket.transfer.bitbltbuf.data =
+        (aPre->resourcePacket.transfer.bitbltbuf.data & ~0x3FFF) |
+        (u64)(u32)(D_00529388.buffers[aEvenOdd]->addr >> 6);
 }
 
-void sdfLinkStoreFrameImage(sdfDrawTag_t *list, sdfPreDrawTag_t *linkedList, s32 sourceX, s32 sourceY,
-                   s32 width, s32 height, s32 resourceAddress, s32 arg7, s32 arg8,
-                   s32 (*allocatePacket)(s32)) {
+void sdfLinkStoreFrameImage(sdfDrawTag_t *aDrawTag, sdfPreDrawTag_t *aPreDrawTag, s32 aSrcX, s32 aSrcY,
+                   s32 aWidth, s32 aHeight, s32 aBuffer, s32 aCallback, s32 aCallbackParam,
+                   s32 (*aAllocator)(s32)) {
     SdfPatchableResourcePacket *packet;
 
-    if (allocatePacket == NULL) {
-        allocatePacket = sdfGrAllocPacketBuff;
+    if (aAllocator == NULL) {
+        aAllocator = sdfGrAllocPacketBuff;
     }
-    packet = (SdfPatchableResourcePacket *)allocatePacket(SDF_PATCHABLE_PACKET_BYTES);
+    packet = (SdfPatchableResourcePacket *)aAllocator(SDF_PATCHABLE_PACKET_BYTES);
     packet->link.patch = sdfLinkStoreFrameImagePredraw;
     sdfSetStoreImage(&packet->resourcePacket,
-        D_00529388.buffers[0], sourceX, sourceY, width, height,
-        resourceAddress, arg7, arg8);
-    sdfPreDrawTagLink(linkedList, &packet->link);
-    sdfDrawTagLink2(list, (u32)&packet->resourcePacket,
+        D_00529388.buffers[0], aSrcX, aSrcY, aWidth, aHeight,
+        aBuffer, aCallback, aCallbackParam);
+    sdfPreDrawTagLink(aPreDrawTag, &packet->link);
+    sdfDrawTagLink2(aDrawTag, (u32)&packet->resourcePacket,
         (u32)packet + SDF_PATCHABLE_PACKET_TAIL_OFFSET);
 }
 
-void sdfSetLoadImage(sdfLoadImagePacket_t *packet, sdfGsMemSlice_t *source,
-                   s64 destinationX, s64 destinationY, s32 transferWidth,
-                   s32 transferHeight, u32 sourceAddress) {
+void sdfSetLoadImage(sdfLoadImagePacket_t *aPacket, sdfGsMemSlice_t *aGsHandle,
+                   s64 aDstX, s64 aDstY, s32 aWidth,
+                   s32 aHeight, u32 aBuffer) {
     s32 qwc;
 
-    packet->header[0] = 0x10000006;
-    packet->header[1] = 0x5000000611000000;
-    packet->header[2] = 0x1000000000000004;
-    packet->header[3] = 0xE;
-    sdfPrimSetBitBltElem(&packet->transfer, source->addr, source->w,
-                  source->pixelFormat, destinationX, destinationY, 0, 0, 0, 0, 0,
-                  transferWidth, transferHeight, 0);
+    aPacket->header[0] = 0x10000006;
+    aPacket->header[1] = 0x5000000611000000;
+    aPacket->header[2] = 0x1000000000000004;
+    aPacket->header[3] = 0xE;
+    sdfPrimSetBitBltElem(&aPacket->transfer, aGsHandle->addr, aGsHandle->w,
+                  aGsHandle->pixelFormat, aDstX, aDstY, 0, 0, 0, 0, 0,
+                  aWidth, aHeight, 0);
 
-    qwc = (sdfGetTexelBitCount(source->pixelFormat) * transferWidth * transferHeight) >> 7;
-    packet->imageReferenceTag = 0x0800000000000000 | qwc;
-    packet->imageReferencePad = 0;
-    packet->imageGifTag0 = (u32)((qwc & SDF_DMA_QWC_MASK) | 0x30000000) |
-                           ((u64)(sourceAddress & SDF_DMA_ADDRESS_MASK) << 32);
-    packet->imageGifTag1 = (u64)(0x51000000 | qwc) << 32;
-    packet->flushTag0 = 0x20000002;
-    packet->flushTag1 = 0x5000000200000000;
-    packet->flushGifTag = 0x1000000000008001;
-    packet->flushRegister = 0xE;
-    packet->zero = 0;
-    packet->finishRegister = 0x3F;
+    qwc = (sdfGetTexelBitCount(aGsHandle->pixelFormat) * aWidth * aHeight) >> 7;
+    aPacket->imageReferenceTag = 0x0800000000000000 | qwc;
+    aPacket->imageReferencePad = 0;
+    aPacket->imageGifTag0 = (u32)((qwc & SDF_DMA_QWC_MASK) | 0x30000000) |
+                           ((u64)(aBuffer & SDF_DMA_ADDRESS_MASK) << 32);
+    aPacket->imageGifTag1 = (u64)(0x51000000 | qwc) << 32;
+    aPacket->flushTag0 = 0x20000002;
+    aPacket->flushTag1 = 0x5000000200000000;
+    aPacket->flushGifTag = 0x1000000000008001;
+    aPacket->flushRegister = 0xE;
+    aPacket->zero = 0;
+    aPacket->finishRegister = 0x3F;
 }
 
-void sdfLinkLoadImage(sdfDrawTag_t *list, sdfGsMemSlice_t *source,
-                   s32 destinationX, s32 destinationY, s32 width, s32 height,
-                   s32 sourceAddress, s32 (*allocatePacket)(s32)) {
+void sdfLinkLoadImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle,
+                   s32 aDstX, s32 aDstY, s32 aWidth, s32 aHeight,
+                   s32 aBuffer, s32 (*aAllocator)(s32)) {
     s32 packetAddress;
-    if (allocatePacket == NULL) {
-        allocatePacket = sdfGrAllocPacketBuff;
+    if (aAllocator == NULL) {
+        aAllocator = sdfGrAllocPacketBuff;
     }
-    packetAddress = allocatePacket(SDF_DESCRIPTOR_PACKET_BYTES);
-    sdfSetLoadImage((sdfLoadImagePacket_t *)packetAddress, source,
-                  destinationX, destinationY, width, height, sourceAddress);
-    sdfDrawTagLink2(list, packetAddress, packetAddress + SDF_DESCRIPTOR_PACKET_TAIL_OFFSET);
+    packetAddress = aAllocator(SDF_DESCRIPTOR_PACKET_BYTES);
+    sdfSetLoadImage((sdfLoadImagePacket_t *)packetAddress, aGsHandle,
+                  aDstX, aDstY, aWidth, aHeight, aBuffer);
+    sdfDrawTagLink2(aDrawTag, packetAddress, packetAddress + SDF_DESCRIPTOR_PACKET_TAIL_OFFSET);
 }
 INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfDelayedResrcSemaId);
 

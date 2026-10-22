@@ -172,31 +172,31 @@ s32 sdfGetCdClock(sdfClock_t *now);
 s32 sdfBcdToDecimal(s32 aBcd);
 
 /* Seed the generator state (the shared effect state when `state` is NULL); each word is the previous one rotated right 8 bits and xored with a constant. */
-void sdfRandomize(sdfRandCB_t *state, u32 seed) {
-    if (state == NULL) {
-        state = &sdfDefaultRandCB;
+void sdfRandomize(sdfRandCB_t *aCB, u32 aSeed) {
+    if (aCB == NULL) {
+        aCB = &sdfDefaultRandCB;
     }
-    seed ^= 0x0AED1A0C;
-    state->v[0] = seed;
-    seed = (seed << 24) | (seed >> 8);
-    state->v[1] = seed;
-    seed ^= 0xAA5A02FE;
-    seed = (seed << 24) | (seed >> 8);
-    state->v[2] = seed;
-    seed ^= 0x11BE81C7;
-    seed = (seed << 24) | (seed >> 8);
-    state->v[3] = seed;
+    aSeed ^= 0x0AED1A0C;
+    aCB->v[0] = aSeed;
+    aSeed = (aSeed << 24) | (aSeed >> 8);
+    aCB->v[1] = aSeed;
+    aSeed ^= 0xAA5A02FE;
+    aSeed = (aSeed << 24) | (aSeed >> 8);
+    aCB->v[2] = aSeed;
+    aSeed ^= 0x11BE81C7;
+    aSeed = (aSeed << 24) | (aSeed >> 8);
+    aCB->v[3] = aSeed;
 }
 
 /* Seeds the generator at `state` from the current clock (time of day in seconds since an epoch). */
-void sdfRandomizeByTime(sdfRandCB_t *state) {
+void sdfRandomizeByTime(sdfRandCB_t *aCB) {
     sdfClock_t now;
     s32 secondsSinceEpoch;
     sdfGetCdClock(&now);
     secondsSinceEpoch = now.year * 0x16E + now.day + D_00529BB0.monthDays[now.month + 7] + 0xFFF4FF83;
     secondsSinceEpoch = secondsSinceEpoch * 0x18 + now.hour;
     secondsSinceEpoch = secondsSinceEpoch * 0x3C + now.min;
-    sdfRandomize(state, secondsSinceEpoch * 0x3C + now.sec);
+    sdfRandomize(aCB, secondsSinceEpoch * 0x3C + now.sec);
 }
 
 s32 sdfGetCdClock(sdfClock_t *now) {

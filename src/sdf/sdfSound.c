@@ -23,7 +23,7 @@ typedef struct
 
 extern p2sdLoadEntry_t LastLoad[];
 
-s32 sdfSndSendCmd(s32 aCmd, s32 aArg1, void *aData, s32 aSize);
+s32 sdfSndSendCmd(s32 aCmd, s32 aParam, void *aExDataPtr, s32 aExDataSize);
 
 extern s32 SignalSema(s32 aSemaId);
 
@@ -169,7 +169,7 @@ enum sdf_stream_playback {
     SDF_STREAM_PLAYBACK_CADENCED = 2
 };
 
-extern void sdfSndTransToIOP(s32 destination, void *source, s32 size);
+extern void sdfSndTransToIOP(s32 aIOPAddr, void *aEEAddr, s32 aSize);
 
 extern void *memcpy(void *, const void *, unsigned int);
 
@@ -194,9 +194,9 @@ extern void FlushCache(s32);
 
 extern sndListenerState_t D_005907F0;
 
-char *sdfSndMakeFilename(char *pathBuffer, const char *filename);
+char *sdfSndMakeFilename(char *aDstName, const char *aSrcName);
 
-extern s32 p2sdLoadCheckMidi(s32 packedTrack);
+extern s32 p2sdLoadCheckMidi(s32 MidiNo);
 
 extern s32 p2sdSmgHandle;
 
@@ -249,19 +249,19 @@ sdfGsMemSlice_t *sdfGsMemGetLinkTail(void);
 
 extern char *D_00529CD8[];
 
-void sdfMemGetInfo(sdfMemInfo_t *stats);
+void sdfMemGetInfo(sdfMemInfo_t *aInfo);
 
-void sdfChipGetInfo(sdfChipInfo_t *stats);
+void sdfChipGetInfo(sdfChipInfo_t *aInfo);
 
 extern s32 (*p2sdSmgBuf)(void);
 
-void p2sdLoadSMGFile(s32 packed);
+void p2sdLoadSMGFile(s32 MidiNo);
 
 u32 *sdfFileRpcHandleCmd(u32 command, sdfSoundRpcRequest_t *request);
 
 void sdfGrFlushOtChain(u32 *source);
 
-s32 sdfPrintf(const char *fmt, ...);
+s32 sdfPrintf(const char *str, ...);
 
 INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndIopAlloc);
 
@@ -281,7 +281,7 @@ void sdfSndCmdIFThread(void)
 
 INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndInitCmdIF);
 
-s32 sdfSndSendCmd(s32 command, s32 channel, void *packet, s32 payloadBytes) {
+s32 sdfSndSendCmd(s32 aCmd, s32 aParam, void *aExDataPtr, s32 aExDataSize) {
     s32 nextWriteIndex;
     s32 wakeAttemptsRemaining;
     sndRingPacket_t *entry;
@@ -300,14 +300,14 @@ s32 sdfSndSendCmd(s32 command, s32 channel, void *packet, s32 payloadBytes) {
     }
     entry = &D_00590840[(s16)sdfSndCmdTailIndex];
     entry->sequence = sdfSndSendCmd_cmd_id;
-    if (payloadBytes != 0) {
-        memcpy(entry->payload, packet, payloadBytes);
+    if (aExDataSize != 0) {
+        memcpy(entry->payload, aExDataPtr, aExDataSize);
     }
     /* The SIF length includes the transport/command header and rounds up to quadwords. */
-    transferQuadwords = (payloadBytes + 0x14 +
+    transferQuadwords = (aExDataSize + 0x14 +
                         (16 - 1)) >> 4;
-    entry->command = (command << 16) |
-                     (channel & 0xFFFF) |
+    entry->command = (aCmd << 16) |
+                     (aParam & 0xFFFF) |
                      (transferQuadwords << 28);
     sdfSndCmdTailIndex = nextWriteIndex;
     if (sdfSndBurstReqMode != 0) {
@@ -319,13 +319,13 @@ s32 sdfSndSendCmd(s32 command, s32 channel, void *packet, s32 payloadBytes) {
     return sdfSndSendCmd_cmd_id;
 }
 
-void sdfSndSyncCmd(s32 aHandle)
+void sdfSndSyncCmd(s32 aCmdId)
 {
 }
 
-s32 sdfSndSendSyncCmd(s32 aCmd, s32 aArg1, void *aData, s32 aSize)
+s32 sdfSndSendSyncCmd(s32 aCmd, s32 aParam, void *aExDataPtr, s32 aExDataSize)
 {
-    s32 handle = sdfSndSendCmd(aCmd, aArg1, aData, aSize);
+    s32 handle = sdfSndSendCmd(aCmd, aParam, aExDataPtr, aExDataSize);
 
     sdfSndSyncCmd(handle);
     return handle;
@@ -395,20 +395,20 @@ s32 p2sd_2C17D8(s32 aSeId)
 }
 
 /* Send a NUL-terminated command string; the transport excludes the terminator. */
-u32 sdfSndLoadHDFile(s32 command, char *text) {
-    u32 length = strlen(text);
-    return sdfSndSendSyncCmd(command | 0x70, 0, text, length);
+u32 sdfSndLoadHDFile(s32 aVcChNum, char *aFilename) {
+    u32 length = strlen(aFilename);
+    return sdfSndSendSyncCmd(aVcChNum | 0x70, 0, aFilename, length);
 }
 
-u32 sdfSndLoadBDFile(s32 command, char *text) {
-    u32 length = strlen(text);
-    return sdfSndSendSyncCmd(command | 0x60, 0, text, length);
+u32 sdfSndLoadBDFile(s32 aVcChNum, char *aFilename) {
+    u32 length = strlen(aFilename);
+    return sdfSndSendSyncCmd(aVcChNum | 0x60, 0, aFilename, length);
 }
 
 /* Send text with command bit 0x80; payload length excludes its NUL terminator. */
-u32 sdfSndLoadSQFile(s32 command, char *text) {
-    u32 length = strlen(text);
-    return sdfSndSendSyncCmd(command | 0x80, 0, text, length);
+u32 sdfSndLoadSQFile(s32 aSqChNum, char *aFilename) {
+    u32 length = strlen(aFilename);
+    return sdfSndSendSyncCmd(aSqChNum | 0x80, 0, aFilename, length);
 }
 
 /* Send a 12-byte sequence command; the trailing struct word is not transmitted. */
@@ -426,26 +426,26 @@ INCLUDE_ASM(const s32, "sdf/sdfSound", p2sdPlaySeDeg);
 INCLUDE_ASM(const s32, "sdf/sdfSound", func_002C1990);
 
 /* Converts world coordinates to the sound engine's one-tenth scale. */
-void p2sdPlaySe3DEx(s32 trackId, s32 radiusInHundreds, f32 worldX, f32 worldY, f32 worldZ) {
+void p2sdPlaySe3DEx(s32 MidiNo, s32 posx, f32 posy, f32 posz, f32 limit) {
     u32 packet[8];
-    packet[0] = trackId;
-    packet[1] = radiusInHundreds;
-    packet[2] = (s32)(worldX * 0.1f);
-    packet[3] = (s32)(worldY * 0.1f);
-    packet[4] = (s32)(worldZ * 0.1f);
+    packet[0] = MidiNo;
+    packet[1] = posx;
+    packet[2] = (s32)(posy * 0.1f);
+    packet[3] = (s32)(posz * 0.1f);
+    packet[4] = (s32)(limit * 0.1f);
     sdfSndSendSyncCmd(0x170, 0, packet, 0x20);
 }
 
 /* Scale six world-space values and send them to the sound engine when they changed. */
-void p2sdSetStandPos(f32 firstPointX, f32 firstPointY, f32 firstPointZ,
-                                 f32 secondPointX, f32 secondPointY, f32 secondPointZ) {
+void p2sdSetStandPos(f32 Cposx, f32 Cposy, f32 Cposz,
+                                 f32 Pposx, f32 Pposy, f32 Pposz) {
     sndListenerState_t state;
-    state.scaledValues[0] = firstPointX * 0.1f;
-    state.scaledValues[1] = firstPointY * 0.1f;
-    state.scaledValues[2] = firstPointZ * 0.1f;
-    state.scaledValues[3] = secondPointX * 0.1f;
-    state.scaledValues[4] = secondPointY * 0.1f;
-    state.scaledValues[5] = secondPointZ * 0.1f;
+    state.scaledValues[0] = Cposx * 0.1f;
+    state.scaledValues[1] = Cposy * 0.1f;
+    state.scaledValues[2] = Cposz * 0.1f;
+    state.scaledValues[3] = Pposx * 0.1f;
+    state.scaledValues[4] = Pposy * 0.1f;
+    state.scaledValues[5] = Pposz * 0.1f;
     if (D_005907F0.scaledValues[0] != state.scaledValues[0] || D_005907F0.scaledValues[1] != state.scaledValues[1] ||
         D_005907F0.scaledValues[2] != state.scaledValues[2] || D_005907F0.scaledValues[3] != state.scaledValues[3] ||
         D_005907F0.scaledValues[4] != state.scaledValues[4] || D_005907F0.scaledValues[5] != state.scaledValues[5]) {
@@ -457,14 +457,14 @@ void p2sdSetStandPos(f32 firstPointX, f32 firstPointY, f32 firstPointZ,
 INCLUDE_ASM(const s32, "sdf/sdfSound", p2sdLoadCheckMidi);
 
 /* Make sure the MIDI bank named by the packed track id is resident, loading it if not. */
-void p2sdLoadSMGFile(s32 packed) {
+void p2sdLoadSMGFile(s32 MidiNo) {
     char name[0x10];
     char path[0x100];
-    s32 status = p2sdLoadCheckMidi(packed);
+    s32 status = p2sdLoadCheckMidi(MidiNo);
     s32 id;
     switch (status) {
     case 0:
-        id = packed >> 16;
+        id = MidiNo >> 16;
         sprintf(name, "MIDI%04X.SMG", id);
         sdfSndMakeFilename(path, name);
         sdfSndSendSyncCmd(0xA0, 0, path, strlen(path) + 1);
@@ -478,7 +478,7 @@ void p2sdLoadSMGFile(s32 packed) {
             if (p2sdSmgBuf != NULL) {
                 p2sdSmgBuf();
             }
-        } while (p2sdLoadCheckMidi(packed) != 1);
+        } while (p2sdLoadCheckMidi(MidiNo) != 1);
         break;
     }
 }

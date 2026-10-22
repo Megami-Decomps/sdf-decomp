@@ -18,8 +18,8 @@ extern void *malloc(u32 size);
 extern s32 DIntr(void);
 extern void EIntr(void);
 extern void *sdfZeroMemQuad(void *ptr, s32 quadCount);
-extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *cb, sdfDelayedResrcFreeFunc freeFunc);
-extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *cb, void *ptr);
+extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, sdfDelayedResrcFreeFunc aFreeFunc);
+extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aItem);
 
 extern sdfDelayedResrcCB_t dds3CleanupList;
 extern sdfChipCB_tag sdfChipCB[SDF_CHIP_CLASS_COUNT];
@@ -181,13 +181,13 @@ void sdfChipFreeDelayedDirect(void *aPtr)
     sdfDelayedResrcEntry(&dds3CleanupList, aPtr);
 }
 
-s32 sdfChipCheck(s32 aAddr)
+s32 sdfChipCheck(s32 aPtr)
 {
     s32 inRange;
 
     inRange = 0;
-    if (aAddr >= (s32)sdfChipPageTop) {
-        inRange = aAddr < (s32)sdfChipPageEnd;
+    if (aPtr >= (s32)sdfChipPageTop) {
+        inRange = aPtr < (s32)sdfChipPageEnd;
     }
     return inRange;
 }

@@ -3,7 +3,7 @@
 #include "libsdf.h"
 #include "ps2asm.h"
 
-f32 sdfSin(f32 aRad);
+f32 sdfSin(f32 aRadius);
 
 enum SdfFileIOCmdStat {
     SDF_FILE_CMD_STAT_INIT = 0,
@@ -66,9 +66,9 @@ extern s32 (*p2sdSmgBuf)(void);
 
 /* Return the input-signed complement of the sampled angle, not standard acos(x). * Magnitudes at or above one leave the angle magnitude at zero. */ f32 sdfAcos(f32 x);
 
-f32 sdfAtan2(f32 y, f32 x);
+f32 sdfAtan2(f32 aY, f32 aX);
 
-f32 sdfCos(f32 aRad);
+f32 sdfCos(f32 aRadius);
 
 /* vu0 routine: shared quaternion registers are the input/output interface. */
 void Mult(void)
@@ -106,9 +106,9 @@ f32 SDF_QUAT_INNERPRODUCT(void)
 }
 
 /* vf10 initially holds the axis; write the sine-scaled axis and cosine W. */
-void FromRotation(f32 angle)
+void FromRotation(f32 aAngle)
 {
-    f32 halfAngle = angle * 0.5f;
+    f32 halfAngle = aAngle * 0.5f;
     f32 trigValue = sdfSin(halfAngle);
     SDF_VU0_SCALEVECTOR_V0(trigValue);
     trigValue = sdfCos(halfAngle);
@@ -116,9 +116,9 @@ void FromRotation(f32 angle)
 }
 
 /* As above, but write the second VU quaternion register (vf11). */
-void FromRotation_B(f32 angle)
+void FromRotation_B(f32 aAngle)
 {
-    f32 halfAngle = angle * 0.5f;
+    f32 halfAngle = aAngle * 0.5f;
     f32 trigValue = sdfSin(halfAngle);
     SDF_VU0_SCALEVECTOR_B_V0(trigValue);
     trigValue = sdfCos(halfAngle);
@@ -131,16 +131,16 @@ void ToMatrix(void)
     VU0_SEQ_TO_MATRIX();
 }
 
-void FromEulerXYZ(f32 x, f32 y, f32 z);
+void FromEulerXYZ(f32 aRotateX, f32 aRotateY, f32 aRotateZ);
 
 INCLUDE_ASM(const s32, "sdf/sdfQuat", FromEulerXYZ);
 
-void FromEuler(f32 x, f32 y, f32 z);
+void FromEuler(f32 aRotateX, f32 aRotateY, f32 aRotateZ);
 
 INCLUDE_ASM(const s32, "sdf/sdfQuat", FromEuler);
 
 /* vu0 routine: compose pitch and offset-adjusted planar direction quaternions. */
-void LookAt(f32 xOffset, f32 yOffset) {
+void LookAt(f32 aFrontX, f32 aFrontZ) {
     f32 input[4];
     f32 quaternion[4];
     f32 x;
@@ -156,7 +156,7 @@ void LookAt(f32 xOffset, f32 yOffset) {
     t = 0.0f;
     x = -input[0];
     y = input[1];
-    if (yOffset < t) {
+    if (aFrontZ < t) {
         y = -y;
     }
     z = input[2];
@@ -183,8 +183,8 @@ void LookAt(f32 xOffset, f32 yOffset) {
     s = 1.0f / horizontalLength;
     x *= s;
     z *= s;
-    adjustedZ = z + yOffset;
-    t = x + xOffset;
+    adjustedZ = z + aFrontZ;
+    t = x + aFrontX;
     offsetSquared = t * t + adjustedZ * adjustedZ;
     if (offsetSquared < 0.000001f) {
         SDF_VU0_LOADVECTOR_B(D_00529BB0.quaternion);
@@ -201,7 +201,7 @@ void LookAt(f32 xOffset, f32 yOffset) {
 
 /* vu0 routine: blend vf10/vf11 along the shorter quaternion arc into vf10.
  * blendAmount is used without clamping; the final step normalizes either blend. */
-void Slerp(f32 blendAmount) {
+void Slerp(f32 aRatio) {
     f32 dotProduct;
     f32 firstWeight;
     f32 secondWeight;
@@ -214,8 +214,8 @@ void Slerp(f32 blendAmount) {
     } else {
         SDF_VU0_COPYVECTOR_B_TO_C();
     }
-    firstWeight = 1.0f - blendAmount;
-    secondWeight = blendAmount;
+    firstWeight = 1.0f - aRatio;
+    secondWeight = aRatio;
     /* Near-identical quaternions use linear weights; normalization still follows. */
     if (dotProduct < 0.99899996f) {
         angleBetween = sdfAcos(dotProduct);
@@ -229,7 +229,7 @@ void Slerp(f32 blendAmount) {
 }
 
 /* vu0 routine: shared quaternion registers are the input/output interface. */
-void Lerp(f32 blendAmount)
+void Lerp(f32 aRatio)
 {
     f32 dotProduct;
     VU0_QUAT_DOT_VF10_VF11(dotProduct);
@@ -239,8 +239,8 @@ void Lerp(f32 blendAmount)
         SDF_VU0_COPYVECTOR_B_TO_C();
     }
     {
-        f32 firstWeight = 1.0f - blendAmount;
-        VU0_SET_WEIGHTS_VF2X_VF3X(firstWeight, blendAmount);
+        f32 firstWeight = 1.0f - aRatio;
+        VU0_SET_WEIGHTS_VF2X_VF3X(firstWeight, aRatio);
         VU0_WEIGHTED_SUM_VF10_VF12();
     }
     Normalize();

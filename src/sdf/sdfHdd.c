@@ -56,9 +56,9 @@ extern s32 (*p2sdSmgBuf)(void);
 
 INCLUDE_ASM(const s32, "sdf/sdfHdd", sdfHddPowerOffTh);
 
-void sdfHddPowerOffHandler(s32 aSemaId)
+void sdfHddPowerOffHandler(s32 aArg)
 {
-    iSignalSema(aSemaId);
+    iSignalSema(aArg);
 }
 
 INCLUDE_ASM(const s32, "sdf/sdfHdd", sdfHddInit);

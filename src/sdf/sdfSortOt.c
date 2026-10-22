@@ -44,7 +44,7 @@ extern char *strcat(char *, const char *);
 
 extern void sceMcInit(void);
 
-extern void sdfGrJoinDrawTag(void *left, void *right);
+extern void sdfGrJoinDrawTag(void *aFore, void *aBack);
 
 /* Pool release logic tests the packet head address and kind at 0xC;
  * bytes at 0x8 remain opaque. The float-key tree insertion helper reads the
@@ -77,7 +77,7 @@ typedef struct SdfPool {
 
 /* Reserve size bytes from the active packet buffer, rounded up to 16 bytes.
  * Returns the prior cursor as a 32-bit address; the buffer owns this storage. */
-s32 sdfGrAllocPacketBuff(s32 size);
+s32 sdfGrAllocPacketBuff(s32 aSize);
 
 extern s32 WaitSema(s32);
 
@@ -102,24 +102,24 @@ typedef struct Dds3AdminModeDispatch {
 
 extern void *memcpy(void *, const void *, unsigned int);
 
-sdfSortOtNode_tag *sdfSortOtAvlRotateLR(sdfSortOtNode_tag *heavyChild, sdfSortOtNode_tag *parent);
+sdfSortOtNode_tag *sdfSortOtAvlRotateLR(sdfSortOtNode_tag *node, sdfSortOtNode_tag *parent);
 
-sdfSortOtNode_tag *sdfSortOtAvlRotateRL(sdfSortOtNode_tag *heavyChild, sdfSortOtNode_tag *parent);
+sdfSortOtNode_tag *sdfSortOtAvlRotateRL(sdfSortOtNode_tag *node, sdfSortOtNode_tag *parent);
 
-void sdfSortOtAvlCheckBalance(sdfSortOtNode_tag **path, s32 depth, sdfSortOtNode_tag *child,
-                   sdfSortOtNode_tag **root);
+void sdfSortOtAvlCheckBalance(sdfSortOtNode_tag **stack, s32 stack_depth, sdfSortOtNode_tag *node,
+                   sdfSortOtNode_tag **root_p);
 
-void sdfSortOtAvlRegist(sdfSortOtNode_tag **tree, SdfKeyTreeItem *item);
+void sdfSortOtAvlRegist(sdfSortOtNode_tag **root_p, SdfKeyTreeItem *tag);
 
-void sdfGrSortOtReg(SdfPool *pool, SdfKeyPoolNode *node);
+void sdfGrSortOtReg(SdfPool *aOt, SdfKeyPoolNode *aTag);
 
-void sdfGrSortOtFixup(void *first, SdfKeyPoolNode **head, SdfKeyPoolNode **tail);
+void sdfGrSortOtFixup(void *tag, SdfKeyPoolNode **head_p, SdfKeyPoolNode **tail_p);
 
-void sdfGrSortOtTraverse(sdfSortOtNode_tag *node, SdfKeyPoolNode **head, SdfKeyPoolNode **tail);
+void sdfGrSortOtTraverse(sdfSortOtNode_tag *node, SdfKeyPoolNode **head_p, SdfKeyPoolNode **tail_p);
 
-void sdfGrSortOtSetup(SdfPool *pool);
+void sdfGrSortOtSetup(SdfPool *aOt);
 
-void sdfGrSortOtCallback(SdfPool *pool, s32 mode, SdfKeyPoolNode *freeNode);
+void sdfGrSortOtCallback(SdfPool *aOt, s32 aFunc, SdfKeyPoolNode *aData);
 
 typedef struct _reent _reent;
 
@@ -327,7 +327,7 @@ extern s32 WaitSema(s32 sema);
 
 extern s32 vfprintf(FILE *fp, const char *fmt, va_list ap);
 
-extern void *memset(void *s, s32 c, u32 n);
+extern void *memset(void *a, s32 b, u32 c);
 
 extern void *_calloc_r(_reent *r, u32 n, u32 size);
 
@@ -390,8 +390,8 @@ extern SdfUnpackedD *libc_2D1590(const SdfUnpackedD *a, const SdfUnpackedD *b, S
 
 extern long libc_2D3638(const SdfUnpackedD *a, const SdfUnpackedD *b);
 
-sdfSortOtNode_tag *sdfSortOtAvlRotateLR(sdfSortOtNode_tag *heavyChild, sdfSortOtNode_tag *parent) {
-    sdfSortOtNode_tag *childRoot = heavyChild;
+sdfSortOtNode_tag *sdfSortOtAvlRotateLR(sdfSortOtNode_tag *node, sdfSortOtNode_tag *parent) {
+    sdfSortOtNode_tag *childRoot = node;
     sdfSortOtNode_tag *pivot;
 
     if (childRoot->balance < 0) {
@@ -418,8 +418,8 @@ sdfSortOtNode_tag *sdfSortOtAvlRotateLR(sdfSortOtNode_tag *heavyChild, sdfSortOt
     return pivot;
 }
 
-sdfSortOtNode_tag *sdfSortOtAvlRotateRL(sdfSortOtNode_tag *heavyChild, sdfSortOtNode_tag *parent) {
-    sdfSortOtNode_tag *childRoot = heavyChild;
+sdfSortOtNode_tag *sdfSortOtAvlRotateRL(sdfSortOtNode_tag *node, sdfSortOtNode_tag *parent) {
+    sdfSortOtNode_tag *childRoot = node;
     sdfSortOtNode_tag *pivot;
 
     if (childRoot->balance > 0) {
@@ -446,16 +446,16 @@ sdfSortOtNode_tag *sdfSortOtAvlRotateRL(sdfSortOtNode_tag *heavyChild, sdfSortOt
     return pivot;
 }
 
-void sdfSortOtAvlCheckBalance(sdfSortOtNode_tag **path, s32 depth, sdfSortOtNode_tag *child,
-                   sdfSortOtNode_tag **root) {
+void sdfSortOtAvlCheckBalance(sdfSortOtNode_tag **stack, s32 stack_depth, sdfSortOtNode_tag *node,
+                   sdfSortOtNode_tag **root_p) {
     sdfSortOtNode_tag *parent;
     sdfSortOtNode_tag *replacement = NULL;
     s32 balance;
 
-    if (depth > 0) {
+    if (stack_depth > 0) {
         do {
-            parent = path[--depth];
-            if (child == parent->right) {
+            parent = stack[--stack_depth];
+            if (node == parent->right) {
                 balance = ++parent->balance;
             } else {
                 balance = --parent->balance;
@@ -464,40 +464,40 @@ void sdfSortOtAvlCheckBalance(sdfSortOtNode_tag **path, s32 depth, sdfSortOtNode
                 return;
             }
             if (balance > 1) {
-                replacement = sdfSortOtAvlRotateLR(child, parent);
+                replacement = sdfSortOtAvlRotateLR(node, parent);
                 break;
             }
             if (balance < -1) {
-                replacement = sdfSortOtAvlRotateRL(child, parent);
+                replacement = sdfSortOtAvlRotateRL(node, parent);
                 break;
             }
-            child = parent;
-        } while (depth > 0);
+            node = parent;
+        } while (stack_depth > 0);
     }
-    if (depth > 0) {
-        sdfSortOtNode_tag *ancestor = path[--depth];
+    if (stack_depth > 0) {
+        sdfSortOtNode_tag *ancestor = stack[--stack_depth];
         if (ancestor->right == parent) {
             ancestor->right = replacement;
         } else {
             ancestor->left = replacement;
         }
     } else if (replacement != NULL) {
-        *root = replacement;
+        *root_p = replacement;
     }
 }
 
-void sdfSortOtAvlRegist(sdfSortOtNode_tag **tree, SdfKeyTreeItem *item) {
+void sdfSortOtAvlRegist(sdfSortOtNode_tag **root_p, SdfKeyTreeItem *tag) {
     sdfSortOtNode_tag *path[SDF_KEY_TREE_PATH_LIMIT];
     s32 depth = 0;
-    sdfSortOtNode_tag **link = tree;
-    sdfSortOtNode_tag *cur = *tree;
+    sdfSortOtNode_tag **link = root_p;
+    sdfSortOtNode_tag *cur = *root_p;
     sdfSortOtNode_tag *node;
-    f32 key = item->key;
+    f32 key = tag->key;
 
     while (cur != NULL) {
         if (key == cur->item->key) {
-            item->replaced = cur->item;
-            cur->item = item;
+            tag->replaced = cur->item;
+            cur->item = tag;
             return;
         }
         path[depth] = cur;
@@ -509,90 +509,90 @@ void sdfSortOtAvlRegist(sdfSortOtNode_tag **tree, SdfKeyTreeItem *item) {
         }
         cur = *link;
     }
-    item->replaced = NULL;
+    tag->replaced = NULL;
     node = sdfGrAllocPacketBuff(0x10);
     node->right = NULL;
     node->left = NULL;
-    node->item = item;
+    node->item = tag;
     *link = node;
     node->balance = 0;
     if (depth != 0) {
-        sdfSortOtAvlCheckBalance(path, depth, node, tree);
+        sdfSortOtAvlCheckBalance(path, depth, node, root_p);
     }
 }
 
-void sdfGrSortOtReg(SdfPool *pool, SdfKeyPoolNode *node) {
-    if (node->packetHeadAddress != 0) {
-        if (node->kind == SDF_POOL_FREE_KIND) {
-            node->next = pool->freeHead;
-            pool->freeHead = node;
+void sdfGrSortOtReg(SdfPool *aOt, SdfKeyPoolNode *aTag) {
+    if (aTag->packetHeadAddress != 0) {
+        if (aTag->kind == SDF_POOL_FREE_KIND) {
+            aTag->next = aOt->freeHead;
+            aOt->freeHead = aTag;
         } else {
             /* The key tree views the pool node's +0xC word as its float key. */
-            sdfSortOtAvlRegist(pool->keyTree, (SdfKeyTreeItem *)node);
+            sdfSortOtAvlRegist(aOt->keyTree, (SdfKeyTreeItem *)aTag);
         }
     }
 }
 
-void sdfGrSortOtFixup(void *first, SdfKeyPoolNode **head, SdfKeyPoolNode **tail) {
+void sdfGrSortOtFixup(void *tag, SdfKeyPoolNode **head_p, SdfKeyPoolNode **tail_p) {
     SdfKeyPoolNode *current;
     SdfKeyPoolNode *next;
 
-    if (first != NULL) {
-        if (*tail == NULL) {
-            *head = first;
+    if (tag != NULL) {
+        if (*tail_p == NULL) {
+            *head_p = tag;
         } else {
-            sdfGrJoinDrawTag(*tail, first);
+            sdfGrJoinDrawTag(*tail_p, tag);
         }
-        current = first;
+        current = tag;
         while ((next = current->next) != NULL) {
             sdfGrJoinDrawTag(current, next);
             current = next;
         }
-        *tail = current;
+        *tail_p = current;
     }
 }
 
-void sdfGrSortOtTraverse(sdfSortOtNode_tag *node, SdfKeyPoolNode **head, SdfKeyPoolNode **tail) {
+void sdfGrSortOtTraverse(sdfSortOtNode_tag *node, SdfKeyPoolNode **head_p, SdfKeyPoolNode **tail_p) {
     sdfSortOtNode_tag *next;
 
     do {
         if (node->right != NULL) {
-            sdfGrSortOtTraverse(node->right, head, tail);
+            sdfGrSortOtTraverse(node->right, head_p, tail_p);
         }
-        sdfGrSortOtFixup(node->item, head, tail);
+        sdfGrSortOtFixup(node->item, head_p, tail_p);
         next = node->left;
         node = next;
     } while (next != NULL);
 }
 
-void sdfGrSortOtSetup(SdfPool *pool) {
+void sdfGrSortOtSetup(SdfPool *aOt) {
     SdfKeyPoolNode *head = NULL;
     SdfKeyPoolNode *tail = NULL;
 
-    sdfGrSortOtFixup(pool->freeHead, &head, &tail);
-    if (pool->keyTree[0] != NULL) {
-        sdfGrSortOtTraverse(pool->keyTree[0], &head, &tail);
+    sdfGrSortOtFixup(aOt->freeHead, &head, &tail);
+    if (aOt->keyTree[0] != NULL) {
+        sdfGrSortOtTraverse(aOt->keyTree[0], &head, &tail);
     }
-    pool->head = head;
-    pool->tail = tail;
+    aOt->head = head;
+    aOt->tail = tail;
 }
 
-void sdfGrSortOtCallback(SdfPool *pool, s32 mode, SdfKeyPoolNode *freeNode) {
-    switch (mode) {
+void sdfGrSortOtCallback(SdfPool *aOt, s32 aFunc, SdfKeyPoolNode *aData) {
+    switch (aFunc) {
     case SDF_POOL_REBUILD_CHAIN:
-        sdfGrSortOtSetup(pool);
+        sdfGrSortOtSetup(aOt);
         break;
     case SDF_POOL_PUSH_FREE:
-        if (freeNode->packetHeadAddress != 0) {
-            freeNode->next = pool->freeHead;
-            pool->freeHead = freeNode;
+        if (aData->packetHeadAddress != 0) {
+            aData->next = aOt->freeHead;
+            aOt->freeHead = aData;
         }
         break;
     }
 }
 
-void sdfModelSetOtCallbacks(SdfPool *pool) {
-    pool->release = sdfGrSortOtReg;
-    pool->update = sdfGrSortOtCallback;
+void sdfModelSetOtCallbacks(SdfPool *aOt) {
+    aOt->release = sdfGrSortOtReg;
+    aOt->update = sdfGrSortOtCallback;
 }
 

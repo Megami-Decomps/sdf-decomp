@@ -150,32 +150,32 @@ typedef struct movieStream_t
 } movieStream_t;
 
 void puts(const char *aStr);
-s32 sdfFileCmdRead(void *aHandle, void *aBuffer, s32 aSize);
+s32 sdfFileCmdRead(void *aHandle, void *aBuffer, s32 aLength);
 s32 sdfFileCmdClose(void *aHandle);
 void sdfDummyFunc(void);
 void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
 void sdfChipFreeDirect(void *aPtr);
-void sdfIpuFree(sdfIpuDecodeCb_t *aNode);
+void sdfIpuFree(sdfIpuDecodeCb_t *cb);
 s32 p2sdSyncMovie(void);
-void *memcpy(void *aDst, const void *aSrc, u32 aSize);
+void *memcpy(void *a, const void *b, u32 c);
 s32 sdfFileCmdFileSize(void *aHandle);
 s32 sdfFileCmdFree(void *aHandle);
 s32 DIntr(void);
 s32 EIntr(void);
-void *memset(void *aDst, s32 aValue, u32 aSize);
+void *memset(void *a, s32 b, u32 c);
 char *strrchr(const char *aStr, s32 aChar);
 s32 strcasecmp(const char *aLeft, const char *aRight);
 void *sdfChipAllocZeroDirect(s32 aSize);
 sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
 void *sdfMemLock(sdfMemHandle_t *aHandle);
-void *sdfFileCmdReadOpen(const char *aName, SdfStreamRead aRead, movieStream_t *aContext);
+void *sdfFileCmdReadOpen(const char *aFileName, SdfStreamRead aCallback, movieStream_t *aUserData);
 void movieAttachDecodeTask(sdfIpuDecodeCb_t *aNode, sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, movieStream_t *aContext, s32 aResourceWord);
-s32 sdfCreateSema(s32 aInit, s32 aMax, s32 aAttr);
+s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
 s32 WaitSema(s32 sema);
 s32 SignalSema(s32 sema);
-s32 movieReadChunk(void *aHandle, s32 aOp, void *aBuf, s32 aSize, movieStream_t *aMov);
-s32 movieCopyChunk(sdfIpuDecodeCb_t *aNode, movieStream_t *aMov, s32 aOp, void *aBuf, s32 aSize);
-s32 movieParseHeader(sdfIpuDecodeCb_t *aNode, movieStream_t *aMov, s32 aOp, void *aBuf, s32 aSize);
+s32 movieReadChunk(void *aHandle, s32 aOp, void *aBuf, s32 aSize, movieStream_t *stream);
+s32 movieCopyChunk(sdfIpuDecodeCb_t *aNode, movieStream_t *stream, s32 aOp, void *aBuf, s32 aSize);
+s32 movieParseHeader(sdfIpuDecodeCb_t *aNode, movieStream_t *stream, s32 aOp, void *aBuf, s32 aSize);
 extern s32 movieStreamSema;
 extern u32 movieSemaCount;
 extern movieStream_t *movieSemaId;
@@ -542,7 +542,7 @@ s32 movieParseHeader(sdfIpuDecodeCb_t *aNode, movieStream_t *aMov, s32 aOp, void
     return 0;
 }
 
-void movieOpenStream(movieStream_t *aMov, MovOpenParam *aParam, const char *aName)
+void movieOpenStream(movieStream_t *stream, MovOpenParam *desc, const char *path)
 {
     sdfIpuInitParm_t fmt;
     MovLinearStream *linear;
@@ -550,39 +550,39 @@ void movieOpenStream(movieStream_t *aMov, MovOpenParam *aParam, const char *aNam
     char *ext;
     u8 isPac;
 
-    memset(aMov, 0, sizeof(movieStream_t));
-    aMov->active = 1;
-    ext = strrchr(aName, '.');
+    memset(stream, 0, sizeof(movieStream_t));
+    stream->active = 1;
+    ext = strrchr(path, '.');
     isPac = 0;
     if (ext != NULL) {
         isPac = strcasecmp(ext, D_00551B50) == 0;
     }
-    aMov->isPac = isPac;
+    stream->isPac = isPac;
     fmt.loopMode = 0;
-    aMov->remainingBytes = 0x7FFFFFFF;
-    aMov->unk04 = aParam->unk00;
-    aMov->unk08 = aParam->unk04;
-    aMov->unk06 = aParam->unk02;
-    aMov->unk0C = aParam->unk08;
-    aMov->unk0E = aParam->unk0A;
-    fmt.rgbMode = aParam->unk10;
-    fmt.ditherMode = aParam->unk11;
-    fmt.fps = aParam->unk12;
+    stream->remainingBytes = 0x7FFFFFFF;
+    stream->unk04 = desc->unk00;
+    stream->unk08 = desc->unk04;
+    stream->unk06 = desc->unk02;
+    stream->unk0C = desc->unk08;
+    stream->unk0E = desc->unk0A;
+    fmt.rgbMode = desc->unk10;
+    fmt.ditherMode = desc->unk11;
+    fmt.fps = desc->unk12;
     if (isPac == 0) {
         sdfMemHandle_t *handle;
         u8 *base;
 
         linear = sdfChipAllocZeroDirect(sizeof(MovLinearStream));
-        aMov->stream.linear = linear;
+        stream->stream.linear = linear;
         handle = sdfMemAllocDirect(0x20000);
         linear->allocation = handle;
         base = sdfMemLock(handle);
         linear->bufferStart = base;
         linear->readCursor = base;
         linear->writeCursor = base;
-        aMov->state = 0;
-        aMov->file = sdfFileCmdReadOpen(aName, (SdfStreamRead)movieGetStreamSize, aMov);
-        movieAttachDecodeTask(&aMov->soundNode, &fmt, movieCopyChunk, aMov, aParam->resourceWord);
+        stream->state = 0;
+        stream->file = sdfFileCmdReadOpen(path, (SdfStreamRead)movieGetStreamSize, stream);
+        movieAttachDecodeTask(&stream->soundNode, &fmt, movieCopyChunk, stream, desc->resourceWord);
     } else {
         sdfMemHandle_t *handle;
         u8 *base;
@@ -596,7 +596,7 @@ void movieOpenStream(movieStream_t *aMov, MovOpenParam *aParam, const char *aNam
         }
         movieSemaCount = -1;
         pac = sdfChipAllocZeroDirect(sizeof(MovPacStream));
-        aMov->stream.pac = pac;
+        stream->stream.pac = pac;
         handle = sdfMemAllocDirect(0x24000);
         pac->allocation = handle;
         base = sdfMemLock(handle);
@@ -609,11 +609,11 @@ void movieOpenStream(movieStream_t *aMov, MovOpenParam *aParam, const char *aNam
         pac->ringBuffer = ring;
         pac->scratchSize = n;
         pac->pacInputBuffer = base;
-        aMov->state = 0;
-        aMov->file = sdfFileCmdReadOpen(aName, (SdfStreamRead)movieReadChunk, aMov);
-        aMov->pacEnabled = 1;
-        aMov->packetLimit = 0x7F;
-        movieAttachDecodeTask(&aMov->soundNode, &fmt, movieParseHeader, aMov, aParam->resourceWord);
+        stream->state = 0;
+        stream->file = sdfFileCmdReadOpen(path, (SdfStreamRead)movieReadChunk, stream);
+        stream->pacEnabled = 1;
+        stream->packetLimit = 0x7F;
+        movieAttachDecodeTask(&stream->soundNode, &fmt, movieParseHeader, stream, desc->resourceWord);
     }
 }
 

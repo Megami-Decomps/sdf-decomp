@@ -121,9 +121,9 @@ void sdfPadControl(SdfPadEntry *entry);
 
 void sdfPadManager(void);
 
-void sdfPadSetAct0(s32 padIndex, u16 strength);
+void sdfPadSetAct0(s32 pad, u16 value);
 
-void sdfPadSetAct1(s32 padIndex, u8 strength);
+void sdfPadSetAct1(s32 pad, u8 value);
 
 void sdfPadInitManager(void);
 
@@ -283,16 +283,16 @@ void sdfPadManager(void) {
 
 INCLUDE_ASM(const s32, "sdf/sdf_PadManager", sdfPadWork);
 
-void sdfPadChangeMode(s32 padIndex, u8 mode) {
-    sdfPadCb[padIndex].requestedMode = mode;
+void sdfPadChangeMode(s32 aPadNum, u8 mode) {
+    sdfPadCb[aPadNum].requestedMode = mode;
 }
 
-void sdfPadSetAct0(s32 padIndex, u16 strength) {
-    sdfPadCb[padIndex].smallMotor = strength;
+void sdfPadSetAct0(s32 pad, u16 value) {
+    sdfPadCb[pad].smallMotor = value;
 }
 
-void sdfPadSetAct1(s32 padIndex, u8 strength) {
-    sdfPadCb[padIndex].largeMotor = strength;
+void sdfPadSetAct1(s32 pad, u8 value) {
+    sdfPadCb[pad].largeMotor = value;
 }
 
 void sdfPadSetAct(s32 padIndex, s32 smallMotor, s32 largeMotor) {

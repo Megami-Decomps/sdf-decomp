@@ -2,7 +2,7 @@
 #include "libsdf.h"
 #include "ps2asm.h"
 
-extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *cb, void *resource);
+extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aItem);
 
 /* GS pixel storage modes, the values of sdfGsMemSlice_t.pixelFormat. */
 enum sdf_psm
@@ -26,11 +26,11 @@ extern s32 DIntr(void);
 
 extern void EIntr(void);
 
-extern void *sdfChipAllocDirect(u32 size);
+extern void *sdfChipAllocDirect(u32 aSize);
 
-extern void sdfChipFreeDirect(void *ptr);
+extern void sdfChipFreeDirect(void *aPtr);
 
-extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *cb, sdfDelayedResrcFreeFunc freeFunc);
+extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, sdfDelayedResrcFreeFunc aFreeFunc);
 
 extern sdfGsMemSlice_t *gsMemHandleLinkHead;
 
@@ -48,19 +48,19 @@ enum SdfImageSetMem
     SDF_IMAGESET_MEM_CHIP = 2
 };
 
-s32 sdfGsMemGetBitCount(u32 pixelFormat);
+s32 sdfGsMemGetBitCount(u32 aFormat);
 
-sdfGsMemSlice_t *sdfGsMemAllocFromHead(s32 size, s32 type);
+sdfGsMemSlice_t *sdfGsMemAllocFromHead(s32 aSize, s32 aType);
 
-sdfGsMemSlice_t *sdfGsMemAllocFromTail(s32 size, s32 type);
+sdfGsMemSlice_t *sdfGsMemAllocFromTail(s32 aSize, s32 aType);
 
-s32 sdfGsMemCheckMerge(sdfGsMemSlice_t *slice);
+s32 sdfGsMemCheckMerge(sdfGsMemSlice_t *aHandle);
 
-void sdfGsMemFree(sdfGsMemSlice_t *slice);
+void sdfGsMemFree(sdfGsMemSlice_t *aHandle);
 
-s32 sdfGsMemGetBitCount(u32 pixelFormat)
+s32 sdfGsMemGetBitCount(u32 aFormat)
 {
-    switch (pixelFormat) {
+    switch (aFormat) {
     case SDF_PSMCT32:
     case SDF_PSMCT24:
     case SDF_PSMT8H:
@@ -83,9 +83,9 @@ s32 sdfGsMemGetBitCount(u32 pixelFormat)
     }
 }
 
-s32 sdfGetTexelBitCount(u32 pixelFormat)
+s32 sdfGetTexelBitCount(u32 aFormat)
 {
-    switch (pixelFormat) {
+    switch (aFormat) {
     case SDF_PSMCT32:
     case SDF_PSMZ32:
         return 0x20;
@@ -109,14 +109,14 @@ s32 sdfGetTexelBitCount(u32 pixelFormat)
     }
 }
 
-s32 sdfGsMemCheckHandle(sdfGsMemSlice_t *target) {
+s32 sdfGsMemCheckHandle(sdfGsMemSlice_t *aHandle) {
     sdfGsMemSlice_t *node = gsMemHandleLinkHead;
 
     if (node == NULL) {
         return 0;
     }
     do {
-        if (node == (void *)target) {
+        if (node == (void *)aHandle) {
             return 1;
         }
         node = node->next;
@@ -124,7 +124,7 @@ s32 sdfGsMemCheckHandle(sdfGsMemSlice_t *target) {
     return 0;
 }
 
-sdfGsMemSlice_t *sdfGsMemAllocFromHead(s32 size, s32 type)
+sdfGsMemSlice_t *sdfGsMemAllocFromHead(s32 aSize, s32 aType)
 {
     sdfGsMemSlice_t *slice;
     sdfGsMemSlice_t *alloc;
@@ -137,14 +137,14 @@ sdfGsMemSlice_t *sdfGsMemAllocFromHead(s32 size, s32 type)
                 EIntr();
             }
             if (sdfGsErrorHandler != NULL) {
-                sdfGsErrorHandler(size, type);
+                sdfGsErrorHandler(aSize, aType);
             }
         }
-        if (slice->type != 0 || slice->size < size) {
+        if (slice->type != 0 || slice->size < aSize) {
             continue;
         }
-        if (slice->size == size) {
-            slice->type = type;
+        if (slice->size == aSize) {
+            slice->type = aType;
             if (reenable != 0) {
                 EIntr();
             }
@@ -157,13 +157,13 @@ sdfGsMemSlice_t *sdfGsMemAllocFromHead(s32 size, s32 type)
         } else {
             slice->prev->next = alloc;
         }
-        alloc->type = type;
+        alloc->type = aType;
         slice->prev = alloc;
         alloc->addr = slice->addr;
-        alloc->size = size;
+        alloc->size = aSize;
         alloc->next = slice;
-        slice->addr += size;
-        slice->size -= size;
+        slice->addr += aSize;
+        slice->size -= aSize;
         if (reenable != 0) {
             EIntr();
         }
@@ -171,7 +171,7 @@ sdfGsMemSlice_t *sdfGsMemAllocFromHead(s32 size, s32 type)
     }
 }
 
-sdfGsMemSlice_t *sdfGsMemAllocFromTail(s32 size, s32 type)
+sdfGsMemSlice_t *sdfGsMemAllocFromTail(s32 aSize, s32 aType)
 {
     sdfGsMemSlice_t *slice;
     sdfGsMemSlice_t *alloc;
@@ -184,14 +184,14 @@ sdfGsMemSlice_t *sdfGsMemAllocFromTail(s32 size, s32 type)
                 EIntr();
             }
             if (sdfGsErrorHandler != NULL) {
-                sdfGsErrorHandler(size, type);
+                sdfGsErrorHandler(aSize, aType);
             }
         }
-        if (slice->type != 0 || slice->size < size) {
+        if (slice->type != 0 || slice->size < aSize) {
             continue;
         }
-        if (slice->size == size) {
-            slice->type = type;
+        if (slice->size == aSize) {
+            slice->type = aType;
             if (reenable != 0) {
                 EIntr();
             }
@@ -204,12 +204,12 @@ sdfGsMemSlice_t *sdfGsMemAllocFromTail(s32 size, s32 type)
         } else {
             slice->next->prev = alloc;
         }
-        alloc->type = type;
+        alloc->type = aType;
         slice->next = alloc;
-        alloc->addr = slice->addr + (slice->size - size);
-        alloc->size = size;
+        alloc->addr = slice->addr + (slice->size - aSize);
+        alloc->size = aSize;
         alloc->prev = slice;
-        slice->size -= size;
+        slice->size -= aSize;
         if (reenable != 0) {
             EIntr();
         }
@@ -217,35 +217,35 @@ sdfGsMemSlice_t *sdfGsMemAllocFromTail(s32 size, s32 type)
     }
 }
 
-sdfGsMemSlice_t *sdfGsMemAllocRect(s32 w, s32 h, s32 pixelFormat, s32 type, s32 fromHead)
+sdfGsMemSlice_t *sdfGsMemAllocRect(s32 aWidth, s32 aHeight, s32 aFormat, s32 aType, s32 aFromHead)
 {
-    s32 bitCount = sdfGsMemGetBitCount(pixelFormat);
-    s32 words = (w * h * bitCount) >> 5;
+    s32 bitCount = sdfGsMemGetBitCount(aFormat);
+    s32 words = (aWidth * aHeight * bitCount) >> 5;
     sdfGsMemSlice_t *slice;
 
-    if (fromHead != 0) {
-        slice = sdfGsMemAllocFromHead(words, type);
+    if (aFromHead != 0) {
+        slice = sdfGsMemAllocFromHead(words, aType);
     } else {
-        slice = sdfGsMemAllocFromTail(words, type);
+        slice = sdfGsMemAllocFromTail(words, aType);
     }
-    slice->w = w;
-    slice->h = h;
-    slice->pixelFormat = pixelFormat;
+    slice->w = aWidth;
+    slice->h = aHeight;
+    slice->pixelFormat = aFormat;
     return slice;
 }
 
-s32 sdfGsMemCheckMerge(sdfGsMemSlice_t *slice)
+s32 sdfGsMemCheckMerge(sdfGsMemSlice_t *aHandle)
 {
-    sdfGsMemSlice_t *below = slice->next;
+    sdfGsMemSlice_t *below = aHandle->next;
 
     if (below == NULL || below->type != 0) {
         return 0;
     }
-    slice->size += below->size;
-    if ((slice->next = below->next) != NULL) {
-        below->next->prev = slice;
+    aHandle->size += below->size;
+    if ((aHandle->next = below->next) != NULL) {
+        below->next->prev = aHandle;
     } else {
-        gsMemHandleLinkTail = slice;
+        gsMemHandleLinkTail = aHandle;
     }
     sdfChipFreeDirect(below);
     return 1;
@@ -264,19 +264,19 @@ void sdfGsMemCheckLinkConsistence(void) {
     }
 }
 
-void sdfGsMemFree(sdfGsMemSlice_t *slice)
+void sdfGsMemFree(sdfGsMemSlice_t *aHandle)
 {
     s32 reenable;
 
-    if (slice == NULL) {
+    if (aHandle == NULL) {
         return;
     }
     reenable = DIntr();
-    slice->type = 0;
-    sdfGsMemCheckMerge(slice);
-    if (slice->prev != NULL) {
-        if (slice->prev->type == 0) {
-            sdfGsMemCheckMerge(slice->prev);
+    aHandle->type = 0;
+    sdfGsMemCheckMerge(aHandle);
+    if (aHandle->prev != NULL) {
+        if (aHandle->prev->type == 0) {
+            sdfGsMemCheckMerge(aHandle->prev);
         }
     }
     if (reenable != 0) {
@@ -284,8 +284,8 @@ void sdfGsMemFree(sdfGsMemSlice_t *slice)
     }
 }
 
-void sdfGsMemFreeDelayed(sdfGsMemSlice_t *texture) {
-    sdfDelayedResrcEntry(&gsMemDelayedResrcCB, texture);
+void sdfGsMemFreeDelayed(sdfGsMemSlice_t *aHandle) {
+    sdfDelayedResrcEntry(&gsMemDelayedResrcCB, aHandle);
 }
 
 void sdfGsMemInit(void)
@@ -303,13 +303,13 @@ void sdfGsMemInit(void)
     sdfDelayedResrcInitCB(&gsMemDelayedResrcCB, sdfGsMemFree);
 }
 
-sdfGsMemSlice_t *sdfGsAllocFrameBuff(s32 w, s32 h, s32 pixelFormat)
+sdfGsMemSlice_t *sdfGsAllocFrameBuff(s32 aW, s32 aH, s32 aPixelFormat)
 {
-    s32 rowWidth = (w + 0x3F) & -0x40;
-    s32 rowCount = (h + 0x1F) & -0x20;
+    s32 rowWidth = (aW + 0x3F) & -0x40;
+    s32 rowCount = (aH + 0x1F) & -0x20;
     sdfGsMemSlice_t *slice;
 
-    switch (pixelFormat) {
+    switch (aPixelFormat) {
     case SDF_PSMCT16:
     case SDF_PSMCT16S:
     case SDF_PSMZ16:
@@ -323,9 +323,9 @@ sdfGsMemSlice_t *sdfGsAllocFrameBuff(s32 w, s32 h, s32 pixelFormat)
         break;
     }
     slice = sdfGsMemAllocFromHead((rowWidth * rowCount + 0x7FF) & -0x800, 1);
-    slice->w = w;
-    slice->h = h;
-    slice->pixelFormat = pixelFormat;
+    slice->w = aW;
+    slice->h = aH;
+    slice->pixelFormat = aPixelFormat;
     return slice;
 }
 

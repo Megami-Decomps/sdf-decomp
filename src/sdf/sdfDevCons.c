@@ -83,25 +83,25 @@ extern s32 sceDmaSync(void *channel, s32 mode, s32 timeout);
 extern void sceDmaSendN(void *channel, void *address, s32 quadwords);
 extern s32 sceGsSyncPath(s32 mode, s32 timeout);
 extern void *sceDmaGetChan(s32 channel);
-extern u64 sdfTexGetTex0Reg(sdfTexHandle_t *texture);
+extern u64 sdfTexGetTex0Reg(sdfTexHandle_t *aHandle);
 extern void *sdfGrOpenPacketBuff(void);
-extern void sdfGrClosePacketBuff(s32 cursor);
-void sdfDevConsDrawBG(sdfDevConsCB_t *console, sdfDevConsBuf_t *buffers);
+extern void sdfGrClosePacketBuff(s32 aBuffPtr);
+void sdfDevConsDrawBG(sdfDevConsCB_t *aHndl, sdfDevConsBuf_t *aCB);
 
-extern void sdfDevConsDrawInit(sdfDevConsBuf_t *aBuf, void *aMem, s32 aSize);
+extern void sdfDevConsDrawInit(sdfDevConsBuf_t *aCB, void *aPacketBuffer, s32 aBufferSize);
 extern void sdfDevConsDraw(sdfDevConsCB_t *aHndl, sdfDevConsBuf_t *aBuf);
-extern void sdfDevConsDrawFlush(sdfDevConsBuf_t *aBuf);
+extern void sdfDevConsDrawFlush(sdfDevConsBuf_t *aCB);
 
-extern void *memset(void *dst, s32 c, u32 size);
-extern void *memmove(void *dst, const void *src, u32 size);
+extern void *memset(void *a, s32 b, u32 c);
+extern void *memmove(void *a, const void *b, u32 c);
 extern s32 vsprintf(char *buf, const char *fmt, void *args);
 
-extern void *sdfChipAllocDirect(s32 size);
-extern void sdfChipFreeDirect(void *ptr);
-extern sdfMemHandle_t *sdfMemAllocDirect(s32 size);
-extern void sdfMemFreeDirect(sdfMemHandle_t *handle);
-extern void *sdfMemLock(sdfMemHandle_t *handle);
-extern sdfTexHandle_t *sdfTexSet(void *file);
+extern void *sdfChipAllocDirect(s32 aSize);
+extern void sdfChipFreeDirect(void *aPtr);
+extern sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
+extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
+extern void *sdfMemLock(sdfMemHandle_t *aHandle);
+extern sdfTexHandle_t *sdfTexSet(void *aTex);
 
 extern sdfTexHandle_t *sdfDebugFontHandle;
 extern s32 alreadyInitDevCons;
@@ -111,8 +111,8 @@ extern u32 sdfDevConsFontUvTable[];
 extern sdfDevConsCB_t *devConsTop;
 extern u32 sdfDevConsColorTable[];
 
-extern void *sdfDevVprintf(u32 *aCB, const char *aFmt, void *aArgs);
-void sdfDevSetPrintCB(u32 *aCB, u32 aPutFunc, u32 aFlushFunc, u32 aArg, s32 aMode);
+extern void *sdfDevVprintf(u32 *aCB, const char *aStr, void *LegacyParamArray);
+void sdfDevSetPrintCB(u32 *aCB, u32 aX, u32 aY, u32 aZ, s32 aAttr);
 
 void sdfDevConsInit(void)
 {
@@ -311,59 +311,59 @@ void sdfDevConsSetMode(sdfDevConsCB_t *aHndl, s32 aMode)
     aHndl->mode = aMode;
 }
 
-void sdfDevConsTagClose(sdfDevConsBuf_t *aBuf)
+void sdfDevConsTagClose(sdfDevConsBuf_t *aCB)
 {
-    u8 *cur = aBuf->cur;
-    volatile u64 *tag = (volatile u64 *)aBuf->tag;
-    s32 regCount = ((cur - aBuf->tag) >> 3) - 2;
+    u8 *cur = aCB->cur;
+    volatile u64 *tag = (volatile u64 *)aCB->tag;
+    s32 regCount = ((cur - aCB->tag) >> 3) - 2;
 
     if (regCount != 0) {
         if (regCount & 1) {
             cur += 8;
         }
         regCount /= 5;
-        aBuf->tag = cur;
-        aBuf->cur = cur + 0x10;
+        aCB->tag = cur;
+        aCB->cur = cur + 0x10;
         tag[0] = (s64)regCount | 0x5400000000008000ULL;
         tag[1] = 0x53531;
     }
 }
 
-void sdfDevConsDrawFlush(sdfDevConsBuf_t *packetBuffers) {
+void sdfDevConsDrawFlush(sdfDevConsBuf_t *aCB) {
     s32 packetBytes;
     u32 *channelRegisters;
     u32 nextBufferIndex;
 
-    sdfDevConsTagClose(packetBuffers);
-    packetBytes = packetBuffers->tag - packetBuffers->start;
+    sdfDevConsTagClose(aCB);
+    packetBytes = aCB->tag - aCB->start;
     if ((packetBytes >> 3) != 0) {
-        channelRegisters = packetBuffers->dmaCh;
+        channelRegisters = aCB->dmaCh;
         sceDmaSync(channelRegisters, 0, 0);
         *(volatile u32 *)channelRegisters = *(volatile u32 *)channelRegisters | 0x40; /* CHCR bit 6: tag-transfer enable */
         EE_SYNC_BARRIER();
-        sceDmaSendN(channelRegisters, (void *)((u32)packetBuffers->start & 0x0FFFFFFF), packetBytes >> 4);
-        nextBufferIndex = packetBuffers->bufIdx ^ 1;
-        packetBuffers->bufIdx = nextBufferIndex;
-        packetBuffers->tag = (u8 *)packetBuffers->buf[nextBufferIndex];
-        packetBuffers->cur = packetBuffers->tag + 0x10;
-        packetBuffers->start = packetBuffers->tag;
+        sceDmaSendN(channelRegisters, (void *)((u32)aCB->start & 0x0FFFFFFF), packetBytes >> 4);
+        nextBufferIndex = aCB->bufIdx ^ 1;
+        aCB->bufIdx = nextBufferIndex;
+        aCB->tag = (u8 *)aCB->buf[nextBufferIndex];
+        aCB->cur = aCB->tag + 0x10;
+        aCB->start = aCB->tag;
         sceGsSyncPath(0, 0);
     }
 }
 
-void sdfDevConsDrawBG(sdfDevConsCB_t *console, sdfDevConsBuf_t *packetBuffers) {
+void sdfDevConsDrawBG(sdfDevConsCB_t *aHndl, sdfDevConsBuf_t *aCB) {
     vu64 *packet;
     u32 origin;
     u32 extent;
 
-    sdfDevConsTagClose(packetBuffers);
-    if (packetBuffers->bufSize < packetBuffers->tag - packetBuffers->start + 0x80) {
-        sdfDevConsDrawFlush(packetBuffers);
+    sdfDevConsTagClose(aCB);
+    if (aCB->bufSize < aCB->tag - aCB->start + 0x80) {
+        sdfDevConsDrawFlush(aCB);
     }
-    packet = (vu64 *)packetBuffers->tag;
-    origin = (u16)(console->x - 0x30) | ((u32)console->y << 16);
-    extent = (u16)(console->w * 3 * 0x40 + 0x70) | ((u32)(console->h * packetBuffers->rowStep) << 16);
-    if (console->mode & 4) {
+    packet = (vu64 *)aCB->tag;
+    origin = (u16)(aHndl->x - 0x30) | ((u32)aHndl->y << 16);
+    extent = (u16)(aHndl->w * 3 * 0x40 + 0x70) | ((u32)(aHndl->h * aCB->rowStep) << 16);
+    if (aHndl->mode & 4) {
         origin += 0xFFD00000;
         extent += 0x700000;
     } else {
@@ -377,8 +377,8 @@ void sdfDevConsDrawBG(sdfDevConsCB_t *console, sdfDevConsBuf_t *packetBuffers) {
     packet[4] = origin;
     packet[5] = origin + extent;
     packet[6] = 0x156;
-    packetBuffers->tag = (u8 *)packet + 0x40;
-    packetBuffers->cur = packetBuffers->tag + 0x10;
+    aCB->tag = (u8 *)packet + 0x40;
+    aCB->cur = aCB->tag + 0x10;
 }
 
 void sdfDevConsDraw(sdfDevConsCB_t *console, sdfDevConsBuf_t *buffers) {
@@ -440,20 +440,20 @@ void sdfDevConsDraw(sdfDevConsCB_t *console, sdfDevConsBuf_t *buffers) {
     buffers->cur = (u8 *)writeCursor;
 }
 
-void sdfDevConsDrawInit(sdfDevConsBuf_t *packetBuffers, void *storageBase, s32 storageCapacityBytes) {
+void sdfDevConsDrawInit(sdfDevConsBuf_t *aCB, void *aPacketBuffer, s32 aBufferSize) {
     u32 ringAddress;
     u8 *ring;
     vu64 *packet;
     u64 textureState;
-    s32 halfBufferBytes = storageCapacityBytes >> 1;
+    s32 halfBufferBytes = aBufferSize >> 1;
 
-    ringAddress = ((u32)storageBase & 0x0FFFFFFF) | 0x30000000;
+    ringAddress = ((u32)aPacketBuffer & 0x0FFFFFFF) | 0x30000000;
     ring = (u8 *)ringAddress;
-    packetBuffers->bufSize = halfBufferBytes;
-    packetBuffers->buf[0] = ring;
-    packetBuffers->buf[1] = ring + halfBufferBytes;
-    packetBuffers->start = ring;
-    packetBuffers->bufIdx = 0;
+    aCB->bufSize = halfBufferBytes;
+    aCB->buf[0] = ring;
+    aCB->buf[1] = ring + halfBufferBytes;
+    aCB->start = ring;
+    aCB->bufIdx = 0;
     textureState = sdfTexGetTex0Reg(sdfDebugFontHandle);
     packet = (vu64 *)ring;
     packet[0] = 0x10AB400000008005ULL;
@@ -468,9 +468,9 @@ void sdfDevConsDrawInit(sdfDevConsBuf_t *packetBuffers, void *storageBase, s32 s
     packet[9] = 0x14;
     packet[10] = textureState;
     packet[11] = 6;
-    packetBuffers->tag = ring + 0x60;
-    packetBuffers->cur = packetBuffers->tag + 0x10;
-    packetBuffers->dmaCh = sceDmaGetChan(2);
+    aCB->tag = ring + 0x60;
+    aCB->cur = aCB->tag + 0x10;
+    aCB->dmaCh = sceDmaGetChan(2);
 }
 
 void sdfDevConsDrawAll(void) {
@@ -487,8 +487,8 @@ void sdfDevConsDrawAll(void) {
     }
 }
 
-void *sdfDevVprintf(u32 *inputWords, const char *format, void *arguments) {
-    sdfDevPrintCB_t *input = (sdfDevPrintCB_t *)inputWords;
+void *sdfDevVprintf(u32 *aCB, const char *aStr, void *LegacyParamArray) {
+    sdfDevPrintCB_t *input = (sdfDevPrintCB_t *)aCB;
     char text[0x200];
     s32 formattedCount;
     u8 *start;
@@ -502,7 +502,7 @@ void *sdfDevVprintf(u32 *inputWords, const char *format, void *arguments) {
     s32 quadwordCount;
 
     sdfDevConsInit();
-    formattedCount = vsprintf(text, format, arguments);
+    formattedCount = vsprintf(text, aStr, LegacyParamArray);
     start = (u8 *)sdfGrOpenPacketBuff();
     if (formattedCount == 0) {
         QUAD_ZERO(*(u128 *)start);
@@ -556,22 +556,22 @@ void *sdfDevVprintf(u32 *inputWords, const char *format, void *arguments) {
     return start;
 }
 
-void sdfDevPrintfEx(u32 *aCB, const char *aFmt, ...)
+void sdfDevPrintfEx(u32 *aCB, const char *aStr, ...)
 {
     __builtin_va_list args;
 
-    __builtin_stdarg_start(args, aFmt);
-    sdfDevVprintf(aCB, aFmt, args);
+    __builtin_stdarg_start(args, aStr);
+    sdfDevVprintf(aCB, aStr, args);
 }
 
-void sdfDevPrintf(u32 aPutFunc, u32 aFlushFunc, u32 aArg, s32 aMode, const char *aFmt, ...)
+void sdfDevPrintf(u32 aX, u32 aY, u32 aZ, s32 aAttr, const char *aStr, ...)
 {
     u32 cb[4];
     __builtin_va_list args;
 
-    sdfDevSetPrintCB(cb, aPutFunc, aFlushFunc, aArg, aMode);
-    __builtin_stdarg_start(args, aFmt);
-    sdfDevVprintf(cb, aFmt, args);
+    sdfDevSetPrintCB(cb, aX, aY, aZ, aAttr);
+    __builtin_stdarg_start(args, aStr);
+    sdfDevVprintf(cb, aStr, args);
 }
 
 void func_002BD300(u32 *aCB, s32 aMode)
@@ -579,12 +579,12 @@ void func_002BD300(u32 *aCB, s32 aMode)
     aCB[3] = sdfDevConsColorTable[aMode];
 }
 
-void sdfDevSetPrintCB(u32 *aCB, u32 aPutFunc, u32 aFlushFunc, u32 aArg, s32 aMode)
+void sdfDevSetPrintCB(u32 *aCB, u32 aX, u32 aY, u32 aZ, s32 aAttr)
 {
-    aCB[0] = aPutFunc;
-    aCB[1] = aFlushFunc;
-    aCB[2] = aArg;
-    func_002BD300(aCB, aMode);
+    aCB[0] = aX;
+    aCB[1] = aY;
+    aCB[2] = aZ;
+    func_002BD300(aCB, aAttr);
 }
 
 INCLUDE_SDATA(const s32, "sdf/sdfDevCons", devConsTop);

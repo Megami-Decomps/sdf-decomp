@@ -37,7 +37,7 @@ struct SdfPacket;
 struct sdfDecompCb_t;
 
 /* Load matrix into the VU0 scratch bank and postmultiply the primary bank. */
-void MultMatrixRev(const void *matrix);
+void MultMatrixRev(const void *aMatrix);
 
 /* Four-doubleword DMA packet payload (0x20); DDS1/2 game/code_002D33C8/0032C278.c. */
 typedef struct SdfPacket {
@@ -70,7 +70,7 @@ typedef struct sdfDecompCb_t {
 /* Read the active packet cursor or restore it at a quadword boundary. */
 s32 sdfGrOpenPacketBuff(void);
 
-void sdfGrClosePacketBuff(s32 cursorAddress);
+void sdfGrClosePacketBuff(s32 aBuffPtr);
 
 extern s32 D_00552170;
 
@@ -85,9 +85,9 @@ typedef struct Dds3AdminModeDispatch {
 
 extern void *memcpy(void *, const void *, unsigned int);
 
-s32 sdfDecomp(sdfDecompCb_t *decoder, const u8 *input, s32 inputBytes);
+s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length);
 
-void sdfDecompInit(sdfDecompCb_t *decoder, u8 *output);
+void sdfDecompInit(sdfDecompCb_t *cb, u8 *dst);
 
 SdfPacket *sdfDrawModelWithMatrix(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags);
 
@@ -95,166 +95,166 @@ SdfPacket *effDebugDrawWireModel(const f32 vertices[][4], const u32 *colors, s32
 
 SdfPacket *sdfDrawRotatedModel(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags);
 
-s32 sdfDecomp(sdfDecompCb_t *decoder, const u8 *input, s32 inputBytes) {
+s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
     s32 count;
     s32 offset;
     u8 *output;
     u32 sourceAddress;
 
-    if (decoder->state == 0) {
+    if (cb->state == 0) {
         return 1;
     }
 
     D_00552170 = 0;
-    output = decoder->output;
-    if (inputBytes > 0) {
+    output = cb->output;
+    if (length > 0) {
         do {
-            switch (decoder->state) {
+            switch (cb->state) {
                 case SDF_DECOMP_STAT_IDLE: {
                     u8 command;
                     s32 commandBytes;
                     s32 historyIndex = D_00552170;
 
-                    inputBytes--;
-                    D_00594780[historyIndex] = input;
+                    length--;
+                    D_00594780[historyIndex] = src;
                     D_00552170 = (historyIndex + 1) & 0xF;
-                    command = *input++;
+                    command = *src++;
                     if (command >= SDF_DECOMP_DIRECTIVE_CMD) {
                         if (command == SDF_DECOMP_CMD_END) {
-                            decoder->output = output;
-                            decoder->input = input;
-                            decoder->inputBytes = inputBytes;
-                            decoder->state = 0;
+                            cb->output = output;
+                            cb->input = src;
+                            cb->inputBytes = length;
+                            cb->state = 0;
                             return 1;
                         }
                     } else {
-                        decoder->command = command & SDF_DECOMP_DIRECTIVE_MASK;
+                        cb->command = command & SDF_DECOMP_DIRECTIVE_MASK;
                         commandBytes = command & SDF_DECOMP_LENGTH_MASK;
                         if (commandBytes == 0) {
-                            decoder->state = SDF_DECOMP_STAT_DIREC_LENG0;
+                            cb->state = SDF_DECOMP_STAT_DIREC_LENG0;
                         } else {
-                            decoder->pendingBytes = commandBytes;
-                            decoder->state = SDF_DECOMP_STAT_DIREC;
+                            cb->pendingBytes = commandBytes;
+                            cb->state = SDF_DECOMP_STAT_DIREC;
                         }
                     }
                     break;
                 }
                 case SDF_DECOMP_STAT_DIREC_LENG0:
-                    decoder->pendingBytes = *input++;
-                    inputBytes--;
-                    decoder->state = SDF_DECOMP_STAT_DIREC_LENG1;
+                    cb->pendingBytes = *src++;
+                    length--;
+                    cb->state = SDF_DECOMP_STAT_DIREC_LENG1;
                     break;
                 case SDF_DECOMP_STAT_DIREC_LENG1:
-                    decoder->pendingBytes |= *input++ << 8;
-                    inputBytes--;
-                    decoder->state = SDF_DECOMP_STAT_DIREC;
+                    cb->pendingBytes |= *src++ << 8;
+                    length--;
+                    cb->state = SDF_DECOMP_STAT_DIREC;
                     break;
                 case SDF_DECOMP_STAT_DIREC:
-                    switch (decoder->command) {
+                    switch (cb->command) {
                     case SDF_DECOMP_DIRECTIVE_NORMAL:
-                        decoder->state = SDF_DECOMP_STAT_DEC_NORMAL;
+                        cb->state = SDF_DECOMP_STAT_DEC_NORMAL;
                         break;
                     case SDF_DECOMP_DIRECTIVE_ZERO:
-                        count = decoder->pendingBytes;
+                        count = cb->pendingBytes;
                         memset(output, 0, count);
                         output += count;
-                        decoder->state = SDF_DECOMP_STAT_IDLE;
+                        cb->state = SDF_DECOMP_STAT_IDLE;
                         break;
                     case SDF_DECOMP_DIRECTIVE_RLE:
-                        decoder->state = SDF_DECOMP_STAT_DEC_RLE;
+                        cb->state = SDF_DECOMP_STAT_DEC_RLE;
                         break;
                     case SDF_DECOMP_DIRECTIVE_SD:
-                        decoder->state = SDF_DECOMP_STAT_DEC_SD_STEP0;
+                        cb->state = SDF_DECOMP_STAT_DEC_SD_STEP0;
                         break;
                     case SDF_DECOMP_DIRECTIVE_SD2:
-                        decoder->state = SDF_DECOMP_STAT_DEC_SD_STEP1;
+                        cb->state = SDF_DECOMP_STAT_DEC_SD_STEP1;
                         break;
                     case SDF_DECOMP_DIRECTIVE_WORD:
-                        decoder->state = SDF_DECOMP_STAT_DEC_WORD;
+                        cb->state = SDF_DECOMP_STAT_DEC_WORD;
                         break;
                     }
                     break;
                 case SDF_DECOMP_STAT_DEC_NORMAL:
-                    count = decoder->pendingBytes;
-                    if (inputBytes < count) {
-                        count = inputBytes;
+                    count = cb->pendingBytes;
+                    if (length < count) {
+                        count = length;
                     }
-                    memcpy(output, input, count);
+                    memcpy(output, src, count);
                     output += count;
-                    input += count;
-                    inputBytes -= count;
-                    decoder->pendingBytes -= count;
-                    if (decoder->pendingBytes == 0) {
-                        decoder->state = SDF_DECOMP_STAT_IDLE;
+                    src += count;
+                    length -= count;
+                    cb->pendingBytes -= count;
+                    if (cb->pendingBytes == 0) {
+                        cb->state = SDF_DECOMP_STAT_IDLE;
                     }
                     break;
                 case SDF_DECOMP_STAT_DEC_RLE:
-                    count = decoder->pendingBytes;
-                    memset(output, *input++, count);
+                    count = cb->pendingBytes;
+                    memset(output, *src++, count);
                     output += count;
-                    inputBytes--;
-                    decoder->state = SDF_DECOMP_STAT_IDLE;
+                    length--;
+                    cb->state = SDF_DECOMP_STAT_IDLE;
                     break;
                 case SDF_DECOMP_STAT_DEC_SD_STEP0:
-                    sourceAddress = (u32)(output - *input++);
-                    count = decoder->pendingBytes;
-                    inputBytes--;
+                    sourceAddress = (u32)(output - *src++);
+                    count = cb->pendingBytes;
+                    length--;
                     do {
                         *output++ = *(u8 *)sourceAddress++;
                     } while (--count != 0);
-                    decoder->state = SDF_DECOMP_STAT_IDLE;
+                    cb->state = SDF_DECOMP_STAT_IDLE;
                     break;
                 case SDF_DECOMP_STAT_DEC_SD_STEP1:
-                    decoder->backrefLow = *input++;
-                    inputBytes--;
-                    if (inputBytes == 0) {
-                        decoder->state = SDF_DECOMP_STAT_DEC_SD_STEP2;
+                    cb->backrefLow = *src++;
+                    length--;
+                    if (length == 0) {
+                        cb->state = SDF_DECOMP_STAT_DEC_SD_STEP2;
                         break;
                     }
                     /* fallthrough */
                 case SDF_DECOMP_STAT_DEC_SD_STEP2: {
                     s32 combinedOffset;
 
-                    offset = *input++ << 8;
-                    sourceAddress = decoder->backrefLow;
-                    inputBytes--;
+                    offset = *src++ << 8;
+                    sourceAddress = cb->backrefLow;
+                    length--;
                     combinedOffset = sourceAddress | offset;
                     sourceAddress = (u32)(output - combinedOffset);
-                    count = decoder->pendingBytes;
+                    count = cb->pendingBytes;
                     do {
                         *output++ = *(u8 *)sourceAddress++;
                     } while (--count != 0);
-                    decoder->state = SDF_DECOMP_STAT_IDLE;
+                    cb->state = SDF_DECOMP_STAT_IDLE;
                     break;
                 }
                 case SDF_DECOMP_STAT_DEC_WORD:
-                    count = decoder->pendingBytes;
-                    if (inputBytes < count) {
-                        count = inputBytes;
-                        inputBytes = 0;
-                        decoder->pendingBytes -= count;
+                    count = cb->pendingBytes;
+                    if (length < count) {
+                        count = length;
+                        length = 0;
+                        cb->pendingBytes -= count;
                     } else {
-                        decoder->pendingBytes = 0;
-                        decoder->state = SDF_DECOMP_STAT_IDLE;
-                        inputBytes -= count;
+                        cb->pendingBytes = 0;
+                        cb->state = SDF_DECOMP_STAT_IDLE;
+                        length -= count;
                     }
                     do {
-                        *output++ = *input++;
+                        *output++ = *src++;
                         *output++ = 0;
                     } while (--count != 0);
                     break;
             }
-        } while (inputBytes > 0);
+        } while (length > 0);
     }
-    decoder->input = input;
-    decoder->inputBytes = inputBytes;
-    decoder->output = output;
+    cb->input = src;
+    cb->inputBytes = length;
+    cb->output = output;
     return 0;
 }
 
-void sdfDecompInit(sdfDecompCb_t *decoder, u8 *output) {
-    decoder->output = output;
-    decoder->state = 1;
+void sdfDecompInit(sdfDecompCb_t *cb, u8 *dst) {
+    cb->output = dst;
+    cb->state = 1;
 }
 
 SdfPacket *sdfDrawModelWithMatrix(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags) {

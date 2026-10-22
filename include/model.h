@@ -440,8 +440,8 @@ struct mdlObj_t
 };
 
 /* Heterogeneous effect-resource lists use the native item-array header. */
-sdfItemArray_t *mdlEffectResrcListNew(u32 count);
-void mdlEffectResrcListFree(sdfItemArray_t *list);
+sdfItemArray_t *mdlEffectResrcListNew(u32 initCapa);
+void mdlEffectResrcListFree(sdfItemArray_t *efcResList);
 void mdlCreateEffectResrc_P2A(sdfItemArray_t *list, void *data);
 void mdlCreateEffectResrc_D3P(sdfItemArray_t *list, void *data);
 void mdlCreateEffectResrc_IPU(sdfItemArray_t *list, u8 *data,

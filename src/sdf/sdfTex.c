@@ -6,20 +6,20 @@ extern sdfTexHandle_t *sdfTexHandleLink;
 extern sdfDelayedResrcCB_t sdfTexDelayedResrcCB;
 
 extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, sdfDelayedResrcFreeFunc aFreeFunc);
-extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aPtr);
+extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aItem);
 
-extern void *sdfChipAllocDirect(s32 size);
-extern void *sdfChipAllocZeroDirect(s32 size);
-extern void sdfChipFreeDirect(void *ptr);
+extern void *sdfChipAllocDirect(s32 aSize);
+extern void *sdfChipAllocZeroDirect(s32 aSize);
+extern void sdfChipFreeDirect(void *aPtr);
 extern void *sdfAllocAuto(s32 size);
 extern void sdfFreeAuto(void *ptr);
-extern void sdfGsMemFree(sdfGsMemSlice_t *slice);
-extern sdfGsMemSlice_t *sdfGsMemAllocFromTail(s32 size, s32 type);
-extern void *memcpy(void *dst, const void *src, u32 len);
+extern void sdfGsMemFree(sdfGsMemSlice_t *aHandle);
+extern sdfGsMemSlice_t *sdfGsMemAllocFromTail(s32 aSize, s32 aType);
+extern void *memcpy(void *a, const void *b, u32 c);
 
 extern sdfTexHandle_t *sdfTexSetEx(TMX_HEADER_t *aTex, s32 aMemMode);
 
-extern void *sdfTexTransData(s32 aGsAddr, s32 aWidth, s32 aHeight, s32 aPixelFormat, void *aData,
+extern void *sdfTexTransData(s32 aGsAddr, s32 aWidth, s32 aHeight, s32 aPixelFormat, void *aSrcData,
                              s32 aMemMode);
 extern void sdfTexSetPacket(sdfTexPacket_t *aPacket, s32 aWidth, s32 aHeight, s32 aGsAddr,
                             s32 aPixelFormat, s32 aClutAddr, s32 aClutFormat, s32 aColorComp,
@@ -48,9 +48,9 @@ typedef struct
 } sdfImageUploadRequest_t;
 
 extern s32 sdfImageDataSize(s32 format, s32 width, s32 height);
-extern void sdfImageSetReq(sdfImageUploadRequest_t *request);
-extern sdfMemHandle_t *sdfMemAllocDirect(s32 size);
-extern void *sdfMemLock(sdfMemHandle_t *allocation);
+extern void sdfImageSetReq(sdfImageUploadRequest_t *parm);
+extern sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
+extern void *sdfMemLock(sdfMemHandle_t *aHandle);
 
 sdfTexPacket_t *sdfTexGetPacket(sdfTexHandle_t *aHandle)
 {
@@ -112,9 +112,9 @@ u32 sdfTexGetPixelAddr(sdfTexHandle_t *aHandle)
     return aHandle->pixelGsHandle->addr;
 }
 
-s32 sdfTexGetPixelBitCount(s32 aPixelFormat)
+s32 sdfTexGetPixelBitCount(s32 aFormat)
 {
-    switch (aPixelFormat) {
+    switch (aFormat) {
     case 0:
         return 32;
     case 1:
@@ -130,11 +130,11 @@ s32 sdfTexGetPixelBitCount(s32 aPixelFormat)
     }
 }
 
-s32 sdfTexGetTexelBitCount(s32 aPixelFormat)
+s32 sdfTexGetTexelBitCount(s32 aFormat)
 {
     s32 bitCount;
 
-    switch (aPixelFormat) {
+    switch (aFormat) {
     case 19:
         bitCount = 8;
         break;
@@ -187,17 +187,17 @@ void sdfTexSetFilterCtx2(sdfTexHandle_t *aHandle, s32 aMagMode, s32 aMinMode)
     packet->tex1.data = (packet->tex1.data & ~0x1E0) | (aMagMode << 5) | (aMinMode << 6);
 }
 
-void sdfTexSetWrapMode(sdfTexHandle_t *aHandle, s32 aWrapMode)
+void sdfTexSetWrapMode(sdfTexHandle_t *aHandle, s32 aMode)
 {
-    aHandle->texWrapMode = aWrapMode;
+    aHandle->texWrapMode = aMode;
     sdfTexRebuildPacket(aHandle);
 }
 
-void *sdfTexTransData(s32 destination, s32 width, s32 height, s32 format, void *pixels, s32 borrowPixels) {
+void *sdfTexTransData(s32 aGsAddr, s32 aWidth, s32 aHeight, s32 aPixelFormat, void *aSrcData, s32 aMemMode) {
     sdfImageUploadRequest_t request;
-    s32 imageBytes = sdfImageDataSize(format, width, height) * 16;
+    s32 imageBytes = sdfImageDataSize(aPixelFormat, aWidth, aHeight) * 16;
 
-    if (borrowPixels == 0) {
+    if (aMemMode == 0) {
         if (imageBytes > 0x400) {
             request.allocation = sdfMemAllocDirect(imageBytes);
             request.pixels = (void *)sdfMemLock(request.allocation);
@@ -206,23 +206,23 @@ void *sdfTexTransData(s32 destination, s32 width, s32 height, s32 format, void *
             request.pixels = sdfChipAllocDirect(imageBytes);
             request.allocationMode = 2;
         }
-        memcpy(request.pixels, pixels, imageBytes);
+        memcpy(request.pixels, aSrcData, imageBytes);
     } else {
-        request.pixels = pixels;
+        request.pixels = aSrcData;
         request.allocationMode = 0;
     }
-    request.format = format;
-    request.destination = destination;
-    request.bufferWidth = width;
-    request.width = width;
-    request.height = height;
+    request.format = aPixelFormat;
+    request.destination = aGsAddr;
+    request.bufferWidth = aWidth;
+    request.width = aWidth;
+    request.height = aHeight;
     request.x = 0;
     request.y = 0;
     sdfImageSetReq(&request);
-    return (u8 *)pixels + imageBytes;
+    return (u8 *)aSrcData + imageBytes;
 }
 
-void *sdfTexTransCLUT(sdfTexHandle_t *aHandle, s32 aGsAddr, void *aData, s32 aMemMode)
+void *sdfTexTransCLUT(sdfTexHandle_t *aHandle, s32 aGsAddr, void *aDataPtr, s32 aMemMode)
 {
     s32 width;
     s32 height;
@@ -234,7 +234,7 @@ void *sdfTexTransCLUT(sdfTexHandle_t *aHandle, s32 aGsAddr, void *aData, s32 aMe
         width = 8;
         height = 2;
     }
-    return sdfTexTransData(aGsAddr, width, height, aHandle->CLUTFormat, aData, aMemMode);
+    return sdfTexTransData(aGsAddr, width, height, aHandle->CLUTFormat, aDataPtr, aMemMode);
 }
 
 void sdfTexClutToGs(sdfTexHandle_t *aHandle)
@@ -244,16 +244,16 @@ void sdfTexClutToGs(sdfTexHandle_t *aHandle)
     }
 }
 
-void sdfTexLink(sdfTexHandle_t *aHandle)
+void sdfTexLink(sdfTexHandle_t *handle)
 {
-    aHandle->prev = NULL;
+    handle->prev = NULL;
     if (sdfTexHandleLink != NULL) {
-        aHandle->next = sdfTexHandleLink;
-        sdfTexHandleLink->prev = aHandle;
+        handle->next = sdfTexHandleLink;
+        sdfTexHandleLink->prev = handle;
     } else {
-        aHandle->next = NULL;
+        handle->next = NULL;
     }
-    sdfTexHandleLink = aHandle;
+    sdfTexHandleLink = handle;
 }
 
 sdfTexHandle_t *sdfTexNew(s32 aWidth, s32 aHeight, s32 aPixelFormat, s32 aNumOfMipmap,
@@ -610,12 +610,12 @@ void sdfTexSetMonoClut(sdfTexHandle_t *aHandle)
 
 INCLUDE_ASM(const s32, "sdf/sdfTex", sdfTexSetClutColor);
 
-sdfTexHandle_t *sdfTexSearch(u32 aTexId)
+sdfTexHandle_t *sdfTexSearch(u32 id)
 {
     sdfTexHandle_t *handle;
 
     for (handle = sdfTexHandleLink; handle != NULL; handle = handle->next) {
-        if (handle->texId == aTexId) {
+        if (handle->texId == id) {
             return handle;
         }
     }

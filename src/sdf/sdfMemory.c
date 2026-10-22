@@ -16,12 +16,12 @@ typedef struct
 extern void *malloc(u32 size);
 extern s32 DIntr(void);
 extern void EIntr(void);
-extern void *memcpy(void *destination, const void *source, u32 bytes);
+extern void *memcpy(void *a, const void *b, u32 c);
 extern u32 strlen(const char *s);
-extern void *sdfChipAllocDirect(u32 size);
-extern void sdfChipFreeDirect(void *ptr);
-extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *cb, sdfDelayedResrcFreeFunc freeFunc);
-extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *cb, void *ptr);
+extern void *sdfChipAllocDirect(u32 aSize);
+extern void sdfChipFreeDirect(void *aPtr);
+extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, sdfDelayedResrcFreeFunc aFreeFunc);
+extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aItem);
 extern s32 sceSifMCallRpc(sdfIopRpcClient_t *client, s32 function, s32 mode, void *send,
                           s32 sendSize, void *receive, s32 receiveSize, void (*end)(void *),
                           void *endArgument);
@@ -357,13 +357,13 @@ void sdfMemFreePtrDirect(void *aPtr)
 }
 
 /* Clear the owner's slot before releasing the handle it held. */
-void sdfMemFreeHandleDirect(sdfMemHandle_t **aSlot)
+void sdfMemFreeHandleDirect(sdfMemHandle_t **aHandlePtr)
 {
     sdfMemHandle_t *handle;
 
-    handle = *aSlot;
+    handle = *aHandlePtr;
     if (handle != NULL) {
-        *aSlot = NULL;
+        *aHandlePtr = NULL;
         sdfMemFreeDirect(handle);
         return;
     }
@@ -455,7 +455,7 @@ void sdfMemGetInfo(sdfMemInfo_t *aInfo)
 }
 
 /* The used handle whose span contains `aAddr`; NULL at the end sentinel. */
-sdfMemHandle_t *sdfMemSearchHandle(s32 aAddr)
+sdfMemHandle_t *sdfMemSearchHandle(s32 ptr)
 {
     sdfMemHandle_t *handle = sdfMemCB.headGuard.next;
     sdfMemHandle_t *next;
@@ -466,7 +466,7 @@ sdfMemHandle_t *sdfMemSearchHandle(s32 aAddr)
             if (handle->stat == SDF_MEM_STAT_END) {
                 return NULL;
             }
-        } else if (aAddr >= (s32)handle->ptr && aAddr < (s32)next->ptr) {
+        } else if (ptr >= (s32)handle->ptr && ptr < (s32)next->ptr) {
             return handle;
         }
     }

@@ -54,23 +54,23 @@ enum sdf_stream_playback {
     SDF_STREAM_PLAYBACK_CADENCED = 2
 };
 
-void *sdfChipAllocDirect(s32 size);
+void *sdfChipAllocDirect(s32 aSize);
 
-u32 sdfMemLock(sdfMemHandle_t *allocation);
+u32 sdfMemLock(sdfMemHandle_t *aHandle);
 
-sdfMemHandle_t *sdfMemAllocDirect(s32 size);
+sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
 
 extern s32 (*p2sdSmgBuf)(void);
 
 /* Allocate element storage with a fixed element stride and growth increment. */
-sdfItemArray_t *sdfItemArrayNew(s32 elementCount, s32 elementStride, s32 growthStep) {
+sdfItemArray_t *sdfItemArrayNew(s32 aInitCapa, s32 aElemSize, s32 aGrowStep) {
     sdfItemArray_t *request = sdfChipAllocDirect(sizeof(*request));
-    request->growStep = growthStep;
+    request->growStep = aGrowStep;
     request->count = 0;
-    request->capacity = elementCount;
-    request->elemSize = elementStride;
-    if (elementCount != 0) {
-        request->memHandle = sdfMemAllocDirect(elementStride * elementCount);
+    request->capacity = aInitCapa;
+    request->elemSize = aElemSize;
+    if (aInitCapa != 0) {
+        request->memHandle = sdfMemAllocDirect(aElemSize * aInitCapa);
         request->items = (void *)sdfMemLock(request->memHandle);
     } else {
         request->memHandle = 0;

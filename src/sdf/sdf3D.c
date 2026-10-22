@@ -203,7 +203,7 @@ typedef struct sdf3DScreenParam_t {
     f32 inverseOrigin[4]; /* 0x90 */
 } sdf3DScreenParam_t;
 
-void sdfDrawTagLinkRef(struct sdfDrawTag_t *list, u32 packetAddress);
+void sdfDrawTagLinkRef(struct sdfDrawTag_t *aTag, u32 aPacket);
 
 /* Per-texture reference count and non-owning clone source (0x8). */
 /* Texture buffer GPU command words (0x40); DDS1/2 game/code_002D10B0/00329F60.c. */
@@ -222,18 +222,18 @@ typedef struct sdfTexPacket_t {
 
 
 /* Return packed 64-bit TEX0, TEX1, and CLAMP states from the primary GS packet. */
-u64 sdfTexGetTex0Reg(sdfTexHandle_t *texture);
+u64 sdfTexGetTex0Reg(sdfTexHandle_t *aHandle);
 
 
-u32 sdfMemLock(struct sdfMemHandle_t *allocation);
+u32 sdfMemLock(struct sdfMemHandle_t *aHandle);
 
-void sdfMemFreeDirect(struct sdfMemHandle_t *allocation);
+void sdfMemFreeDirect(struct sdfMemHandle_t *aHandle);
 
 
 /* Acquire a texture from a serialized texture-file header. */
-struct sdfTexHandle_t *sdfTexSet(const TMX_HEADER_t *header);
+struct sdfTexHandle_t *sdfTexSet(const TMX_HEADER_t *aTex);
 
-struct sdfTexHandle_t *sdfTexSetDirect(const TMX_HEADER_t *header);
+struct sdfTexHandle_t *sdfTexSetDirect(const TMX_HEADER_t *aTex);
 
 /* Generated 128x64 grayscale power lookup texture: a serialized texture
  * header, 256 RGBA palette words, then the full 64x128 index image. */
@@ -261,113 +261,113 @@ extern void *memcpy(void *, const void *, unsigned int);
 
 void ReverseMatrix(void);
 
-void MultMatrixRev(const void *matrix);
+void MultMatrixRev(const void *aMatrix);
 
-void sdf3DMakeViewportPacket(sdf3DViewportPacket_t *packet, sdf3DScreenParam_t *node, void *transformMatrix);
+void sdf3DMakeViewportPacket(sdf3DViewportPacket_t *aPacket, sdf3DScreenParam_t *aParam, void *aCamera);
 
-void sdf3DSetCamera(sdf3DScreenParam_t *node, void *transformMatrix);
+void sdf3DSetCamera(sdf3DScreenParam_t *aParam, void *aCamera);
 
-void sdf3DMakeFogPacket(sdf3DFogPacket_t *packet, sdf3DFogParam_t *projectionParams);
+void sdf3DMakeFogPacket(sdf3DFogPacket_t *aPacket, sdf3DFogParam_t *aParam);
 
-void sdf3DMakeDirectRefPacket(DmaPacketHeader *packet, u32 sourceAddress, s32 payloadBytes);
+void sdf3DMakeDirectRefPacket(DmaPacketHeader *aPacket, u32 aData, s32 aLeng);
 
-void sdf3DLinkInitPacket(sdfDrawTag_t *packetList, DmaPacketHeader *packet);
+void sdf3DLinkInitPacket(sdfDrawTag_t *aTag, DmaPacketHeader *aPacket);
 
 void sdf3DInitSpecularTex2(void);
 
 void sdf3DInit(void);
 
-void sdf3DMakeViewportPacket(sdf3DViewportPacket_t *packet, sdf3DScreenParam_t *node, void *transformMatrix) {
-    packet->quadwords = 0xC;
-    packet->command = 0x6C0BC000;
-    packet->reservedWord = 0;
-    SDF_VU0_LOADMATRIX(transformMatrix);
-    SDF_VU0_STOREMATRIX(packet->matrixA);
-    MultMatrixRev(node->camera.matrix);
-    SDF_VU0_STOREMATRIX(packet->matrixB);
-    SDF_VU0_LOADVECTOR(&node->camera.halfWidth);
-    SDF_VU0_STOREVECTOR(packet->vecA);
-    SDF_VU0_LOADVECTOR(&node->camera.originX);
-    SDF_VU0_STOREVECTOR(packet->vecB);
-    SDF_VU0_LOADMATRIX(transformMatrix);
+void sdf3DMakeViewportPacket(sdf3DViewportPacket_t *aPacket, sdf3DScreenParam_t *aParam, void *aCamera) {
+    aPacket->quadwords = 0xC;
+    aPacket->command = 0x6C0BC000;
+    aPacket->reservedWord = 0;
+    SDF_VU0_LOADMATRIX(aCamera);
+    SDF_VU0_STOREMATRIX(aPacket->matrixA);
+    MultMatrixRev(aParam->camera.matrix);
+    SDF_VU0_STOREMATRIX(aPacket->matrixB);
+    SDF_VU0_LOADVECTOR(&aParam->camera.halfWidth);
+    SDF_VU0_STOREVECTOR(aPacket->vecA);
+    SDF_VU0_LOADVECTOR(&aParam->camera.originX);
+    SDF_VU0_STOREVECTOR(aPacket->vecB);
+    SDF_VU0_LOADMATRIX(aCamera);
     ReverseMatrix();
     SDF_VU0_GET_ROW3();
-    SDF_VU0_STOREVECTOR(packet->vecC);
-    SDF_VU0_STOREVECTOR(node->inverseOrigin);
-    packet->stmodCommand = SDF_VIF_ITOP_MATRIX;
-    packet->mscalCommand = SDF_VIF_MSCAL_COMMAND;
-    packet->unknownC8 = 0;
-    packet->unknownCC = 0;
+    SDF_VU0_STOREVECTOR(aPacket->vecC);
+    SDF_VU0_STOREVECTOR(aParam->inverseOrigin);
+    aPacket->stmodCommand = SDF_VIF_ITOP_MATRIX;
+    aPacket->mscalCommand = SDF_VIF_MSCAL_COMMAND;
+    aPacket->unknownC8 = 0;
+    aPacket->unknownCC = 0;
 }
 
-void sdf3DSetCamera(sdf3DScreenParam_t *node, void *transformMatrix) {
-    SDF_VU0_LOADMATRIX(transformMatrix);
+void sdf3DSetCamera(sdf3DScreenParam_t *aParam, void *aCamera) {
+    SDF_VU0_LOADMATRIX(aCamera);
     SDF_VU0_STOREMATRIX(sdfCameraTm);
-    MultMatrixRev(node->camera.matrix);
-    SDF_VU0_LOADVECTOR(node->inverseOrigin);
+    MultMatrixRev(aParam->camera.matrix);
+    SDF_VU0_LOADVECTOR(aParam->inverseOrigin);
     SDF_VU0_STOREMATRIX(sdf3DScreenTm);
     SDF_VU0_APPLYMATRIX_XYZ1();
     SDF_VU0_STOREVECTOR(sdf3DEyeOffset);
-    memcpy(sdf3DScreenParam, node, sizeof(*node));
+    memcpy(sdf3DScreenParam, aParam, sizeof(*aParam));
 }
 
-void sdf3DSetDefaultLight(u8 *sourceObject) {
-    sdf3DLightDefault = (u32)sourceObject;
+void sdf3DSetDefaultLight(u8 *aLight) {
+    sdf3DLightDefault = (u32)aLight;
 }
 
-void sdf3DSetDefaultFog(u8 *sourceObject) {
-    sdf3DFogDefault = (u32)sourceObject;
+void sdf3DSetDefaultFog(u8 *aFog) {
+    sdf3DFogDefault = (u32)aFog;
 }
 
 INCLUDE_ASM(const s32, "sdf/sdf3D", sdf3DMakeScreenParam);
 
-void sdf3DMakeLightParallelPacket(sdf3DLightParallelPacket_t *packet, sdfLightSources_t sources, f32 *ambient);
+void sdf3DMakeLightParallelPacket(sdf3DLightParallelPacket_t *aPacket, sdfLightSources_t aLights, f32 *aAmbient);
 
 INCLUDE_ASM(const s32, "sdf/sdf3D", sdf3DMakeLightParallelPacket);
 
-void sdf3DMakeFogPacket(sdf3DFogPacket_t *packet, sdf3DFogParam_t *projectionParams) {
-    f32 rangeMax = projectionParams->fogMin;
-    f32 rangeMin = projectionParams->fogMax;
-    f32 nearZ = projectionParams->fogNear;
-    f32 farZ = projectionParams->fogFar;
+void sdf3DMakeFogPacket(sdf3DFogPacket_t *aPacket, sdf3DFogParam_t *aParam) {
+    f32 rangeMax = aParam->fogMin;
+    f32 rangeMin = aParam->fogMax;
+    f32 nearZ = aParam->fogNear;
+    f32 farZ = aParam->fogFar;
     f32 depthRange = farZ - nearZ;
-    s32 fogColor = projectionParams->color;
-    packet->dmaTag = 0x20000004;
-    packet->vifUnpackCode = 0x6C03C00013000000ULL;
-    packet->gifTag = 0x1000000000008001ULL;
-    packet->gifRegister = SDF_GIF_REGISTER_AD;
-    packet->registerValue = (u32)fogColor;
-    packet->fogColorRegister = SDF_GS_FOGCOL_REGISTER;
-    packet->mscalCommand = 0x14000014;
-    packet->reservedC = 0;
-    packet->right = rangeMax;
-    packet->left = rangeMin;
-    packet->reservedA = 0;
-    packet->reservedB = 0;
-    packet->mid = (((rangeMax - rangeMin) * (farZ + nearZ)) / depthRange + (rangeMax + rangeMin)) * 0.5f;
-    packet->scale = ((farZ * nearZ) * (rangeMin - rangeMax)) / depthRange;
+    s32 fogColor = aParam->color;
+    aPacket->dmaTag = 0x20000004;
+    aPacket->vifUnpackCode = 0x6C03C00013000000ULL;
+    aPacket->gifTag = 0x1000000000008001ULL;
+    aPacket->gifRegister = SDF_GIF_REGISTER_AD;
+    aPacket->registerValue = (u32)fogColor;
+    aPacket->fogColorRegister = SDF_GS_FOGCOL_REGISTER;
+    aPacket->mscalCommand = 0x14000014;
+    aPacket->reservedC = 0;
+    aPacket->right = rangeMax;
+    aPacket->left = rangeMin;
+    aPacket->reservedA = 0;
+    aPacket->reservedB = 0;
+    aPacket->mid = (((rangeMax - rangeMin) * (farZ + nearZ)) / depthRange + (rangeMax + rangeMin)) * 0.5f;
+    aPacket->scale = ((farZ * nearZ) * (rangeMin - rangeMax)) / depthRange;
 }
 
-void sdf3DMakeDirectRefPacket(DmaPacketHeader *packet, u32 sourceAddress, s32 payloadBytes) {
-    s32 quadwordCount = (payloadBytes + 15) >> SDF_DMA_QWORD_SHIFT;
-    packet->quadwords = quadwordCount;
-    packet->address = sourceAddress & SDF_DMA_ADDRESS_MASK;
-    packet->tag = SDF_VIF_FLUSHA_COMMAND;
-    packet->command = quadwordCount | SDF_VIF_DIRECT_COMMAND;
-    packet->unknown10 = 0;
-    packet->unknown18 = 0;
-    packet->unknown1C = 0;
+void sdf3DMakeDirectRefPacket(DmaPacketHeader *aPacket, u32 aData, s32 aLeng) {
+    s32 quadwordCount = (aLeng + 15) >> SDF_DMA_QWORD_SHIFT;
+    aPacket->quadwords = quadwordCount;
+    aPacket->address = aData & SDF_DMA_ADDRESS_MASK;
+    aPacket->tag = SDF_VIF_FLUSHA_COMMAND;
+    aPacket->command = quadwordCount | SDF_VIF_DIRECT_COMMAND;
+    aPacket->unknown10 = 0;
+    aPacket->unknown18 = 0;
+    aPacket->unknown1C = 0;
 }
 
-void sdf3DLinkInitPacket(sdfDrawTag_t *packetList, DmaPacketHeader *packet) {
-    packet->address = (u32)vu1MicroPacket & SDF_DMA_ADDRESS_MASK;
-    packet->quadwords = (D_002F5600 - vu1MicroPacket) >> SDF_DMA_QWORD_SHIFT;
-    packet->tag = 0;
-    packet->command = 0;
-    packet->unknown10 = 0;
-    packet->unknown18 = 0;
-    packet->unknown1C = 0;
-    sdfDrawTagLinkRef(packetList, (u32)packet);
+void sdf3DLinkInitPacket(sdfDrawTag_t *aTag, DmaPacketHeader *aPacket) {
+    aPacket->address = (u32)vu1MicroPacket & SDF_DMA_ADDRESS_MASK;
+    aPacket->quadwords = (D_002F5600 - vu1MicroPacket) >> SDF_DMA_QWORD_SHIFT;
+    aPacket->tag = 0;
+    aPacket->command = 0;
+    aPacket->unknown10 = 0;
+    aPacket->unknown18 = 0;
+    aPacket->unknown1C = 0;
+    sdfDrawTagLinkRef(aTag, (u32)aPacket);
 }
 
 void sdf3DInitSpecularTex2(void) {

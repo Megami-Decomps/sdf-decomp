@@ -124,9 +124,9 @@ typedef struct sdfMatPacket_t {
     u32 vifMscalCommand;   /* 0x9C: VIF MSCAL with microprogram index zero */
 } sdfMatPacket_t;
 
-void sdfDrawTagLink(struct sdfDrawTag_t *list, u32 packetAddress);
+void sdfDrawTagLink(struct sdfDrawTag_t *aTag, u32 aPacket);
 
-void sdfDrawTagLinkRef(struct sdfDrawTag_t *list, u32 packetAddress);
+void sdfDrawTagLinkRef(struct sdfDrawTag_t *aTag, u32 aPacket);
 
 /* Per-texture reference count and non-owning clone source (0x8). */
 /* Texture buffer GPU command words (0x40); DDS1/2 game/code_002D10B0/00329F60.c. */
@@ -146,7 +146,7 @@ typedef struct sdfTexPacket_t {
 
 
 /* Refresh one of the two draw entries and retain the other entry's dirty bits. */
-void sdfMatUpdatePacket(struct sdfMat_t *asset, s32 entryIndex);
+void sdfMatUpdatePacket(struct sdfMat_t *aMat, s32 aId);
 
 /* Native 0x2C VIF primitive request, shared by its quad/triangle producers.
  * Attribute buffers carry serialized words; coordinate floats retain their bits.
@@ -169,77 +169,77 @@ typedef struct SdfPrimitiveRequest {
 
 /* Reserve size bytes from the active packet buffer, rounded up to 16 bytes.
  * Returns the prior cursor as a 32-bit address; the buffer owns this storage. */
-s32 sdfGrAllocPacketBuff(s32 size);
+s32 sdfGrAllocPacketBuff(s32 aSize);
 
 extern void *memcpy(void *, const void *, unsigned int);
 
-void sdf3DPrimLinkResetTm(sdfDrawTag_t *packetList,
-                             s32 (*allocatePacket)(s32));
+void sdf3DPrimLinkResetTm(sdfDrawTag_t *aTag,
+                             s32 (*aAllocator)(s32));
 
-void sdf3DPrimSetTmPacket(sdf3DTmPacketData_t *lightingPacket);
+void sdf3DPrimSetTmPacket(sdf3DTmPacketData_t *aPacket);
 
-void sdf3DPrimLinkTm(sdfDrawTag_t *packetList,
-                           s32 (*allocatePacket)(s32));
+void sdf3DPrimLinkTm(sdfDrawTag_t *aTag,
+                           s32 (*aAllocator)(s32));
 
-void sdf3DPrimLinkMat(sdfDrawTag_t *packetList, sdfMat_t *asset,
-                              s32 (*allocatePacket)(s32));
+void sdf3DPrimLinkMat(sdfDrawTag_t *aTag, sdfMat_t *aMat,
+                              s32 (*aAllocator)(s32));
 
-u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *request);
+u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *aParm);
 
-void sdf3DPrimLinkResetTm(sdfDrawTag_t *packetList,
-                             s32 (*allocatePacket)(s32)) {
+void sdf3DPrimLinkResetTm(sdfDrawTag_t *aTag,
+                             s32 (*aAllocator)(s32)) {
     u64 *referencePacket;
-    if (allocatePacket == NULL) {
-        allocatePacket = sdfGrAllocPacketBuff;
+    if (aAllocator == NULL) {
+        aAllocator = sdfGrAllocPacketBuff;
     }
-    referencePacket = (u64 *)allocatePacket(0x20);
+    referencePacket = (u64 *)aAllocator(0x20);
     referencePacket[0] = ((u64)((u32)sdf3DPrimIdentityTm & SDF_DMA_ADDRESS_MASK) << 32) | 0x30000008;
     referencePacket[1] = 0x6C07C000ULL << 32;
     QUAD_ZERO(*(u128 *)&referencePacket[2]);
-    sdfDrawTagLinkRef(packetList, (u32)referencePacket);
+    sdfDrawTagLinkRef(aTag, (u32)referencePacket);
 }
 
 /* vu0 routine: store the resident matrix and inverse-column-length scaled rows, then VIF ITOP/MSCAL. */
-void sdf3DPrimSetTmPacket(sdf3DTmPacketData_t *lightingPacket) {
-    VU0_STORE_MATRIX_AND_UNIT_ROWS(lightingPacket);
-    lightingPacket->tag[0] = SDF_VIF_ITOP_LIGHTING;
-    lightingPacket->tag[1] = SDF_VIF_MSCAL_COMMAND;
-    lightingPacket->tag[2] = 0;
-    lightingPacket->tag[3] = 0;
+void sdf3DPrimSetTmPacket(sdf3DTmPacketData_t *aPacket) {
+    VU0_STORE_MATRIX_AND_UNIT_ROWS(aPacket);
+    aPacket->tag[0] = SDF_VIF_ITOP_LIGHTING;
+    aPacket->tag[1] = SDF_VIF_MSCAL_COMMAND;
+    aPacket->tag[2] = 0;
+    aPacket->tag[3] = 0;
 }
 
-void sdf3DPrimLinkTm(sdfDrawTag_t *packetList,
-                           s32 (*allocatePacket)(s32)) {
+void sdf3DPrimLinkTm(sdfDrawTag_t *aTag,
+                           s32 (*aAllocator)(s32)) {
     u64 *dmaPacket;
-    if (allocatePacket == NULL) {
-        allocatePacket = sdfGrAllocPacketBuff;
+    if (aAllocator == NULL) {
+        aAllocator = sdfGrAllocPacketBuff;
     }
-    dmaPacket = (u64 *)allocatePacket(0x90);
+    dmaPacket = (u64 *)aAllocator(0x90);
     dmaPacket[0] = ((u64)((u32)(dmaPacket + 2) & SDF_DMA_ADDRESS_MASK) << 32) | 0x20000008;
     dmaPacket[1] = 0x6C07C000ULL << 32;
     sdf3DPrimSetTmPacket((sdf3DTmPacketData_t *)(dmaPacket + 2));
-    sdfDrawTagLink(packetList, (u32)dmaPacket);
+    sdfDrawTagLink(aTag, (u32)dmaPacket);
 }
 
-void sdf3DPrimLinkMat(sdfDrawTag_t *packetList, sdfMat_t *asset,
-                              s32 (*allocatePacket)(s32)) {
+void sdf3DPrimLinkMat(sdfDrawTag_t *aTag, sdfMat_t *aMat,
+                              s32 (*aAllocator)(s32)) {
     u64 *referencePacket;
-    if (allocatePacket == NULL) {
-        allocatePacket = sdfGrAllocPacketBuff;
+    if (aAllocator == NULL) {
+        aAllocator = sdfGrAllocPacketBuff;
     }
-    sdfMatUpdatePacket(asset, (s8)sdfFrameId);
-    referencePacket = (u64 *)allocatePacket(0x20);
-    sdfMatMakePacket(asset, (struct SdfDmaTagHeader *)referencePacket, (s8)sdfFrameId);
+    sdfMatUpdatePacket(aMat, (s8)sdfFrameId);
+    referencePacket = (u64 *)aAllocator(0x20);
+    sdfMatMakePacket(aMat, (struct SdfDmaTagHeader *)referencePacket, (s8)sdfFrameId);
     QUAD_ZERO(*(u128 *)&referencePacket[2]);
-    sdfDrawTagLinkRef(packetList, (u32)referencePacket);
+    sdfDrawTagLinkRef(aTag, (u32)referencePacket);
 }
 
-u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *request) {
-    s32 stripWords = request->stripWordCount;
-    s32 count = request->vertexCount;
+u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *aParm) {
+    s32 stripWords = aParm->stripWordCount;
+    s32 count = aParm->vertexCount;
     s32 headerWords = 18;
     s32 wordsPerVertex = 3;
-    u32 primitive = request->primitiveFlags | 0x68;
+    u32 primitive = aParm->primitiveFlags | 0x68;
     u32 format = 0x60;
     s32 bytes;
     void *(*allocate)(s32);
@@ -251,22 +251,22 @@ u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *request) {
     s32 i;
     u32 countCode;
 
-    if (request->normals != NULL) {
+    if (aParm->normals != NULL) {
         format = 0xE0;
         headerWords = 19;
         wordsPerVertex = 6;
     }
-    if (request->coordinates != NULL) {
+    if (aParm->coordinates != NULL) {
         format |= 0x100;
         primitive |= 0x10;
         headerWords++;
         wordsPerVertex += 2;
-        if (request->secondCoordinates != NULL) {
+        if (aParm->secondCoordinates != NULL) {
             primitive |= 0x1000;
             wordsPerVertex += 2;
         }
     }
-    if (request->vertexColors != NULL) {
+    if (aParm->vertexColors != NULL) {
         format |= 0x200;
         primitive |= 0x800;
         headerWords++;
@@ -274,17 +274,17 @@ u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *request) {
     }
     bytes = (headerWords + stripWords + wordsPerVertex * count) * 4;
     bytes = (bytes + 15) & ~15;
-    allocate = request->allocate;
+    allocate = aParm->allocate;
     if (allocate == NULL) allocate = sdfGrAllocPacketBuff;
     packet = allocate(bytes);
     *(u64 *)packet = (u64)(u16)((bytes >> 4) - 1) | 0x20000000ULL;
     packet[2] = 0x6102C000;
-    packet[3] = (~request->clipMask) & 0xFFFF;
+    packet[3] = (~aParm->clipMask) & 0xFFFF;
     packet[4] = 0x6E01C002;
-    packet[5] = request->color;
+    packet[5] = aParm->color;
     packet[6] = 0x6003C003;
     cursor = packet + 7;
-    *cursor++ = (u32)request->depth;
+    *cursor++ = (u32)aParm->depth;
     *cursor++ = (u32)sdfFaceDivSoften;
     *cursor++ = (u32)sdfFaceDivBias;
     *cursor++ = 0x04000004;
@@ -293,16 +293,16 @@ u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *request) {
     *cursor++ = (u16)stripWords | ((u32)(u16)count << 16);
     *cursor++ = (primitive & 0xFFFF) | (format << 16);
     *cursor++ = (stripWords << 16) | 0x6E00C001;
-    if (request->strip == NULL) {
+    if (aParm->strip == NULL) {
         memcpy(cursor, sdf3DPrimDefaultFaceIndex, stripWords * 4);
     } else {
-        memcpy(cursor, request->strip, stripWords * 4);
+        memcpy(cursor, aParm->strip, stripWords * 4);
     }
     cursor += stripWords;
     stripWords++;
     countCode = count << 16;
     *cursor++ = countCode | stripWords | 0x6800C000;
-    vector = request->positions;
+    vector = aParm->positions;
     i = 0;
     do {
         MMI_STORE_VEC3_VALUE(cursor, *vector);
@@ -311,7 +311,7 @@ u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *request) {
         i++;
     } while (i != count);
     stripWords += count;
-    vector = request->normals;
+    vector = aParm->normals;
     if (vector != NULL) {
         *cursor++ = countCode | stripWords | 0x6800C000;
         i = 0;
@@ -323,9 +323,9 @@ u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *request) {
         } while (i != count);
         stripWords += count;
     }
-    coordinates = request->coordinates;
+    coordinates = aParm->coordinates;
     if (coordinates != NULL) {
-        secondCoordinates = request->secondCoordinates;
+        secondCoordinates = aParm->secondCoordinates;
         if (secondCoordinates == NULL) {
             *cursor++ = countCode | stripWords | 0x6400C000;
             memcpy(cursor, coordinates, count * 8);
@@ -343,9 +343,9 @@ u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *request) {
         }
         stripWords += count;
     }
-    if (request->vertexColors != NULL) {
+    if (aParm->vertexColors != NULL) {
         *cursor++ = countCode | stripWords | 0x6E00C000;
-        memcpy(cursor, request->vertexColors, count * 4);
+        memcpy(cursor, aParm->vertexColors, count * 4);
         cursor += count;
     }
     *cursor = 0x1400000C;

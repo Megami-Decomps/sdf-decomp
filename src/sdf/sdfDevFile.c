@@ -15,7 +15,7 @@ typedef struct
     u8 unk18[8];
 } sdfBinaryHeader_t;
 
-void sdfAddressResolver(void *aBase, void *aTarget, void *aTable, s32 aCount);
+void sdfAddressResolver(void *aDataBody, void *aOffset, void *aAddrInfoPtr, s32 aAddrInfoLeng);
 
 typedef u8 sdfDevOperationCode_t;
 
@@ -101,21 +101,21 @@ enum sdf_stream_playback {
     SDF_STREAM_PLAYBACK_CADENCED = 2
 };
 
-u32 sdfMemLock(sdfMemHandle_t *allocation);
+u32 sdfMemLock(sdfMemHandle_t *aHandle);
 
 s32 printf(const char *format, ...);
 
 extern char D_0054A2D8[];
 
-void sdfMemUnlock(sdfMemHandle_t *allocation);
+void sdfMemUnlock(sdfMemHandle_t *aHandle);
 
-void sdfTexListAdd(sdfItemArray_t *list, sdfTexHandle_t *texture);
+void sdfTexListAdd(sdfItemArray_t *aList, sdfTexHandle_t *aTexHandle);
 
-sdfMemHandle_t *sdfMemAllocDirect(s32 size);
+sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
 
-extern sdfItemArray_t *sdfTexListNew(u32 capacity);
+extern sdfItemArray_t *sdfTexListNew(u32 aInitCapa);
 
-sdfTexHandle_t *sdfTexSet(const TMX_HEADER_t *header);
+sdfTexHandle_t *sdfTexSet(const TMX_HEADER_t *aTex);
 
 extern s32 (*p2sdSmgBuf)(void);
 
@@ -125,7 +125,7 @@ u32 sdfFileLength(void *aHandle);
 
 /* Open a path using the shared reply callback and wait for its initial completion. */ sdfFileCmdHandle_t *sdfFileOpen(const char *path);
 
-s32 sdfFileRead(void *aHandle, void *aBuffer, s32 aSize);
+s32 sdfFileRead(void *aHandle, void *aPtr, s32 aLeng);
 
 /* Read a named file through the dev RPC into a freshly allocated block; returns the block's handle.
  * outData receives the block address, outSize the file size; without outData the block is released. */
@@ -152,62 +152,62 @@ void *sdfDevLoadFileEx(const char *aFileName, u32 *aOutData, u32 *aOutSize)
     return sdfDevLoadFile(aFileName, aOutData, aOutSize, 0);
 }
 
-sdfTexHandle_t *sdfDevLoadTex(const char *filename) {
+sdfTexHandle_t *sdfDevLoadTex(const char *aFilename) {
     u32 dataAddress;
     sdfMemHandle_t *allocation;
     sdfTexHandle_t *texture;
 
-    printf(D_0054A2D8, filename);
-    allocation = sdfDevLoadFileEx(filename, &dataAddress, 0);
+    printf(D_0054A2D8, aFilename);
+    allocation = sdfDevLoadFileEx(aFilename, &dataAddress, 0);
     texture = sdfTexSet((void *)dataAddress);
     sdfMemFreeDirect(allocation);
     return texture;
 }
 
-sdfItemArray_t *sdfTexSetTB(const sdfTextureOffsetListHeader_t *resource) {
+sdfItemArray_t *sdfTexSetTB(const sdfTextureOffsetListHeader_t *aData) {
     s32 i = 0;
-    s32 count = resource->textureCount;
+    s32 count = aData->textureCount;
     sdfItemArray_t *handle = sdfTexListNew(count);
     const sdfTextureOffsetListEntry_t *entry;
     if (count != i) {
-        entry = (const sdfTextureOffsetListEntry_t *)((const u8 *)resource + sizeof(*resource));
+        entry = (const sdfTextureOffsetListEntry_t *)((const u8 *)aData + sizeof(*aData));
         do {
             i++;
             sdfTexListAdd(handle, sdfTexSet((TMX_HEADER_t *)(
-                (void *)((const u8 *)resource + entry->textureHeaderOffset))));
+                (void *)((const u8 *)aData + entry->textureHeaderOffset))));
             entry++;
         } while (i != count);
     }
     return handle;
 }
 
-sdfItemArray_t *sdfDevLoadTexList(const char *filename) {
+sdfItemArray_t *sdfDevLoadTexList(const char *aFilename) {
     u32 dataAddress;
     sdfMemHandle_t *allocation;
     sdfItemArray_t *texture;
 
-    printf(D_0054A2D8, filename);
-    allocation = sdfDevLoadFileEx(filename, &dataAddress, 0);
+    printf(D_0054A2D8, aFilename);
+    allocation = sdfDevLoadFileEx(aFilename, &dataAddress, 0);
     texture = sdfTexSetTB((void *)dataAddress);
     sdfMemFreeDirect(allocation);
     return texture;
 }
 
-void *sdfFixupModelBinary(sdfBinaryHeader_t *aHeader)
+void *sdfFixupModelBinary(sdfBinaryHeader_t *aData)
 {
-    void *body = aHeader + 1;
+    void *body = aData + 1;
 
-    sdfAddressResolver(body, body, (u8 *)body + aHeader->resolveOffset, aHeader->resolveCount);
+    sdfAddressResolver(body, body, (u8 *)body + aData->resolveOffset, aData->resolveCount);
     return body;
 }
 
 INCLUDE_ASM(const s32, "sdf/sdfDevFile", sdfDevLoadModel);
 
-void *sdfFixupMotionBinary(sdfBinaryHeader_t *aHeader)
+void *sdfFixupMotionBinary(sdfBinaryHeader_t *aData)
 {
-    void *body = aHeader + 1;
+    void *body = aData + 1;
 
-    sdfAddressResolver(body, body, (u8 *)body + aHeader->resolveOffset, aHeader->resolveCount);
+    sdfAddressResolver(body, body, (u8 *)body + aData->resolveOffset, aData->resolveCount);
     return body;
 }
 

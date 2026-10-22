@@ -13,7 +13,7 @@ typedef struct sdfDelayedResrcChunk_t sdfDelayedResrcChunk_t;
  * boundary, while their C consumers interpret that word as different owners. */
 typedef void (*SdfPendingCallback)();
 
-void sdfChipFreeDirect(void *memory);
+void sdfChipFreeDirect(void *aPtr);
 
 #define SDF_PENDING_BUFFER_CAPACITY 0x3F
 
@@ -35,7 +35,7 @@ typedef struct sdfDelayedResrcItems_t {
 
 extern sdfDelayedResrcChunk_t *sdfDelayedResrcLink;
 
-void *sdfChipAllocDirect(s32 size);
+void *sdfChipAllocDirect(s32 aSize);
 
 extern s32 EIntr(void);
 
@@ -70,41 +70,41 @@ struct sdfDelayedResrcChunk_t {
     s32 remaining;
 };
 
-void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *request, SdfPendingCallback callback);
+void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, SdfPendingCallback aFreeFunc);
 
-void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *owner, void *entry);
+void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aItem);
 
 sdfDelayedResrcChunk_t *sdfDelayedResrcClose(void);
 
-void sdfDelayedResrcRelease(sdfDelayedResrcChunk_t *pendingNode);
+void sdfDelayedResrcRelease(sdfDelayedResrcChunk_t *aChunk);
 
 u64 sdfDelayedResrcCheckFunc(void);
 
 u64 sdfDelayedResrcCheck(void);
 
-void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *request, SdfPendingCallback callback) {
+void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, SdfPendingCallback aFreeFunc) {
     if (sdfDelayedResrcSemaId < 0) {
         sdfDelayedResrcSemaId = sdfCreateSema(1, 0x7f, 0);
     }
-    request->freeFuncPtr = callback;
-    request->chunk = NULL;
+    aCB->freeFuncPtr = aFreeFunc;
+    aCB->chunk = NULL;
 }
 
-void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *owner, void *entry) {
+void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aItem) {
     sdfDelayedResrcChunk_t *pendingNode;
     sdfDelayedResrcItems_t *entryBuffer;
     s32 freeEntries;
 
-    if (entry != NULL) {
+    if (aItem != NULL) {
         WaitSema(sdfDelayedResrcSemaId);
-        pendingNode = owner->chunk;
+        pendingNode = aCB->chunk;
         if (pendingNode == NULL) {
             pendingNode = (sdfDelayedResrcChunk_t *)sdfChipAllocDirect(sizeof(sdfDelayedResrcChunk_t));
             pendingNode->remaining = 0;
             pendingNode->next = sdfDelayedResrcLink;
             pendingNode->buffer = NULL;
-            pendingNode->owner = owner;
-            owner->chunk = pendingNode;
+            pendingNode->owner = aCB;
+            aCB->chunk = pendingNode;
             sdfDelayedResrcLink = pendingNode;
         }
         freeEntries = pendingNode->remaining;
@@ -116,7 +116,7 @@ void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *owner, void *entry) {
             entryBuffer = newBuffer;
             freeEntries = SDF_PENDING_BUFFER_CAPACITY;
         }
-        entryBuffer->entry[SDF_PENDING_BUFFER_CAPACITY - freeEntries] = entry;
+        entryBuffer->entry[SDF_PENDING_BUFFER_CAPACITY - freeEntries] = aItem;
         pendingNode->remaining = freeEntries - 1;
         SignalSema(sdfDelayedResrcSemaId);
     }
@@ -133,7 +133,7 @@ sdfDelayedResrcChunk_t *sdfDelayedResrcClose(void) {
     return head;
 }
 
-void sdfDelayedResrcRelease(sdfDelayedResrcChunk_t *pendingNode) {
+void sdfDelayedResrcRelease(sdfDelayedResrcChunk_t *aChunk) {
     sdfDelayedResrcChunk_t *nextPendingNode;
     sdfDelayedResrcItems_t *entryBuffer;
     sdfDelayedResrcItems_t *nextEntryBuffer;
@@ -141,11 +141,11 @@ void sdfDelayedResrcRelease(sdfDelayedResrcChunk_t *pendingNode) {
     s32 entryCount;
     s32 entryIndex;
 
-    if (pendingNode != NULL) {
+    if (aChunk != NULL) {
         do {
-            entryCount = SDF_PENDING_BUFFER_CAPACITY - pendingNode->remaining;
-            entryHandler = pendingNode->owner->freeFuncPtr;
-            entryBuffer = pendingNode->buffer;
+            entryCount = SDF_PENDING_BUFFER_CAPACITY - aChunk->remaining;
+            entryHandler = aChunk->owner->freeFuncPtr;
+            entryBuffer = aChunk->buffer;
             if (entryBuffer != NULL) {
                 do {
                     entryIndex = 0;
@@ -159,10 +159,10 @@ void sdfDelayedResrcRelease(sdfDelayedResrcChunk_t *pendingNode) {
                     entryCount = SDF_PENDING_BUFFER_CAPACITY;
                 } while (entryBuffer != NULL);
             }
-            nextPendingNode = pendingNode->next;
-            sdfChipFreeDirect(pendingNode);
-            pendingNode = nextPendingNode;
-        } while (pendingNode != NULL);
+            nextPendingNode = aChunk->next;
+            sdfChipFreeDirect(aChunk);
+            aChunk = nextPendingNode;
+        } while (aChunk != NULL);
     }
 }
 

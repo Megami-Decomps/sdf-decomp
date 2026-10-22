@@ -87,7 +87,7 @@ typedef struct SdfTextureDrawPacket {
     u64 registerAddressC;
 } SdfTextureDrawPacket;
 
-void sdfDrawTagLink(struct sdfDrawTag_t *list, u32 packetAddress);
+void sdfDrawTagLink(struct sdfDrawTag_t *aTag, u32 aPacket);
 
 /* Per-texture reference count and non-owning clone source (0x8). */
 /* Texture buffer GPU command words (0x40); DDS1/2 game/code_002D10B0/00329F60.c. */
@@ -106,95 +106,95 @@ typedef struct sdfTexPacket_t {
 
 
 /* Return packed 64-bit TEX0, TEX1, and CLAMP states from the primary GS packet. */
-u64 sdfTexGetTex0Reg(sdfTexHandle_t *texture);
+u64 sdfTexGetTex0Reg(sdfTexHandle_t *aHandle);
 
-u64 sdfTexGetTex1Reg(sdfTexHandle_t *texture);
+u64 sdfTexGetTex1Reg(sdfTexHandle_t *aHandle);
 
-u64 sdfTexGetClampReg(sdfTexHandle_t *texture);
+u64 sdfTexGetClampReg(sdfTexHandle_t *aHandle);
 
 /* DMA/VIF transfer header and packed A+D GIF tag, excluding register payload. */
 void sdfGrSetRegsPacketHeader(sdfGrPacketHeader_t *header, s32 payloadQwords);
 
-u32 sdf2DGetTexPacketSize(sdfTexHandle_t *texture);
+u32 sdf2DGetTexPacketSize(sdfTexHandle_t *aTexHndl);
 
 
 /* Acquire a texture from a serialized texture-file header. */
-struct sdfTexHandle_t *sdfTexSet(const TMX_HEADER_t *header);
+struct sdfTexHandle_t *sdfTexSet(const TMX_HEADER_t *aTex);
 
-struct sdfTexHandle_t *sdfTexSetDirect(const TMX_HEADER_t *header);
+struct sdfTexHandle_t *sdfTexSetDirect(const TMX_HEADER_t *aTex);
 
 /* Reserve size bytes from the active packet buffer, rounded up to 16 bytes.
  * Returns the prior cursor as a 32-bit address; the buffer owns this storage. */
-s32 sdfGrAllocPacketBuff(s32 size);
+s32 sdfGrAllocPacketBuff(s32 aSize);
 
-SdfTextureDrawPacket *sdf2DMakeTexPacket(SdfTextureDrawPacket *drawPacket, sdfTexHandle_t *texture, s32 contextOffset);
+SdfTextureDrawPacket *sdf2DMakeTexPacket(SdfTextureDrawPacket *aPacket, sdfTexHandle_t *aTexHndl, s32 aCtx);
 
-s32 sdf2DLinkTexPacket(sdfDrawTag_t *packetList, sdfTexHandle_t *texture, s32 contextOffset);
+s32 sdf2DLinkTexPacket(sdfDrawTag_t *aTag, sdfTexHandle_t *aTexHndl, s32 aCtx);
 
-u32 sdf2DMakeStdPacket(u32 packetAddress, s32 packetBytes);
+u32 sdf2DMakeStdPacket(u32 aPacket, s32 aLeng);
 
-s32 sdf2DGetPrimPacketSize(s32 registerCount, s32 loopCount);
+s32 sdf2DGetPrimPacketSize(s32 aNumOfRegs, s32 aNumOfPrim);
 
-SdfDrawPacket *sdf2DMakePrimPacketHeader(SdfDrawPacket *packet, s32 primitiveFlags, s32 registerCount, s64 registerList, s32 loopCount);
+SdfDrawPacket *sdf2DMakePrimPacketHeader(SdfDrawPacket *aPacketPtr, s32 aPrimReg, s32 aNumOfRegs, s64 aGifRegs, s32 aNumOfPrim);
 
-SdfDrawPacket *sdf2DAllocSprite(s32 loopCount);
+SdfDrawPacket *sdf2DAllocSprite(s32 aNumOfSpr);
 
-u32 sdf2DGetTexPacketSize(sdfTexHandle_t *texture) {
+u32 sdf2DGetTexPacketSize(sdfTexHandle_t *aTexHndl) {
     return 5 << SDF_DMA_QWORD_SHIFT;
 }
 
-SdfTextureDrawPacket *sdf2DMakeTexPacket(SdfTextureDrawPacket *drawPacket, sdfTexHandle_t *texture, s32 contextOffset) {
-    drawPacket->header.quadwords = 4;
-    drawPacket->header.gifTag = 0x1000000000008003ULL;
-    drawPacket->header.command = 0x50000004;
-    drawPacket->header.pad08 = 0;
-    drawPacket->header.payloadHeader = SDF_GIF_REGISTER_AD;
-    drawPacket->textureWordA = sdfTexGetTex1Reg(texture);
-    drawPacket->registerAddressA = contextOffset + 0x14;
-    drawPacket->textureWordB = sdfTexGetTex0Reg(texture);
-    drawPacket->registerAddressB = contextOffset + 6;
-    drawPacket->textureWordC = sdfTexGetClampReg(texture);
-    drawPacket->registerAddressC = contextOffset + 8;
-    return drawPacket;
+SdfTextureDrawPacket *sdf2DMakeTexPacket(SdfTextureDrawPacket *aPacket, sdfTexHandle_t *aTexHndl, s32 aCtx) {
+    aPacket->header.quadwords = 4;
+    aPacket->header.gifTag = 0x1000000000008003ULL;
+    aPacket->header.command = 0x50000004;
+    aPacket->header.pad08 = 0;
+    aPacket->header.payloadHeader = SDF_GIF_REGISTER_AD;
+    aPacket->textureWordA = sdfTexGetTex1Reg(aTexHndl);
+    aPacket->registerAddressA = aCtx + 0x14;
+    aPacket->textureWordB = sdfTexGetTex0Reg(aTexHndl);
+    aPacket->registerAddressB = aCtx + 6;
+    aPacket->textureWordC = sdfTexGetClampReg(aTexHndl);
+    aPacket->registerAddressC = aCtx + 8;
+    return aPacket;
 }
 
-s32 sdf2DLinkTexPacket(sdfDrawTag_t *packetList, sdfTexHandle_t *texture, s32 contextOffset) {
-    s32 packetBytes = sdf2DGetTexPacketSize(texture);
+s32 sdf2DLinkTexPacket(sdfDrawTag_t *aTag, sdfTexHandle_t *aTexHndl, s32 aCtx) {
+    s32 packetBytes = sdf2DGetTexPacketSize(aTexHndl);
     SdfTextureDrawPacket *packet = (SdfTextureDrawPacket *)sdfGrAllocPacketBuff(packetBytes);
-    s32 packetAddress = (s32)sdf2DMakeTexPacket(packet, texture, contextOffset);
-    sdfDrawTagLink(packetList, packetAddress);
+    s32 packetAddress = (s32)sdf2DMakeTexPacket(packet, aTexHndl, aCtx);
+    sdfDrawTagLink(aTag, packetAddress);
     return packetAddress;
 }
 
-u32 sdf2DMakeStdPacket(u32 packetAddress, s32 packetBytes) {
-    sdfGrSetRegsPacketHeader((sdfGrPacketHeader_t *)packetAddress, (packetBytes >> SDF_DMA_QWORD_SHIFT) - 2);
-    return packetAddress;
+u32 sdf2DMakeStdPacket(u32 aPacket, s32 aLeng) {
+    sdfGrSetRegsPacketHeader((sdfGrPacketHeader_t *)aPacket, (aLeng >> SDF_DMA_QWORD_SHIFT) - 2);
+    return aPacket;
 }
 
-s32 sdf2DGetPrimPacketSize(s32 registerCount, s32 loopCount) {
-    return (registerCount * loopCount + 2) << SDF_DMA_QWORD_SHIFT;
+s32 sdf2DGetPrimPacketSize(s32 aNumOfRegs, s32 aNumOfPrim) {
+    return (aNumOfRegs * aNumOfPrim + 2) << SDF_DMA_QWORD_SHIFT;
 }
 
-void *sdf2DGetPrimPtr(SdfDrawPacket *packet) {
-    return packet + 1;
+void *sdf2DGetPrimPtr(SdfDrawPacket *aPacketPtr) {
+    return aPacketPtr + 1;
 }
 
-SdfDrawPacket *sdf2DMakePrimPacketHeader(SdfDrawPacket *packet, s32 primitiveFlags, s32 registerCount, s64 registerList, s32 loopCount) {
-    s32 packetQuadwords = registerCount * loopCount + 1;
-    s64 gifTag = loopCount | ((s64)registerCount << SDF_GIF_NREG_SHIFT);
+SdfDrawPacket *sdf2DMakePrimPacketHeader(SdfDrawPacket *aPacketPtr, s32 aPrimReg, s32 aNumOfRegs, s64 aGifRegs, s32 aNumOfPrim) {
+    s32 packetQuadwords = aNumOfRegs * aNumOfPrim + 1;
+    s64 gifTag = aNumOfPrim | ((s64)aNumOfRegs << SDF_GIF_NREG_SHIFT);
 
-    gifTag |= (s64)primitiveFlags << SDF_GIF_PRIM_SHIFT;
+    gifTag |= (s64)aPrimReg << SDF_GIF_PRIM_SHIFT;
     gifTag |= SDF_GIF_PRE_EOP_FLAGS;
-    packet->gifTag = gifTag;
-    packet->command = packetQuadwords | SDF_VIF_DIRECT_COMMAND;
-    packet->payloadHeader = registerList;
-    packet->pad08 = 0;
-    packet->quadwords = packetQuadwords;
-    return packet;
+    aPacketPtr->gifTag = gifTag;
+    aPacketPtr->command = packetQuadwords | SDF_VIF_DIRECT_COMMAND;
+    aPacketPtr->payloadHeader = aGifRegs;
+    aPacketPtr->pad08 = 0;
+    aPacketPtr->quadwords = packetQuadwords;
+    return aPacketPtr;
 }
 
-SdfDrawPacket *sdf2DAllocSprite(s32 loopCount) {
-    SdfDrawPacket *packet = (SdfDrawPacket *)sdfGrAllocPacketBuff(sdf2DGetPrimPacketSize(5, loopCount));
-    sdf2DMakePrimPacketHeader(packet, 0x156, 5, 0x53531, loopCount);
+SdfDrawPacket *sdf2DAllocSprite(s32 aNumOfSpr) {
+    SdfDrawPacket *packet = (SdfDrawPacket *)sdfGrAllocPacketBuff(sdf2DGetPrimPacketSize(5, aNumOfSpr));
+    sdf2DMakePrimPacketHeader(packet, 0x156, 5, 0x53531, aNumOfSpr);
     return packet;
 }

@@ -10,12 +10,12 @@ struct sdfMemHandle_t;
 
 #define SDF_PACKET_BUFFER_COUNT 2
 
-void sdfMemFreeDirect(struct sdfMemHandle_t *allocation);
+void sdfMemFreeDirect(struct sdfMemHandle_t *aHandle);
 
 extern struct sdfMemHandle_t *sdfGrPacketBuffHandle;
 
 
-u32 sdfMemLock(struct sdfMemHandle_t *allocation);
+u32 sdfMemLock(struct sdfMemHandle_t *aHandle);
 
 extern s32 sdfGrPacketBuffSize;
 
@@ -41,42 +41,42 @@ typedef struct effDebugPolyParams_t {
     f32 depth;
 } effDebugPolyParams_t;
 
-void sdfGrMakePacketBuff(s32 bufferBytes);
+void sdfGrMakePacketBuff(s32 aPacketBuffSize);
 
-void sdfGrSetupPacketBuff(s32 bufferIndex);
+void sdfGrSetupPacketBuff(s32 aFrameId);
 
-s32 sdfGrAllocPacketBuff(s32 size);
+s32 sdfGrAllocPacketBuff(s32 aSize);
 
-void sdfGrClosePacketBuff(s32 cursorAddress);
+void sdfGrClosePacketBuff(s32 aBuffPtr);
 
-void sdfGrMakePacketBuff(s32 bufferBytes) {
+void sdfGrMakePacketBuff(s32 aPacketBuffSize) {
     s32 allocationAddress;
     if (sdfGrPacketBuffHandle != 0) {
         sdfMemFreeDirect(sdfGrPacketBuffHandle);
         sdfGrPacketBuffHandle = 0;
     }
-    bufferBytes = (bufferBytes + SDF_PACKET_BUFFER_ALIGNMENT_MASK) & ~SDF_PACKET_BUFFER_ALIGNMENT_MASK;
-    sdfGrPacketBuffSize = bufferBytes;
-    sdfGrPacketBuffHandle = sdfMemAllocDirect(bufferBytes * SDF_PACKET_BUFFER_COUNT);
+    aPacketBuffSize = (aPacketBuffSize + SDF_PACKET_BUFFER_ALIGNMENT_MASK) & ~SDF_PACKET_BUFFER_ALIGNMENT_MASK;
+    sdfGrPacketBuffSize = aPacketBuffSize;
+    sdfGrPacketBuffHandle = sdfMemAllocDirect(aPacketBuffSize * SDF_PACKET_BUFFER_COUNT);
     allocationAddress = sdfMemLock(sdfGrPacketBuffHandle);
     D_00551870[0] = allocationAddress;
-    D_00551870[1] = allocationAddress + bufferBytes;
+    D_00551870[1] = allocationAddress + aPacketBuffSize;
 }
 
-void sdfGrSetupPacketBuff(s32 bufferIndex) {
-    sdfGrPacketBuffPtr = D_00551870[bufferIndex];
-    sdfGrPacketBuffLimit = D_00551870[bufferIndex] + sdfGrPacketBuffSize;
+void sdfGrSetupPacketBuff(s32 aFrameId) {
+    sdfGrPacketBuffPtr = D_00551870[aFrameId];
+    sdfGrPacketBuffLimit = D_00551870[aFrameId] + sdfGrPacketBuffSize;
 }
 
 s32 sdfGrGetPacketBuffRemain(void) {
     return sdfGrPacketBuffLimit - sdfGrPacketBuffPtr;
 }
 
-s32 sdfGrAllocPacketBuff(s32 size) {
+s32 sdfGrAllocPacketBuff(s32 aSize) {
     s32 packet;
 
     packet = sdfGrPacketBuffPtr;
-    sdfGrPacketBuffPtr = sdfGrPacketBuffPtr + ((size + 0xfU) & 0xfffffff0);
+    sdfGrPacketBuffPtr = sdfGrPacketBuffPtr + ((aSize + 0xfU) & 0xfffffff0);
     return packet;
 }
 
@@ -84,6 +84,6 @@ s32 sdfGrOpenPacketBuff(void) {
     return sdfGrPacketBuffPtr;
 }
 
-void sdfGrClosePacketBuff(s32 cursorAddress) {
-    sdfGrPacketBuffPtr = (cursorAddress + SDF_QWORD_ALIGNMENT_MASK) & ~SDF_QWORD_ALIGNMENT_MASK;
+void sdfGrClosePacketBuff(s32 aBuffPtr) {
+    sdfGrPacketBuffPtr = (aBuffPtr + SDF_QWORD_ALIGNMENT_MASK) & ~SDF_QWORD_ALIGNMENT_MASK;
 }

@@ -79,9 +79,9 @@ extern void sdfPadWork(void);
 
 extern void sdfFileCmdThreadCheckPrio(void);
 
-extern void sdfChipInit(u32 bytes);
+extern void sdfChipInit(u32 aSize);
 
-extern void sdfMemInit(u32 bytes);
+extern void sdfMemInit(u32 aSize);
 
 extern void sdfGsMemInit(void);
 
@@ -91,15 +91,15 @@ extern void sdfTexInit(void);
 
 extern void sdfPadInitManager(void);
 
-extern void sdfGrInit(u32 packetBufferBytes);
+extern void sdfGrInit(u32 aPacketBuffSize);
 
-extern void sdf3DInit(s32 count);
+extern void sdf3DInit(s32 aNestLevelLimit);
 
-extern void sdfCoreDrawInit(s32 bytes);
+extern void sdfCoreDrawInit(s32 buffSize);
 
-extern void sdfRandomizeByTime(void *seed);
+extern void sdfRandomizeByTime(void *aCB);
 
-extern void *memset(void *destination, s32 value, u32 bytes);
+extern void *memset(void *a, s32 b, u32 c);
 
 void FatalError(const char *format, ...) __attribute__((noreturn));
 
@@ -216,15 +216,15 @@ extern PIPE_EFF_t *pipe_DAMAGE01_D3P, *pipe_DAMAGE03_D3P, *pipe_ATTACK01_D3P;
 
 extern s32 dds3ConfigBackup;
 
-extern s32 sdfChipCheck(void *ptr);
+extern s32 sdfChipCheck(void *aPtr);
 
-extern void sdfChipFreeDirect(void *ptr);
+extern void sdfChipFreeDirect(void *aPtr);
 
-extern void sdfChipFreeDelayedDirect(void *ptr);
+extern void sdfChipFreeDelayedDirect(void *aPtr);
 
-extern void sdfMemFreePtrDirect(void *ptr);
+extern void sdfMemFreePtrDirect(void *aPtr);
 
-extern void *sdfMemGetHandleByPtr(void *ptr);
+extern void *sdfMemGetHandleByPtr(void *aPtr);
 
 extern tagPipeObject *ObjWork;
 
@@ -271,7 +271,7 @@ extern s32 CreateSema(sdfSemaParam_t *param);
 
 extern s32 iWakeupThread(s32 thid);
 
-extern void sdfMemFreeDelayedDirect(void *handle);
+extern void sdfMemFreeDelayedDirect(void *aHandle);
 
 extern sdfThCB_t *func_002A87F0(s32 threadId);
 
@@ -285,11 +285,11 @@ extern void sdfIpuRemoveHandler(sdfHandlerNode_t *handler);
 
 extern void func_002A8758(sdfThCB_t *node);
 
-extern void *sdfMemAllocDirect(s32 size);
+extern void *sdfMemAllocDirect(s32 aSize);
 
-extern void *sdfMemLock(void *handle);
+extern void *sdfMemLock(void *aHandle);
 
-extern void *sdfChipAllocDirect(s32 size);
+extern void *sdfChipAllocDirect(s32 aSize);
 
 extern s32 CancelWakeupThread(s32 thid);
 

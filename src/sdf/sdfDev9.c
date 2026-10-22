@@ -54,7 +54,7 @@ enum sdf_stream_playback {
 
 extern void *memcpy(void *, const void *, unsigned int);
 
-void *sdfChipAllocDirect(s32 size);
+void *sdfChipAllocDirect(s32 aSize);
 
 extern char D_00549878[];
 

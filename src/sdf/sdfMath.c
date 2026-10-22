@@ -5,7 +5,7 @@
 
 #define SDF_PI_2 1.5707963f
 
-f32 sdfSin(f32 aRad);
+f32 sdfSin(f32 aRadius);
 
 enum SdfFileIOCmdStat {
     SDF_FILE_CMD_STAT_INIT = 0,
@@ -59,8 +59,8 @@ extern f32 D_0052D944[];
 extern s32 (*p2sdSmgBuf)(void);
 
 /* Mirror the phase into a quarter turn, then evaluate an odd ninth-degree polynomial. */
-f32 sdfSin(f32 angle) {
-    f32 phase = angle * 0.15915494f;
+f32 sdfSin(f32 aRadius) {
+    f32 phase = aRadius * 0.15915494f;
     f32 polynomialInput;
     f32 inputSquared;
     f32 inputCubed;
@@ -87,39 +87,39 @@ f32 sdfSin(f32 angle) {
     return polynomialInput * 1.5707963f + inputCubed * -0.64596367f + inputFifthPower * 0.07968968f + inputSeventhPower * -0.0046737656f + inputNinthPower * 0.00015148419f;
 }
 
-f32 sdfCos(f32 aRad)
+f32 sdfCos(f32 aRadius)
 {
-    return sdfSin(aRad + SDF_PI_2);
+    return sdfSin(aRadius + SDF_PI_2);
 }
 
 /* Binary-search samples, using zero as the implicit lower endpoint.
  * The step is integer 1/sampleCount converted to f32, not a float reciprocal.
  * The caller must provide valid table bounds for the final sample index.
  */
-f32 sdfTableInterpolation(f32 lookupValue, const f32 *table, s32 sampleCount) {
-    f32 positionStep = 1 / sampleCount;
+f32 sdfTableInterpolation(f32 aValue, const f32 *aTable, s32 aTableSize) {
+    f32 positionStep = 1 / aTableSize;
     s32 lowerIndex = 0;
-    s32 upperIndex = sampleCount;
+    s32 upperIndex = aTableSize;
     s32 sampleIndex;
     f32 lowerValue;
     f32 upperValue;
     do {
         sampleIndex = lowerIndex + upperIndex;
         sampleIndex >>= 1;
-        upperValue = table[sampleIndex];
-        if (lookupValue < upperValue) {
+        upperValue = aTable[sampleIndex];
+        if (aValue < upperValue) {
             upperIndex = sampleIndex;
         } else {
             sampleIndex++;
             lowerIndex = sampleIndex;
         }
     } while (lowerIndex < upperIndex);
-    upperValue = table[sampleIndex];
+    upperValue = aTable[sampleIndex];
     lowerValue = 0.0f;
     if (sampleIndex != 0) {
-        lowerValue = table[sampleIndex - 1];
+        lowerValue = aTable[sampleIndex - 1];
     }
-    return sampleIndex * positionStep + (lookupValue - lowerValue) * positionStep / (upperValue - lowerValue);
+    return sampleIndex * positionStep + (aValue - lowerValue) * positionStep / (upperValue - lowerValue);
 }
 
 f32 sdfAtan(f32 aX)
@@ -131,23 +131,23 @@ f32 sdfAtan(f32 aX)
     return aX * 0.9999998f + x3 * -0.33325735f + x5 * 0.19388643f;
 }
 
-f32 sdfAtan2(f32 y, f32 x) {
+f32 sdfAtan2(f32 aY, f32 aX) {
     s32 xNegative = 0;
     s32 yNegative;
     f32 angle;
-    if (x < 0.0f) {
-        x = -x;
+    if (aX < 0.0f) {
+        aX = -aX;
         xNegative = 1;
     }
     yNegative = 0;
-    if (y < 0.0f) {
-        y = -y;
+    if (aY < 0.0f) {
+        aY = -aY;
         yNegative = 1;
     }
-    if (y < x) {
-        angle = sdfAtan(y / x);
+    if (aY < aX) {
+        angle = sdfAtan(aY / aX);
     } else {
-        angle = 1.5707963f - sdfAtan(x / y);
+        angle = 1.5707963f - sdfAtan(aX / aY);
     }
     if (xNegative != 0) {
         angle = 3.1415926f - angle;
@@ -159,34 +159,34 @@ f32 sdfAtan2(f32 y, f32 x) {
 }
 
 /* Restore the input sign after sampling; magnitudes at or above one use half pi. */
-f32 sdfAsin(f32 x) {
+f32 sdfAsin(f32 aX) {
     f32 inputSign;
     f32 angleMagnitude;
-    if (x < 0.0f) {
-        x = -x;
+    if (aX < 0.0f) {
+        aX = -aX;
         inputSign = -1.0f;
     } else {
         inputSign = 1.0f;
     }
-    angleMagnitude = x >= 1.0f ? 1.5707963f : sdfTableInterpolation(x, D_0052D944, 128) * 1.5707963f;
+    angleMagnitude = aX >= 1.0f ? 1.5707963f : sdfTableInterpolation(aX, D_0052D944, 128) * 1.5707963f;
     return angleMagnitude * inputSign;
 }
 
 /* Return the input-signed complement of the sampled angle, not standard acos(x).
  * Magnitudes at or above one leave the angle magnitude at zero.
  */
-f32 sdfAcos(f32 x) {
+f32 sdfAcos(f32 aX) {
     f32 inputSign;
     f32 angleMagnitude;
-    if (x < 0.0f) {
-        x = -x;
+    if (aX < 0.0f) {
+        aX = -aX;
         inputSign = -1.0f;
     } else {
         inputSign = 1.0f;
     }
     angleMagnitude = 0.0f;
-    if (!(x >= 1.0f)) {
-        angleMagnitude = (1.0f - sdfTableInterpolation(x, D_0052D944, 128)) * 1.5707963f;
+    if (!(aX >= 1.0f)) {
+        angleMagnitude = (1.0f - sdfTableInterpolation(aX, D_0052D944, 128)) * 1.5707963f;
     }
     return angleMagnitude * inputSign;
 }
@@ -194,15 +194,15 @@ f32 sdfAcos(f32 x) {
 /* Keep the cast-plus/minus-one turn adjustment; this is not general modulo.
  * Inputs already within the pi thresholds are returned unchanged.
  */
-f32 sdfClipAngleValuePI(f32 angle) {
+f32 sdfClipAngleValuePI(f32 aValue) {
     s32 adjustedTurns;
-    if (angle > 3.1415926f) {
-        adjustedTurns = (s32)(angle / 6.2831852f) + 1;
-        return angle - (f32)adjustedTurns * 6.2831852f;
+    if (aValue > 3.1415926f) {
+        adjustedTurns = (s32)(aValue / 6.2831852f) + 1;
+        return aValue - (f32)adjustedTurns * 6.2831852f;
     }
-    if (angle < -3.1415926f) {
-        adjustedTurns = (s32)(angle / 6.2831852f) - 1;
-        return angle - (f32)adjustedTurns * 6.2831852f;
+    if (aValue < -3.1415926f) {
+        adjustedTurns = (s32)(aValue / 6.2831852f) - 1;
+        return aValue - (f32)adjustedTurns * 6.2831852f;
     }
-    return angle;
+    return aValue;
 }

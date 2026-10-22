@@ -5,11 +5,11 @@
 
 s32 strlen(const char *aStr);
 
-s32 sdfCreateSema(s32 aInit, s32 aMax, s32 aAttr);
+s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
 
 s32 sdfFileCmdClose(void *aHandle);
 
-s32 sdfFileCmdFree(sdfFileCmd_t *aCmd);
+s32 sdfFileCmdFree(sdfFileCmd_t *aHandle);
 
 void sdfChipFreeDirect(void *aPtr);
 
@@ -19,7 +19,7 @@ extern u32 sdfFileSeekWork;
 
 s32 sdfFileCmdFileSize(void *aHandle);
 
-s32 sdfFileCmdSeek(void *aHandle, s32 aOffset, s32 aOrigin);
+s32 sdfFileCmdSeek(void *aHandle, s32 aOffset, s32 aWhence);
 
 extern s32 WaitSema(s32 aSemaId);
 
@@ -31,11 +31,11 @@ extern u8 sdfFileDefaultSrcType;
 
 extern u8 sdfFileCmdDefaultDevice;
 
-s32 sdfFileCmdRead(void *aHandle, void *aBuffer, s32 aSize);
+s32 sdfFileCmdRead(void *aHandle, void *aBuffer, s32 aLength);
 
 extern char sdfFileHostRootPath[];
 
-s32 sceClose(s32 aFd);
+s32 sceClose(s32 a);
 
 char *strcat(char *aDest, const char *aSrc);
 
@@ -145,7 +145,7 @@ extern sdfHostPrefix_t D_00551930[];
 
 extern u8 D_00551938[];
 
-void *sdfChipAllocDirect(s32 size);
+void *sdfChipAllocDirect(s32 aSize);
 
 extern char * strchr(const char *, s32);
 
@@ -166,20 +166,20 @@ extern s16 sdfFileCmdFreeCount;
 sdfFileCmdHandle_t *sdfFileCmdReadOpen(const char *path, void (*callback)(sdfFileCmdHandle_t *, s32, s32, s32, s32),
                         s32 callbackContext);
 
-s32 sdfFileCmdClearError(sdfFileCmd_t *state);
+s32 sdfFileCmdClearError(sdfFileCmd_t *aHandle);
 
-void sdfFileCmdStartThread(s32 index);
+void sdfFileCmdStartThread(s32 deviceType);
 
 extern s32 (*p2sdSmgBuf)(void);
 
-s32 sdfCdImageCheckExist(const char *aFileName);
+s32 sdfCdImageCheckExist(const char *fname);
 
 /* Convert a relative disc path to the drive's uppercase backslash form with ;1 suffix. */
-void sdfFileSetCdFilename(char *dst, char *src) {
+void sdfFileSetCdFilename(char *aDst, char *aSrc) {
     s32 c;
-    memcpy(dst, D_00551928, 8);
-    dst += 7;
-    c = *src++;
+    memcpy(aDst, D_00551928, 8);
+    aDst += 7;
+    c = *aSrc++;
     while (c != 0) {
         if (c == '/') {
             c = '\\';
@@ -187,51 +187,51 @@ void sdfFileSetCdFilename(char *dst, char *src) {
         if (c >= 'a' && c <= 'z') {
             c -= 0x20;
         }
-        *dst++ = c;
-        c = *src++;
+        *aDst++ = c;
+        c = *aSrc++;
     }
-    dst[0] = ';';
-    dst[1] = '1';
-    dst[2] = 0;
+    aDst[0] = ';';
+    aDst[1] = '1';
+    aDst[2] = 0;
 }
 
-char *sdfFileSetHostFilename(char *dst, char *src) {
-    if (*src == 0x2F) {
-        strcpy(dst, sdfFileHostRootPath);
-        return strcat(dst, src);
+char *sdfFileSetHostFilename(char *aDst, char *aSrc) {
+    if (*aSrc == 0x2F) {
+        strcpy(aDst, sdfFileHostRootPath);
+        return strcat(aDst, aSrc);
     }
-    *(sdfHostPrefix_t *)dst = D_00551930[0];
-    return strcat(dst, src);
+    *(sdfHostPrefix_t *)aDst = D_00551930[0];
+    return strcat(aDst, aSrc);
 }
 
-void sdfFileSetHddFilename(char *destination, char *path) {
-    memcpy(destination, D_00551938, 6);
-    strcat(destination, path);
+void sdfFileSetHddFilename(char *aDst, char *aSrc) {
+    memcpy(aDst, D_00551938, 6);
+    strcat(aDst, aSrc);
 }
 
-s32 sdfFileChkCdFile(char *aFileName)
+s32 sdfFileChkCdFile(char *aFilename)
 {
     return 0;
 }
 
-s32 sdfFileChkHostFile(char *aFileName)
+s32 sdfFileChkHostFile(char *aFilename)
 {
     return 0;
 }
 
-s32 sdfFileChkHddFile(char *aFileName)
+s32 sdfFileChkHddFile(char *aFilename)
 {
     return 0;
 }
 
 /* Return an allocated device path, normalizing disc-path case and separators. */
-char *sdfFileMakeFilename(char *path) {
-    s32 length = strlen(path);
+char *sdfFileMakeFilename(char *aFilename) {
+    s32 length = strlen(aFilename);
     char *result = sdfChipAllocDirect(0x80);
     char *cursor;
     s32 character;
-    if (strchr(path, ':') != NULL) {
-        memcpy(result, path, length);
+    if (strchr(aFilename, ':') != NULL) {
+        memcpy(result, aFilename, length);
         result[length] = 0;
         if (strncmp(result, D_00551940, 5) == 0) {
             cursor = result + 5;
@@ -246,18 +246,18 @@ char *sdfFileMakeFilename(char *path) {
             *cursor++ = '1';
             *cursor = 0;
         }
-    } else if (sdfFileChkCdFile(path)) {
-        sdfFileSetCdFilename(result, path);
-    } else if (sdfFileChkHostFile(path)) {
-        sdfFileSetHostFilename(result, path);
-    } else if (sdfFileChkHddFile(path)) {
-        sdfFileSetHddFilename(result, path);
+    } else if (sdfFileChkCdFile(aFilename)) {
+        sdfFileSetCdFilename(result, aFilename);
+    } else if (sdfFileChkHostFile(aFilename)) {
+        sdfFileSetHostFilename(result, aFilename);
+    } else if (sdfFileChkHddFile(aFilename)) {
+        sdfFileSetHddFilename(result, aFilename);
     } else {
         switch (sdfFileDefaultSrcType) {
-        case 0: sdfFileSetCdFilename(result, path); break;
-        case 2: sdfFileSetHddFilename(result, path); break;
-        case 1: sdfFileSetHostFilename(result, path); break;
-        default: strcpy(result, path); break;
+        case 0: sdfFileSetCdFilename(result, aFilename); break;
+        case 2: sdfFileSetHddFilename(result, aFilename); break;
+        case 1: sdfFileSetHostFilename(result, aFilename); break;
+        default: strcpy(result, aFilename); break;
         }
     }
     return result;
@@ -277,19 +277,19 @@ s32 sdfFileCallback(void *aCmd, s32 aOp, s32 aArg, s32 aResult)
 }
 
 /* Open a path using the shared reply callback and wait for its initial completion. */
-sdfFileCmdHandle_t *sdfFileOpen(const char *path) {
+sdfFileCmdHandle_t *sdfFileOpen(const char *aFileName) {
     sdfFileCmdHandle_t *state;
     if (sdfFileSemaId < 0) {
         sdfFileSemaId = sdfCreateSema(0, 0x80, 0);
     }
-    state = sdfFileCmdReadOpen(path, (void (*)(sdfFileCmdHandle_t *, s32, s32, s32, s32))sdfFileCallback, 0);
+    state = sdfFileCmdReadOpen(aFileName, (void (*)(sdfFileCmdHandle_t *, s32, s32, s32, s32))sdfFileCallback, 0);
     WaitSema(sdfFileSemaId);
     sdfFileCmdClearError((sdfFileCmd_t *)state);
     return state;
 }
 
-s32 sdfFileCheckExist(char *path) {
-    char *resolved = sdfFileMakeFilename(path);
+s32 sdfFileCheckExist(char *aFilename) {
+    char *resolved = sdfFileMakeFilename(aFilename);
     s32 fd;
     if (*resolved == '/') {
         return sdfCdImageCheckExist(resolved);
@@ -307,9 +307,9 @@ void sdfFileClose(void *aHandle)
     sdfFileCmdFree(aHandle);
 }
 
-s32 sdfFileRead(void *aHandle, void *aBuffer, s32 aSize)
+s32 sdfFileRead(void *aHandle, void *aPtr, s32 aLeng)
 {
-    sdfFileCmdRead(aHandle, aBuffer, aSize);
+    sdfFileCmdRead(aHandle, aPtr, aLeng);
     return WaitSema(sdfFileSemaId);
 }
 
@@ -320,20 +320,20 @@ u32 sdfFileLength(void *aHandle)
     return sdfFileLengthWork;
 }
 
-u32 sdfFileSeek(void *aHandle, s32 aOffset, s32 aOrigin)
+u32 sdfFileSeek(void *aHandle, s32 aPos, s32 aWhence)
 {
-    sdfFileCmdSeek(aHandle, aOffset, aOrigin);
+    sdfFileCmdSeek(aHandle, aPos, aWhence);
     WaitSema(sdfFileSemaId);
     return sdfFileSeekWork;
 }
 
 /* Set the current device directory, ending in a slash; path is assumed nonempty. */
-void sdfFileSetHostRoot(char *path) {
-    s32 length = strlen(path);
+void sdfFileSetHostRoot(char *aRootPath) {
+    s32 length = strlen(aRootPath);
     ((sdfDevicePrefix_t *)sdfFileHostRootPath)->head = ((sdfDevicePrefix_t *)D_00551930)->head;
     ((sdfDevicePrefix_t *)sdfFileHostRootPath)->tail = ((sdfDevicePrefix_t *)D_00551930)->tail;
-    memcpy(sdfFileHostRootPath + 6, path, length);
-    if (path[length - 1] != '/') {
+    memcpy(sdfFileHostRootPath + 6, aRootPath, length);
+    if (aRootPath[length - 1] != '/') {
         sdfFileHostRootPath[length + 6] = '/';
         sdfFileHostRootPath[length + 7] = 0;
     } else {
@@ -348,10 +348,10 @@ char *sdfFileGetHostRoot(void)
 
 static void sdfFileCmdSetDefaultDevice(s32 aDevice);
 
-void sdfFileSetDefaultSrc(s32 aSrcType)
+void sdfFileSetDefaultSrc(s32 aType)
 {
-    sdfFileDefaultSrcType = aSrcType;
-    sdfFileCmdSetDefaultDevice(aSrcType);
+    sdfFileDefaultSrcType = aType;
+    sdfFileCmdSetDefaultDevice(aType);
 }
 
 static void sdfFileCmdSetDefaultDevice(s32 aDevice)

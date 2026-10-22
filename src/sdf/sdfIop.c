@@ -9,11 +9,11 @@ typedef struct
 } sdfIopRpcClient_t;
 
 extern s32 printf(const char *format, ...);
-extern s32 sceSifLoadModule(const char *path, s32 argSize, const char *args);
+extern s32 sceSifLoadModule(const char *a, s32 b, const char *c);
 extern void sceSifMInitRpc(s32 mode);
 extern s32 sceSifMBindRpc(sdfIopRpcClient_t *client, s32 number, s32 mode);
 extern s32 sdfGetRunTimeCountBase(void);
-extern s32 sdfGetRunTimeCount(s32 startTicks);
+extern s32 sdfGetRunTimeCount(s32 aBaseTime);
 
 extern sdfIopRpcClient_t sdfIopRpcClient;
 

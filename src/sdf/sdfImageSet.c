@@ -20,9 +20,9 @@ enum sdf_psm
     SDF_PSMZ16S = 0x3A
 };
 
-extern void *sdfChipAllocDirect(u32 size);
+extern void *sdfChipAllocDirect(u32 aSize);
 
-extern void sdfChipFreeDirect(void *ptr);
+extern void sdfChipFreeDirect(void *aPtr);
 
 extern s32 iWakeupThread(s32 threadId);
 
@@ -81,13 +81,13 @@ extern s32 SignalSema(s32 semaId);
 
 extern s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
 
-extern void *sdfChipAllocZeroDirect(u32 size);
+extern void *sdfChipAllocZeroDirect(u32 aSize);
 
-extern s32 sdfChipCheck(void *ptr);
+extern s32 sdfChipCheck(void *aPtr);
 
-extern sdfMemHandle_t *sdfMemGetHandleByPtr(void *ptr);
+extern sdfMemHandle_t *sdfMemGetHandleByPtr(void *aPtr);
 
-extern void sdfMemFreeDirect(sdfMemHandle_t *handle);
+extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
 
 extern s32 GetThreadId(void);
 
@@ -107,17 +107,17 @@ extern sdfImageSetCB_t sdfImageSetCb;
 
 extern u64 D_005293A0[];
 
-s32 sdfImageDataSize(u32 pixelFormat, s32 w, s32 h);
+s32 sdfImageDataSize(u32 format, s32 width, s32 height);
 
 s32 sdfImageSetDmacHandler(s32 channel, s32 threadId);
 
 void sdfImageSetClearCb(sdfImageSetCB_t *cb);
 
-s32 sdfImageDataSize(u32 pixelFormat, s32 w, s32 h)
+s32 sdfImageDataSize(u32 format, s32 width, s32 height)
 {
     s32 bitCount;
 
-    switch (pixelFormat) {
+    switch (format) {
     case SDF_PSMCT24:
     case SDF_PSMZ24:
         bitCount = 0x18;
@@ -141,10 +141,10 @@ s32 sdfImageDataSize(u32 pixelFormat, s32 w, s32 h)
         bitCount = 0x20;
         break;
     }
-    return (bitCount * w * h) >> 7;
+    return (bitCount * width * height) >> 7;
 }
 
-void sdfImageSetReq(sdfImageSetReqParam_t *req)
+void sdfImageSetReq(sdfImageSetReqParam_t *parm)
 {
     sdfImageSetCB_t *cb = &sdfImageSetCb;
     sdfImageSetRelease_t *release;
@@ -166,10 +166,10 @@ void sdfImageSetReq(sdfImageSetReqParam_t *req)
     u64 coords;
     u64 size;
 
-    pixelFormat = req->pixelFormat;
-    w = req->w;
-    h = req->h;
-    bufferWidth = req->bufferWidth;
+    pixelFormat = parm->pixelFormat;
+    w = parm->w;
+    h = parm->h;
+    bufferWidth = parm->bufferWidth;
     widthUnits = bufferWidth >> 6;
     if (widthUnits == 0) {
         widthUnits = 1;
@@ -180,14 +180,14 @@ void sdfImageSetReq(sdfImageSetReqParam_t *req)
     buf = sdfChipAllocDirect(blocks * 0x30 + 0x80);
     release = (sdfImageSetRelease_t *)buf;
     release->next = NULL;
-    release->chip = req->data;
-    release->memHandle = req->memHandle;
-    release->freeMode = req->freeMode;
+    release->chip = parm->data;
+    release->memHandle = parm->memHandle;
+    release->freeMode = parm->freeMode;
 
     setup = (u64 *)((u8 *)buf + 0x10);
     packet = (u64 *)((u8 *)buf + 0x70);
-    formatAndAddr = ((u64)pixelFormat << 56) | ((u64)widthUnits << 48) | ((u64)(req->addr >> 6) << 32);
-    coords = ((u64)req->y << 48) | ((u64)req->x << 32);
+    formatAndAddr = ((u64)pixelFormat << 56) | ((u64)widthUnits << 48) | ((u64)(parm->addr >> 6) << 32);
+    coords = ((u64)parm->y << 48) | ((u64)parm->x << 32);
     size = ((u64)h << 32) | w;
 
     setup[0] = 0x0000000010000005ULL;
@@ -203,7 +203,7 @@ void sdfImageSetReq(sdfImageSetReqParam_t *req)
     setup[10] = 0;
     setup[11] = 0x53ULL;
 
-    src = (u32)req->data & 0x0FFFFFFF;
+    src = (u32)parm->data & 0x0FFFFFFF;
     remaining = qwc;
     last = 0;
     do {
@@ -246,7 +246,7 @@ void sdfImageSetReq(sdfImageSetReqParam_t *req)
     SignalSema(cb->semaId);
 }
 
-void sdfImageSetChainTag(u32 dmaAddr, sdfImageSetTag_t *tagTail)
+void sdfImageSetChainTag(u32 head, sdfImageSetTag_t *tail)
 {
     sdfImageSetCB_t *cb = &sdfImageSetCb;
     sdfImageSetTag_t *last;
@@ -255,27 +255,27 @@ void sdfImageSetChainTag(u32 dmaAddr, sdfImageSetTag_t *tagTail)
     last = cb->tagTail;
     if (last != NULL) {
         last->vifCodes = 0;
-        last->tag = ((u64)(dmaAddr & 0x0FFFFFFF) << 32) | 0x20000000;
+        last->tag = ((u64)(head & 0x0FFFFFFF) << 32) | 0x20000000;
     } else {
-        cb->dmaAddr = dmaAddr;
+        cb->dmaAddr = head;
     }
-    cb->tagTail = tagTail;
+    cb->tagTail = tail;
     SignalSema(cb->semaId);
 }
 
-void sdfImageSetChainReleaseMem(s32 addr)
+void sdfImageSetChainReleaseMem(s32 p)
 {
     sdfImageSetCB_t *cb = &sdfImageSetCb;
     sdfImageSetRelease_t *release;
 
-    if (addr != 0) {
+    if (p != 0) {
         release = sdfChipAllocZeroDirect(0xA0);
-        if (sdfChipCheck((void *)addr) != 0) {
-            release->chip = (void *)addr;
+        if (sdfChipCheck((void *)p) != 0) {
+            release->chip = (void *)p;
             release->freeMode = SDF_IMAGESET_MEM_CHIP;
         } else {
             release->freeMode = SDF_IMAGESET_MEM_HANDLE;
-            release->memHandle = sdfMemGetHandleByPtr((void *)addr);
+            release->memHandle = sdfMemGetHandleByPtr((void *)p);
         }
         WaitSema(cb->semaId);
         if (cb->releaseTail != NULL) {

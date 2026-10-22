@@ -81,7 +81,7 @@ typedef s32 (*SdfStreamRead)(sdfIpuDecodeCb_t *, struct movieStream_t *, s32, vo
 
 void sdfIpuStrmDecodeInit(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct movieStream_t *aContext);
 
-void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct movieStream_t *aContext);
+void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *cb, struct sdfIpuInitParm_t *parm, SdfStreamRead hdr, struct movieStream_t *leng);
 
 void sdfIpuAttachTask(sdfIpuDecodeCb_t *aNode);
 
@@ -330,7 +330,7 @@ extern sdfIpuDecodeCb_t *sdfCurrIpuDecodeCb;
 
 extern void sdfImageSetChainReleaseMem(s32);
 
-extern void sdfGsMemFreeDelayed(sdfGsMemSlice_t *texture);
+extern void sdfGsMemFreeDelayed(sdfGsMemSlice_t *aHandle);
 
 extern sdfIpuDecodeCb_t *D_00552158;
 
@@ -344,7 +344,7 @@ extern s32 iWakeupThread(s32 threadId);
 
 extern s32 D_00552144;
 
-u32 sdfTexGetPixelAddr(sdfTexHandle_t *texture);
+u32 sdfTexGetPixelAddr(sdfTexHandle_t *aHandle);
 
 extern s32 sdfFromIpuDmacHandlerHandle;
 
@@ -399,24 +399,24 @@ void sdfIpuDetachQueue(sdfIpuDecodeCb_t *node, s32 skipInterruptGuard) {
 }
 
 /* Move a node to the queue tail, using one interrupt guard for unlink plus append. */
-void sdfIpuAttachQueue(sdfIpuDecodeCb_t *node, s32 skipInterruptGuard) {
+void sdfIpuAttachQueue(sdfIpuDecodeCb_t *cb, s32 critical) {
     s32 interruptsEnabled = 0;
-    if (skipInterruptGuard == 0) {
+    if (critical == 0) {
         interruptsEnabled = DIntr();
     }
-    if (node->queued != 0) {
-        sdfIpuDetachQueue(node, 1);
+    if (cb->queued != 0) {
+        sdfIpuDetachQueue(cb, 1);
     }
-    node->queued = 1;
+    cb->queued = 1;
     if (sdfIpuQueueTail == 0) {
-        sdfIpuQueueHead = node;
+        sdfIpuQueueHead = cb;
     } else {
-        sdfIpuQueueTail->streamNext = node;
+        sdfIpuQueueTail->streamNext = cb;
     }
-    node->streamPrev = sdfIpuQueueTail;
-    node->streamNext = 0;
-    sdfIpuQueueTail = node;
-    if (skipInterruptGuard == 0 && interruptsEnabled != 0) {
+    cb->streamPrev = sdfIpuQueueTail;
+    cb->streamNext = 0;
+    sdfIpuQueueTail = cb;
+    if (critical == 0 && interruptsEnabled != 0) {
         EIntr();
     }
 }
@@ -462,13 +462,13 @@ void sdfIpuAllocBuff(sdfIpuDecodeCb_t *node) {
 }
 
 /* Each 16-byte DMA tag holds control/address bits and a zero reserved half. */
-void sdfIpuMakeToIpuDmaTag(sdfIpuDecodeCb_t *node, u8 *source, s32 bytes) {
-    s32 remaining = (bytes + 15) & ~15;
+void sdfIpuMakeToIpuDmaTag(sdfIpuDecodeCb_t *cb, u8 *srcAddr, s32 leng) {
+    s32 remaining = (leng + 15) & ~15;
     struct SdfStreamInputDmaTag *tag;
     u32 address;
     tag = sdfAllocAuto(((remaining + 0xFFEFF) / 0xFFF00) * 16);
-    node->inputDmaChain = tag;
-    address = (u32)source & 0x0FFFFFFF;
+    cb->inputDmaChain = tag;
+    address = (u32)srcAddr & 0x0FFFFFFF;
     do {
         s32 chunk = remaining > 0xFFF00 ? 0xFFF00 : remaining;
         u32 id;
@@ -499,18 +499,18 @@ void sdfIpuInitCb(sdfIpuDecodeCb_t *node, struct sdfIpuInitParm_t *format) {
 }
 
 /* Decode the frame header, allocate its buffers, then queue the bytes after that header. */
-void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *node, struct sdfIpuInitParm_t *format, SdfStreamRead sourceAddress, struct movieStream_t *sourceContext) {
-    s32 sourceSize = (s32)sourceContext;
+void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *cb, struct sdfIpuInitParm_t *parm, SdfStreamRead hdr, struct movieStream_t *leng) {
+    s32 sourceSize = (s32)leng;
     s32 interruptsEnabled;
-    u8 *frameBytes = (u8 *)sourceAddress;
-    sdfIpuInitCb(node, format);
-    node->width = ((sdfStreamFrameHeader_t *)frameBytes)->width;
-    node->cycleLength = ((sdfStreamFrameHeader_t *)frameBytes)->cycleLength;
-    node->height = ((sdfStreamFrameHeader_t *)frameBytes)->height;
-    sdfIpuAllocBuff(node);
-    sdfIpuMakeToIpuDmaTag(node, frameBytes + 0x10, sourceSize - 0x10);
+    u8 *frameBytes = (u8 *)hdr;
+    sdfIpuInitCb(cb, parm);
+    cb->width = ((sdfStreamFrameHeader_t *)frameBytes)->width;
+    cb->cycleLength = ((sdfStreamFrameHeader_t *)frameBytes)->cycleLength;
+    cb->height = ((sdfStreamFrameHeader_t *)frameBytes)->height;
+    sdfIpuAllocBuff(cb);
+    sdfIpuMakeToIpuDmaTag(cb, frameBytes + 0x10, sourceSize - 0x10);
     interruptsEnabled = DIntr();
-    sdfIpuAttachQueue(node, 0);
+    sdfIpuAttachQueue(cb, 0);
     if (interruptsEnabled != 0) {
         EIntr();
     }
@@ -575,16 +575,16 @@ void sdfIpuAllocGsRect(sdfIpuDecodeCb_t *node) {
     }
 }
 
-void sdfIpuFree(sdfIpuDecodeCb_t *node) {
+void sdfIpuFree(sdfIpuDecodeCb_t *cb) {
     s32 interruptsEnabled;
     s32 wasActive;
     u32 dmaEnable;
     interruptsEnabled = DIntr();
     wasActive = 0;
-    node->drained = 1;
-    sdfIpuDetachTask(node);
-    sdfIpuDetachQueue(node, 1);
-    if (sdfCurrIpuDecodeCb == node) {
+    cb->drained = 1;
+    sdfIpuDetachTask(cb);
+    sdfIpuDetachQueue(cb, 1);
+    if (sdfCurrIpuDecodeCb == cb) {
         SDF_IPU_CTRL = 0x40000000;
         sceIpuSync(0, 0);
         dmaEnable = SDF_DMAC_ENABLE;
@@ -598,16 +598,16 @@ void sdfIpuFree(sdfIpuDecodeCb_t *node) {
     if (interruptsEnabled != 0) {
         EIntr();
     }
-    sdfFreeAuto(node->inputDmaChain);
-    sdfFreeAuto(node->frameBuffers[0]);
-    sdfFreeAuto(node->frameBuffers[1]);
-    sdfImageSetChainReleaseMem((s32)node->transferPacketBuffers[0]);
-    sdfImageSetChainReleaseMem((s32)node->transferPacketBuffers[1]);
-    if (node->scratchBuffer != 0) {
-        sdfFreeAuto(node->scratchBuffer - 0x100);
+    sdfFreeAuto(cb->inputDmaChain);
+    sdfFreeAuto(cb->frameBuffers[0]);
+    sdfFreeAuto(cb->frameBuffers[1]);
+    sdfImageSetChainReleaseMem((s32)cb->transferPacketBuffers[0]);
+    sdfImageSetChainReleaseMem((s32)cb->transferPacketBuffers[1]);
+    if (cb->scratchBuffer != 0) {
+        sdfFreeAuto(cb->scratchBuffer - 0x100);
     }
-    if (node->textureHead != 0) {
-        sdfGsMemFreeDelayed(node->textureHead);
+    if (cb->textureHead != 0) {
+        sdfGsMemFreeDelayed(cb->textureHead);
     }
     if (wasActive != 0) {
         sdfIpuExecQueue(0);
@@ -667,33 +667,33 @@ void sdfIpuHandleDmaEnd(sdfIpuDecodeCb_t *feed) {
 }
 
 /* Start IPU input from the initial chain or a feed slot; defer an empty ring. */
-void sdfIpuSetToIpuDma(sdfIpuDecodeCb_t *stream) {
-    if (stream->active == 0) {
-        D_00552158 = stream;
-        SDF_TO_IPU_TADR = (u32)stream->inputDmaChain & 0x0FFFFFFF;
+void sdfIpuSetToIpuDma(sdfIpuDecodeCb_t *cb) {
+    if (cb->active == 0) {
+        D_00552158 = cb;
+        SDF_TO_IPU_TADR = (u32)cb->inputDmaChain & 0x0FFFFFFF;
         SDF_TO_IPU_QWC = 0;
         SDF_TO_IPU_CHCR = 0x105;
     } else {
-        if (stream->filledSlots == 0) {
-            stream->inputDmaStartPending = 1;
+        if (cb->filledSlots == 0) {
+            cb->inputDmaStartPending = 1;
             return;
         }
-        D_00552158 = stream;
-        stream->inputFeedDmaInFlight = 1;
-        SDF_TO_IPU_MADR = ((u32)stream->scratchBuffer + (stream->firstSlot << 13)) & 0x0FFFFFFF;
+        D_00552158 = cb;
+        cb->inputFeedDmaInFlight = 1;
+        SDF_TO_IPU_MADR = ((u32)cb->scratchBuffer + (cb->firstSlot << 13)) & 0x0FFFFFFF;
         SDF_TO_IPU_QWC = 0x2000 / 16;
         SDF_TO_IPU_CHCR = 0x101;
     }
-    stream->inputDmaStartPending = 0;
+    cb->inputDmaStartPending = 0;
 }
 
 /* Start DMA from the IPU into the selected buffer, then toggle the byte index. */
-void sdfIpuSetFromIpuDma(sdfIpuDecodeCb_t *stream) {
-    u8 bufferIndex = stream->bufferIndex;
-    SDF_FROM_IPU_MADR = (u32)stream->frameBuffers[bufferIndex] & 0x0FFFFFFF;
-    SDF_FROM_IPU_QWC = stream->bufferSize / 16;
+void sdfIpuSetFromIpuDma(sdfIpuDecodeCb_t *cb) {
+    u8 bufferIndex = cb->bufferIndex;
+    SDF_FROM_IPU_MADR = (u32)cb->frameBuffers[bufferIndex] & 0x0FFFFFFF;
+    SDF_FROM_IPU_QWC = cb->bufferSize / 16;
     SDF_FROM_IPU_CHCR = 0x100;
-    stream->bufferIndex = bufferIndex ^ 1;
+    cb->bufferIndex = bufferIndex ^ 1;
 }
 
 /* Read the FDEC result, then issue FDEC with an eight-bit advance; return the earlier result. */

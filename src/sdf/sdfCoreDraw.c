@@ -204,13 +204,13 @@ typedef struct sdfMotionCtrlr_t {
     u8 pad33;
 } sdfMotionCtrlr_t;
 
-u32 sdfMemLock(struct sdfMemHandle_t *allocation);
+u32 sdfMemLock(struct sdfMemHandle_t *aHandle);
 
-void sdfMemFreeHandleDirect(s32 *slot);
+void sdfMemFreeHandleDirect(s32 *aHandlePtr);
 
 /* The draw node owns the lazily allocated workspace; callers receive a borrowed
  * pointer to it, and must not release it independently. */
-u8 *sdfModelAllocTmPacket(SdfDrawNode *root);
+u8 *sdfModelAllocTmPacket(SdfDrawNode *aNode);
 
 extern s32 corePktPointBuff;
 
@@ -220,18 +220,18 @@ extern void *sceDmaGetChan(s32);
 
 extern void sceDmaSendN(void *, void *, s32);
 
-void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *model, SdfObjectRefCommand *source);
+void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *root, SdfObjectRefCommand *p);
 
-void sdfCoreDrawSetFog(u8 *sourceObject);
+void sdfCoreDrawSetFog(u8 *fog);
 
-void sdfCoreDrawInit(s32 workspaceBytes);
+void sdfCoreDrawInit(s32 buffSize);
 
 INCLUDE_ASM(const s32, "sdf/sdfCoreDraw", sdfCorePacketGen);
 
-void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *model, SdfObjectRefCommand *source) {
-    SdfDrawNode **objects = model->list->buffer;
-    u16 *indices = &source->count;
-    if ((source->flags & 0x800) != 0) {
+void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *root, SdfObjectRefCommand *p) {
+    SdfDrawNode **objects = root->list->buffer;
+    u16 *indices = &p->count;
+    if ((p->flags & 0x800) != 0) {
         s32 count = *indices;
         if (count != 0) {
             indices++;
@@ -242,19 +242,19 @@ void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *model, SdfObjectRefCommand 
     }
 }
 
-void sdfCoreDrawSetLight(u8 *sourceObject) {
-    corePktCurrLight = (u32)sourceObject;
+void sdfCoreDrawSetLight(u8 *light) {
+    corePktCurrLight = (u32)light;
 }
 
-void sdfCoreDrawSetFog(u8 *sourceObject) {
-    if (corePktCurrFog != (u32)sourceObject) {
-        corePktCurrFog = (u32)sourceObject;
-        SDF_VU0_COPYVECTOR(&corePktFogParm, sourceObject + 0x10);
+void sdfCoreDrawSetFog(u8 *fog) {
+    if (corePktCurrFog != (u32)fog) {
+        corePktCurrFog = (u32)fog;
+        SDF_VU0_COPYVECTOR(&corePktFogParm, fog + 0x10);
     }
 }
 
-void sdfCoreDrawSetZBias(f32 bias) {
-    corePktZBias = bias;
+void sdfCoreDrawSetZBias(f32 z) {
+    corePktZBias = z;
 }
 
 void sdfCoreDrawReset(void) {
@@ -262,12 +262,12 @@ void sdfCoreDrawReset(void) {
     corePktCurrFog = 0;
 }
 
-void sdfCoreDrawInit(s32 workspaceBytes) {
+void sdfCoreDrawInit(s32 buffSize) {
     u32 *dmaChannel = sceDmaGetChan(0);
     HW_WRITE(dmaChannel, HW_READ(dmaChannel) & ~SDF_DMA_CHCR_TTE);
     sceDmaSendN(dmaChannel, vu0MicroPacket, (vu1MicroPacket - vu0MicroPacket) >> SDF_DMA_QWORD_SHIFT);
     sceDmaSync(dmaChannel, 0, 0);
     sdfMemFreeHandleDirect(&sdfCoreDrawBuffHandle);
-    sdfCoreDrawBuffHandle = (u32)sdfMemAllocDirect(workspaceBytes);
+    sdfCoreDrawBuffHandle = (u32)sdfMemAllocDirect(buffSize);
     corePktPointBuff = sdfMemLock((struct sdfMemHandle_t *)(sdfCoreDrawBuffHandle));
 }

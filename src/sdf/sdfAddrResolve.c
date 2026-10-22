@@ -3,7 +3,7 @@
 #include "libsdf.h"
 #include "ps2asm.h"
 
-void sdfAddressResolver(void *aBase, void *aTarget, void *aTable, s32 aCount);
+void sdfAddressResolver(void *aDataBody, void *aOffset, void *aAddrInfoPtr, s32 aAddrInfoLeng);
 
 enum SdfFileIOCmdStat {
     SDF_FILE_CMD_STAT_INIT = 0,
@@ -58,14 +58,14 @@ extern s32 (*p2sdSmgBuf)(void);
  * Low tag bits select one-, two-, or three-byte deltas; tag 7 encodes a run.
  * tableBytes bounds the encoded byte stream, not the number of relocated words.
  */
-void sdfAddressResolver(void *base, void *target, void *encodedTable, s32 tableBytes) {
-    s32 *words = base;
-    s32 relocationBase = (s32)target;
-    const u8 *table = encodedTable;
+void sdfAddressResolver(void *aDataBody, void *aOffset, void *aAddrInfoPtr, s32 aAddrInfoLeng) {
+    s32 *words = aDataBody;
+    s32 relocationBase = (s32)aOffset;
+    const u8 *table = aAddrInfoPtr;
     const u8 *commandCursor = table;
     s32 value;
     s32 runIndex;
-    while (commandCursor - table < tableBytes) {
+    while (commandCursor - table < aAddrInfoLeng) {
         value = *commandCursor++;
         if ((value & 1) == 0) {
             value >>= 1;

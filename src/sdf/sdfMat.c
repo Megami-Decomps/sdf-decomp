@@ -5,13 +5,13 @@ extern void *sdfChipAllocDirect(s32 aSize);
 extern void *sdfChipAllocZeroDirect(s32 aSize);
 extern void sdfChipFreeDirect(void *aPtr);
 
-extern sdfItemArray_t *sdfItemArrayNew(s32 aCount, s32 aElemSize, s32 aGrowStep);
+extern sdfItemArray_t *sdfItemArrayNew(s32 aInitCapa, s32 aElemSize, s32 aGrowStep);
 extern void sdfItemArrayFree(sdfItemArray_t *aArray);
 extern void sdfItemArrayGrow(sdfItemArray_t *aArray);
 extern void func_002BFF98(sdfItemArray_t *aArray, s32 aCapacity);
 
-extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, sdfDelayedResrcFreeFunc aFunc);
-extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aChunk);
+extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, sdfDelayedResrcFreeFunc aFreeFunc);
+extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aItem);
 
 extern sdfDelayedResrcCB_t sdfMatDelayedResrcCB;
 extern sdfDelayedResrcCB_t sdfMatDelayedResrcCB2;
@@ -27,20 +27,20 @@ extern u64 sdfTexGetTex0Reg(sdfTexHandle_t *aHandle);
 extern u64 sdfTexGetTex1Reg(sdfTexHandle_t *aHandle);
 extern u64 sdfTexGetClampReg(sdfTexHandle_t *aHandle);
 
-extern f32 sdfSin(f32 aAngle);
-extern f32 sdfCos(f32 aAngle);
+extern f32 sdfSin(f32 aRadius);
+extern f32 sdfCos(f32 aRadius);
 
-sdfItemArray_t *sdfTexListNew(s32 aCount);
-sdfItemArray_t *sdfMatListNew(s32 aCount);
+sdfItemArray_t *sdfTexListNew(s32 aInitCapa);
+sdfItemArray_t *sdfMatListNew(s32 aInitCapa);
 void sdfMatListGrow(sdfItemArray_t *aList);
 void sdfMatListFree(sdfItemArray_t *aList);
 void sdfMatFree(sdfMat_t *aMat);
 sdfMatUvwParm_t *sdfMatAllocTexUvwParm(void);
 sdfMatUvwParm_t *sdfMatGetTexUvwParm(sdfMat_t *aMat);
 sdfMatUvwParm_t *sdfMatGetMultiTexUvwParm(sdfMat_t *aMat);
-void sdfMatCopyStat(sdfMat_t *aDst, sdfMat_t *aSrc);
+void sdfMatCopyStat(sdfMat_t *aDstMat, sdfMat_t *aSrcMat);
 void sdfMatListCopyStat(sdfItemArray_t *aDst, sdfItemArray_t *aSrc);
-void sdfMatSetUvwParm(sdfMatTexTm_t *aTm, const sdfMatUvwParm_t *aParm);
+void sdfMatSetUvwParm(sdfMatTexTm_t *aUvwPacket, const sdfMatUvwParm_t *aParm);
 void sdfMatUpdatePacketBasic(sdfMat_t *aMat, sdfMatPacket_t *aPacket);
 void sdfMatUpdatePacketUvwParm(sdfMat_t *aMat, sdfMatPacket_t *aPacket);
 void sdfMatUpdatePacketMultiTex(sdfMat_t *aMat, sdfMatPacket_t *aPacket);
@@ -50,25 +50,25 @@ void sdfMatSetDiffuse(sdfMat_t *aMat, u32 aColor);
 void sdfMatSetSpecular(sdfMat_t *aMat, u32 aColor);
 void sdfMatSetRefMap(sdfMat_t *aMat, u32 aColor);
 void sdfMatSetConstant(sdfMat_t *aMat, f32 aRatio);
-void sdfMatSetTex(sdfMat_t *aMat, sdfTexHandle_t *aHandle);
-void sdfMatSetTexUvw(sdfMat_t *aMat, f32 aOffsetU, f32 aOffsetV, f32 aTileU, f32 aTileV,
+void sdfMatSetTex(sdfMat_t *aMat, sdfTexHandle_t *aTex);
+void sdfMatSetTexUvw(sdfMat_t *aMat, f32 aOffsetX, f32 aOffsetY, f32 aTileX, f32 aTileY,
                      f32 aAngle);
 void sdfMatSetMultiDiffuse(sdfMat_t *aMat, u32 aColor);
 void sdfMatSetMultiMethod(sdfMat_t *aMat, u32 aMethod);
-void sdfMatSetMultiTex(sdfMat_t *aMat, sdfTexHandle_t *aHandle);
-void sdfMatSetMultiTexUvw(sdfMat_t *aMat, f32 aOffsetU, f32 aOffsetV, f32 aTileU, f32 aTileV,
+void sdfMatSetMultiTex(sdfMat_t *aMat, sdfTexHandle_t *aTex);
+void sdfMatSetMultiTexUvw(sdfMat_t *aMat, f32 aOffsetX, f32 aOffsetY, f32 aTileX, f32 aTileY,
                           f32 aAngle);
 void sdfMatSetFaceDivParm(sdfMat_t *aMat, f32 aBias, f32 aSoften);
 sdfMat_t *sdfMatNew(void);
-u8 *sdfMatSet(sdfMat_t *aMat, sdfItemArray_t *aTexList, u8 *aData);
+u8 *sdfMatSet(sdfMat_t *aMatPtr, sdfItemArray_t *aTexList, u8 *aDef);
 void sdfMatListAdd(sdfItemArray_t *aList, sdfMat_t *aMat);
 
-sdfItemArray_t *sdfTexListNew(s32 aCount)
+sdfItemArray_t *sdfTexListNew(s32 aInitCapa)
 {
-    return sdfItemArrayNew(aCount, 4, 4);
+    return sdfItemArrayNew(aInitCapa, 4, 4);
 }
 
-void sdfTexListFree(sdfItemArray_t *aList, s32 aFreeTex)
+void sdfTexListFree(sdfItemArray_t *aList, s32 aReleaseItems)
 {
     s32 i;
     s32 count;
@@ -76,7 +76,7 @@ void sdfTexListFree(sdfItemArray_t *aList, s32 aFreeTex)
     if (aList == NULL) {
         return;
     }
-    if (aFreeTex != 0) {
+    if (aReleaseItems != 0) {
         count = aList->count;
         for (i = 0; i < count; i++) {
             sdfTexFreeDelayed((sdfTexHandle_t *)((u32 *)aList->items)[i]);
@@ -85,31 +85,31 @@ void sdfTexListFree(sdfItemArray_t *aList, s32 aFreeTex)
     sdfItemArrayFree(aList);
 }
 
-void sdfTexListAdd(sdfItemArray_t *aList, sdfTexHandle_t *aHandle)
+void sdfTexListAdd(sdfItemArray_t *aList, sdfTexHandle_t *aTexHandle)
 {
     if (aList->count >= (s16)aList->capacity) {
         sdfItemArrayGrow(aList);
     }
-    ((u32 *)aList->items)[aList->count] = (u32)aHandle;
+    ((u32 *)aList->items)[aList->count] = (u32)aTexHandle;
     aList->count++;
 }
 
-void sdfTexListSetCapacity(sdfItemArray_t *aList, s32 aCount, s32 aFreeTex)
+void sdfTexListSetCapacity(sdfItemArray_t *aList, s32 aCapa, s32 aReleaseItems)
 {
     s32 i;
     s32 count;
 
     count = aList->count;
-    if (aCount < count && aFreeTex != 0) {
+    if (aCapa < count && aReleaseItems != 0) {
         /* Retail only counts down to the new capacity here; the loop body is
          * empty and ee-gcc pads it to the R5900 short-loop minimum. */
-        i = aCount;
+        i = aCapa;
         do {
             i++;
         } while (i != count);
-        aList->count = aCount;
+        aList->count = aCapa;
     }
-    func_002BFF98(aList, aCount);
+    func_002BFF98(aList, aCapa);
 }
 
 sdfItemArray_t *sdfTexListDup(sdfItemArray_t *aList)
@@ -154,9 +154,9 @@ void sdfMatInitSystem(void)
     sdfDelayedResrcInitCB(&sdfMatDelayedResrcCB2, (sdfDelayedResrcFreeFunc)sdfMatFree);
 }
 
-sdfItemArray_t *sdfMatListNew(s32 aCount)
+sdfItemArray_t *sdfMatListNew(s32 aInitCapa)
 {
-    return sdfItemArrayNew(aCount, 4, 8);
+    return sdfItemArrayNew(aInitCapa, 4, 8);
 }
 
 void sdfMatListFree(sdfItemArray_t *aList)
@@ -225,9 +225,9 @@ void sdfMatSetConstant(sdfMat_t *aMat, f32 aRatio)
     aMat->duty = aMat->duty | 3;
 }
 
-void sdfMatSetTex(sdfMat_t *aMat, sdfTexHandle_t *aHandle)
+void sdfMatSetTex(sdfMat_t *aMat, sdfTexHandle_t *aTex)
 {
-    aMat->texHandle = aHandle;
+    aMat->texHandle = aTex;
     aMat->duty |= 3;
 }
 
@@ -254,15 +254,15 @@ sdfMatUvwParm_t *sdfMatGetTexUvwParm(sdfMat_t *aMat)
     return parm;
 }
 
-void sdfMatSetTexUvw(sdfMat_t *aMat, f32 aOffsetU, f32 aOffsetV, f32 aTileU, f32 aTileV,
+void sdfMatSetTexUvw(sdfMat_t *aMat, f32 aOffsetX, f32 aOffsetY, f32 aTileX, f32 aTileY,
                      f32 aAngle)
 {
     f32 *values = sdfMatGetTexUvwParm(aMat)->offset;
 
-    values[0] = aOffsetU;
-    values[1] = aOffsetV;
-    values[2] = aTileU;
-    values[3] = aTileV;
+    values[0] = aOffsetX;
+    values[1] = aOffsetY;
+    values[2] = aTileX;
+    values[3] = aTileY;
     values[4] = aAngle;
     aMat->duty |= 0xC;
 }
@@ -291,9 +291,9 @@ void sdfMatSetMultiMethod(sdfMat_t *aMat, u32 aMethod)
     aMat->duty |= 0x30;
 }
 
-void sdfMatSetMultiTex(sdfMat_t *aMat, sdfTexHandle_t *aHandle)
+void sdfMatSetMultiTex(sdfMat_t *aMat, sdfTexHandle_t *aTex)
 {
-    aMat->multiTexHandle = aHandle;
+    aMat->multiTexHandle = aTex;
     aMat->duty |= 0x30;
 }
 
@@ -308,15 +308,15 @@ sdfMatUvwParm_t *sdfMatGetMultiTexUvwParm(sdfMat_t *aMat)
     return parm;
 }
 
-void sdfMatSetMultiTexUvw(sdfMat_t *aMat, f32 aOffsetU, f32 aOffsetV, f32 aTileU, f32 aTileV,
+void sdfMatSetMultiTexUvw(sdfMat_t *aMat, f32 aOffsetX, f32 aOffsetY, f32 aTileX, f32 aTileY,
                           f32 aAngle)
 {
     f32 *values = sdfMatGetMultiTexUvwParm(aMat)->offset;
 
-    values[0] = aOffsetU;
-    values[1] = aOffsetV;
-    values[2] = aTileU;
-    values[3] = aTileV;
+    values[0] = aOffsetX;
+    values[1] = aOffsetY;
+    values[2] = aTileX;
+    values[3] = aTileY;
     values[4] = aAngle;
     aMat->duty |= 0x30;
 }
@@ -367,62 +367,62 @@ sdfMat_t *sdfMatNew(void)
     return mat;
 }
 
-u8 *sdfMatSet(sdfMat_t *aMat, sdfItemArray_t *aTexList, u8 *aData)
+u8 *sdfMatSet(sdfMat_t *aMatPtr, sdfItemArray_t *aTexList, u8 *aDef)
 {
     u32 flags;
     u8 *cursor;
     u32 packed;
 
-    aMat->id = *(u32 *)aData;
-    aMat->flags = *(u16 *)(aData + 4);
-    flags = *(u16 *)(aData + 6);
-    cursor = aData + 8;
+    aMatPtr->id = *(u32 *)aDef;
+    aMatPtr->flags = *(u16 *)(aDef + 4);
+    flags = *(u16 *)(aDef + 6);
+    cursor = aDef + 8;
     if (flags & 0x1) {
-        sdfMatSetAmbient(aMat, *(u32 *)cursor);
+        sdfMatSetAmbient(aMatPtr, *(u32 *)cursor);
         cursor += 4;
     }
     if (flags & 0x2) {
-        sdfMatSetDiffuse(aMat, *(u32 *)cursor);
+        sdfMatSetDiffuse(aMatPtr, *(u32 *)cursor);
         cursor += 4;
     }
     if (flags & 0x4) {
-        sdfMatSetTex(aMat, (sdfTexHandle_t *)((u32 *)aTexList->items)[*(u16 *)cursor]);
+        sdfMatSetTex(aMatPtr, (sdfTexHandle_t *)((u32 *)aTexList->items)[*(u16 *)cursor]);
         cursor += 4;
     }
     if (flags & 0x8) {
-        sdfMatSetTexUvw(aMat, ((f32 *)cursor)[0], ((f32 *)cursor)[1], ((f32 *)cursor)[2],
+        sdfMatSetTexUvw(aMatPtr, ((f32 *)cursor)[0], ((f32 *)cursor)[1], ((f32 *)cursor)[2],
                         ((f32 *)cursor)[3], ((f32 *)cursor)[4]);
         cursor += 0x14;
     }
     if (flags & 0x10) {
-        sdfMatSetMultiDiffuse(aMat, *(u32 *)cursor);
+        sdfMatSetMultiDiffuse(aMatPtr, *(u32 *)cursor);
         cursor += 4;
     }
     if (flags & 0x20) {
         packed = *(u32 *)cursor;
         cursor += 4;
-        sdfMatSetMultiTex(aMat, (sdfTexHandle_t *)((u32 *)aTexList->items)[packed & 0xFFFF]);
-        sdfMatSetMultiMethod(aMat, packed >> 16);
+        sdfMatSetMultiTex(aMatPtr, (sdfTexHandle_t *)((u32 *)aTexList->items)[packed & 0xFFFF]);
+        sdfMatSetMultiMethod(aMatPtr, packed >> 16);
     }
     if (flags & 0x40) {
-        sdfMatSetMultiTexUvw(aMat, ((f32 *)cursor)[0], ((f32 *)cursor)[1], ((f32 *)cursor)[2],
+        sdfMatSetMultiTexUvw(aMatPtr, ((f32 *)cursor)[0], ((f32 *)cursor)[1], ((f32 *)cursor)[2],
                              ((f32 *)cursor)[3], ((f32 *)cursor)[4]);
         cursor += 0x14;
     }
     if (flags & 0x80) {
-        sdfMatSetSpecular(aMat, *(u32 *)cursor);
+        sdfMatSetSpecular(aMatPtr, *(u32 *)cursor);
         cursor += 4;
     }
     if (flags & 0x100) {
-        sdfMatSetRefMap(aMat, *(u32 *)cursor);
+        sdfMatSetRefMap(aMatPtr, *(u32 *)cursor);
         cursor += 4;
     }
     if (flags & 0x200) {
-        sdfMatSetConstant(aMat, *(f32 *)cursor);
+        sdfMatSetConstant(aMatPtr, *(f32 *)cursor);
         cursor += 4;
     }
     if (flags & 0x400) {
-        sdfMatSetFaceDivParm(aMat, ((f32 *)cursor)[0], ((f32 *)cursor)[1]);
+        sdfMatSetFaceDivParm(aMatPtr, ((f32 *)cursor)[0], ((f32 *)cursor)[1]);
         cursor += 8;
     }
     return cursor;
@@ -448,14 +448,14 @@ void sdfMatFreeDelayed(sdfMat_t *aMat)
     }
 }
 
-sdfDmaTag_t *sdfMatMakePacket(sdfMat_t *aMat, sdfDmaTag_t *aTag, s32 aIdx)
+sdfDmaTag_t *sdfMatMakePacket(sdfMat_t *aMat, sdfDmaTag_t *aBuffer, s32 aId)
 {
-    aTag->id = 0x30;
-    aTag->addr = (void *)((u32)aMat->packet[aIdx] & 0x0FFFFFFF);
-    aTag->qwc = 0xA;
-    aTag->dat0 = 0;
-    aTag->dat1 = 0;
-    return (sdfDmaTag_t *)((u8 *)aTag + 0x10);
+    aBuffer->id = 0x30;
+    aBuffer->addr = (void *)((u32)aMat->packet[aId] & 0x0FFFFFFF);
+    aBuffer->qwc = 0xA;
+    aBuffer->dat0 = 0;
+    aBuffer->dat1 = 0;
+    return (sdfDmaTag_t *)((u8 *)aBuffer + 0x10);
 }
 
 void sdfMatUpdatePacketBasic(sdfMat_t *aMat, sdfMatPacket_t *aPacket)
@@ -474,7 +474,7 @@ void sdfMatUpdatePacketBasic(sdfMat_t *aMat, sdfMatPacket_t *aPacket)
     }
 }
 
-void sdfMatSetUvwParm(sdfMatTexTm_t *aTm, const sdfMatUvwParm_t *aParm)
+void sdfMatSetUvwParm(sdfMatTexTm_t *aUvwPacket, const sdfMatUvwParm_t *aParm)
 {
     f32 offsetU;
     f32 offsetV;
@@ -489,9 +489,9 @@ void sdfMatSetUvwParm(sdfMatTexTm_t *aTm, const sdfMatUvwParm_t *aParm)
     f32 m3;
 
     if (aParm == NULL) {
-        aTm->q[0] = 0x000000003F800000ULL;
-        aTm->q[1] = 0x3F80000000000000ULL;
-        aTm->q[2] = 0;
+        aUvwPacket->q[0] = 0x000000003F800000ULL;
+        aUvwPacket->q[1] = 0x3F80000000000000ULL;
+        aUvwPacket->q[2] = 0;
         return;
     }
 
@@ -507,12 +507,12 @@ void sdfMatSetUvwParm(sdfMatTexTm_t *aTm, const sdfMatUvwParm_t *aParm)
     m1 = s * tileV;
     m2 = -s * tileU;
     m3 = c * tileV;
-    aTm->m[0] = m0;
-    aTm->m[1] = m1;
-    aTm->m[2] = m2;
-    aTm->m[3] = m3;
-    aTm->m[4] = 0.5f - m0 * (offsetU + 0.5f) - m2 * (0.5f - offsetV);
-    aTm->m[5] = 0.5f - m1 * (offsetU + 0.5f) - m3 * (0.5f - offsetV);
+    aUvwPacket->m[0] = m0;
+    aUvwPacket->m[1] = m1;
+    aUvwPacket->m[2] = m2;
+    aUvwPacket->m[3] = m3;
+    aUvwPacket->m[4] = 0.5f - m0 * (offsetU + 0.5f) - m2 * (0.5f - offsetV);
+    aUvwPacket->m[5] = 0.5f - m1 * (offsetU + 0.5f) - m3 * (0.5f - offsetV);
 }
 
 void sdfMatUpdatePacketUvwParm(sdfMat_t *aMat, sdfMatPacket_t *aPacket)
@@ -543,24 +543,24 @@ void sdfMatUpdatePacketFaceDiv(sdfMat_t *aMat, sdfMatPacket_t *aPacket)
     aPacket->fdSoften = aMat->fdSoften;
 }
 
-void sdfMatUpdatePacket(sdfMat_t *aMat, s32 aIdx)
+void sdfMatUpdatePacket(sdfMat_t *aMat, s32 aId)
 {
     u8 duty = aMat->duty;
-    sdfMatPacket_t *packet = aMat->packet[aIdx];
+    sdfMatPacket_t *packet = aMat->packet[aId];
 
-    if ((duty >> aIdx) & 1) {
+    if ((duty >> aId) & 1) {
         sdfMatUpdatePacketBasic(aMat, packet);
     }
-    if (duty & (4 << aIdx)) {
+    if (duty & (4 << aId)) {
         sdfMatUpdatePacketUvwParm(aMat, packet);
     }
-    if (duty & (0x10 << aIdx)) {
+    if (duty & (0x10 << aId)) {
         sdfMatUpdatePacketMultiTex(aMat, packet);
     }
-    if (duty & (0x40 << aIdx)) {
+    if (duty & (0x40 << aId)) {
         sdfMatUpdatePacketFaceDiv(aMat, packet);
     }
-    aMat->duty = duty & (0x55 << (aIdx ^ 1));
+    aMat->duty = duty & (0x55 << (aId ^ 1));
 }
 
 sdfItemArray_t *sdfMatListMake(sdfItemArray_t *aTexList, u32 *aData)
@@ -579,40 +579,40 @@ sdfItemArray_t *sdfMatListMake(sdfItemArray_t *aTexList, u32 *aData)
     return list;
 }
 
-void sdfMatListUpdatePacket(sdfItemArray_t *aList, s32 aIdx)
+void sdfMatListUpdatePacket(sdfItemArray_t *aMatList, s32 aId)
 {
     s32 i;
-    s32 count = aList->count;
-    sdfMat_t **items = (sdfMat_t **)aList->items;
+    s32 count = aMatList->count;
+    sdfMat_t **items = (sdfMat_t **)aMatList->items;
 
     for (i = 0; i < count; i++) {
-        sdfMatUpdatePacket(items[i], aIdx);
+        sdfMatUpdatePacket(items[i], aId);
     }
 }
 
-void sdfMatCopyStat(sdfMat_t *aDst, sdfMat_t *aSrc)
+void sdfMatCopyStat(sdfMat_t *aDstMat, sdfMat_t *aSrcMat)
 {
     sdfMatUvwParm_t *parm;
 
-    aDst->duty = 0xFF;
-    aDst->ambient = aSrc->ambient;
-    aDst->diffuse = aSrc->diffuse;
-    aDst->constant = aSrc->constant;
-    aDst->multiTexDiffuse = aSrc->multiTexDiffuse;
-    aDst->flags = aSrc->flags;
-    aDst->texHandle = aSrc->texHandle;
-    aDst->specular = aSrc->specular;
-    aDst->refmap = aSrc->refmap;
-    parm = aSrc->uvwParm;
+    aDstMat->duty = 0xFF;
+    aDstMat->ambient = aSrcMat->ambient;
+    aDstMat->diffuse = aSrcMat->diffuse;
+    aDstMat->constant = aSrcMat->constant;
+    aDstMat->multiTexDiffuse = aSrcMat->multiTexDiffuse;
+    aDstMat->flags = aSrcMat->flags;
+    aDstMat->texHandle = aSrcMat->texHandle;
+    aDstMat->specular = aSrcMat->specular;
+    aDstMat->refmap = aSrcMat->refmap;
+    parm = aSrcMat->uvwParm;
     if (parm != NULL) {
-        *sdfMatGetTexUvwParm(aDst) = *parm;
+        *sdfMatGetTexUvwParm(aDstMat) = *parm;
     }
-    parm = aSrc->multiTexUvwParm;
+    parm = aSrcMat->multiTexUvwParm;
     if (parm != NULL) {
-        *sdfMatGetMultiTexUvwParm(aDst) = *parm;
+        *sdfMatGetMultiTexUvwParm(aDstMat) = *parm;
     }
-    aDst->fdBias = aSrc->fdBias;
-    aDst->fdSoften = aSrc->fdSoften;
+    aDstMat->fdBias = aSrcMat->fdBias;
+    aDstMat->fdSoften = aSrcMat->fdSoften;
 }
 
 void sdfMatListCopyStat(sdfItemArray_t *aDst, sdfItemArray_t *aSrc)

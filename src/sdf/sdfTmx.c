@@ -27,7 +27,7 @@ struct SdfStreamState;
 extern u32 sdfGetRunTimeCountBase(void);
 
 /* Return the modulo-16-bit elapsed count from the EE timer 0 value. */
-extern u32 sdfGetRunTimeCount(u32 previous);
+extern u32 sdfGetRunTimeCount(u32 aBaseTime);
 
 /* Serialized byte consumed by the GS texture-state packet builder. */
 typedef u8 SdfTextureClampMode;
@@ -95,13 +95,13 @@ typedef struct sdfFileCmdHandle_t {
     s32 callbackContext; /* 0x3C: opaque callback-context word */
 } sdfFileCmdHandle_t;
 
-s32 sdfFileCmdRead(sdfFileCmdHandle_t *state, void *data, s32 byteCount);
+s32 sdfFileCmdRead(sdfFileCmdHandle_t *aHandle, void *aBuffer, s32 aLength);
 
-s32 sdfFileCmdFree(sdfFileCmdHandle_t *state);
+s32 sdfFileCmdFree(sdfFileCmdHandle_t *aHandle);
 
-s32 sdfFileCmdClearError(sdfFileCmdHandle_t *state);
+s32 sdfFileCmdClearError(sdfFileCmdHandle_t *aHandle);
 
-s32 sdfFileCmdClose(sdfFileCmdHandle_t *request);
+s32 sdfFileCmdClose(sdfFileCmdHandle_t *aHandle);
 
 typedef struct SdfStreamReadRequest {
     u8 opaque00[4];
@@ -490,7 +490,7 @@ extern s32 WaitSema(s32 sema);
 
 extern s32 vfprintf(FILE *fp, const char *fmt, va_list ap);
 
-extern void *memset(void *s, s32 c, u32 n);
+extern void *memset(void *a, s32 b, u32 c);
 
 extern void *_calloc_r(_reent *r, u32 n, u32 size);
 

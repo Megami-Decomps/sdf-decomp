@@ -15,12 +15,12 @@ typedef struct
     u32 pad[3];
 } sdfModelNodeDefList_t;
 
-extern void FromEuler(f32 x, f32 y, f32 z);
+extern void FromEuler(f32 aRotateX, f32 aRotateY, f32 aRotateZ);
 extern void ToMatrix(void);
 extern void MultMatrixRevNoArg(void);
-extern void MultMatrixRev(void *matrix);
-extern void sdf3DPrimSetTmPacket(void *packet);
-extern void sdfModelSetOtCallbacks(sdfGrOt_t *ot);
+extern void MultMatrixRev(void *aMatrix);
+extern void sdf3DPrimSetTmPacket(void *aPacket);
+extern void sdfModelSetOtCallbacks(sdfGrOt_t *aOt);
 
 
 extern void *sdfChipAllocDirect(s32 aSize);
@@ -28,19 +28,19 @@ extern void *sdfChipAllocZeroDirect(s32 aSize);
 extern void sdfChipFreeDirect(void *aPtr);
 extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
 
-extern sdfItemArray_t *sdfItemArrayNew(s32 aCount, s32 aElemSize, s32 aGrowStep);
+extern sdfItemArray_t *sdfItemArrayNew(s32 aInitCapa, s32 aElemSize, s32 aGrowStep);
 extern void sdfItemArrayFree(void *aArray);
 extern void sdfItemArrayGrow(void *aArray);
 extern void func_002BFF98(void *aArray, s32 aCount);
 
-extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, sdfDelayedResrcFreeFunc aFunc);
-extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aChunk);
+extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, sdfDelayedResrcFreeFunc aFreeFunc);
+extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aItem);
 extern sdfDelayedResrcCB_t sdfModelDelayedResrcCB;
 
 extern sdfMatList_t *sdfMatListMake(void *aTexList, u32 *aData);
 extern void sdfMatListFreeResrc(void *aList, s32 aDelayed);
 extern void sdfMatListCopyStat(void *aDst, void *aSrc);
-extern sdfDmaTag_t *sdfMatMakePacket(sdfMat_t *aMat, sdfDmaTag_t *aTag, s32 aIdx);
+extern sdfDmaTag_t *sdfMatMakePacket(sdfMat_t *aMat, sdfDmaTag_t *aBuffer, s32 aId);
 
 extern volatile u8 sdfFrameId;
 extern f32 sdfFaceDivSoften;
@@ -48,28 +48,28 @@ extern f32 sdfFaceDivBias;
 extern const char D_00529428[];
 
 extern void *sdfGrAllocPacketBuff(s32 aSize);
-extern void sdfDrawTagLink2(sdfDrawTag_t *aTag, u32 aPacket, u32 aRangeTail);
+extern void sdfDrawTagLink2(sdfDrawTag_t *aTag, u32 aHeadPacket, u32 aTailPacket);
 
 extern sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
 extern void *sdfMemLock(sdfMemHandle_t *aHandle);
-extern void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *aRoot, void *aPacket);
+extern void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *root, void *p);
 
 extern void *func_002B2628(void *aData, u32 aTag);
-extern void sdfModelEvalTm2(sdfModelRootNode_t *aRoot, s32 aIdx);
-extern void sdfModelLinkDrawPacket(sdfModelNode_t *aNode, void *aShape, s32 aOtIndex, s32 aMode,
-                                   s32 aIdx);
+extern void sdfModelEvalTm2(sdfModelRootNode_t *aRoot, s32 aFrameId);
+extern void sdfModelLinkDrawPacket(sdfModelNode_t *aNode, void *aShape, s32 aOtIndex, s32 aIndexFrom,
+                                   s32 aId);
 extern void sdfModelNodeBaseSet(sdfModelNode_t *aNode, sdfModelNodeDef_t *aDef);
 extern sdfModelNode_t *sdfModelNodeNew(void);
 extern void sdfModelMakeLocalTm(sdfModelNode_t *aNode);
 extern sdfModelRootNode_t *sdfModelRootNew(void);
-extern void sdfModelAllocNodeList(sdfModelRootNode_t *aRoot, s32 aCount);
+extern void sdfModelAllocNodeList(sdfModelRootNode_t *aRoot, s32 aLeng);
 
-extern void sdfDrawTagInit(sdfDrawTag_t *aTag);
+extern void sdfDrawTagInit(sdfDrawTag_t *a);
 extern void sdfDrawTagLink(sdfDrawTag_t *aTag, u32 aPacket);
-extern void sdfPrimSetOpaquePacket(sdfPrimTransPacket_t *aPacket);
-extern void sdfPrimSetSemiTransPacket(sdfPrimTransPacket_t *aPacket);
-extern void sdfPrimSetAddTransPacket(sdfPrimTransPacket_t *aPacket);
-extern void sdfPrimSetSubTransPacket(sdfPrimTransPacket_t *aPacket);
+extern void sdfPrimSetOpaquePacket(sdfPrimTransPacket_t *aPkt);
+extern void sdfPrimSetSemiTransPacket(sdfPrimTransPacket_t *aPkt);
+extern void sdfPrimSetAddTransPacket(sdfPrimTransPacket_t *aPkt);
+extern void sdfPrimSetSubTransPacket(sdfPrimTransPacket_t *aPkt);
 
 /* The shaped packet's header quadwords: the cnt tag, the two blend weights
  * VU1 reads and the UNPACK that follows them. */
@@ -114,16 +114,16 @@ void sdfModelNodeUnlink(sdfModelNode_t *aNode);
 void sdfModelNodeSetParent(sdfModelNode_t *aNode, sdfModelNode_t *aParent);
 void sdfModelNodeAdd(sdfModelRootNode_t *aRoot, sdfModelNode_t *aParent, sdfModelNode_t *aNode);
 sdfModelNode_t *sdfModelSearchNode(sdfModelRootNode_t *aRoot, s32 aId);
-sdfDmaTag_t *sdfModelSetMatRefPacket(sdfModelRootNode_t *aRoot, s32 aIndex, sdfDmaTag_t *aTag,
-                                     s32 aIdx);
-void sdfModelMakeMorphList(sdfModelRootNode_t *aRoot, s32 aCount);
-sdfModelRootNode_t *sdfModelMakeRoot(void *aTexList, sdfModelDef_t *aDef);
+sdfDmaTag_t *sdfModelSetMatRefPacket(sdfModelRootNode_t *aRoot, s32 aMatIndex, sdfDmaTag_t *aBuffer,
+                                     s32 aId);
+void sdfModelMakeMorphList(sdfModelRootNode_t *root, s32 morphCount);
+sdfModelRootNode_t *sdfModelMakeRoot(void *aTexList, sdfModelDef_t *aModelData);
 void sdfModelNodeSet(sdfModelNode_t *aNode, sdfModelNodeDef_t *aDef);
 void sdfModelMorphListCopyStat(sdfModelMorphList_t *aDst, sdfModelMorphList_t *aSrc);
-void *sdfModelGetExtraChunk(sdfModelRootNode_t *aRoot, u32 aTag);
+void *sdfModelGetExtraChunk(sdfModelRootNode_t *aRoot, u32 aChunkId);
 sdfModelMarkPos_t *sdfModelSearchMarkPosData(sdfModelRootNode_t *aRoot, s32 aId);
-void sdfModelMakeMarkPosMatrix(sdfModelRootNode_t *aRoot, sdfModelMarkPos_t *aData);
-void sdfModelMakeMarkPos(sdfModelRootNode_t *aRoot, sdfModelMarkPos_t *aData);
+void sdfModelMakeMarkPosMatrix(sdfModelRootNode_t *aRoot, sdfModelMarkPos_t *aMark);
+void sdfModelMakeMarkPos(sdfModelRootNode_t *aRoot, sdfModelMarkPos_t *aMark);
 
 void sdfModelInitSystem(void)
 {
@@ -215,18 +215,18 @@ void sdfModelRootFreeResrc(sdfModelRootNode_t *aRoot)
     sdfChipFreeDirect(aRoot);
 }
 
-void sdfModelRootFree(sdfModelRootNode_t *aRoot, s32 aDelayed, s32 aFreeMat)
+void sdfModelRootFree(sdfModelRootNode_t *aRoot, s32 aReleaseNodes, s32 aReleaseMatList)
 {
     if (aRoot == NULL) {
         return;
     }
-    if (aFreeMat != 0) {
+    if (aReleaseMatList != 0) {
         sdfMatListFreeResrc(aRoot->matList, 1);
     }
     if (aRoot->morphList != NULL) {
         sdfItemArrayFree(aRoot->morphList);
     }
-    if (aDelayed != 0) {
+    if (aReleaseNodes != 0) {
         sdfDelayedResrcEntry(&sdfModelDelayedResrcCB, aRoot);
     } else {
         sdfItemArrayFree(aRoot->nodeList);
@@ -234,14 +234,14 @@ void sdfModelRootFree(sdfModelRootNode_t *aRoot, s32 aDelayed, s32 aFreeMat)
     }
 }
 
-void sdfModelAllocNodeList(sdfModelRootNode_t *aRoot, s32 aCount)
+void sdfModelAllocNodeList(sdfModelRootNode_t *aRoot, s32 aLeng)
 {
-    func_002BFF98(aRoot->nodeList, aCount);
+    func_002BFF98(aRoot->nodeList, aLeng);
 }
 
-void sdfModelMakeNodeList(sdfModelRootNode_t *hierarchy) {
-    sdfModelNode_t **nodeArray = hierarchy->nodeList->items;
-    sdfModelNode_t *currentNode = hierarchy->headNode;
+void sdfModelMakeNodeList(sdfModelRootNode_t *aRoot) {
+    sdfModelNode_t **nodeArray = aRoot->nodeList->items;
+    sdfModelNode_t *currentNode = aRoot->headNode;
     sdfModelNode_t **output;
 
     if (currentNode != NULL) {
@@ -375,30 +375,30 @@ sdfModelNode_t *sdfModelSearchNode(sdfModelRootNode_t *aRoot, s32 aId)
     return items[aId];
 }
 
-sdfDmaTag_t *sdfModelSetTmRefPacket(sdfModelNode_t *aNode, sdfDmaTag_t *aTag, s32 aIdx)
+sdfDmaTag_t *sdfModelSetTmRefPacket(sdfModelNode_t *aNode, sdfDmaTag_t *aBuffer, s32 aId)
 {
-    u32 addr = (u32)((u8 *)aNode->tmPacket + (aIdx << 7)) & 0x0FFFFFFF;
+    u32 addr = (u32)((u8 *)aNode->tmPacket + (aId << 7)) & 0x0FFFFFFF;
 
-    *(u64 *)aTag = ((u64)addr << 32) | 0x30000008;
-    aTag->dat1 = 0x6C07C000;
-    aTag->dat0 = 0;
-    return aTag + 1;
+    *(u64 *)aBuffer = ((u64)addr << 32) | 0x30000008;
+    aBuffer->dat1 = 0x6C07C000;
+    aBuffer->dat0 = 0;
+    return aBuffer + 1;
 }
 
-sdfDmaTag_t *sdfModelSetTermPacket(sdfDmaTag_t *aTag)
+sdfDmaTag_t *sdfModelSetTermPacket(sdfDmaTag_t *aBuffer)
 {
-    *(u64 *)&aTag->dat0 = 0;
-    *(u64 *)aTag = 0x60000000;
-    return aTag + 1;
+    *(u64 *)&aBuffer->dat0 = 0;
+    *(u64 *)aBuffer = 0x60000000;
+    return aBuffer + 1;
 }
 
-sdfDmaTag_t *sdfModelSetMatRefPacket(sdfModelRootNode_t *aRoot, s32 aIndex, sdfDmaTag_t *aTag,
-                                     s32 aIdx)
+sdfDmaTag_t *sdfModelSetMatRefPacket(sdfModelRootNode_t *aRoot, s32 aMatIndex, sdfDmaTag_t *aBuffer,
+                                     s32 aId)
 {
-    return sdfMatMakePacket(aRoot->matList->items[aIndex], aTag, aIdx);
+    return sdfMatMakePacket(aRoot->matList->items[aMatIndex], aBuffer, aId);
 }
 
-s32 sdfModelGetDrawPacketSize(const u32 *aShape, s32 *aNumOfSkin, s32 *aTempQwc)
+s32 sdfModelGetDrawPacketSize(const u32 *aList, s32 *aShapeCount, s32 *aExtSize)
 {
     s32 count;
     const sdfShapePacket_t *packet;
@@ -406,21 +406,21 @@ s32 sdfModelGetDrawPacketSize(const u32 *aShape, s32 *aNumOfSkin, s32 *aTempQwc)
     s32 skinCount;
     s32 tempQwc;
 
-    if (aShape == 0) {
-        *aNumOfSkin = 0;
-        *aTempQwc = 0;
+    if (aList == 0) {
+        *aShapeCount = 0;
+        *aExtSize = 0;
         return 0;
     }
-    count = aShape[0];
-    aShape++;
+    count = aList[0];
+    aList++;
     bytes = 0;
     skinCount = 0;
     count &= 0xFFFF;
     tempQwc = 0;
     if (count != 0) {
         do {
-            packet = (const sdfShapePacket_t *)*aShape;
-            aShape++;
+            packet = (const sdfShapePacket_t *)*aList;
+            aList++;
             switch (packet->packetType) {
             case 1:
                 bytes += 0x20;
@@ -444,23 +444,23 @@ s32 sdfModelGetDrawPacketSize(const u32 *aShape, s32 *aNumOfSkin, s32 *aTempQwc)
             count--;
         } while (count != 0);
     }
-    *aNumOfSkin += skinCount;
-    *aTempQwc = tempQwc;
+    *aShapeCount += skinCount;
+    *aExtSize = tempQwc;
     return bytes != 0 ? bytes + 0x20 : 0;
 }
 
-sdfDmaTag_t *sdfModelSetNormalDrawPacket(sdfModelNode_t *aNode, sdfShapePacket_t *aPacket,
-                                         sdfDmaTag_t *aTag, s32 aIdx)
+sdfDmaTag_t *sdfModelSetNormalDrawPacket(sdfModelNode_t *aNode, sdfShapePacket_t *aDataPtr,
+                                         sdfDmaTag_t *aBuffer, s32 aId)
 {
-    u32 packed = *(u32 *)&aPacket->packetSize;
+    u32 packed = *(u32 *)&aDataPtr->packetSize;
     u16 matIndex = packed >> 16;
     u16 qwc = packed;
     sdfDmaTag_t *body;
 
-    body = sdfModelSetMatRefPacket(aNode->root, matIndex, aTag, aIdx);
+    body = sdfModelSetMatRefPacket(aNode->root, matIndex, aBuffer, aId);
     body->id = 0x30;
     body->qwc = qwc;
-    body->addr = (void *)((u32)aPacket->dataBody & 0x0FFFFFFF);
+    body->addr = (void *)((u32)aDataPtr->dataBody & 0x0FFFFFFF);
     body->dat0 = 0;
     body->dat1 = 0;
     return body + 1;
@@ -469,14 +469,14 @@ sdfDmaTag_t *sdfModelSetNormalDrawPacket(sdfModelNode_t *aNode, sdfShapePacket_t
 /* NON_MATCHING: 87 of 90 words differ, six words short; the 0x0FFFFFFF mask
  * takes a saved register where retail spills it and keeps qwc. */
 #ifdef NON_MATCHING
-sdfDmaTag_t *sdfModelSetOneSkinDrawPacket(sdfModelNode_t *aNode, sdfShapeOneSkinPacket_t *aPacket,
-                                          sdfDmaTag_t *aTag, s32 aIdx)
+sdfDmaTag_t *sdfModelSetOneSkinDrawPacket(sdfModelNode_t *aNode, sdfShapeOneSkinPacket_t *aDataPtr,
+                                          sdfDmaTag_t *aBuffer, s32 aId)
 {
     u32 mask = 0x0FFFFFFF;
-    u32 packed = *(u32 *)&aPacket->packetSize;
+    u32 packed = *(u32 *)&aDataPtr->packetSize;
     u16 matIndex = packed >> 16;
     u16 qwc = packed;
-    s32 ofs = aIdx << 7;
+    s32 ofs = aId << 7;
     s32 i = 0;
     u32 vuAddr = 1;
     sdfDmaTag_t *tag;
@@ -484,9 +484,9 @@ sdfDmaTag_t *sdfModelSetOneSkinDrawPacket(sdfModelNode_t *aNode, sdfShapeOneSkin
     u16 *boneId;
     u32 *words;
 
-    tag = sdfModelSetMatRefPacket(aNode->root, matIndex, aTag, aIdx);
-    count = aPacket->boneCount;
-    boneId = aPacket->boneId;
+    tag = sdfModelSetMatRefPacket(aNode->root, matIndex, aBuffer, aId);
+    count = aDataPtr->boneCount;
+    boneId = aDataPtr->boneId;
     do {
         sdfModelNode_t *node = sdfModelSearchNode(aNode->root, *boneId++);
 
@@ -513,7 +513,7 @@ sdfDmaTag_t *sdfModelSetOneSkinDrawPacket(sdfModelNode_t *aNode, sdfShapeOneSkin
     tag->id = 0x30;
     tag->dat0 = 0;
     tag->dat1 = 0;
-    tag->addr = (void *)((u32)aPacket->dataBody & mask);
+    tag->addr = (void *)((u32)aDataPtr->dataBody & mask);
     return tag + 1;
 }
 #else
@@ -522,8 +522,8 @@ INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelSetOneSkinDrawPacket);
 
 /* NON_MATCHING: 100 of 150 words differ (first at +0x0). */
 #ifdef NON_MATCHING
-void sdfModelLinkShapedDrawPacket(sdfModelNode_t *aNode, sdfShapeShapedPacket_t *aPacket,
-                                  sdfDrawTag_t *aTag, s32 aIdx)
+void sdfModelLinkShapedDrawPacket(sdfModelNode_t *aNode, sdfShapeShapedPacket_t *aDataPtr,
+                                  sdfDrawTag_t *aDrawTag, s32 aId)
 {
     sdfModelMorphParm_t out[2];
     s32 used = 0;
@@ -539,10 +539,10 @@ void sdfModelLinkShapedDrawPacket(sdfModelNode_t *aNode, sdfShapeShapedPacket_t 
     sdfDmaTag_t *tag;
     sdfModelShapeList_t **cursor;
 
-    packed = *(u32 *)&aPacket->morphIndex;
+    packed = *(u32 *)&aDataPtr->morphIndex;
     morphIndex = packed;
     morph = &aNode->root->morphList->items[morphIndex];
-    listCount = aPacket->listCount;
+    listCount = aDataPtr->listCount;
     matIndex = packed >> 16;
     do {
         if (1e-6f < morph->target[j].blend) {
@@ -552,7 +552,7 @@ void sdfModelLinkShapedDrawPacket(sdfModelNode_t *aNode, sdfShapeShapedPacket_t 
         j++;
     } while (j != 2);
     buf = sdfGrAllocPacketBuff((used * 16 + 0x10) * listCount + 0x40);
-    tag = sdfModelSetMatRefPacket(aNode->root, matIndex, buf, aIdx);
+    tag = sdfModelSetMatRefPacket(aNode->root, matIndex, buf, aId);
     *(u64 *)tag = 0x10000001;
     *(u64 *)&tag->dat0 = (u64)0x6002C000 << 32;
     for (k = 0; k < used; k++) {
@@ -564,7 +564,7 @@ void sdfModelLinkShapedDrawPacket(sdfModelNode_t *aNode, sdfShapeShapedPacket_t 
     ((sdfModelShapedHeader_t *)tag)->code0 = 0x0400000A;
     ((sdfModelShapedHeader_t *)tag)->code1 = 0x14000000;
     tag += 2;
-    cursor = aPacket->shapeList;
+    cursor = aDataPtr->shapeList;
     i = 0;
     do {
         sdfModelShapeList_t *list = *cursor++;
@@ -586,17 +586,17 @@ void sdfModelLinkShapedDrawPacket(sdfModelNode_t *aNode, sdfShapeShapedPacket_t 
         i++;
     } while (i != listCount);
     QUAD_ZERO(*(u128 *)tag);
-    sdfDrawTagLink2(aTag, (u32)buf, (u32)tag);
+    sdfDrawTagLink2(aDrawTag, (u32)buf, (u32)tag);
 }
 #else
 INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelLinkShapedDrawPacket);
 #endif
 
-sdfModelPacketHeader_t *sdfModelNewPacketHeader(sdfModelNode_t *aNode, s32 aOtIndex, s32 aIdx)
+sdfModelPacketHeader_t *sdfModelNewPacketHeader(sdfModelNode_t *aNode, s32 aOtIndex, s32 aId)
 {
     sdfModelPacketHeader_t *packet = sdfChipAllocDirect(sizeof(*packet));
     sdfModelPacketHeader_t **head =
-        (sdfModelPacketHeader_t **)((u32)aIdx * sizeof(*aNode->drawPacket) + (u32)aNode +
+        (sdfModelPacketHeader_t **)((u32)aId * sizeof(*aNode->drawPacket) + (u32)aNode +
                                     (u32)&((sdfModelNode_t *)0)->drawPacket);
     sdfModelPacketHeader_t *next = *head;
 
@@ -610,7 +610,7 @@ sdfModelPacketHeader_t *sdfModelNewPacketHeader(sdfModelNode_t *aNode, s32 aOtIn
 
 /* NON_MATCHING: 104 of 122 words differ (first at +0x14). */
 #ifdef NON_MATCHING
-void sdfModelLinkDrawPacket(sdfModelNode_t *aNode, void *aShape, s32 aOtIndex, s32 aMode, s32 aIdx)
+void sdfModelLinkDrawPacket(sdfModelNode_t *aNode, void *aShape, s32 aOtIndex, s32 aIndexFrom, s32 aId)
 {
     s32 numOfSkin;
     s32 tempQwc;
@@ -630,14 +630,14 @@ void sdfModelLinkDrawPacket(sdfModelNode_t *aNode, void *aShape, s32 aOtIndex, s
     sdfModelAllocTmPacket(aNode);
     packed = *cursor++;
     count = packed & 0xFFFF;
-    if (aMode != 0) {
+    if (aIndexFrom != 0) {
         aOtIndex = packed >> 16;
     }
     if (bytes != 0) {
         sdfMemHandle_t *handle = sdfMemAllocDirect(bytes);
         sdfModelPacketHeader_t *chunk = (sdfModelPacketHeader_t *)sdfMemLock(handle);
         sdfModelPacketHeader_t **head =
-            (sdfModelPacketHeader_t **)((u32)aIdx * sizeof(*aNode->drawPacket) + (u32)aNode +
+            (sdfModelPacketHeader_t **)((u32)aId * sizeof(*aNode->drawPacket) + (u32)aNode +
                                         (u32)&((sdfModelNode_t *)0)->drawPacket);
 
         tag = (sdfDmaTag_t *)(chunk + 1);
@@ -653,27 +653,27 @@ void sdfModelLinkDrawPacket(sdfModelNode_t *aNode, void *aShape, s32 aOtIndex, s
         packet = (sdfShapePacket_t *)*cursor++;
         switch (packet->packetType) {
         case 1:
-            tag = sdfModelSetNormalDrawPacket(aNode, packet, tag, aIdx);
+            tag = sdfModelSetNormalDrawPacket(aNode, packet, tag, aId);
             break;
         case 2:
-            tag = sdfModelSetOneSkinDrawPacket(aNode, (sdfShapeOneSkinPacket_t *)packet, tag, aIdx);
+            tag = sdfModelSetOneSkinDrawPacket(aNode, (sdfShapeOneSkinPacket_t *)packet, tag, aId);
             break;
         case 3:
-            header = sdfModelNewPacketHeader(aNode, aOtIndex, aIdx);
+            header = sdfModelNewPacketHeader(aNode, aOtIndex, aId);
             header->type = 2;
             header->dataPtr = packet;
             break;
         case 4:
         case 6:
         case 8:
-            header = sdfModelNewPacketHeader(aNode, aOtIndex, aIdx);
+            header = sdfModelNewPacketHeader(aNode, aOtIndex, aId);
             header->type = 3;
             header->dataPtr = packet;
             break;
         case 5:
         case 7:
             sdfCoreDrawScanOneSkinNodes(aNode->root, packet);
-            header = sdfModelNewPacketHeader(aNode, aOtIndex, aIdx);
+            header = sdfModelNewPacketHeader(aNode, aOtIndex, aId);
             header->type = 3;
             header->dataPtr = packet;
             break;
@@ -688,11 +688,11 @@ INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelLinkDrawPacket);
 #endif
 
 /* vu0 routine: native SDK vector/matrix operations around model state. */
-void sdfModelMakeLocalTm(sdfModelNode_t *node) {
-    SDF_VU0_LOADVECTOR(&node->rotate);
+void sdfModelMakeLocalTm(sdfModelNode_t *aNode) {
+    SDF_VU0_LOADVECTOR(&aNode->rotate);
     ToMatrix();
-    SDF_VU0_LOAD_ROW3(&node->pos);
-    SDF_VU0_STOREMATRIX(&node->localNoScaledTm);
+    SDF_VU0_LOAD_ROW3(&aNode->pos);
+    SDF_VU0_STOREMATRIX(&aNode->localNoScaledTm);
 }
 
 /* vu0 routine: native SDK vector/matrix operations around model state. */
@@ -738,41 +738,41 @@ void sdfModelNodeSet(sdfModelNode_t *aNode, sdfModelNodeDef_t *aDef)
     }
 }
 
-void sdfModelNodeSetShape(sdfModelNode_t *aNode, void *aShape, s32 aOtIndex)
+void sdfModelNodeSetShape(sdfModelNode_t *aNode, void *aData, s32 aType)
 {
     s32 pass;
 
-    aNode->shape = aShape;
+    aNode->shape = aData;
     sdfModelPacketFree(aNode);
     sdfModelAllocTmPacket(aNode);
     sdfModelMakeLocalTm(aNode);
     for (pass = 0; pass != 2; pass++) {
-        sdfModelLinkDrawPacket(aNode, aShape, aOtIndex, 0, pass);
+        sdfModelLinkDrawPacket(aNode, aData, aType, 0, pass);
     }
 }
 
-void sdfModelMakeMorphList(sdfModelRootNode_t *aRoot, s32 aCount)
+void sdfModelMakeMorphList(sdfModelRootNode_t *root, s32 morphCount)
 {
     sdfModelMorphList_t *list;
     sdfModelMorph_t *items;
     s32 i;
     s32 j;
 
-    if (aCount > 0) {
-        list = (sdfModelMorphList_t *)sdfItemArrayNew(aCount, 0x10, 1);
-        aRoot->morphList = list;
+    if (morphCount > 0) {
+        list = (sdfModelMorphList_t *)sdfItemArrayNew(morphCount, 0x10, 1);
+        root->morphList = list;
         items = list->items;
-        for (i = 0; i != aCount; i++) {
+        for (i = 0; i != morphCount; i++) {
             for (j = 0; j != 2; j++) {
                 items[i].target[j].targetId = 0;
                 items[i].target[j].blend = 0.0f;
             }
         }
-        list->count = aCount;
+        list->count = morphCount;
     }
 }
 
-sdfModelRootNode_t *sdfModelMakeRoot(void *assetData, sdfModelDef_t *listRef) {
+sdfModelRootNode_t *sdfModelMakeRoot(void *aTexList, sdfModelDef_t *aModelData) {
     s32 itemIndex = 0;
     sdfModelRootNode_t *model = sdfModelRootNew();
     sdfModelNodeDefList_t *list;
@@ -781,11 +781,11 @@ sdfModelRootNode_t *sdfModelMakeRoot(void *assetData, sdfModelDef_t *listRef) {
     sdfModelNode_t *node;
     sdfModelNode_t *parent;
 
-    model->texList = assetData;
-    model->matList = sdfMatListMake(assetData, listRef->matDef);
-    model->extraData = listRef->extraData;
-    sdfModelMakeMorphList(model, listRef->morphCount);
-    list = listRef->modelDef;
+    model->texList = aTexList;
+    model->matList = sdfMatListMake(aTexList, aModelData->matDef);
+    model->extraData = aModelData->extraData;
+    sdfModelMakeMorphList(model, aModelData->morphCount);
+    list = aModelData->modelDef;
     count = list->count;
     list++;
     sdfModelAllocNodeList(model, count);
@@ -806,11 +806,11 @@ sdfModelRootNode_t *sdfModelMakeRoot(void *assetData, sdfModelDef_t *listRef) {
     return model;
 }
 
-sdfModelRootNode_t *sdfModelMake(void *aTexList, sdfModelDef_t *aDef)
+sdfModelRootNode_t *sdfModelMake(void *aTexList, sdfModelDef_t *aModelData)
 {
     s32 i = 0;
-    sdfModelRootNode_t *root = sdfModelMakeRoot(aTexList, aDef);
-    u32 *def = aDef->modelDef;
+    sdfModelRootNode_t *root = sdfModelMakeRoot(aTexList, aModelData);
+    u32 *def = aModelData->modelDef;
     s32 count = def[0];
     sdfModelNodeDef_t *nodeDef = (sdfModelNodeDef_t *)(def + 4);
 
@@ -824,16 +824,16 @@ sdfModelRootNode_t *sdfModelMake(void *aTexList, sdfModelDef_t *aDef)
     return root;
 }
 
-sdfModelRootNode_t *sdfModelMakeEarly(void *aTexList, sdfModelDef_t *aDef)
+sdfModelRootNode_t *sdfModelMakeEarly(void *aTexList, sdfModelDef_t *aModelData)
 {
     s32 i = 0;
-    sdfModelRootNode_t *root = sdfModelMakeRoot(aTexList, aDef);
+    sdfModelRootNode_t *root = sdfModelMakeRoot(aTexList, aModelData);
     u32 *def;
     s32 count;
     sdfModelNodeDef_t *nodeDef;
 
     root->flags |= SDF_MODEL_FLAG_EARLY_SETUP;
-    def = aDef->modelDef;
+    def = aModelData->modelDef;
     count = def[0];
     nodeDef = (sdfModelNodeDef_t *)(def + 4);
     if (count != i) {
@@ -847,8 +847,8 @@ sdfModelRootNode_t *sdfModelMakeEarly(void *aTexList, sdfModelDef_t *aDef)
 }
 
 /* vu0 routine: native SDK vector/matrix operations around model state. */
-void sdfModelEvalNode(sdfModelNode_t *drawNode, const f32 (*parentMatrix)[4], s32 frame) {
-    f32 *xAxis = &drawNode->localNoScaledTm.m[0];
+void sdfModelEvalNode(sdfModelNode_t *aNode, const f32 (*aParentTm)[4], s32 aFrameId) {
+    f32 *xAxis = &aNode->localNoScaledTm.m[0];
     f32 *yAxis;
     f32 *zAxis;
     f32 *scale;
@@ -858,47 +858,47 @@ void sdfModelEvalNode(sdfModelNode_t *drawNode, const f32 (*parentMatrix)[4], s3
     sdfModelNode_t *child;
 
     SDF_VU0_LOAD_ROW0_BARRIER(xAxis);
-    yAxis = &drawNode->localNoScaledTm.m[4];
+    yAxis = &aNode->localNoScaledTm.m[4];
     SDF_VU0_LOAD_ROW1_BARRIER(yAxis);
-    zAxis = &drawNode->localNoScaledTm.m[8];
+    zAxis = &aNode->localNoScaledTm.m[8];
     SDF_VU0_LOAD_ROW2_BARRIER(zAxis);
-    scale = (f32 *)&drawNode->scale;
+    scale = (f32 *)&aNode->scale;
     SDF_VU0_LOADVECTOR_BARRIER(scale);
     SDF_VU0_SCALE_XYZ();
-    translation = (f32 *)&drawNode->pos;
+    translation = (f32 *)&aNode->pos;
     SDF_VU0_LOAD_ROW3_BARRIER(translation);
-    SDF_VU0_LOADMATRIX_B(parentMatrix);
+    SDF_VU0_LOADMATRIX_B(aParentTm);
     MultMatrixRevNoArg();
-    transformed = (f32 (*)[4])drawNode->tm.m;
+    transformed = (f32 (*)[4])aNode->tm.m;
     SDF_VU0_STOREMATRIX(transformed);
-    workspace = drawNode->tmPacket;
+    workspace = aNode->tmPacket;
     if (workspace != NULL) {
-        sdf3DPrimSetTmPacket((void *)(workspace + (frame << 7)));
+        sdf3DPrimSetTmPacket((void *)(workspace + (aFrameId << 7)));
     }
-    child = drawNode->children;
+    child = aNode->children;
     if (child == 0) {
         return;
     }
     do {
-        sdfModelEvalNode(child, (const f32 (*)[4])transformed, frame);
+        sdfModelEvalNode(child, (const f32 (*)[4])transformed, aFrameId);
         child = child->next;
-    } while (child != drawNode->children);
+    } while (child != aNode->children);
 }
 
 /* vu0 routine: native SDK vector/matrix operations around model state. */
-void sdfModelEvalTm2(sdfModelRootNode_t *model, s32 frame) {
+void sdfModelEvalTm2(sdfModelRootNode_t *aRoot, s32 aFrameId) {
     u128 rootMatrix[4];
-    void *transform = &model->tm;
+    void *transform = &aRoot->tm;
     f32 *scale;
     sdfModelNodeList_t *list;
 
     SDF_VU0_LOADMATRIX(transform);
-    scale = (f32 *)&model->scale;
+    scale = (f32 *)&aRoot->scale;
     SDF_VU0_LOADVECTOR_BARRIER(scale);
     SDF_VU0_SCALE_XYZ_REV();
     SDF_VU0_STOREMATRIX_MEMOPS(rootMatrix[0], rootMatrix[1], rootMatrix[2], rootMatrix[3]);
-    list = model->nodeList;
-    sdfModelEvalNode(((sdfModelNode_t **)list->items)[0], (const f32 (*)[4])rootMatrix, frame);
+    list = aRoot->nodeList;
+    sdfModelEvalNode(((sdfModelNode_t **)list->items)[0], (const f32 (*)[4])rootMatrix, aFrameId);
 }
 
 void sdfModelEvalTm(sdfModelRootNode_t *aRoot)
@@ -906,29 +906,29 @@ void sdfModelEvalTm(sdfModelRootNode_t *aRoot)
     sdfModelEvalTm2(aRoot, (s8)sdfFrameId);
 }
 
-void sdfModelOtInit(sdfModelOt_t *table, sdfGrOt_t *first, sdfGrOt_t *second,
-                    sdfGrOt_t *third, sdfGrOt_t *fourth)
+void sdfModelOtInit(sdfModelOt_t *aModelOt, sdfGrOt_t *aOt0, sdfGrOt_t *aOt1,
+                    sdfGrOt_t *aOt2, sdfGrOt_t *aOt3)
 {
-    table->ot[3] = fourth;
-    table->ot[0] = first;
-    table->ot[2] = third;
-    table->ot[1] = second;
-    sdfModelSetOtCallbacks(second);
+    aModelOt->ot[3] = aOt3;
+    aModelOt->ot[0] = aOt0;
+    aModelOt->ot[2] = aOt2;
+    aModelOt->ot[1] = aOt1;
+    sdfModelSetOtCallbacks(aOt1);
 }
 
 /* vu0 routine: native SDK vector/matrix operations around model state. */
-s32 sdfModelCheckBounds(const f32 *bounds) {
+s32 sdfModelCheckBounds(const f32 *aMinMax) {
     s32 flags;
     s32 result;
 
-    VU0_CLIP_TEST_BOX_CORNERS(flags, bounds);
+    VU0_CLIP_TEST_BOX_CORNERS(flags, aMinMax);
     result = flags & 0x3F;
     result &= (flags >> 12) & (flags >> 6);
     result &= flags >> 18;
     return result;
 }
 
-extern void sdfMatListUpdatePacket(sdfMatList_t *aList, s32 aIdx);
+extern void sdfMatListUpdatePacket(sdfMatList_t *aMatList, s32 aId);
 extern void *sdf3DLightDefault;
 extern void *sdf3DFogDefault;
 extern u8 corePktSoftenBias;
@@ -936,11 +936,11 @@ extern u8 sdf3DScreenTm[];
 extern sdfDrawTag_t *sdfPrimAllocDrawTag(s32 (*aAllocator)(s32));
 extern void sdfDrawTagLinkRef(sdfDrawTag_t *aTag, u32 aPacket);
 extern void sdfDrawTagLinkCall(sdfDrawTag_t *aTag, u32 aPacket);
-extern void sdfCoreDrawSetZBias(f32 aBias);
-extern void sdfCoreDrawSetLight(void *aLight);
-extern void sdfCoreDrawSetFog(void *aFog);
-extern void *sdfCorePacketGen(sdfModelNode_t *aNode, void *aData, u32 aAttr, u32 aColor,
-                              f32 aSoften, f32 aBias, s32 aIdx, s32 aReverse);
+extern void sdfCoreDrawSetZBias(f32 z);
+extern void sdfCoreDrawSetLight(void *light);
+extern void sdfCoreDrawSetFog(void *fog);
+extern void *sdfCorePacketGen(sdfModelNode_t *node, void *packet_p, u32 attr_mask, u32 color,
+                              f32 fdSoften, f32 fdBias, s32 frame_id, s32 reverse);
 
 /* The 0xC0-byte packet a temp-linked node builds: the tm REF, the 128 bytes
  * VU1 reads through it, and the draw parameters that close it. */
@@ -954,7 +954,7 @@ typedef struct QWORD_ALIGNED
 /* vu0 routine: each node's screen transform, and its w lane as the sort key. */
 /* NON_MATCHING: 228 of 282 words differ (first at +0x8). */
 #ifdef NON_MATCHING
-void sdfModelTempPacketLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
+void sdfModelTempPacketLinkOt(sdfGrOt_t **ot, sdfModelRootNode_t *root)
 {
     sdfDrawTag_t *tags[4];
     s32 i;
@@ -974,29 +974,29 @@ void sdfModelTempPacketLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
     f32 bias;
 
     frame = (s8)sdfFrameId;
-    sdfMatListUpdatePacket(aRoot->matList, frame);
-    rootColor = aRoot->color;
-    light = aRoot->light;
-    fog = aRoot->fog;
+    sdfMatListUpdatePacket(root->matList, frame);
+    rootColor = root->color;
+    light = root->light;
+    fog = root->fog;
     if (light == NULL) {
         light = sdf3DLightDefault;
     }
     if (fog == NULL) {
         fog = sdf3DFogDefault;
     }
-    drawAttr = aRoot->drawAttr;
+    drawAttr = root->drawAttr;
     softenBias = corePktSoftenBias;
-    if (aRoot->flags & SDF_MODEL_FLAG_SELF_FACEDIV_PARM) {
-        soften = aRoot->faceDivSoften;
-        bias = aRoot->faceDivBias;
+    if (root->flags & SDF_MODEL_FLAG_SELF_FACEDIV_PARM) {
+        soften = root->faceDivSoften;
+        bias = root->faceDivBias;
     } else {
         soften = sdfFaceDivSoften;
         bias = sdfFaceDivBias;
     }
     softenParm = softenBias << 16;
     drew = 0;
-    for (i = 0; i < aRoot->nodeList->count; i++) {
-        sdfModelNode_t *node = aRoot->nodeList->items[i];
+    for (i = 0; i < root->nodeList->count; i++) {
+        sdfModelNode_t *node = root->nodeList->items[i];
         sdfModelNodeDef_t *def = node->shape;
         sdfModelBounds_t *bounds;
         struct sdfShapeHeader_t **list;
@@ -1038,7 +1038,7 @@ void sdfModelTempPacketLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
         for (j = 0; j != 4; j++) {
             tags[j] = NULL;
         }
-        sdfCoreDrawSetZBias(aRoot->zBias);
+        sdfCoreDrawSetZBias(root->zBias);
         semiTrans = (s32)color < 0;
         parmTag = ((u64)(attr | softenParm) << 32) | 0x6102C000;
         while ((header = *list++) != NULL) {
@@ -1068,7 +1068,7 @@ void sdfModelTempPacketLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
                 buf->parm.unpackColor = 0x6E01C002;
                 buf->parm.color = color;
                 buf->parm.unpackParm = 0x6003C003;
-                *(u32 *)&buf->parm.zBias = *(u32 *)&aRoot->zBias;
+                *(u32 *)&buf->parm.zBias = *(u32 *)&root->zBias;
                 buf->parm.faceDivSoften = soften;
                 buf->parm.faceDivBias = bias;
                 buf->parm.itop = 0x04000004;
@@ -1085,7 +1085,7 @@ void sdfModelTempPacketLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
                     sdfDmaTag_t *buf = sdfGrAllocPacketBuff(0x30);
                     sdfDmaTag_t *body;
 
-                    body = sdfModelSetMatRefPacket(aRoot, matIndex, buf, frame);
+                    body = sdfModelSetMatRefPacket(root, matIndex, buf, frame);
                     *(u64 *)&body->dat0 = 0;
                     *(u64 *)body = (qwc | 0x30000000) |
                                    ((u64)((u32)pkt->dataBody & 0x0FFFFFFF) << 32);
@@ -1100,13 +1100,13 @@ void sdfModelTempPacketLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
             tag = tags[j];
             if (tag != NULL) {
                 drew = 1;
-                aOt[j]->regFunc(aOt[j], tag);
+                ot[j]->regFunc(ot[j], tag);
             }
             tags[j] = NULL;
         }
     }
     if (drew != 0) {
-        aRoot->flags |= SDF_MODEL_FLAG_DREW;
+        root->flags |= SDF_MODEL_FLAG_DREW;
     }
 }
 #else
@@ -1294,7 +1294,7 @@ void sdfModelMorphListCopyStat(sdfModelMorphList_t *aDst, sdfModelMorphList_t *a
 }
 
 /* vu0 routine: native SDK vector/matrix operations around model state. */
-void sdfModelCopyStat(sdfModelRootNode_t *aDst, sdfModelRootNode_t *aSrc)
+void sdfModelCopyStat(sdfModelRootNode_t *aDstRoot, sdfModelRootNode_t *aSrcRoot)
 {
     s32 frame;
     s32 count;
@@ -1302,23 +1302,23 @@ void sdfModelCopyStat(sdfModelRootNode_t *aDst, sdfModelRootNode_t *aSrc)
     sdfModelNode_t **srcItems;
     s32 i;
 
-    sdfMatListCopyStat(aDst->matList, aSrc->matList);
-    sdfModelMorphListCopyStat(aDst->morphList, aSrc->morphList);
-    aDst->flags = aSrc->flags;
-    aDst->drawAttr = aSrc->drawAttr;
-    aDst->color = aSrc->color;
-    SDF_VU0_LOADMATRIX(&aSrc->tm);
-    SDF_VU0_STOREMATRIX(&aDst->tm);
-    SDF_VU0_COPYVECTOR(&aDst->rotate, &aSrc->rotate);
-    SDF_VU0_COPYVECTOR(&aDst->scale, &aSrc->scale);
+    sdfMatListCopyStat(aDstRoot->matList, aSrcRoot->matList);
+    sdfModelMorphListCopyStat(aDstRoot->morphList, aSrcRoot->morphList);
+    aDstRoot->flags = aSrcRoot->flags;
+    aDstRoot->drawAttr = aSrcRoot->drawAttr;
+    aDstRoot->color = aSrcRoot->color;
+    SDF_VU0_LOADMATRIX(&aSrcRoot->tm);
+    SDF_VU0_STOREMATRIX(&aDstRoot->tm);
+    SDF_VU0_COPYVECTOR(&aDstRoot->rotate, &aSrcRoot->rotate);
+    SDF_VU0_COPYVECTOR(&aDstRoot->scale, &aSrcRoot->scale);
     frame = (s8)sdfFrameId;
-    *(u32 *)&aDst->light = *(u32 *)&aSrc->light;
-    aDst->faceDivSoften = aSrc->faceDivSoften;
-    *(u32 *)&aDst->fog = *(u32 *)&aSrc->fog;
-    aDst->faceDivBias = aSrc->faceDivBias;
-    count = aDst->nodeList->count;
-    dstItems = aDst->nodeList->items;
-    srcItems = aSrc->nodeList->items;
+    *(u32 *)&aDstRoot->light = *(u32 *)&aSrcRoot->light;
+    aDstRoot->faceDivSoften = aSrcRoot->faceDivSoften;
+    *(u32 *)&aDstRoot->fog = *(u32 *)&aSrcRoot->fog;
+    aDstRoot->faceDivBias = aSrcRoot->faceDivBias;
+    count = aDstRoot->nodeList->count;
+    dstItems = aDstRoot->nodeList->items;
+    srcItems = aSrcRoot->nodeList->items;
     for (i = 0; i < count; i++) {
         sdfModelNode_t *src = srcItems[i];
         sdfModelNode_t *dst = dstItems[i];
@@ -1390,9 +1390,9 @@ void *func_002B2628(void *data, u32 chunkId) {
     return NULL;
 }
 
-void *sdfModelGetExtraChunk(sdfModelRootNode_t *aRoot, u32 aTag)
+void *sdfModelGetExtraChunk(sdfModelRootNode_t *aRoot, u32 aChunkId)
 {
-    return func_002B2628(aRoot->extraData, aTag);
+    return func_002B2628(aRoot->extraData, aChunkId);
 }
 
 s32 sdfModelGetNodeIndexByName(sdfModelRootNode_t *aRoot, const char *aName)
@@ -1420,8 +1420,8 @@ s32 sdfModelGetNodeIndexByName(sdfModelRootNode_t *aRoot, const char *aName)
     return -1;
 }
 
-const char *sdfModelGetNodeName(sdfModelRootNode_t *model, s32 nameId) {
-    sdfModelChunkHeader_t *chunk = sdfModelGetExtraChunk(model, 0x4D4E444E);
+const char *sdfModelGetNodeName(sdfModelRootNode_t *aRoot, s32 aIndex) {
+    sdfModelChunkHeader_t *chunk = sdfModelGetExtraChunk(aRoot, 0x4D4E444E);
     const u8 *name;
     const u8 *end;
     if (chunk == NULL) {
@@ -1435,7 +1435,7 @@ const char *sdfModelGetNodeName(sdfModelRootNode_t *model, s32 nameId) {
         while (*cursor++ != 0) {
         }
         id = (const s32 *)(((u32)cursor + 3) & ~3U);
-        if (*id == nameId) {
+        if (*id == aIndex) {
             return (const char *)name;
         }
         name = (const u8 *)(id + 1);
@@ -1456,32 +1456,32 @@ u32 sdfModelGetMarkPosCount(sdfModelRootNode_t *aRoot)
 }
 
 /* vu0 routine: native SDK vector/matrix operations around model state. */
-void sdfModelMakeMarkPosMatrix(sdfModelRootNode_t *model, sdfModelMarkPos_t *record) {
-    sdfModelNode_t *drawNode = sdfModelSearchNode(model, record->nodeId);
+void sdfModelMakeMarkPosMatrix(sdfModelRootNode_t *aRoot, sdfModelMarkPos_t *aMark) {
+    sdfModelNode_t *drawNode = sdfModelSearchNode(aRoot, aMark->nodeId);
     u8 *vector;
 
-    vector = (u8 *)&record->dir;
+    vector = (u8 *)&aMark->dir;
     SDF_VU0_LOADVECTOR(vector);
     SDF_VU0_SET_ROW2();
     SDF_VU0_COPYVECTOR_A_TO_B();
-    vector = (u8 *)&record->up;
+    vector = (u8 *)&aMark->up;
     SDF_VU0_LOADVECTOR(vector);
     SDF_VU0_NEGVECTOR_XYZ();
     SDF_VU0_SET_ROW1();
     SDF_VU0_OUTERPRODUCT();
     SDF_VU0_NORMALIZE();
     SDF_VU0_SET_ROW0();
-    SDF_VU0_LOAD_ROW3(&record->pos);
+    SDF_VU0_LOAD_ROW3(&aMark->pos);
     SDF_VU0_MATRIX_ROW3_W_SET_ONE();
     MultMatrixRev(&drawNode->tm);
 }
 
 /* vu0 routine: native SDK vector/matrix operations around model state. */
-void sdfModelMakeMarkPos(sdfModelRootNode_t *model, sdfModelMarkPos_t *record) {
-    sdfModelNode_t *drawNode = sdfModelSearchNode(model, record->nodeId);
+void sdfModelMakeMarkPos(sdfModelRootNode_t *aRoot, sdfModelMarkPos_t *aMark) {
+    sdfModelNode_t *drawNode = sdfModelSearchNode(aRoot, aMark->nodeId);
 
     SDF_VU0_LOADMATRIX(&drawNode->tm);
-    SDF_VU0_LOADVECTOR(&record->pos);
+    SDF_VU0_LOADVECTOR(&aMark->pos);
     SDF_VU0_APPLYMATRIX_XYZ1();
 }
 

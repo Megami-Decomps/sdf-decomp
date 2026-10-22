@@ -74,7 +74,7 @@ extern volatile u8 sdfDrawSyncFlag;
 
 extern u32 sdfGetRunTimeCountBase(void);
 
-extern u32 sdfGetRunTimeCount(u32 previousTick);
+extern u32 sdfGetRunTimeCount(u32 aBaseTime);
 
 extern void sdfWaitVblank(s32 count);
 
@@ -279,10 +279,10 @@ typedef struct SdfDmaTag {
     u64 vifCommands;
 } QWORD_ALIGNED SdfDmaTag;
 
-void sdfDrawTagLink2(struct sdfDrawTag_t *list, u32 packetAddress,
-                          u32 rangeTailAddress);
+void sdfDrawTagLink2(struct sdfDrawTag_t *aTag, u32 aHeadPacket,
+                          u32 aTailPacket);
 
-void sdfDrawTagLinkRef(struct sdfDrawTag_t *list, u32 packetAddress);
+void sdfDrawTagLinkRef(struct sdfDrawTag_t *aTag, u32 aPacket);
 
 /* One 0x10-byte entry in the three-slot frame packet submission ring. */
 typedef struct SdfPacketSlot {
@@ -325,11 +325,11 @@ typedef struct sdfSceneNode_t {
     u8 texturePackets[0x80];
 } sdfSceneNode_t;
 
-void sdfGrStdDrawEnvPredraw(sdfSceneNode_t *node, s32 bufferIndex);
+void sdfGrStdDrawEnvPredraw(sdfSceneNode_t *aPre, s32 aEvenOdd);
 
-void sdfGrSetRefGifPacket(SdfDmaReferenceChainPacket *packet, u32 sourceAddress, s32 qwordCount);
+void sdfGrSetRefGifPacket(SdfDmaReferenceChainPacket *aPacket, u32 aData, s32 aQwords);
 
-void sdfGrSetDrawDefParmPacket(sdfGrRefGifPacketHeader_t *packet);
+void sdfGrSetDrawDefParmPacket(sdfGrRefGifPacketHeader_t *aDef);
 
 extern s32 EIntr(void);
 
@@ -355,188 +355,188 @@ typedef struct effDebugPolyParams_t {
     f32 depth;
 } effDebugPolyParams_t;
 
-s32 sdfGrAllocPacketBuff(s32 size);
+s32 sdfGrAllocPacketBuff(s32 aSize);
 
-void sdfDrawTagInit(sdfDrawTag_t *list);
+void sdfDrawTagInit(sdfDrawTag_t *a);
 
-void sdfDrawTagLink(sdfDrawTag_t *list, u32 packet);
+void sdfDrawTagLink(sdfDrawTag_t *aTag, u32 aPacket);
 
-void sdfDrawTagLinkRefGif(sdfDrawTag_t *list, u32 packetAddress);
+void sdfDrawTagLinkRefGif(sdfDrawTag_t *aTag, u32 aPacket);
 
-void sdfDrawTagLinkCall(sdfDrawTag_t *list, u32 packetAddress);
+void sdfDrawTagLinkCall(sdfDrawTag_t *aTag, u32 aPacket);
 
-void sdfGrOtFuncLinkToHead(sdfGrOt_t *destinationList, sdfDrawTag_t *incomingList);
+void sdfGrOtFuncLinkToHead(sdfGrOt_t *aOt, sdfDrawTag_t *aTag);
 
-void sdfGrOtNormalReg(sdfGrOt_t *list, sdfDrawTag_t *item);
+void sdfGrOtNormalReg(sdfGrOt_t *aOt, sdfDrawTag_t *aTag);
 
-s32 sdfGrOtNormalCallback(sdfGrOt_t *list, s32 mode, sdfDrawTag_t *packet);
+s32 sdfGrOtNormalCallback(sdfGrOt_t *aOt, s32 aFunc, sdfDrawTag_t *aData);
 
-void sdfGrOtInit(sdfGrOt_t *nodes, s32 count);
+void sdfGrOtInit(sdfGrOt_t *aOt, s32 aNumOt);
 
-sdfGrRefPacketHeader_t *sdfGrNewExPacket(SdfDmaTag *sourceTag);
+sdfGrRefPacketHeader_t *sdfGrNewExPacket(SdfDmaTag *ex);
 
-SdfDmaTag *sdfGrAddExPacket(SdfDmaTag *previousTag, SdfDmaTag *sourceTag);
+SdfDmaTag *sdfGrAddExPacket(SdfDmaTag *p, SdfDmaTag *ex);
 
-void sdfGrJoinDrawTag(sdfDrawTag_t *previousList, sdfDrawTag_t *incomingList);
+void sdfGrJoinDrawTag(sdfDrawTag_t *aFore, sdfDrawTag_t *aBack);
 
-void sdfGrInitExPacket(sdfDrawTag_t *list);
+void sdfGrInitExPacket(sdfDrawTag_t *p);
 
-sdfDrawTag_t *sdfGrOtClose(sdfGrOt_t *node);
+sdfDrawTag_t *sdfGrOtClose(sdfGrOt_t *aOt);
 
-void sdfPreDrawTagLink(sdfPreDrawTag_t *list, SdfPacketPatchLink *node);
+void sdfPreDrawTagLink(sdfPreDrawTag_t *aTag, SdfPacketPatchLink *aHook);
 
-void sdfPreDrawChainLink(sdfPreDrawChain_t *chain, sdfPreDrawTag_t *node);
+void sdfPreDrawChainLink(sdfPreDrawChain_t *aChain, sdfPreDrawTag_t *aTag);
 
 void sdfGrSetRegsPacketHeader(sdfGrPacketHeader_t *header, s32 payloadQwords);
 
-void sdfGrSetDrawFramePacket(sdfGrDrawFramePacket_t *packet, s32 frameAddress, s32 width, s32 height,
-                  s32 frameFormat, s32 depthAddress, s32 depthFormat,
-                  s32 fieldOffset, s32 gsContext);
+void sdfGrSetDrawFramePacket(sdfGrDrawFramePacket_t *aFrame, s32 aFrameAddr, s32 aW, s32 aH,
+                  s32 aPixelFormat, s32 aZBuffAddr, s32 aZBuffFormat,
+                  s32 aHalfOffset, s32 aContext);
 
-void sdfGrSetClearPacket(sdfGrClearPacket_t *packet, s32 width, s32 height, s32 unused0, s32 unused1);
+void sdfGrSetClearPacket(sdfGrClearPacket_t *aClear, s32 aW, s32 aH, s32 aPixelFormat, s32 aZBuffFormat);
 
-void sdfGrSetDrawFrame(sdfGrDrawFrame_t *packet, s32 frameAddress, s32 width, s32 height,
-                           s32 frameFormat, s32 depthAddress, s32 depthFormat, s32 gsContext);
+void sdfGrSetDrawFrame(sdfGrDrawFrame_t *aFrame, s32 aFrameAddr, s32 aW, s32 aH,
+                           s32 aPixelFormat, s32 aZBuffAddr, s32 aZBuffFormat, s32 aContext);
 
-void sdfGrLinkStdDrawEnv(sdfDrawTag_t *dmaList, sdfPreDrawTag_t *linkedList, SdfPacketPatchLink *linkedNode);
+void sdfGrLinkStdDrawEnv(sdfDrawTag_t *aTag, sdfPreDrawTag_t *aPreDrawTag, SdfPacketPatchLink *aEnv);
 
-void sdfGrLinkDispFrameTex(sdfDrawTag_t *list, u32 source, sdfGrRefPacketHeader_t *node);
+void sdfGrLinkDispFrameTex(sdfDrawTag_t *aTag, u32 aEnv, sdfGrRefPacketHeader_t *aPkt);
 
-void sdfGrLinkDrawFrameTex(sdfDrawTag_t *list, u32 source, sdfGrRefPacketHeader_t *node);
+void sdfGrLinkDrawFrameTex(sdfDrawTag_t *aTag, u32 aEnv, sdfGrRefPacketHeader_t *aPkt);
 
-void sdfGrFramePacketPredraw(sdfGrFramePacket_t *packet, s32 bufferIndex);
+void sdfGrFramePacketPredraw(sdfGrFramePacket_t *aPre, s32 aEvenOdd);
 
-void sdfGrSetFramePacket(sdfGrFramePacket_t *packet, sdfGrFrameSet_t *source, u32 frameMask, s32 region, s32 mode);
+void sdfGrSetFramePacket(sdfGrFramePacket_t *aFrame, sdfGrFrameSet_t *aFrameSet, u32 aFrameMask, s32 aZBuffMask, s32 aContext);
 
-void sdfGrReqDrawDelay(s32 value);
+void sdfGrReqDrawDelay(s32 count);
 
 void sdfGrInitDraw(void);
 
-void sdfDrawTagInit(sdfDrawTag_t *list) {
-    list->z = 0xFFFF;
-    list->next = NULL;
-    list->head = 0;
-    list->tail = 0;
-    list->lightPacket = 0;
-    list->fogPacket = 0;
-    list->texPacket[0] = 0;
-    list->texPacket[1] = 0;
+void sdfDrawTagInit(sdfDrawTag_t *a) {
+    a->z = 0xFFFF;
+    a->next = NULL;
+    a->head = 0;
+    a->tail = 0;
+    a->lightPacket = 0;
+    a->fogPacket = 0;
+    a->texPacket[0] = 0;
+    a->texPacket[1] = 0;
 }
 
-void sdfDrawTagLink(sdfDrawTag_t *list, u32 packet) {
+void sdfDrawTagLink(sdfDrawTag_t *aTag, u32 aPacket) {
     s32 last;
 
-    last = list->tail;
+    last = aTag->tail;
     if (last == 0) {
-        list->head = packet;
+        aTag->head = aPacket;
     }
     else {
         ((SdfDmaTag *)last)->kind = SDF_DMA_TAG_NEXT_BYTE;
-        ((SdfDmaTag *)last)->address = packet & SDF_DMA_ADDRESS_MASK;
+        ((SdfDmaTag *)last)->address = aPacket & SDF_DMA_ADDRESS_MASK;
     }
-    list->tail = packet;
+    aTag->tail = aPacket;
 }
 
-void sdfDrawTagLink2(sdfDrawTag_t *list, u32 packetAddress, u32 rangeTailAddress) {
+void sdfDrawTagLink2(sdfDrawTag_t *aTag, u32 aHeadPacket, u32 aTailPacket) {
     s32 previousTailAddress;
 
-    previousTailAddress = list->tail;
+    previousTailAddress = aTag->tail;
     if (previousTailAddress == 0) {
-        list->head = packetAddress;
+        aTag->head = aHeadPacket;
     }
     else {
         ((SdfDmaTag *)previousTailAddress)->kind = SDF_DMA_TAG_NEXT_BYTE;
-        ((SdfDmaTag *)previousTailAddress)->address = packetAddress & SDF_DMA_ADDRESS_MASK;
+        ((SdfDmaTag *)previousTailAddress)->address = aHeadPacket & SDF_DMA_ADDRESS_MASK;
     }
-    list->tail = rangeTailAddress;
+    aTag->tail = aTailPacket;
 }
 
-void sdfDrawTagLinkRef(sdfDrawTag_t *list, u32 packetAddress) {
+void sdfDrawTagLinkRef(sdfDrawTag_t *aTag, u32 aPacket) {
     s32 previousTailAddress;
 
-    ((SdfDmaTag *)packetAddress)->kind = SDF_DMA_TAG_REF_BYTE;
-    previousTailAddress = list->tail;
+    ((SdfDmaTag *)aPacket)->kind = SDF_DMA_TAG_REF_BYTE;
+    previousTailAddress = aTag->tail;
     if (previousTailAddress == 0) {
-        list->head = packetAddress;
+        aTag->head = aPacket;
     }
     else {
         ((SdfDmaTag *)previousTailAddress)->kind = SDF_DMA_TAG_NEXT_BYTE;
-        ((SdfDmaTag *)previousTailAddress)->address = packetAddress & SDF_DMA_ADDRESS_MASK;
+        ((SdfDmaTag *)previousTailAddress)->address = aPacket & SDF_DMA_ADDRESS_MASK;
     }
-    list->tail = packetAddress + SDF_QWORD_BYTES;
+    aTag->tail = aPacket + SDF_QWORD_BYTES;
 }
 
-void sdfDrawTagLinkRefGif(sdfDrawTag_t *list, u32 packetAddress) {
+void sdfDrawTagLinkRefGif(sdfDrawTag_t *aTag, u32 aPacket) {
     s32 previousTailAddress;
 
-    previousTailAddress = list->tail;
+    previousTailAddress = aTag->tail;
     if (previousTailAddress == 0) {
-        list->head = packetAddress;
+        aTag->head = aPacket;
     }
     else {
         ((SdfDmaTag *)previousTailAddress)->kind = SDF_DMA_TAG_NEXT_BYTE;
-        ((SdfDmaTag *)previousTailAddress)->address = packetAddress & SDF_DMA_ADDRESS_MASK;
+        ((SdfDmaTag *)previousTailAddress)->address = aPacket & SDF_DMA_ADDRESS_MASK;
     }
-    list->tail = packetAddress + SDF_DMA_EXTENDED_TAIL_OFFSET;
+    aTag->tail = aPacket + SDF_DMA_EXTENDED_TAIL_OFFSET;
 }
 
-void sdfDrawTagLinkCall(sdfDrawTag_t *list, u32 packetAddress) {
+void sdfDrawTagLinkCall(sdfDrawTag_t *aTag, u32 aPacket) {
     s32 previousTailAddress;
 
-    ((SdfDmaTag *)packetAddress)->kind = SDF_DMA_TAG_CALL_BYTE;
-    previousTailAddress = list->tail;
+    ((SdfDmaTag *)aPacket)->kind = SDF_DMA_TAG_CALL_BYTE;
+    previousTailAddress = aTag->tail;
     if (previousTailAddress == 0) {
-        list->head = packetAddress;
+        aTag->head = aPacket;
     }
     else {
         ((SdfDmaTag *)previousTailAddress)->kind = SDF_DMA_TAG_NEXT_BYTE;
-        ((SdfDmaTag *)previousTailAddress)->address = packetAddress & SDF_DMA_ADDRESS_MASK;
+        ((SdfDmaTag *)previousTailAddress)->address = aPacket & SDF_DMA_ADDRESS_MASK;
     }
-    list->tail = packetAddress + SDF_QWORD_BYTES;
+    aTag->tail = aPacket + SDF_QWORD_BYTES;
 }
 
-void sdfGrOtFuncLinkToHead(sdfGrOt_t *destinationList, sdfDrawTag_t *incomingList) {
+void sdfGrOtFuncLinkToHead(sdfGrOt_t *aOt, sdfDrawTag_t *aTag) {
     sdfDrawTag_t *firstList;
 
-    if (incomingList->tail == 0) {
+    if (aTag->tail == 0) {
         return;
     }
-    firstList = destinationList->tagHead;
+    firstList = aOt->tagHead;
     if (firstList == NULL) {
-        destinationList->tagTail = incomingList;
+        aOt->tagTail = aTag;
     } else {
-        sdfGrJoinDrawTag(incomingList, firstList);
+        sdfGrJoinDrawTag(aTag, firstList);
     }
-    incomingList->next = firstList;
-    destinationList->tagHead = incomingList;
+    aTag->next = firstList;
+    aOt->tagHead = aTag;
 }
 
-void sdfGrOtNormalReg(sdfGrOt_t *list, sdfDrawTag_t *item) {
+void sdfGrOtNormalReg(sdfGrOt_t *aOt, sdfDrawTag_t *aTag) {
     sdfDrawTag_t *last;
 
-    if (item->head != 0) {
-        last = list->tagTail;
+    if (aTag->head != 0) {
+        last = aOt->tagTail;
         if (last == NULL) {
-            list->tagHead = item;
+            aOt->tagHead = aTag;
         }
         else {
-            last->next = item;
-            sdfGrJoinDrawTag(last, item);
+            last->next = aTag;
+            sdfGrJoinDrawTag(last, aTag);
         }
-        list->tagTail = item;
+        aOt->tagTail = aTag;
     }
 }
 
-s32 sdfGrOtNormalCallback(sdfGrOt_t *list, s32 mode, sdfDrawTag_t *packet) {
-    if (mode == 1) {
-        sdfGrOtFuncLinkToHead(list, packet);
+s32 sdfGrOtNormalCallback(sdfGrOt_t *aOt, s32 aFunc, sdfDrawTag_t *aData) {
+    if (aFunc == 1) {
+        sdfGrOtFuncLinkToHead(aOt, aData);
     }
 }
 
-void sdfGrOtInit(sdfGrOt_t *nodes, s32 count) {
-    sdfGrOt_t *node = nodes;
+void sdfGrOtInit(sdfGrOt_t *aOt, s32 aNumOt) {
+    sdfGrOt_t *node = aOt;
     sdfGrOt_t *next;
-    s32 remaining = count - 1;
+    s32 remaining = aNumOt - 1;
 
     node->regFunc = sdfGrOtNormalReg;
     node->callbackFunc = sdfGrOtNormalCallback;
@@ -565,91 +565,91 @@ link:
     node->next = NULL;
 }
 
-sdfGrRefPacketHeader_t *sdfGrNewExPacket(SdfDmaTag *sourceTag) {
+sdfGrRefPacketHeader_t *sdfGrNewExPacket(SdfDmaTag *ex) {
     sdfGrRefPacketHeader_t *referenceNode = (sdfGrRefPacketHeader_t *)sdfGrAllocPacketBuff(SDF_DMA_REFERENCE_NODE_BYTES);
-    u64 dmaHeader = sourceTag->quadwordCount;
-    u32 payloadAddress = ((u32)sourceTag + SDF_QWORD_BYTES) & SDF_DMA_ADDRESS_MASK;
+    u64 dmaHeader = ex->quadwordCount;
+    u32 payloadAddress = ((u32)ex + SDF_QWORD_BYTES) & SDF_DMA_ADDRESS_MASK;
     s64 packedAddress = (s64)payloadAddress << 32;
 
     dmaHeader |= SDF_DMA_TAG_REF_WORD;
     dmaHeader |= packedAddress;
     referenceNode->dmaTag = dmaHeader;
     QUAD_ZERO(referenceNode->nextTag);
-    referenceNode->vifCommands = sourceTag->vifCommands;
+    referenceNode->vifCommands = ex->vifCommands;
     return referenceNode;
 }
 
-SdfDmaTag *sdfGrAddExPacket(SdfDmaTag *previousTag, SdfDmaTag *sourceTag) {
+SdfDmaTag *sdfGrAddExPacket(SdfDmaTag *p, SdfDmaTag *ex) {
     sdfGrRefPacketHeader_t *referenceNode;
 
-    referenceNode = sdfGrNewExPacket(sourceTag);
-    previousTag->kind = SDF_DMA_TAG_NEXT_BYTE;
-    previousTag->address = (u32)referenceNode & SDF_DMA_ADDRESS_MASK;
+    referenceNode = sdfGrNewExPacket(ex);
+    p->kind = SDF_DMA_TAG_NEXT_BYTE;
+    p->address = (u32)referenceNode & SDF_DMA_ADDRESS_MASK;
     return (SdfDmaTag *)((u32)referenceNode + SDF_QWORD_BYTES);
 }
 
-void sdfGrJoinDrawTag(sdfDrawTag_t *previousList, sdfDrawTag_t *incomingList) {
-    SdfDmaTag *tailTag = (SdfDmaTag *)previousList->tail;
+void sdfGrJoinDrawTag(sdfDrawTag_t *aFore, sdfDrawTag_t *aBack) {
+    SdfDmaTag *tailTag = (SdfDmaTag *)aFore->tail;
     u32 previousSource;
     u32 incomingSource;
 
-    previousSource = previousList->lightPacket;
-    incomingSource = incomingList->lightPacket;
+    previousSource = aFore->lightPacket;
+    incomingSource = aBack->lightPacket;
     if (previousSource != incomingSource) {
         if (incomingSource != 0) {
             tailTag = sdfGrAddExPacket(tailTag, (SdfDmaTag *)incomingSource);
         } else {
-            incomingList->lightPacket = previousSource;
+            aBack->lightPacket = previousSource;
         }
     }
-    previousSource = previousList->fogPacket;
-    incomingSource = incomingList->fogPacket;
+    previousSource = aFore->fogPacket;
+    incomingSource = aBack->fogPacket;
     if (previousSource != incomingSource) {
         if (incomingSource != 0) {
             tailTag = sdfGrAddExPacket(tailTag, (SdfDmaTag *)incomingSource);
         } else {
-            incomingList->fogPacket = previousSource;
+            aBack->fogPacket = previousSource;
         }
     }
     tailTag->kind = SDF_DMA_TAG_NEXT_BYTE;
-    tailTag->address = incomingList->head & SDF_DMA_ADDRESS_MASK;
+    tailTag->address = aBack->head & SDF_DMA_ADDRESS_MASK;
 }
 
-void sdfGrInitExPacket(sdfDrawTag_t *list) {
+void sdfGrInitExPacket(sdfDrawTag_t *p) {
     sdfGrRefPacketHeader_t *referenceNode;
     u32 priorHeadAddress;
     u32 sourceTagAddress;
 
-    sourceTagAddress = list->fogPacket;
+    sourceTagAddress = p->fogPacket;
     if (sourceTagAddress != 0) {
         referenceNode = sdfGrNewExPacket((SdfDmaTag *)sourceTagAddress);
-        priorHeadAddress = list->head & SDF_DMA_ADDRESS_MASK;
-        list->head = (u32)referenceNode;
+        priorHeadAddress = p->head & SDF_DMA_ADDRESS_MASK;
+        p->head = (u32)referenceNode;
         *(u64 *)&referenceNode->nextTag = ((s64)priorHeadAddress << 32) | SDF_DMA_TAG_NEXT_WORD;
     }
-    sourceTagAddress = list->lightPacket;
+    sourceTagAddress = p->lightPacket;
     if (sourceTagAddress != 0) {
         referenceNode = sdfGrNewExPacket((SdfDmaTag *)sourceTagAddress);
-        priorHeadAddress = list->head & SDF_DMA_ADDRESS_MASK;
-        list->head = (u32)referenceNode;
+        priorHeadAddress = p->head & SDF_DMA_ADDRESS_MASK;
+        p->head = (u32)referenceNode;
         *(u64 *)&referenceNode->nextTag = ((s64)priorHeadAddress << 32) | SDF_DMA_TAG_NEXT_WORD;
     }
 }
 
-sdfDrawTag_t *sdfGrOtClose(sdfGrOt_t *node) {
+sdfDrawTag_t *sdfGrOtClose(sdfGrOt_t *aOt) {
     sdfDrawTag_t *tail = NULL;
     sdfDrawTag_t *head = NULL;
 
-    for (; node != NULL; node = node->next) {
-        node->callbackFunc(node, 0, NULL);
-        if (node->tagHead != 0) {
+    for (; aOt != NULL; aOt = aOt->next) {
+        aOt->callbackFunc(aOt, 0, NULL);
+        if (aOt->tagHead != 0) {
             if (head != 0) {
-                sdfGrJoinDrawTag(tail, node->tagHead);
+                sdfGrJoinDrawTag(tail, aOt->tagHead);
             } else {
-                head = node->tagHead;
+                head = aOt->tagHead;
                 sdfGrInitExPacket(head);
             }
-            tail = node->tagTail;
+            tail = aOt->tagTail;
         }
     }
     if (tail != NULL) {
@@ -659,37 +659,37 @@ sdfDrawTag_t *sdfGrOtClose(sdfGrOt_t *node) {
     return head;
 }
 
-void sdfPreDrawTagInit(sdfPreDrawTag_t *list) {
-    list->next = 0;
-    list->head = 0;
-    list->tail = 0;
-    list->pad = 0;
+void sdfPreDrawTagInit(sdfPreDrawTag_t *aTag) {
+    aTag->next = 0;
+    aTag->head = 0;
+    aTag->tail = 0;
+    aTag->pad = 0;
 }
 
-void sdfPreDrawTagLink(sdfPreDrawTag_t *list, SdfPacketPatchLink *node) {
-    if (list->tail == 0) {
-        list->head = node;
+void sdfPreDrawTagLink(sdfPreDrawTag_t *aTag, SdfPacketPatchLink *aHook) {
+    if (aTag->tail == 0) {
+        aTag->head = aHook;
     }
     else {
-        list->tail->next = node;
+        aTag->tail->next = aHook;
     }
-    list->tail = node;
-    node->next = NULL;
+    aTag->tail = aHook;
+    aHook->next = NULL;
 }
 
-void sdfPreDrawChainInit(sdfPreDrawChain_t *chain) {
-    chain->head = NULL;
-    chain->tail = NULL;
+void sdfPreDrawChainInit(sdfPreDrawChain_t *aChain) {
+    aChain->head = NULL;
+    aChain->tail = NULL;
 }
 
-void sdfPreDrawChainLink(sdfPreDrawChain_t *chain, sdfPreDrawTag_t *node) {
-    if (chain->tail == NULL) {
-        chain->head = node;
+void sdfPreDrawChainLink(sdfPreDrawChain_t *aChain, sdfPreDrawTag_t *aTag) {
+    if (aChain->tail == NULL) {
+        aChain->head = aTag;
     }
     else {
-        chain->tail->tail->next = node->tail;
+        aChain->tail->tail->next = aTag->tail;
     }
-    chain->tail = node;
+    aChain->tail = aTag;
 }
 
 void sdfGrSetRegsPacketHeader(sdfGrPacketHeader_t *header, s32 payloadQwords) {
@@ -702,20 +702,20 @@ void sdfGrSetRegsPacketHeader(sdfGrPacketHeader_t *header, s32 payloadQwords) {
     header->giftag.regs = SDF_GIF_REGISTER_AD;
 }
 
-void sdfGrSetRefGifPacket(SdfDmaReferenceChainPacket *packet, u32 sourceAddress, s32 qwordCount) {
-    packet->header.dmaWords.tag = SDF_DMA_CNT_ONE_WORD;
-    packet->header.dmaWords.vif = SDF_VIF_DIRECT_ONE_FLUSHE;
-    packet->header.giftag.parm = (u64)qwordCount | SDF_GIF_PACKED_AD_BITS;
-    packet->header.giftag.regs = SDF_GIF_REGISTER_AD;
-    packet->referenceTag = (u32)((qwordCount & SDF_DMA_QWC_MASK) | SDF_DMA_TAG_REF_WORD) | ((u64)(sourceAddress & SDF_DMA_ADDRESS_MASK) << 32);
-    packet->referenceVifCommands = SDF_VIF_DIRECT_ONE_NOP;
-    packet->nextTag = SDF_DMA_TAG_NEXT_WORD;
-    packet->zeroTailWord = 0;
+void sdfGrSetRefGifPacket(SdfDmaReferenceChainPacket *aPacket, u32 aData, s32 aQwords) {
+    aPacket->header.dmaWords.tag = SDF_DMA_CNT_ONE_WORD;
+    aPacket->header.dmaWords.vif = SDF_VIF_DIRECT_ONE_FLUSHE;
+    aPacket->header.giftag.parm = (u64)aQwords | SDF_GIF_PACKED_AD_BITS;
+    aPacket->header.giftag.regs = SDF_GIF_REGISTER_AD;
+    aPacket->referenceTag = (u32)((aQwords & SDF_DMA_QWC_MASK) | SDF_DMA_TAG_REF_WORD) | ((u64)(aData & SDF_DMA_ADDRESS_MASK) << 32);
+    aPacket->referenceVifCommands = SDF_VIF_DIRECT_ONE_NOP;
+    aPacket->nextTag = SDF_DMA_TAG_NEXT_WORD;
+    aPacket->zeroTailWord = 0;
 }
 
-void sdfGrSetDrawFramePacket(sdfGrDrawFramePacket_t *packet, s32 frameAddress, s32 width, s32 height,
-                  s32 frameFormat, s32 depthAddress, s32 depthFormat,
-                  s32 fieldOffset, s32 gsContext) {
+void sdfGrSetDrawFramePacket(sdfGrDrawFramePacket_t *aFrame, s32 aFrameAddr, s32 aW, s32 aH,
+                  s32 aPixelFormat, s32 aZBuffAddr, s32 aZBuffFormat,
+                  s32 aHalfOffset, s32 aContext) {
     s64 frameRegisterId;
     s64 depthRegisterId;
     s64 offsetRegisterId;
@@ -723,7 +723,7 @@ void sdfGrSetDrawFramePacket(sdfGrDrawFramePacket_t *packet, s32 frameAddress, s
     s32 xOffset;
     s32 yOffset;
 
-    if (gsContext == 0) {
+    if (aContext == 0) {
         frameRegisterId = SDF_GS_FRAME_1;
         depthRegisterId = SDF_GS_ZBUF_1;
         offsetRegisterId = SDF_GS_XYOFFSET_1;
@@ -734,55 +734,55 @@ void sdfGrSetDrawFramePacket(sdfGrDrawFramePacket_t *packet, s32 frameAddress, s
         offsetRegisterId = SDF_GS_XYOFFSET_2;
         scissorRegisterId = SDF_GS_SCISSOR_2;
     }
-    packet->scissor.reg = scissorRegisterId;
-    yOffset = (SDF_GS_CENTER_BIAS - height) << 3;
-    xOffset = (SDF_GS_CENTER_BIAS - width) << 3;
-    packet->frame.data = (s64)(frameFormat << 24) | (s64)(((width + 63) >> 6) << 16) | (s64)(frameAddress >> 11);
-    if (fieldOffset != 0) {
+    aFrame->scissor.reg = scissorRegisterId;
+    yOffset = (SDF_GS_CENTER_BIAS - aH) << 3;
+    xOffset = (SDF_GS_CENTER_BIAS - aW) << 3;
+    aFrame->frame.data = (s64)(aPixelFormat << 24) | (s64)(((aW + 63) >> 6) << 16) | (s64)(aFrameAddr >> 11);
+    if (aHalfOffset != 0) {
         yOffset += SDF_GS_FIELD_OFFSET_STEP;
     }
-    packet->frame.reg = frameRegisterId;
-    packet->zbuf.data = (s64)(depthFormat << 24) | (s64)(depthAddress >> 11);
-    packet->zbuf.reg = depthRegisterId;
-    packet->xyoffset.reg = offsetRegisterId;
-    packet->scissor.data = ((s64)(height - 1) << 48) | ((s64)(width - 1) << 16);
-    packet->xyoffset.data = xOffset | ((s64)yOffset << 32);
+    aFrame->frame.reg = frameRegisterId;
+    aFrame->zbuf.data = (s64)(aZBuffFormat << 24) | (s64)(aZBuffAddr >> 11);
+    aFrame->zbuf.reg = depthRegisterId;
+    aFrame->xyoffset.reg = offsetRegisterId;
+    aFrame->scissor.data = ((s64)(aH - 1) << 48) | ((s64)(aW - 1) << 16);
+    aFrame->xyoffset.data = xOffset | ((s64)yOffset << 32);
 }
 
-void sdfGrSetClearPacket(sdfGrClearPacket_t *packet, s32 width, s32 height, s32 unused0, s32 unused1) {
-    u32 lowerBounds = ((SDF_GS_CENTER_BIAS - height) << 19) | ((SDF_GS_CENTER_BIAS - width) << 3);
-    u32 upperBounds = ((height + SDF_GS_CENTER_BIAS) << 19) | ((width + SDF_GS_CENTER_BIAS) << 3);
+void sdfGrSetClearPacket(sdfGrClearPacket_t *aClear, s32 aW, s32 aH, s32 aPixelFormat, s32 aZBuffFormat) {
+    u32 lowerBounds = ((SDF_GS_CENTER_BIAS - aH) << 19) | ((SDF_GS_CENTER_BIAS - aW) << 3);
+    u32 upperBounds = ((aH + SDF_GS_CENTER_BIAS) << 19) | ((aW + SDF_GS_CENTER_BIAS) << 3);
 
-    packet->primitive.reg = SDF_GS_PRIM;
-    packet->xyz2[0].reg = SDF_GS_XYZ2;
-    packet->test.data = SDF_GS_CENTERED_VIEW_BOUNDS_TEST;
-    packet->test.reg = SDF_GS_TEST_1;
-    packet->primitive.data = SDF_GS_PRIMITIVE_SPRITE;
-    packet->rgbaq.data = (u64)0xFE00 << 46;
-    packet->rgbaq.reg = SDF_GS_RGBAQ;
-    packet->xyz2[0].data = lowerBounds;
-    packet->xyz2[1].data = upperBounds;
-    packet->xyz2[1].reg = SDF_GS_XYZ2;
+    aClear->primitive.reg = SDF_GS_PRIM;
+    aClear->xyz2[0].reg = SDF_GS_XYZ2;
+    aClear->test.data = SDF_GS_CENTERED_VIEW_BOUNDS_TEST;
+    aClear->test.reg = SDF_GS_TEST_1;
+    aClear->primitive.data = SDF_GS_PRIMITIVE_SPRITE;
+    aClear->rgbaq.data = (u64)0xFE00 << 46;
+    aClear->rgbaq.reg = SDF_GS_RGBAQ;
+    aClear->xyz2[0].data = lowerBounds;
+    aClear->xyz2[1].data = upperBounds;
+    aClear->xyz2[1].reg = SDF_GS_XYZ2;
 }
 
-void sdfGrSetDrawDefParmPacket(sdfGrRefGifPacketHeader_t *packet) {
-    packet->dmatag.data = 1;
-    packet->dmatag.reg = SDF_GS_PRMODECONT;
-    packet->giftag.data = 1;
-    packet->giftag.reg = SDF_GS_COLCLAMP;
-    packet->reftag.data = 0;
-    packet->reftag.reg = SDF_GS_DTHE;
-    packet->linktag.data = SDF_GS_DEFAULT_TEXA;
-    packet->linktag.reg = SDF_GS_TEXA;
+void sdfGrSetDrawDefParmPacket(sdfGrRefGifPacketHeader_t *aDef) {
+    aDef->dmatag.data = 1;
+    aDef->dmatag.reg = SDF_GS_PRMODECONT;
+    aDef->giftag.data = 1;
+    aDef->giftag.reg = SDF_GS_COLCLAMP;
+    aDef->reftag.data = 0;
+    aDef->reftag.reg = SDF_GS_DTHE;
+    aDef->linktag.data = SDF_GS_DEFAULT_TEXA;
+    aDef->linktag.reg = SDF_GS_TEXA;
 }
 
-void sdfGrSetDrawFrame(sdfGrDrawFrame_t *packet, s32 frameAddress, s32 width, s32 height,
-                           s32 frameFormat, s32 depthAddress, s32 depthFormat, s32 gsContext) {
-    sdfGrSetRegsPacketHeader(&packet->header, SDF_SCENE_DRAW_PAYLOAD_QWORDS);
-    sdfGrSetDrawFramePacket(&packet->registers, frameAddress, width, height, frameFormat, depthAddress, depthFormat, 0, gsContext);
+void sdfGrSetDrawFrame(sdfGrDrawFrame_t *aFrame, s32 aFrameAddr, s32 aW, s32 aH,
+                           s32 aPixelFormat, s32 aZBuffAddr, s32 aZBuffFormat, s32 aContext) {
+    sdfGrSetRegsPacketHeader(&aFrame->header, SDF_SCENE_DRAW_PAYLOAD_QWORDS);
+    sdfGrSetDrawFramePacket(&aFrame->registers, aFrameAddr, aW, aH, aPixelFormat, aZBuffAddr, aZBuffFormat, 0, aContext);
 }
 
-void sdfGrSetDrawEnv(SdfSceneDrawPacket *packet, sdfGrFrameSet_t *view, s32 bufferIndex) {
+void sdfGrSetDrawEnv(SdfSceneDrawPacket *aEnv, sdfGrFrameSet_t *aFrameSet, s32 aEvenOdd) {
     s32 frameAddress;
     s32 depthAddress;
     s32 width;
@@ -790,87 +790,87 @@ void sdfGrSetDrawEnv(SdfSceneDrawPacket *packet, sdfGrFrameSet_t *view, s32 buff
     s32 frameFormat;
     s32 depthFormat;
 
-    sdfGrSetRegsPacketHeader(&packet->header, SDF_TEXTURE_SCENE_PAYLOAD_QWORDS);
-    frameAddress = view->buffers[bufferIndex]->addr;
-    depthAddress = view->buffers[SDF_GRAPH_DEPTH_BUFFER_INDEX]->addr;
-    width = view->width;
-    frameFormat = view->bufferFormat;
-    height = view->height;
-    depthFormat = view->auxiliaryFormat;
-    sdfGrSetDrawFramePacket(&packet->contextOne, frameAddress, width, height, frameFormat, depthAddress, depthFormat, D_0055188A, 0);
-    sdfGrSetDrawFramePacket(&packet->contextTwo, frameAddress, width, height, frameFormat, depthAddress, depthFormat, D_0055188A, 1);
-    sdfGrSetClearPacket(&packet->centeredBounds, view->width, view->height, view->bufferFormat, view->auxiliaryFormat);
-    packet->blendState.contextOne.test.data = SDF_GS_SCENE_TEST;
-    packet->blendState.contextOne.test.reg = SDF_GS_TEST_1;
-    packet->blendState.contextOne.alpha.data = SDF_GS_DEFAULT_ALPHA;
-    packet->blendState.contextOne.alpha.reg = SDF_GS_ALPHA_1;
-    packet->blendState.contextTwo.test.data = SDF_GS_SCENE_TEST;
-    packet->blendState.contextTwo.test.reg = SDF_GS_TEST_2;
-    packet->blendState.contextTwo.alpha.data = SDF_GS_DEFAULT_ALPHA;
-    packet->blendState.contextTwo.alpha.reg = SDF_GS_ALPHA_2;
-    sdfGrSetDrawDefParmPacket(&packet->drawDefaults);
+    sdfGrSetRegsPacketHeader(&aEnv->header, SDF_TEXTURE_SCENE_PAYLOAD_QWORDS);
+    frameAddress = aFrameSet->buffers[aEvenOdd]->addr;
+    depthAddress = aFrameSet->buffers[SDF_GRAPH_DEPTH_BUFFER_INDEX]->addr;
+    width = aFrameSet->width;
+    frameFormat = aFrameSet->bufferFormat;
+    height = aFrameSet->height;
+    depthFormat = aFrameSet->auxiliaryFormat;
+    sdfGrSetDrawFramePacket(&aEnv->contextOne, frameAddress, width, height, frameFormat, depthAddress, depthFormat, D_0055188A, 0);
+    sdfGrSetDrawFramePacket(&aEnv->contextTwo, frameAddress, width, height, frameFormat, depthAddress, depthFormat, D_0055188A, 1);
+    sdfGrSetClearPacket(&aEnv->centeredBounds, aFrameSet->width, aFrameSet->height, aFrameSet->bufferFormat, aFrameSet->auxiliaryFormat);
+    aEnv->blendState.contextOne.test.data = SDF_GS_SCENE_TEST;
+    aEnv->blendState.contextOne.test.reg = SDF_GS_TEST_1;
+    aEnv->blendState.contextOne.alpha.data = SDF_GS_DEFAULT_ALPHA;
+    aEnv->blendState.contextOne.alpha.reg = SDF_GS_ALPHA_1;
+    aEnv->blendState.contextTwo.test.data = SDF_GS_SCENE_TEST;
+    aEnv->blendState.contextTwo.test.reg = SDF_GS_TEST_2;
+    aEnv->blendState.contextTwo.alpha.data = SDF_GS_DEFAULT_ALPHA;
+    aEnv->blendState.contextTwo.alpha.reg = SDF_GS_ALPHA_2;
+    sdfGrSetDrawDefParmPacket(&aEnv->drawDefaults);
 }
 
 INCLUDE_ASM(const s32, "sdf/sdfDraw", sdfGrStdDrawEnvPredraw);
 
-void sdfGrSetStdDrawEnv(sdfSceneNode_t *node, sdfGrFrameSet_t *view) {
-    sdfGrSetRegsPacketHeader(&node->header, SDF_TEXTURE_SCENE_PAYLOAD_QWORDS);
-    node->view = view;
-    node->link.patch = sdfGrStdDrawEnvPredraw;
-    sdfGrSetClearPacket(&node->centeredBounds, view->width, view->height, view->bufferFormat, view->auxiliaryFormat);
-    node->blendState.contextOne.test.data = SDF_GS_SCENE_TEST;
-    node->blendState.contextOne.test.reg = SDF_GS_TEST_1;
-    node->blendState.contextOne.alpha.data = SDF_GS_DEFAULT_ALPHA;
-    node->blendState.contextOne.alpha.reg = SDF_GS_ALPHA_1;
-    node->blendState.contextTwo.test.data = SDF_GS_SCENE_TEST;
-    node->blendState.contextTwo.test.reg = SDF_GS_TEST_2;
-    node->blendState.contextTwo.alpha.data = SDF_GS_DEFAULT_ALPHA;
-    node->blendState.contextTwo.alpha.reg = SDF_GS_ALPHA_2;
-    sdfGrSetDrawDefParmPacket(&node->drawDefaults);
+void sdfGrSetStdDrawEnv(sdfSceneNode_t *aEnv, sdfGrFrameSet_t *aFrameSet) {
+    sdfGrSetRegsPacketHeader(&aEnv->header, SDF_TEXTURE_SCENE_PAYLOAD_QWORDS);
+    aEnv->view = aFrameSet;
+    aEnv->link.patch = sdfGrStdDrawEnvPredraw;
+    sdfGrSetClearPacket(&aEnv->centeredBounds, aFrameSet->width, aFrameSet->height, aFrameSet->bufferFormat, aFrameSet->auxiliaryFormat);
+    aEnv->blendState.contextOne.test.data = SDF_GS_SCENE_TEST;
+    aEnv->blendState.contextOne.test.reg = SDF_GS_TEST_1;
+    aEnv->blendState.contextOne.alpha.data = SDF_GS_DEFAULT_ALPHA;
+    aEnv->blendState.contextOne.alpha.reg = SDF_GS_ALPHA_1;
+    aEnv->blendState.contextTwo.test.data = SDF_GS_SCENE_TEST;
+    aEnv->blendState.contextTwo.test.reg = SDF_GS_TEST_2;
+    aEnv->blendState.contextTwo.alpha.data = SDF_GS_DEFAULT_ALPHA;
+    aEnv->blendState.contextTwo.alpha.reg = SDF_GS_ALPHA_2;
+    sdfGrSetDrawDefParmPacket(&aEnv->drawDefaults);
 }
 
-void sdfGrLinkStdDrawEnv(sdfDrawTag_t *dmaList, sdfPreDrawTag_t *linkedList, SdfPacketPatchLink *linkedNode) {
-    sdfPreDrawTagLink(linkedList, linkedNode);
-    sdfDrawTagLink(dmaList, (s32)linkedNode + SDF_QWORD_BYTES);
+void sdfGrLinkStdDrawEnv(sdfDrawTag_t *aTag, sdfPreDrawTag_t *aPreDrawTag, SdfPacketPatchLink *aEnv) {
+    sdfPreDrawTagLink(aPreDrawTag, aEnv);
+    sdfDrawTagLink(aTag, (s32)aEnv + SDF_QWORD_BYTES);
 }
 
-void sdfGrSetFrameMaskRGB(const u8 *source, SdfDmaReferenceChainPacket *packet, s32 gsContext) {
-    if (gsContext == 0) {
-        sdfGrSetRefGifPacket(packet, (u32)(source + 0x180), 1);
+void sdfGrSetFrameMaskRGB(const u8 *aEnv, SdfDmaReferenceChainPacket *aHdr, s32 aContext) {
+    if (aContext == 0) {
+        sdfGrSetRefGifPacket(aHdr, (u32)(aEnv + 0x180), 1);
         return;
     }
-    sdfGrSetRefGifPacket(packet, (u32)(source + 400), 1);
+    sdfGrSetRefGifPacket(aHdr, (u32)(aEnv + 400), 1);
 }
 
-void sdfGrSetFrameMaskReset(const u8 *source, SdfDmaReferenceChainPacket *packet, s32 gsContext) {
-    if (gsContext == 0) {
-        sdfGrSetRefGifPacket(packet, (u32)(source + 0x70), 1);
+void sdfGrSetFrameMaskReset(const u8 *aEnv, SdfDmaReferenceChainPacket *aHdr, s32 aContext) {
+    if (aContext == 0) {
+        sdfGrSetRefGifPacket(aHdr, (u32)(aEnv + 0x70), 1);
         return;
     }
-    sdfGrSetRefGifPacket(packet, (u32)(source + 0xb0), 1);
+    sdfGrSetRefGifPacket(aHdr, (u32)(aEnv + 0xb0), 1);
 }
 
-void sdfGrLinkDispFrameTex(sdfDrawTag_t *list, u32 source, sdfGrRefPacketHeader_t *node) {
-    node->vifCommands = (((u64)0x50000004 << 16) | 0x1000) << 16;
-    node->dmaTag = ((u64)((source + 0x1a0) & 0xfffffff) << 32) | 0x30000004;
-    QUAD_ZERO(node->nextTag);
-    sdfDrawTagLinkRef(list, (u32)node);
+void sdfGrLinkDispFrameTex(sdfDrawTag_t *aTag, u32 aEnv, sdfGrRefPacketHeader_t *aPkt) {
+    aPkt->vifCommands = (((u64)0x50000004 << 16) | 0x1000) << 16;
+    aPkt->dmaTag = ((u64)((aEnv + 0x1a0) & 0xfffffff) << 32) | 0x30000004;
+    QUAD_ZERO(aPkt->nextTag);
+    sdfDrawTagLinkRef(aTag, (u32)aPkt);
 }
 
-void sdfGrLinkDrawFrameTex(sdfDrawTag_t *list, u32 source, sdfGrRefPacketHeader_t *node) {
-    node->vifCommands = (((u64)0x50000004 << 16) | 0x1000) << 16;
-    node->dmaTag = ((u64)((source + 0x1e0) & 0xfffffff) << 32) | 0x30000004;
-    QUAD_ZERO(node->nextTag);
-    sdfDrawTagLinkRef(list, (u32)node);
+void sdfGrLinkDrawFrameTex(sdfDrawTag_t *aTag, u32 aEnv, sdfGrRefPacketHeader_t *aPkt) {
+    aPkt->vifCommands = (((u64)0x50000004 << 16) | 0x1000) << 16;
+    aPkt->dmaTag = ((u64)((aEnv + 0x1e0) & 0xfffffff) << 32) | 0x30000004;
+    QUAD_ZERO(aPkt->nextTag);
+    sdfDrawTagLinkRef(aTag, (u32)aPkt);
 }
 
-void sdfGrFramePacketPredraw(sdfGrFramePacket_t *packet, s32 bufferIndex) {
-    sdfGrFrameSet_t *view = packet->source;
+void sdfGrFramePacketPredraw(sdfGrFramePacket_t *aPre, s32 aEvenOdd) {
+    sdfGrFrameSet_t *view = aPre->source;
     u64 frameRegister;
     u64 depthRegister;
     s16 widthPages;
 
-    if (packet->mode == 0) {
+    if (aPre->mode == 0) {
         frameRegister = 0x4C;
         depthRegister = 0x4E;
     } else {
@@ -878,25 +878,25 @@ void sdfGrFramePacketPredraw(sdfGrFramePacket_t *packet, s32 bufferIndex) {
         depthRegister = 0x4F;
     }
     widthPages = (view->width + 63) >> 6;
-    packet->frame.data = ((u64)packet->frameMask << 32) |
-        (u64)(view->buffers[bufferIndex]->addr >> 11) |
+    aPre->frame.data = ((u64)aPre->frameMask << 32) |
+        (u64)(view->buffers[aEvenOdd]->addr >> 11) |
         ((s64)(view->bufferFormat << 24) | ((s64)widthPages << 16));
-    packet->frame.reg = frameRegister;
-    packet->zbuf.data = (s64)(view->auxiliaryFormat << 24) |
+    aPre->frame.reg = frameRegister;
+    aPre->zbuf.data = (s64)(view->auxiliaryFormat << 24) |
         (u64)(view->buffers[2]->addr >> 11);
-    packet->zbuf.reg = depthRegister;
+    aPre->zbuf.reg = depthRegister;
 }
 
-void sdfGrSetFramePacket(sdfGrFramePacket_t *packet, sdfGrFrameSet_t *source, u32 frameMask, s32 region, s32 mode) {
-    sdfGrSetRegsPacketHeader(&packet->packetHeader, 2);
-    packet->mode = mode;
-    packet->source = source;
-    packet->frameMask = frameMask;
-    packet->region = region;
-    packet->prepare = sdfGrFramePacketPredraw;
+void sdfGrSetFramePacket(sdfGrFramePacket_t *aFrame, sdfGrFrameSet_t *aFrameSet, u32 aFrameMask, s32 aZBuffMask, s32 aContext) {
+    sdfGrSetRegsPacketHeader(&aFrame->packetHeader, 2);
+    aFrame->mode = aContext;
+    aFrame->source = aFrameSet;
+    aFrame->frameMask = aFrameMask;
+    aFrame->region = aZBuffMask;
+    aFrame->prepare = sdfGrFramePacketPredraw;
 }
 
-void sdfGrReqDraw(sdfDrawTag_t *list, sdfPreDrawChain_t *chain) {
+void sdfGrReqDraw(sdfDrawTag_t *aTag, sdfPreDrawChain_t *aPreDraw) {
     u32 start = sdfGetRunTimeCountBase();
     s32 interrupts;
     s32 index;
@@ -914,12 +914,12 @@ void sdfGrReqDraw(sdfDrawTag_t *list, sdfPreDrawChain_t *chain) {
     slot->packetList = NULL;
     slot->callbackHead = NULL;
     slot->slotUpdatePhase = 0;
-    if (list != NULL && list->tail != 0) {
-        slot->packetList = list;
-        if (chain != NULL) {
-            slot->callbackHead = chain->head->head;
+    if (aTag != NULL && aTag->tail != 0) {
+        slot->packetList = aTag;
+        if (aPreDraw != NULL) {
+            slot->callbackHead = aPreDraw->head->head;
             if (slot->callbackHead != NULL) {
-                chain->tail->tail->next = NULL;
+                aPreDraw->tail->tail->next = NULL;
             }
         }
         slot->queuedBufferIndex = sdfFrameId;
@@ -932,8 +932,8 @@ void sdfGrReqDraw(sdfDrawTag_t *list, sdfPreDrawChain_t *chain) {
     }
 }
 
-void sdfGrReqDrawDelay(s32 value) {
-    sdfReqDrawDelayCount = (value < 0) ? 0 : value;
+void sdfGrReqDrawDelay(s32 count) {
+    sdfReqDrawDelayCount = (count < 0) ? 0 : count;
 }
 
 void sdfGrInitDraw(void) {

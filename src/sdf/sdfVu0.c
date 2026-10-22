@@ -14,56 +14,56 @@ void ReverseMatrix(void);
 
 void InversMatrix(void);
 
-void SetRotateMatrixX(f32 angle);
+void SetRotateMatrixX(f32 aAngle);
 
-void SetRotateMatrixY(f32 angle);
+void SetRotateMatrixY(f32 aAngle);
 
-void SetRotateMatrixZ(f32 angle);
+void SetRotateMatrixZ(f32 aAngle);
 
-void StoreRotateMatrixAxis(f32 angle, const sdfVector3_t *axis, sdfMatrix4_t *matrix);
+void StoreRotateMatrixAxis(f32 aAngle, const sdfVector3_t *aAxis, sdfMatrix4_t *aMtx);
 
-void SetRotateMatrixAxis(f32 angle, const sdfVector3_t* axis);
+void SetRotateMatrixAxis(f32 aAngle, const sdfVector3_t* aAxis);
 
-void SetRotateMatrixX_B(f32 angle);
+void SetRotateMatrixX_B(f32 aAngle);
 
-void SetRotateMatrixY_B(f32 angle);
+void SetRotateMatrixY_B(f32 aAngle);
 
-void SetRotateMatrixZ_B(f32 angle);
+void SetRotateMatrixZ_B(f32 aAngle);
 
-void SetRotateMatrixAxis_B(const sdfVector3_t* axis, f32 angle);
+void SetRotateMatrixAxis_B(const sdfVector3_t* aAngle, f32 aAxis);
 
-void RotateMatrixX(f32 angle);
+void RotateMatrixX(f32 aAngle);
 
-void RotateMatrixY(f32 angle);
+void RotateMatrixY(f32 aAngle);
 
-void RotateMatrixZ(f32 angle);
+void RotateMatrixZ(f32 aAngle);
 
-void SetRotateMatrixXYZ(const sdfVector3_t *rot);
+void SetRotateMatrixXYZ(const sdfVector3_t *aAngles);
 
 void MultMatrixNoArg(void);
 
 void MultMatrixRevNoArg(void);
 
-void MultMatrix(void *matrix);
+void MultMatrix(void *aMatrix);
 
-void MultMatrixRev(const void *matrix);
+void MultMatrixRev(const void *aMatrix);
 
-void LookAtMatrix(const void *directionPoint, const void *basisOrigin, const void *up);
+void LookAtMatrix(const void *aTarget, const void *aEye, const void *aDown);
 
-void LoadMatrix(const void *matrix) {
-    SDF_VU0_LOADMATRIX(matrix);
+void LoadMatrix(const void *aMatrix) {
+    SDF_VU0_LOADMATRIX(aMatrix);
 }
 
-void LoadMatrix_B(const void *matrix) {
-    SDF_VU0_LOADMATRIX_B(matrix);
+void LoadMatrix_B(const void *aMatrix) {
+    SDF_VU0_LOADMATRIX_B(aMatrix);
 }
 
-void StoreMatrix(void *matrix) {
-    SDF_VU0_STOREMATRIX(matrix);
+void StoreMatrix(void *aMatrix) {
+    SDF_VU0_STOREMATRIX(aMatrix);
 }
 
-void StoreMatrix_B(void *matrix) {
-    SDF_VU0_STOREMATRIX_B(matrix);
+void StoreMatrix_B(void *aMatrix) {
+    SDF_VU0_STOREMATRIX_B(aMatrix);
 }
 
 void CopyMatrixAtoB(void) {
@@ -99,8 +99,8 @@ void LoadIdentity_B(void) {
 }
 
 /* vu0 routine: store the unit matrix built from vf0 by MMI lane shuffles */
-void StoreIdentity(f32 *matrix) {
-    SDF_VU0_STOREIDENTITY(matrix);
+void StoreIdentity(f32 *aMatrix) {
+    SDF_VU0_STOREIDENTITY(aMatrix);
 }
 
 /* libvu0: sceVu0TransposeMatrix, register form (vf28-vf31 in and out) */
@@ -118,10 +118,10 @@ void InversMatrix(void) {
     VU0_MATRIX4_INVERT_SCALED();
 }
 
-void SetRotateMatrixX(f32 angle) {
+void SetRotateMatrixX(f32 aAngle) {
     volatile f32 m[4][4] __attribute__((aligned(16)));
-    f32 c = cosf(angle);
-    f32 s = sinf(angle);
+    f32 c = cosf(aAngle);
+    f32 s = sinf(aAngle);
 
     SDF_VU0_STOREIDENTITY((f32 *)m);
     m[1][1] = c;
@@ -131,10 +131,10 @@ void SetRotateMatrixX(f32 angle) {
     SDF_VU0_LOADMATRIX((f32 *)m);
 }
 
-void SetRotateMatrixY(f32 angle) {
+void SetRotateMatrixY(f32 aAngle) {
     volatile f32 m[4][4] __attribute__((aligned(16)));
-    f32 c = cosf(angle);
-    f32 s = sinf(angle);
+    f32 c = cosf(aAngle);
+    f32 s = sinf(aAngle);
 
     SDF_VU0_STOREIDENTITY((f32 *)m);
     m[0][0] = c;
@@ -144,10 +144,10 @@ void SetRotateMatrixY(f32 angle) {
     SDF_VU0_LOADMATRIX((f32 *)m);
 }
 
-void SetRotateMatrixZ(f32 angle) {
+void SetRotateMatrixZ(f32 aAngle) {
     volatile f32 m[4][4] __attribute__((aligned(16)));
-    f32 c = cosf(angle);
-    f32 s = sinf(angle);
+    f32 c = cosf(aAngle);
+    f32 s = sinf(aAngle);
 
     SDF_VU0_STOREIDENTITY((f32 *)m);
     m[0][0] = c;
@@ -157,15 +157,15 @@ void SetRotateMatrixZ(f32 angle) {
     SDF_VU0_LOADMATRIX((f32 *)m);
 }
 
-void StoreRotateMatrixAxis(f32 angle, const sdfVector3_t *axis, sdfMatrix4_t *matrix) {
+void StoreRotateMatrixAxis(f32 aAngle, const sdfVector3_t *aAxis, sdfMatrix4_t *aMtx) {
     f32 normalizedAxis[4];
     f32 x;
     f32 y;
     f32 z;
-    f32 cosine = cosf(angle);
-    f32 sine = sinf(angle);
+    f32 cosine = cosf(aAngle);
+    f32 sine = sinf(aAngle);
 
-    SDF_VU0_LOADVECTOR(axis);
+    SDF_VU0_LOADVECTOR(aAxis);
     SDF_VU0_NORMALIZE();
     SDF_VU0_STOREVECTOR(normalizedAxis);
 
@@ -173,32 +173,32 @@ void StoreRotateMatrixAxis(f32 angle, const sdfVector3_t *axis, sdfMatrix4_t *ma
     y = normalizedAxis[1];
     z = normalizedAxis[2];
 
-    matrix->m[0] = x * x + (1.0f - x * x) * cosine;
-    matrix->m[1] = x * y * (1.0f - cosine) + z * sine;
-    matrix->m[2] = x * z * (1.0f - cosine) - y * sine;
-    matrix->m[3] = 0.0f;
-    matrix->m[4] = x * y * (1.0f - cosine) - z * sine;
-    matrix->m[5] = y * y + (1.0f - y * y) * cosine;
-    matrix->m[6] = y * z * (1.0f - cosine) + x * sine;
-    matrix->m[7] = 0.0f;
-    matrix->m[8] = x * z * (1.0f - cosine) + y * sine;
-    matrix->m[9] = y * z * (1.0f - cosine) - x * sine;
-    matrix->m[10] = z * z + (1.0f - z * z) * cosine;
-    matrix->m[11] = 0.0f;
-    SDF_VU0_STOREIDENTITYVECTOR(&matrix->m[12]);
+    aMtx->m[0] = x * x + (1.0f - x * x) * cosine;
+    aMtx->m[1] = x * y * (1.0f - cosine) + z * sine;
+    aMtx->m[2] = x * z * (1.0f - cosine) - y * sine;
+    aMtx->m[3] = 0.0f;
+    aMtx->m[4] = x * y * (1.0f - cosine) - z * sine;
+    aMtx->m[5] = y * y + (1.0f - y * y) * cosine;
+    aMtx->m[6] = y * z * (1.0f - cosine) + x * sine;
+    aMtx->m[7] = 0.0f;
+    aMtx->m[8] = x * z * (1.0f - cosine) + y * sine;
+    aMtx->m[9] = y * z * (1.0f - cosine) - x * sine;
+    aMtx->m[10] = z * z + (1.0f - z * z) * cosine;
+    aMtx->m[11] = 0.0f;
+    SDF_VU0_STOREIDENTITYVECTOR(&aMtx->m[12]);
 }
 
-void SetRotateMatrixAxis(f32 angle, const sdfVector3_t* axis)
+void SetRotateMatrixAxis(f32 aAngle, const sdfVector3_t* aAxis)
 {
     sdfMatrix4_t matrix;
-    StoreRotateMatrixAxis(angle, axis, &matrix);
+    StoreRotateMatrixAxis(aAngle, aAxis, &matrix);
     SDF_VU0_LOADMATRIX(&matrix);
 }
 
-void SetRotateMatrixX_B(f32 angle) {
+void SetRotateMatrixX_B(f32 aAngle) {
     volatile f32 m[4][4] __attribute__((aligned(16)));
-    f32 c = cosf(angle);
-    f32 s = sinf(angle);
+    f32 c = cosf(aAngle);
+    f32 s = sinf(aAngle);
 
     SDF_VU0_STOREIDENTITY((f32 *)m);
     m[1][1] = c;
@@ -208,10 +208,10 @@ void SetRotateMatrixX_B(f32 angle) {
     SDF_VU0_LOADMATRIX_B((f32 *)m);
 }
 
-void SetRotateMatrixY_B(f32 angle) {
+void SetRotateMatrixY_B(f32 aAngle) {
     volatile f32 m[4][4] __attribute__((aligned(16)));
-    f32 c = cosf(angle);
-    f32 s = sinf(angle);
+    f32 c = cosf(aAngle);
+    f32 s = sinf(aAngle);
 
     SDF_VU0_STOREIDENTITY((f32 *)m);
     m[0][0] = c;
@@ -221,10 +221,10 @@ void SetRotateMatrixY_B(f32 angle) {
     SDF_VU0_LOADMATRIX_B((f32 *)m);
 }
 
-void SetRotateMatrixZ_B(f32 angle) {
+void SetRotateMatrixZ_B(f32 aAngle) {
     volatile f32 m[4][4] __attribute__((aligned(16)));
-    f32 c = cosf(angle);
-    f32 s = sinf(angle);
+    f32 c = cosf(aAngle);
+    f32 s = sinf(aAngle);
 
     SDF_VU0_STOREIDENTITY((f32 *)m);
     m[0][0] = c;
@@ -234,46 +234,46 @@ void SetRotateMatrixZ_B(f32 angle) {
     SDF_VU0_LOADMATRIX_B((f32 *)m);
 }
 
-void SetRotateMatrixAxis_B(const sdfVector3_t* axis, f32 angle)
+void SetRotateMatrixAxis_B(const sdfVector3_t* aAngle, f32 aAxis)
 {
     sdfMatrix4_t matrix;
-    StoreRotateMatrixAxis(angle, axis, &matrix);
+    StoreRotateMatrixAxis(aAxis, aAngle, &matrix);
     SDF_VU0_LOADMATRIX_B(&matrix);
 }
 
 /* vu0 routine: rotate the vf29/vf30 pair by angle (vf29 = vf29*c + vf30*s, vf30 = vf29*s - vf30*c) */
-void RotateMatrixX(f32 angle)
+void RotateMatrixX(f32 aAngle)
 {
-    f32 c = cosf(angle);
-    f32 s = sinf(angle);
+    f32 c = cosf(aAngle);
+    f32 s = sinf(aAngle);
 
     VU0_ROTATE_BASIS_X(c, s);
 }
 
 /* vu0 routine: rotate the vf28/vf30 pair by angle (vf28 = vf30*s - vf28*c, vf30 = vf30*c + vf28*s) */
-void RotateMatrixY(f32 angle)
+void RotateMatrixY(f32 aAngle)
 {
-    f32 c = cosf(angle);
-    f32 s = sinf(angle);
+    f32 c = cosf(aAngle);
+    f32 s = sinf(aAngle);
 
     VU0_ROTATE_BASIS_Y(c, s);
 }
 
 /* vu0 routine: rotate the vf28/vf29 pair by angle (vf28 = vf29*s + vf28*c, vf29 = vf28*s - vf29*c) */
-void RotateMatrixZ(f32 angle)
+void RotateMatrixZ(f32 aAngle)
 {
-    f32 c = cosf(angle);
-    f32 s = sinf(angle);
+    f32 c = cosf(aAngle);
+    f32 s = sinf(aAngle);
 
     VU0_ROTATE_BASIS_Z(c, s);
 }
 
-void SetRotateMatrixXYZ(const sdfVector3_t *rot)
+void SetRotateMatrixXYZ(const sdfVector3_t *aAngles)
 {
-    SetRotateMatrixX(rot->x);
-    SetRotateMatrixY_B(rot->y);
+    SetRotateMatrixX(aAngles->x);
+    SetRotateMatrixY_B(aAngles->y);
     MultMatrixRevNoArg();
-    SetRotateMatrixZ_B(rot->z);
+    SetRotateMatrixZ_B(aAngles->z);
     MultMatrixRevNoArg();
 }
 
@@ -301,20 +301,20 @@ void MultMatrixRevNoArg_C(void)
     VU0_MATRIX4_MUL_BANK_C_LEFT();
 }
 
-void MultMatrix(void *matrix) {
-    SDF_VU0_LOADMATRIX_B(matrix);
+void MultMatrix(void *aMatrix) {
+    SDF_VU0_LOADMATRIX_B(aMatrix);
     MultMatrixNoArg();
 }
 
-void MultMatrixRev(const void *matrix) {
-    SDF_VU0_LOADMATRIX_B(matrix);
+void MultMatrixRev(const void *aMatrix) {
+    SDF_VU0_LOADMATRIX_B(aMatrix);
     MultMatrixRevNoArg();
 }
 
-void ApplyMatrix(void *dst, const void *src) {
-    SDF_VU0_LOADVECTOR(src);
+void ApplyMatrix(void *aReVector, const void *aVector) {
+    SDF_VU0_LOADVECTOR(aVector);
     SDF_VU0_APPLYMATRIX();
-    SDF_VU0_STOREVECTOR(dst);
+    SDF_VU0_STOREVECTOR(aReVector);
 }
 
 f32 InnerProduct(const void *a, const void *b) {
@@ -326,24 +326,24 @@ f32 InnerProduct(const void *a, const void *b) {
     return product;
 }
 
-void OuterProduct(void *dst, const void *a, const void *b) {
-    SDF_VU0_LOADVECTOR(a);
-    SDF_VU0_LOADVECTOR_B(b);
+void OuterProduct(void *aReVector, const void *aVectorA, const void *aVectorB) {
+    SDF_VU0_LOADVECTOR(aVectorA);
+    SDF_VU0_LOADVECTOR_B(aVectorB);
     SDF_VU0_OUTERPRODUCT();
-    SDF_VU0_STOREVECTOR(dst);
+    SDF_VU0_STOREVECTOR(aReVector);
 }
 
 /* vu0 routine: look-at basis in vf28-vf31 (forward, right, up, eye), then its rigid inverse */
-void LookAtMatrix(const void *directionPoint, const void *basisOrigin, const void *up) {
-    SDF_VU0_LOADVECTOR(basisOrigin);
+void LookAtMatrix(const void *aTarget, const void *aEye, const void *aDown) {
+    SDF_VU0_LOADVECTOR(aEye);
     SDF_VU0_SET_ROW3();
     SDF_VU0_COPYVECTOR_A_TO_B();
-    SDF_VU0_LOADVECTOR(directionPoint);
+    SDF_VU0_LOADVECTOR(aTarget);
     SDF_VU0_SUBVECTOR();
     SDF_VU0_NORMALIZE();
     SDF_VU0_SET_ROW2();
     SDF_VU0_COPYVECTOR_A_TO_B();
-    SDF_VU0_LOADVECTOR(up);
+    SDF_VU0_LOADVECTOR(aDown);
     SDF_VU0_OUTERPRODUCT();
     SDF_VU0_NORMALIZE();
     SDF_VU0_SET_ROW0();
