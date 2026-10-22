@@ -673,7 +673,7 @@ dds3ModelEffectCtrlr_t *mdlCreateEffectCtrlr(mdlObj_t *aHandle, s32 aType, s32 a
     dds3ModelEffectCtrlr_t *previousHead = aHandle->resourceItems;
     item->type = aType;
     item->next = previousHead;
-    item->motionSlotIndex = aPlayGroup;
+    item->playGroup = aPlayGroup;
     aHandle->resourceItems = item;
     return item;
 }
@@ -694,7 +694,7 @@ void *mdlEffectDup_D3P(mdlPartSlot_t *efcResPtr) {
 mdlPartSlot_t *mdlGetEffectResrc(mdlObj_t *handle, s32 effectIndex) {
     sdfItemArray_t *slotTable;
 
-    slotTable = handle->sub->partList;
+    slotTable = handle->sub->effectResrcList;
     if (slotTable == NULL) {
         return NULL;
     }
@@ -856,7 +856,7 @@ void mdlStopEffect(mdlObj_t *aHandle, s32 aPlayGroup) {
     dds3ModelEffectCtrlr_t **itemLink = &aHandle->resourceItems;
     dds3ModelEffectCtrlr_t *item = *itemLink;
     while (item != 0) {
-        if (item->motionSlotIndex == aPlayGroup) {
+        if (item->playGroup == aPlayGroup) {
             dds3ModelEffectCtrlr_t *nextItem = item->next;
             mdlFreeEffect(item);
             *itemLink = nextItem;

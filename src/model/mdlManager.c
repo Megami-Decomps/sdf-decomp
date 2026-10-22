@@ -22,10 +22,10 @@ typedef struct mdlLoadingTag_t
 
 typedef struct
 {
-    sdfModelTexList_t *resourceList;
-    sdfModelDef_t *itemList;
-    sdfMemHandle_t *requestAllocation;
-    sdfMotionPlayBook_t *motionTable;
+    sdfModelTexList_t *texList;
+    sdfModelDef_t *modelDefPtr;
+    sdfMemHandle_t *modelDefHandle;
+    sdfMotionPlayBook_t *playbookPtr;
     sdfMemHandle_t *playbookHandle;
     void *partInfo;
     sdfMemHandle_t *resourceHandle;
@@ -162,7 +162,7 @@ typedef struct
 typedef struct
 {
     u16 kind;
-    u16 index;
+    u16 minor;
     u16 unk4;
     u16 unk6;
 } dds3ModelFileIndex_t;
@@ -316,7 +316,7 @@ dds3ModelResrc_t *mdlSearchResrc(s32 aMajor, s32 aMinor)
     entry = mdlResrcMajorList[aMajor];
     while (entry != NULL)
     {
-        if (entry->type == aMinor)
+        if (entry->minor == aMinor)
         {
             break;
         }
@@ -397,25 +397,25 @@ void mdlRegist(s32 aMajor, s32 aMinor, s32 aFlag,
     }
     mdlResrcMajorList[aMajor] = groupNode;
     groupNode->next = previousHead;
-    groupNode->group = aMajor;
-    groupNode->type = aMinor;
-    groupNode->resourceList = aTexList;
-    groupNode->itemList = aData;
-    groupNode->requestAllocation = aHandle;
+    groupNode->major = aMajor;
+    groupNode->minor = aMinor;
+    groupNode->texList = aTexList;
+    groupNode->modelDefPtr = aData;
+    groupNode->modelDefHandle = aHandle;
     groupNode->prev = NULL;
-    groupNode->modelContext = NULL;
+    groupNode->models = NULL;
     for (slotIndex = 0; slotIndex != MDL_SLOT_COUNT; slotIndex++)
     {
         groupNode->slots[slotIndex].flags = 0;
-        groupNode->slots[slotIndex].motionTable = NULL;
+        groupNode->slots[slotIndex].ptr = NULL;
         groupNode->slots[slotIndex].resourceHandle = NULL;
     }
     groupNode->ownsResources = aFlag & 1;
     groupNode->resourceHandle = NULL;
     groupNode->partInfo = NULL;
-    groupNode->partList = NULL;
+    groupNode->effectResrcList = NULL;
     groupNode->scale = 1.0f;
-    groupNode->objectRadius = 100.0f;
+    groupNode->radius = 100.0f;
 }
 
 void mdlUnRegistResrc(dds3ModelResrc_t *resrc_p)
@@ -433,7 +433,7 @@ void mdlUnRegistResrc(dds3ModelResrc_t *resrc_p)
     nextNode = resrc_p->next;
     if (previousNode == NULL)
     {
-        mdlResrcMajorList[resrc_p->group] = nextNode;
+        mdlResrcMajorList[resrc_p->major] = nextNode;
     }
     else
     {
@@ -445,17 +445,17 @@ void mdlUnRegistResrc(dds3ModelResrc_t *resrc_p)
     }
     ownsResources = resrc_p->ownsResources;
     resrc_p->ownsResources = 0;
-    if (resrc_p->modelContext != NULL)
+    if (resrc_p->models != NULL)
     {
         do
         {
-            mdlFree(resrc_p->modelContext);
-        } while (resrc_p->modelContext != NULL);
+            mdlFree(resrc_p->models);
+        } while (resrc_p->models != NULL);
     }
     if (ownsResources != 0)
     {
-        sdfTexListFree(resrc_p->resourceList, 1);
-        sdfMemFreeDelayedDirect(resrc_p->requestAllocation);
+        sdfTexListFree(resrc_p->texList, 1);
+        sdfMemFreeDelayedDirect(resrc_p->modelDefHandle);
         for (slotIndex = 0; slotIndex != MDL_SLOT_COUNT; slotIndex++)
         {
             if (resrc_p->slots[slotIndex].resourceHandle != NULL)
@@ -464,7 +464,7 @@ void mdlUnRegistResrc(dds3ModelResrc_t *resrc_p)
             }
         }
     }
-    mdlEffectResrcListFree(resrc_p->partList);
+    mdlEffectResrcListFree(resrc_p->effectResrcList);
     sdfMemFreeDirect(resrc_p->resourceHandle);
     sdfChipFreeDirect(resrc_p);
 }
@@ -503,8 +503,8 @@ sdfMotionCtrlr_t *mdlCreateMotion(mdlObj_t *aHandle, s32 aGroup)
     s16 motionSlotIndex;
     sdfMotionCtrlr_t *object;
 
-    motionTable = aHandle->sub->slots[aGroup].motionTable;
-    motionSlotIndex = aHandle->sub->slots[aGroup].motionSlotIndex;
+    motionTable = aHandle->sub->slots[aGroup].ptr;
+    motionSlotIndex = aHandle->sub->slots[aGroup].playGroup;
     object = sdfMotionCtrlrNew(aHandle->inner, motionTable);
     object->userId = aGroup;
     aHandle->slots[motionSlotIndex] = object;
@@ -543,11 +543,11 @@ void mdlUnRegistResrcMotion(dds3ModelResrc_t *aResrc, s32 aGroup)
 
     if (aResrc != NULL)
     {
-        if (aResrc->slots[aGroup].motionTable == NULL)
+        if (aResrc->slots[aGroup].ptr == NULL)
         {
             return;
         }
-        for (ctx = aResrc->modelContext; ctx != NULL; ctx = ctx->next)
+        for (ctx = aResrc->models; ctx != NULL; ctx = ctx->next)
         {
             mdlFreeMotion(ctx, aGroup);
         }
@@ -558,7 +558,7 @@ void mdlUnRegistResrcMotion(dds3ModelResrc_t *aResrc, s32 aGroup)
                 sdfMemFreeDirect(aResrc->slots[aGroup].resourceHandle);
             }
         }
-        aResrc->slots[aGroup].motionTable = NULL;
+        aResrc->slots[aGroup].ptr = NULL;
         aResrc->slots[aGroup].resourceHandle = NULL;
     }
 }
@@ -580,9 +580,9 @@ void mdlRegistMotion(s32 aMajor, s32 aMinor, u32 aFlags, s32 aFirstMotion, s32 a
     owner = mdlSearchResrc(aMajor, aMinor);
     mdlUnRegistResrcMotion(owner, aGroup);
     slot = &owner->slots[aGroup];
-    slot->motionSlotIndex = aPlayGroup;
-    slot->motionIndex = aFirstMotion;
-    slot->motionTable = aData;
+    slot->playGroup = aPlayGroup;
+    slot->firstMotion = aFirstMotion;
+    slot->ptr = aData;
     slot->resourceHandle = aHandle;
     slot->flags = 0;
     if (aFlags & 0x100)
@@ -599,17 +599,17 @@ void mdlRegistModelSet(s32 aMajor, s32 aMinor, s32 aFlag, mdlSetDef_t *aSet)
 {
     dds3ModelResrc_t *entity;
 
-    mdlRegist(aMajor, aMinor, aFlag, aSet->resourceList, aSet->itemList, aSet->requestAllocation);
-    if (aSet->motionTable != NULL)
+    mdlRegist(aMajor, aMinor, aFlag, aSet->texList, aSet->modelDefPtr, aSet->modelDefHandle);
+    if (aSet->playbookPtr != NULL)
     {
-        mdlRegistMotion(aMajor, aMinor, aFlag, 0, 0, 0, aSet->motionTable, aSet->playbookHandle);
+        mdlRegistMotion(aMajor, aMinor, aFlag, 0, 0, 0, aSet->playbookPtr, aSet->playbookHandle);
     }
     if (aSet->partInfo != NULL)
     {
         entity = mdlSearchResrc(aMajor, aMinor);
         entity->partInfo = aSet->partInfo;
         entity->resourceHandle = aSet->resourceHandle;
-        entity->partList = aSet->partList;
+        entity->effectResrcList = aSet->partList;
     }
 }
 
@@ -633,15 +633,15 @@ void TbMbAbLoadEnd(mdlLoadRequest_t *tmaCb)
 
 void TbLoadCallback(fileRequest_t *fileHandle, mdlLoadRequest_t *parm)
 {
-    parm->payload.resourceList = sdfTexSetTB(fileGetLoadPtr(fileHandle));
+    parm->payload.texList = sdfTexSetTB(fileGetLoadPtr(fileHandle));
     sdfMemFreeDirect(fileGetMemHandle(fileHandle));
     fileHandleFree(fileHandle);
 }
 
 void MbLoadCallback(fileRequest_t *fileHandle, mdlLoadRequest_t *parm)
 {
-    parm->payload.requestAllocation = fileGetMemHandle(fileHandle);
-    parm->payload.itemList = sdfFixupModelBinary(fileGetLoadPtr(fileHandle));
+    parm->payload.modelDefHandle = fileGetMemHandle(fileHandle);
+    parm->payload.modelDefPtr = sdfFixupModelBinary(fileGetLoadPtr(fileHandle));
     fileHandleFree(fileHandle);
     if (parm->deferred == 0)
     {
@@ -652,7 +652,7 @@ void MbLoadCallback(fileRequest_t *fileHandle, mdlLoadRequest_t *parm)
 void AbLoadCallback(fileRequest_t *fileHandle, mdlLoadRequest_t *parm)
 {
     parm->payload.playbookHandle = fileGetMemHandle(fileHandle);
-    parm->payload.motionTable = sdfFixupMotionBinary(fileGetLoadPtr(fileHandle));
+    parm->payload.playbookPtr = sdfFixupMotionBinary(fileGetLoadPtr(fileHandle));
     fileHandleFree(fileHandle);
     TbMbAbLoadEnd(parm);
 }
@@ -686,7 +686,7 @@ s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
     }
     selection = (dds3ModelFileIndex_t *)modelFileKindTable[aMajor].entries;
     selection += aMinor;
-    paths = &((mdlHddFile_t *)modelFileTable[selection->kind].entries)[selection->index];
+    paths = &((mdlHddFile_t *)modelFileTable[selection->kind].entries)[selection->minor];
     packedBundle = 0;
     extension = strrchr(paths->mbName, '.');
     if (extension != NULL) {
@@ -751,11 +751,11 @@ void mdlUnlinkResrc(mdlObj_t *aHandle)
         group = aHandle->sub;
         if (nextContext != NULL)
         {
-            group->modelContext = nextContext;
+            group->models = nextContext;
         }
         else
         {
-            group->modelContext = NULL;
+            group->models = NULL;
             if (group->ownsResources != 0)
             {
                 mdlUnRegistResrc(group);
@@ -779,10 +779,10 @@ void mdlSetBlur(mdlObj_t *aHandle, s32 interval, s32 count,
         aHandle->devList = deviceList;
         deviceList->usedCount = count;
         deviceList->capacity = count;
-        deviceList->stride = interval;
+        deviceList->interval = interval;
         /* Final argument use: see docs/idioms.md, "Final argument use: mdlSetBlur". */
-        deviceList->byteCount = count * interval;
-        inverseSpan = 1.0f / deviceList->byteCount;
+        deviceList->keepCount = count * interval;
+        inverseSpan = 1.0f / deviceList->keepCount;
         startCarrier[0] = endColor;
         EE_MMI_RGBA_UNPACK(startCarrier, 0.0078125f);
         SDF_VU0_STOREVECTOR(deviceList->color);
@@ -791,7 +791,7 @@ void mdlSetBlur(mdlObj_t *aHandle, s32 interval, s32 count,
         EE_MMI_RGBA_UNPACK(endCarrier, 0.0078125f);
         SDF_VU0_SUBVECTOR_EXTENDED();
         SDF_VU0_SCALEVECTOR_V0(inverseSpan);
-        SDF_VU0_STOREVECTOR(deviceList->colorStep);
+        SDF_VU0_STOREVECTOR(deviceList->colorDelta);
     }
 }
 
@@ -806,12 +806,12 @@ void mdlFreeBlur(mdlObj_t *aHandle)
     {
         return;
     }
-    next = list->first;
+    next = list->instants;
     while (next != NULL)
     {
         slot = next;
         next = next->next;
-        sdfModelRootFree(slot->model, 1, 1);
+        sdfModelRootFree(slot->modelobj, 1, 1);
         sdfChipFreeDirect(slot);
     }
     sdfChipFreeDirect(list);
@@ -829,25 +829,25 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
 
     if (list->usedCount != 0 && --list->growStep == 0) {
         list->usedCount--;
-        list->growStep = list->stride;
+        list->growStep = list->interval;
         slot = sdfChipAllocDirect(sizeof(dds3ModelBlurInstance_t));
-        model = sdfModelMake(ctx->sub->resourceList, ctx->sub->itemList);
+        model = sdfModelMake(ctx->sub->texList, ctx->sub->modelDefPtr);
         /* Finish initialization before publishing the new list head. */
-        slot->next = list->first;
-        slot->model = model;
+        slot->next = list->instants;
+        slot->modelobj = model;
         slot->remaining = 1;
         model->zBias = 1000.0f;
-        list->first = slot;
+        list->instants = slot;
     }
     UnpackRGBAWordFloat(original->color, 1.0f / 128.0f);
     SDF_VU0_STOREVECTOR(tint);
-    slot = list->first;
+    slot = list->instants;
     while (slot != NULL) {
         remaining = slot->remaining;
-        model = slot->model;
+        model = slot->modelobj;
         remaining--;
         if (remaining == 0) {
-            remaining = list->byteCount;
+            remaining = list->keepCount;
             sdfModelCopyStat(model, original);
         } else {
             sdfModelEvalTm(model);
@@ -855,7 +855,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
         /* Both callbacks complete before the countdown is published. */
         slot->remaining = remaining;
         SDF_VU0_LOADVECTOR_BARRIER(list->color);
-        SDF_VU0_LOADVECTOR_B(list->colorStep);
+        SDF_VU0_LOADVECTOR_B(list->colorDelta);
         SDF_VU0_LOADVECTOR_C(tint);
         color = PackDevSlotColor(remaining - 1, 128.0f);
         model->color = color;
@@ -877,14 +877,14 @@ mdlObj_t *mdlLoad(u32 aMajor, u32 aMinor)
     node = mdlLoadPrepare(aMajor, aMinor);
     ctx = sdfChipAllocZeroDirect(sizeof(mdlObj_t));
     ctx->sub = node;
-    head = node->modelContext;
+    head = node->models;
     ctx->next = head;
     if (head != NULL)
     {
         head->prev = ctx;
     }
-    node->modelContext = ctx;
-    inner = sdfModelMake(sdfTexListDup(node->resourceList), node->itemList);
+    node->models = ctx;
+    inner = sdfModelMake(sdfTexListDup(node->texList), node->modelDefPtr);
     modelScale = node->scale;
     ctx->inner = inner;
     scale[0] = modelScale;
@@ -892,19 +892,19 @@ mdlObj_t *mdlLoad(u32 aMajor, u32 aMinor)
     scale[2] = modelScale;
     scale[3] = 1.0f;
     SDF_VU0_COPYVECTOR(&inner->scale, scale);
-    ctx->objectRadius = node->objectRadius;
+    ctx->objectRadius = node->radius;
     ctx->current.h.id = -1;
     ctx->current.h.motionIndex = -1;
     for (searchId = 0; searchId != MDL_SLOT_COUNT; searchId++)
     {
-        if (node->slots[searchId].motionTable != NULL && (node->slots[searchId].flags & 1))
+        if (node->slots[searchId].ptr != NULL && (node->slots[searchId].flags & 1))
         {
             mdlCreateMotion(ctx, searchId);
             if (searchId > 0)
             {
-                if (node->slots[searchId].motionIndex >= 0)
+                if (node->slots[searchId].firstMotion >= 0)
                 {
-                    mdlLoopMotion(ctx, searchId, node->slots[searchId].motionIndex);
+                    mdlLoopMotion(ctx, searchId, node->slots[searchId].firstMotion);
                 }
             }
         }
@@ -1271,12 +1271,12 @@ s32 mdlHasMotionEx(mdlObj_t *aHandle, s32 aGroup)
 
 s32 mdlGetMajorNum(mdlObj_t *aHandle)
 {
-    return aHandle->sub->group;
+    return aHandle->sub->major;
 }
 
 s32 mdlGetMinorNum(mdlObj_t *aHandle)
 {
-    return aHandle->sub->type;
+    return aHandle->sub->minor;
 }
 
 s32 mdlGetNumOfMajor(void)
@@ -1319,7 +1319,7 @@ void mdlGetFilebase(s32 aMajor, s32 aMinor, char *aName, s32 aNameLeng) {
     selection = (dds3ModelFileIndex_t *)modelFileKindTable[aMajor].entries;
     selection += aMinor;
     pathEntry = (mdlHddFile_t *)modelFileTable[selection->kind].entries;
-    pathEntry += selection->index;
+    pathEntry += selection->minor;
     path = pathEntry->mbName;
     startIndex = strlen(path);
     pathLength = startIndex;
@@ -1362,7 +1362,7 @@ s32 mdlPackCheck(sdfPacWork_t *resrc)
     result = 0;
     if (((sdfPacStdBlockHeader_t *)resrc->header)->command == DDS3_FT_EFFECT)
     {
-        result = ((sdfPacStdBlockHeader_t *)resrc->header)->tag == PIB_TAG_PIB0;
+        result = ((sdfPacStdBlockHeader_t *)resrc->header)->magicCode == PIB_TAG_PIB0;
     }
     return result;
 }
@@ -1377,7 +1377,7 @@ sdfPacWork_t *mdlPackSetOld(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFl
     while (resrc != NULL) {
         switch (((sdfPacStdBlockHeader_t *)resrc->header)->command) {
         case DDS3_FT_EFFECT:
-            switch (((sdfPacStdBlockHeader_t *)resrc->header)->tag) {
+            switch (((sdfPacStdBlockHeader_t *)resrc->header)->magicCode) {
             case PIB_TAG_PIB0:
                 setup.partInfo = resrc->data;
                 setup.resourceHandle = (sdfMemHandle_t *)resrc->resrc;
@@ -1398,18 +1398,18 @@ sdfPacWork_t *mdlPackSetOld(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFl
             }
             break;
         case DDS3_FT_TEXLIST:
-            setup.resourceList = (sdfModelTexList_t *)resrc->resrc;
+            setup.texList = (sdfModelTexList_t *)resrc->resrc;
             break;
         case DDS3_FT_MODEL:
-            if (setup.requestAllocation == NULL) {
-                setup.requestAllocation = (sdfMemHandle_t *)resrc->resrc;
-                setup.itemList = (sdfModelDef_t *)resrc->data;
+            if (setup.modelDefHandle == NULL) {
+                setup.modelDefHandle = (sdfMemHandle_t *)resrc->resrc;
+                setup.modelDefPtr = (sdfModelDef_t *)resrc->data;
             }
             break;
         case DDS3_FT_MOTION:
             if (setup.playbookHandle == NULL) {
                 setup.playbookHandle = (sdfMemHandle_t *)resrc->resrc;
-                setup.motionTable = (sdfMotionPlayBook_t *)resrc->data;
+                setup.playbookPtr = (sdfMotionPlayBook_t *)resrc->data;
             }
             break;
         }
@@ -1453,7 +1453,7 @@ sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags
     }
     if (remainingParts > 0) {
         do {
-            switch (((sdfPacStdBlockHeader_t *)resrc->header)->tag) {
+            switch (((sdfPacStdBlockHeader_t *)resrc->header)->magicCode) {
             case PIB_TAG_P2A:
                 mdlCreateEffectResrc_P2A(partList, resrc->data);
                 sdfMemFreeDirect((sdfMemHandle_t *)resrc->resrc);
@@ -1475,7 +1475,7 @@ sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags
                 /* Retained metadata stores: SMT3 1DE078/1DE07C and
                  * DDS1 2188E0/2188E4 (same otherwise-unused local record). */
                 packetHeader = (sdfPacStdBlockHeader_t *)resrc->header;
-                partTagRecord.tag = packetHeader->tag;
+                partTagRecord.tag = packetHeader->magicCode;
                 partTagRecord.state = 0;
                 break;
             }
@@ -1485,11 +1485,11 @@ sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags
     }
 
     if (((sdfPacStdBlockHeader_t *)resrc->header)->command == DDS3_FT_TEXLIST) {
-        groupSetup.resourceList = (sdfModelTexList_t *)resrc->resrc;
+        groupSetup.texList = (sdfModelTexList_t *)resrc->resrc;
         resrc = sdfPacFreeResrc(resrc);
     }
-    groupSetup.requestAllocation = (sdfMemHandle_t *)resrc->resrc;
-    groupSetup.itemList = (sdfModelDef_t *)resrc->data;
+    groupSetup.modelDefHandle = (sdfMemHandle_t *)resrc->resrc;
+    groupSetup.modelDefPtr = (sdfModelDef_t *)resrc->data;
     resrc = sdfPacFreeResrc(resrc);
     mdlRegistModelSet(major, minor, regFlags, &groupSetup);
 
@@ -1605,7 +1605,7 @@ void mdlMakeHddFileListDummy(void)
     D_0054F634 = sdfMemAllocDirect(sizeof(dds3ModelFileIndex_t));
     D_00551F04 = sdfMemLock(D_0054F634);
     D_00551F04->kind = 5;
-    D_00551F04->index = 0;
+    D_00551F04->minor = 0;
     D_00551F04->unk4 = 0x1000;
     D_00551F04->unk6 = 1000;
     D_0054F638 = sdfMemAllocDirect(sizeof(mdlHddFile_t));
@@ -1737,7 +1737,7 @@ void mdlMakeHddFileList(void) {
                 s32 kind;
 
                 D_00551F04[index].kind = 5;
-                D_00551F04[index].index = index;
+                D_00551F04[index].minor = index;
                 D_00551F04[index].unk4 = 0x1000;
                 D_00551F04[index].unk6 = 1000;
                 length = strlen(name);
