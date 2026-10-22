@@ -12,8 +12,8 @@ typedef struct
 
 typedef struct
 {
-    void *slots;
-    u32 count;
+    void *pPart;
+    u32 number;
     void *allocation;
 } effBezier4P_t;
 
@@ -174,8 +174,8 @@ effBezier4P_t *dds3Bezier4PCreate(s32 number) {
     u8 *headerAddress = (u8 *)slot + number * sizeof(dds3Bezier4PPart_t);
 
     ((effBezier4P_t *)headerAddress)->allocation = allocation;
-    ((effBezier4P_t *)headerAddress)->slots = retainedAddress;
-    ((effBezier4P_t *)headerAddress)->count = number;
+    ((effBezier4P_t *)headerAddress)->pPart = retainedAddress;
+    ((effBezier4P_t *)headerAddress)->number = number;
     if (number != 0) {
         do {
             slotIndex++;
@@ -192,7 +192,7 @@ void dds3Bezier4PDelete(effBezier4P_t *pEffBezier4P) {
 }
 
 s32 dds3Bezier4PPartRun(effBezier4P_t *table, s32 slotIndex, f32 *out) {
-    dds3Bezier4PPart_t *slot = &((dds3Bezier4PPart_t *)table->slots)[slotIndex];
+    dds3Bezier4PPart_t *slot = &((dds3Bezier4PPart_t *)table->pPart)[slotIndex];
     f32 w[4];
     f32 t = slot->t;
     f32 u = 1.0f - t;
@@ -236,12 +236,12 @@ s32 nbCameraLerpVec(dds3Bezier4PPart_t *slot, f32 *out) {
 }
 
 void func_001AC068(effBezier4P_t *table, s32 slotIndex) {
-    dds3Bezier4PPart_t *slot = &((dds3Bezier4PPart_t *)table->slots)[slotIndex];
+    dds3Bezier4PPart_t *slot = &((dds3Bezier4PPart_t *)table->pPart)[slotIndex];
 
     slot->step = 0.05f;
     slot->t = 0;
 }
 
 dds3Bezier4PPart_t *dds3Bezier4PGetPart(effBezier4P_t *pEffBezier4P, s32 index) {
-    return &((dds3Bezier4PPart_t *)pEffBezier4P->slots)[index];
+    return &((dds3Bezier4PPart_t *)pEffBezier4P->pPart)[index];
 }
