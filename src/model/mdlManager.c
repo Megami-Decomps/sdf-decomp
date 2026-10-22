@@ -148,14 +148,14 @@ void mdlLoopMotion(mdlObj_t *aHandle, s32 aGroup, s32 aNumber);
 
 typedef struct
 {
-    char *tbName;
-    char *mbName;
-    char *abName;
-} mdlHddFile_t;
+    char *texFile;
+    char *modelFile;
+    char *motionFile;
+} dds3ModelFileTable_t;
 
 typedef struct
 {
-    mdlHddFile_t *entries;
+    dds3ModelFileTable_t *entries;
     s32 count;
 } mdlFileSlot_t;
 
@@ -176,7 +176,7 @@ typedef struct
 extern mdlFileSlot_t modelFileTable[];
 extern mdlFileKindSlot_t modelFileKindTable[];
 extern dds3ModelFileIndex_t *D_00551F04;
-extern mdlHddFile_t *mdlHddFileList;
+extern dds3ModelFileTable_t *mdlHddFileList;
 extern sdfMemHandle_t *sdfMemAllocDirect(u32 aSize);
 extern void *sdfMemLock(sdfMemHandle_t *aHandle);
 extern s32 strlen(const char *s);
@@ -406,13 +406,13 @@ void mdlRegist(s32 aMajor, s32 aMinor, s32 aFlag,
     groupNode->models = NULL;
     for (slotIndex = 0; slotIndex != MDL_SLOT_COUNT; slotIndex++)
     {
-        groupNode->slots[slotIndex].flags = 0;
-        groupNode->slots[slotIndex].ptr = NULL;
-        groupNode->slots[slotIndex].handle = NULL;
+        groupNode->playbooks[slotIndex].flags = 0;
+        groupNode->playbooks[slotIndex].ptr = NULL;
+        groupNode->playbooks[slotIndex].handle = NULL;
     }
-    groupNode->ownsResources = aFlag & 1;
-    groupNode->resourceHandle = NULL;
-    groupNode->partInfo = NULL;
+    groupNode->autoFreeFlag = aFlag & 1;
+    groupNode->effectMemHandle = NULL;
+    groupNode->effectData = NULL;
     groupNode->effectResrcList = NULL;
     groupNode->scale = 1.0f;
     groupNode->radius = 100.0f;
@@ -443,8 +443,8 @@ void mdlUnRegistResrc(dds3ModelResrc_t *resrc_p)
     {
         nextNode->prev = previousNode;
     }
-    ownsResources = resrc_p->ownsResources;
-    resrc_p->ownsResources = 0;
+    ownsResources = resrc_p->autoFreeFlag;
+    resrc_p->autoFreeFlag = 0;
     if (resrc_p->models != NULL)
     {
         do
@@ -458,14 +458,14 @@ void mdlUnRegistResrc(dds3ModelResrc_t *resrc_p)
         sdfMemFreeDelayedDirect(resrc_p->modelDefHandle);
         for (slotIndex = 0; slotIndex != MDL_SLOT_COUNT; slotIndex++)
         {
-            if (resrc_p->slots[slotIndex].handle != NULL)
+            if (resrc_p->playbooks[slotIndex].handle != NULL)
             {
-                sdfMemFreeDirect(resrc_p->slots[slotIndex].handle);
+                sdfMemFreeDirect(resrc_p->playbooks[slotIndex].handle);
             }
         }
     }
     mdlEffectResrcListFree(resrc_p->effectResrcList);
-    sdfMemFreeDirect(resrc_p->resourceHandle);
+    sdfMemFreeDirect(resrc_p->effectMemHandle);
     sdfChipFreeDirect(resrc_p);
 }
 
@@ -503,8 +503,8 @@ sdfMotionCtrlr_t *mdlCreateMotion(mdlObj_t *aHandle, s32 aGroup)
     s16 motionSlotIndex;
     sdfMotionCtrlr_t *object;
 
-    motionTable = aHandle->sub->slots[aGroup].ptr;
-    motionSlotIndex = aHandle->sub->slots[aGroup].playGroup;
+    motionTable = aHandle->sub->playbooks[aGroup].ptr;
+    motionSlotIndex = aHandle->sub->playbooks[aGroup].playGroup;
     object = sdfMotionCtrlrNew(aHandle->inner, motionTable);
     object->userId = aGroup;
     aHandle->slots[motionSlotIndex] = object;
@@ -543,7 +543,7 @@ void mdlUnRegistResrcMotion(dds3ModelResrc_t *aResrc, s32 aGroup)
 
     if (aResrc != NULL)
     {
-        if (aResrc->slots[aGroup].ptr == NULL)
+        if (aResrc->playbooks[aGroup].ptr == NULL)
         {
             return;
         }
@@ -551,15 +551,15 @@ void mdlUnRegistResrcMotion(dds3ModelResrc_t *aResrc, s32 aGroup)
         {
             mdlFreeMotion(ctx, aGroup);
         }
-        if (aResrc->ownsResources != 0)
+        if (aResrc->autoFreeFlag != 0)
         {
-            if (aResrc->slots[aGroup].handle != NULL)
+            if (aResrc->playbooks[aGroup].handle != NULL)
             {
-                sdfMemFreeDirect(aResrc->slots[aGroup].handle);
+                sdfMemFreeDirect(aResrc->playbooks[aGroup].handle);
             }
         }
-        aResrc->slots[aGroup].ptr = NULL;
-        aResrc->slots[aGroup].handle = NULL;
+        aResrc->playbooks[aGroup].ptr = NULL;
+        aResrc->playbooks[aGroup].handle = NULL;
     }
 }
 
@@ -579,7 +579,7 @@ void mdlRegistMotion(s32 aMajor, s32 aMinor, u32 aFlags, s32 aFirstMotion, s32 a
 
     owner = mdlSearchResrc(aMajor, aMinor);
     mdlUnRegistResrcMotion(owner, aGroup);
-    slot = &owner->slots[aGroup];
+    slot = &owner->playbooks[aGroup];
     slot->playGroup = aPlayGroup;
     slot->firstMotion = aFirstMotion;
     slot->ptr = aData;
@@ -607,8 +607,8 @@ void mdlRegistModelSet(s32 aMajor, s32 aMinor, s32 aFlag, mdlSetDef_t *aSet)
     if (aSet->effectData != NULL)
     {
         entity = mdlSearchResrc(aMajor, aMinor);
-        entity->partInfo = aSet->effectData;
-        entity->resourceHandle = aSet->effectMemHandle;
+        entity->effectData = aSet->effectData;
+        entity->effectMemHandle = aSet->effectMemHandle;
         entity->effectResrcList = aSet->effectResrcList;
     }
 }
@@ -666,7 +666,7 @@ s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
     char requestPath[0x80];
     dds3ModelResrc_t *entity;
     dds3ModelFileIndex_t *selection;
-    mdlHddFile_t *paths;
+    dds3ModelFileTable_t *paths;
     mdlManager_mdlTbMbAbLoadCb_t *request;
     char *extension;
     s32 packedBundle;
@@ -686,16 +686,16 @@ s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
     }
     selection = (dds3ModelFileIndex_t *)modelFileKindTable[aMajor].entries;
     selection += aMinor;
-    paths = &((mdlHddFile_t *)modelFileTable[selection->major].entries)[selection->minor];
+    paths = &((dds3ModelFileTable_t *)modelFileTable[selection->major].entries)[selection->minor];
     packedBundle = 0;
-    extension = strrchr(paths->mbName, '.');
+    extension = strrchr(paths->modelFile, '.');
     if (extension != NULL) {
         packedBundle = strcasecmp(extension, D_0054F630) == 0;
     }
     mdlRegLoading(aMajor, aMinor);
     SignalSema(mdlManagerWork);
     if (packedBundle != 0) {
-        mdlSetFileName(requestPath, paths->mbName);
+        mdlSetFileName(requestPath, paths->modelFile);
         mdlFileLoad(aMajor, aMinor, 0x101, requestPath,
                                   (void (*)(u32))sdfDummyFunc, 0);
     } else {
@@ -703,19 +703,19 @@ s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
         request->options = 0x101;
         request->group = aMajor;
         request->id = aMinor;
-        if (paths->abName != NULL) {
+        if (paths->motionFile != NULL) {
             request->deferred = 1;
         }
-        if (paths->tbName != NULL) {
+        if (paths->texFile != NULL) {
             request->resourceListRequested = 1;
-            mdlSetFileName(requestPath, paths->tbName);
+            mdlSetFileName(requestPath, paths->texFile);
             fileLoadEx(requestPath, 0, (u32)TbLoadCallback, (u32)request);
         }
         request->itemsRequested = 1;
-        mdlSetFileName(requestPath, paths->mbName);
+        mdlSetFileName(requestPath, paths->modelFile);
         fileLoadEx(requestPath, 0, (u32)MbLoadCallback, (u32)request);
-        if (paths->abName != NULL) {
-            mdlSetFileName(requestPath, paths->abName);
+        if (paths->motionFile != NULL) {
+            mdlSetFileName(requestPath, paths->motionFile);
             fileLoadEx(requestPath, 0, (u32)AbLoadCallback, (u32)request);
         }
     }
@@ -756,7 +756,7 @@ void mdlUnlinkResrc(mdlObj_t *aHandle)
         else
         {
             group->models = NULL;
-            if (group->ownsResources != 0)
+            if (group->autoFreeFlag != 0)
             {
                 mdlUnRegistResrc(group);
             }
@@ -777,7 +777,7 @@ void mdlSetBlur(mdlObj_t *aHandle, s32 interval, s32 count,
         deviceList = sdfChipAllocZeroDirect(sizeof(dds3ModelBlurCb_t));
         deviceList->growStep = 1;
         aHandle->devList = deviceList;
-        deviceList->usedCount = count;
+        deviceList->spawnCount = count;
         deviceList->capacity = count;
         deviceList->interval = interval;
         /* Final argument use: see docs/idioms.md, "Final argument use: mdlSetBlur". */
@@ -827,15 +827,15 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
     s32 remaining;
     u32 color;
 
-    if (list->usedCount != 0 && --list->growStep == 0) {
-        list->usedCount--;
+    if (list->spawnCount != 0 && --list->growStep == 0) {
+        list->spawnCount--;
         list->growStep = list->interval;
         slot = sdfChipAllocDirect(sizeof(dds3ModelBlurInstance_t));
         model = sdfModelMake(ctx->sub->texList, ctx->sub->modelDefPtr);
         /* Finish initialization before publishing the new list head. */
         slot->next = list->instants;
         slot->modelobj = model;
-        slot->remaining = 1;
+        slot->keepCount = 1;
         model->zBias = 1000.0f;
         list->instants = slot;
     }
@@ -843,7 +843,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
     SDF_VU0_STOREVECTOR(tint);
     slot = list->instants;
     while (slot != NULL) {
-        remaining = slot->remaining;
+        remaining = slot->keepCount;
         model = slot->modelobj;
         remaining--;
         if (remaining == 0) {
@@ -853,7 +853,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
             sdfModelEvalTm(model);
         }
         /* Both callbacks complete before the countdown is published. */
-        slot->remaining = remaining;
+        slot->keepCount = remaining;
         SDF_VU0_LOADVECTOR_BARRIER(list->colorBase);
         SDF_VU0_LOADVECTOR_B(list->colorDelta);
         SDF_VU0_LOADVECTOR_C(tint);
@@ -897,14 +897,14 @@ mdlObj_t *mdlLoad(u32 aMajor, u32 aMinor)
     ctx->current.h.motionIndex = -1;
     for (searchId = 0; searchId != MDL_SLOT_COUNT; searchId++)
     {
-        if (node->slots[searchId].ptr != NULL && (node->slots[searchId].flags & 1))
+        if (node->playbooks[searchId].ptr != NULL && (node->playbooks[searchId].flags & 1))
         {
             mdlCreateMotion(ctx, searchId);
             if (searchId > 0)
             {
-                if (node->slots[searchId].firstMotion >= 0)
+                if (node->playbooks[searchId].firstMotion >= 0)
                 {
-                    mdlLoopMotion(ctx, searchId, node->slots[searchId].firstMotion);
+                    mdlLoopMotion(ctx, searchId, node->playbooks[searchId].firstMotion);
                 }
             }
         }
@@ -1308,7 +1308,7 @@ void mdlSetClutColor(mdlObj_t *ctx, s32 a, s32 b, s32 c)
 
 void mdlGetFilebase(s32 aMajor, s32 aMinor, char *aName, s32 aNameLeng) {
     dds3ModelFileIndex_t *selection;
-    mdlHddFile_t *pathEntry;
+    dds3ModelFileTable_t *pathEntry;
     const char *path;
     const char *basename;
     s32 pathLength;
@@ -1318,9 +1318,9 @@ void mdlGetFilebase(s32 aMajor, s32 aMinor, char *aName, s32 aNameLeng) {
 
     selection = (dds3ModelFileIndex_t *)modelFileKindTable[aMajor].entries;
     selection += aMinor;
-    pathEntry = (mdlHddFile_t *)modelFileTable[selection->major].entries;
+    pathEntry = (dds3ModelFileTable_t *)modelFileTable[selection->major].entries;
     pathEntry += selection->minor;
-    path = pathEntry->mbName;
+    path = pathEntry->modelFile;
     startIndex = strlen(path);
     pathLength = startIndex;
     startIndex--;
@@ -1463,7 +1463,7 @@ sdfPacDecodeResrc_t *mdlPackSet(sdfPacDecodeResrc_t *resrc, s32 major, s32 minor
                 sdfMemFreeDirect((sdfMemHandle_t *)resrc->resrc);
                 break;
             case PIB_TAG_IPU:
-                objectSize = ((sdfPacStdBlockHeader_t *)resrc->header)->decodedSize;
+                objectSize = ((sdfPacStdBlockHeader_t *)resrc->header)->realSize;
                 if (objectSize == 0) {
                     objectSize = ((sdfPacStdBlockHeader_t *)resrc->header)->size
                                + (((sdfPacStdBlockHeader_t *)resrc->header)->flags & 0xF0) - 0x10;
@@ -1570,7 +1570,7 @@ void mdlFreeFileItem(void *aItem)
 
 void mdlReleaseHddFileList(void)
 {
-    mdlHddFile_t *entries;
+    dds3ModelFileTable_t *entries;
     s32 count;
     s32 i;
 
@@ -1581,9 +1581,9 @@ void mdlReleaseHddFileList(void)
         i = 0;
         do
         {
-            sdfChipFreeDirect(entries[i].mbName);
-            sdfChipFreeDirect(entries[i].tbName);
-            sdfChipFreeDirect(entries[i].abName);
+            sdfChipFreeDirect(entries[i].modelFile);
+            sdfChipFreeDirect(entries[i].texFile);
+            sdfChipFreeDirect(entries[i].motionFile);
             i++;
         } while (i < count);
     }
@@ -1608,20 +1608,20 @@ void mdlMakeHddFileListDummy(void)
     D_00551F04->minor = 0;
     D_00551F04->scale = 0x1000;
     D_00551F04->radius = 1000;
-    D_0054F638 = sdfMemAllocDirect(sizeof(mdlHddFile_t));
+    D_0054F638 = sdfMemAllocDirect(sizeof(dds3ModelFileTable_t));
     mdlHddFileList = sdfMemLock(D_0054F638);
     for (i = 0; i != 3; i++)
     {
         switch (i)
         {
         case 0:
-            src = modelFileTable[0].entries->mbName;
+            src = modelFileTable[0].entries->modelFile;
             break;
         case 1:
-            src = modelFileTable[0].entries->tbName;
+            src = modelFileTable[0].entries->texFile;
             break;
         default:
-            src = modelFileTable[0].entries->abName;
+            src = modelFileTable[0].entries->motionFile;
             break;
         }
         if (src == NULL)
@@ -1633,13 +1633,13 @@ void mdlMakeHddFileListDummy(void)
         switch (i)
         {
         case 0:
-            mdlHddFileList->mbName = name;
+            mdlHddFileList->modelFile = name;
             break;
         case 1:
-            mdlHddFileList->tbName = name;
+            mdlHddFileList->texFile = name;
             break;
         case 2:
-            mdlHddFileList->abName = name;
+            mdlHddFileList->motionFile = name;
             break;
         }
     }
@@ -1728,9 +1728,9 @@ void mdlMakeHddFileList(void) {
             index = 0;
             D_0054F634 = sdfMemAllocDirect(count * sizeof(dds3ModelFileIndex_t));
             D_00551F04 = sdfMemLock(D_0054F634);
-            D_0054F638 = sdfMemAllocDirect(count * sizeof(mdlHddFile_t));
+            D_0054F638 = sdfMemAllocDirect(count * sizeof(dds3ModelFileTable_t));
             mdlHddFileList = sdfMemLock(D_0054F638);
-            memset(mdlHddFileList, 0, count * sizeof(mdlHddFile_t));
+            memset(mdlHddFileList, 0, count * sizeof(dds3ModelFileTable_t));
             file = mdlHddFileCount;
             while (file != NULL) {
                 const char *name = file->name;
@@ -1753,13 +1753,13 @@ void mdlMakeHddFileList(void) {
                         path[end + 2] = 0;
                         switch (kind) {
                         case 0:
-                            mdlHddFileList[index].mbName = path;
+                            mdlHddFileList[index].modelFile = path;
                             break;
                         case 1:
-                            mdlHddFileList[index].tbName = path;
+                            mdlHddFileList[index].texFile = path;
                             break;
                         case 2:
-                            mdlHddFileList[index].abName = path;
+                            mdlHddFileList[index].motionFile = path;
                             break;
                         }
                     }

@@ -21,7 +21,7 @@ typedef struct mdlEffectResrcItem_t mdlEffectResrcItem_t;
 typedef struct mdlMarkPos_t mdlMarkPos_t;
 
 typedef struct pibHeaderChunk_t {
-    s32 kind;       /* 0x00: 0xFFFF terminates the record chain */
+    s32 group;       /* 0x00: 0xFFFF terminates the record chain */
     s32 nextOffset; /* 0x04: relative byte offset to next record */
     union {
         u32 word;               /* 0x08 */
@@ -38,7 +38,7 @@ typedef struct pibHeaderChunk_t {
         } part;
     } parameter;
     union {
-        u32 word10; /* 0x10: kind-four stream parameter */
+        u32 word10; /* 0x10: group-four stream parameter */
         struct {
             u16 slotCount; /* Kind 1/2 group records: following entity-slot packets. */
             u16 unk12;
@@ -47,7 +47,7 @@ typedef struct pibHeaderChunk_t {
 } pibHeaderChunk_t;
 
 typedef struct mdlEffectResrcItem_t {
-    u32 kind;       /* 0x00 */
+    u32 type;       /* 0x00 */
     s32 count;      /* 0x04 */
     void *handle;   /* 0x08 */
     u8 opaque0C[4]; /* 0x0C */
@@ -172,11 +172,11 @@ typedef struct { u8 hasAudio, stereo, loopMode, playbackCadenceStep; } mdlIpuPar
 
 struct mdlEffectResrc_IPU_t
 {
-    u32 sourceAddress; /* EE byte address handed to the IPU stream initializer. */
-    sdfMemHandle_t *backingAllocation;
-    u8 inUse, initialized;
+    u32 data; /* EE byte address handed to the IPU stream initializer. */
+    sdfMemHandle_t *dataMemHandle;
+    u8 inUse, playing;
     u8 unk0A[6];
-    s32 sourceSize;
+    s32 dataSize;
     u8 unk14[0xC];
     u8 ipuState[0x8C];
 };
@@ -397,7 +397,7 @@ u16 mdlPibGetChunkCount(pibHeaderChunk_t *record) {
 
 /* Follow the relative links in a resource's record table to find an ID. */
 pibHeaderChunk_t *mdlPibGetChunk(mdlObj_t *handle, s32 group) {
-    pibHeaderChunk_t *recordTable = handle->sub->partInfo;
+    pibHeaderChunk_t *recordTable = handle->sub->effectData;
     pibHeaderChunk_t *recordCursor;
     s32 remainingRecords;
 
@@ -412,7 +412,7 @@ pibHeaderChunk_t *mdlPibGetChunk(mdlObj_t *handle, s32 group) {
         if (remainingRecords == -1) {
             return NULL;
         }
-    } while (recordCursor->kind != group);
+    } while (recordCursor->group != group);
     return recordCursor;
 }
 
@@ -420,7 +420,7 @@ pibHeaderChunk_t *mdlPibGetChunk(mdlObj_t *handle, s32 group) {
 pibHeaderChunk_t *mdlPibGetFirstChunkItem(pibHeaderChunk_t *data) {
     pibHeaderChunk_t *firstRecord = (pibHeaderChunk_t *)((u8 *)data + MDL_RECORD_LIST_HEADER_BYTES);
 
-    if (firstRecord->kind == MDL_RECORD_END_KIND) {
+    if (firstRecord->group == MDL_RECORD_END_KIND) {
         firstRecord = NULL;
     }
     return firstRecord;
@@ -430,7 +430,7 @@ pibHeaderChunk_t *mdlPibGetFirstChunkItem(pibHeaderChunk_t *data) {
 pibHeaderChunk_t *mdlPibGetNextChunkItem(pibHeaderChunk_t *data) {
     pibHeaderChunk_t *nextRecord = (pibHeaderChunk_t *)((s32)data + data->nextOffset);
 
-    if (nextRecord->kind == MDL_RECORD_END_KIND) {
+    if (nextRecord->group == MDL_RECORD_END_KIND) {
         nextRecord = NULL;
     }
     return nextRecord;
@@ -454,7 +454,7 @@ s32 mdlPibGetChunkItemCount(pibHeaderChunk_t *data) {
 }
 
 s32 mdlPibCheckItemType(pibHeaderChunk_t *data, s32 type) {
-    return data->kind == type;
+    return data->group == type;
 }
 
 u16 mdlPibGetEffectCount(pibHeaderChunk_t *record) {
@@ -467,12 +467,12 @@ u16 mdlPibGetMotionCount(const pibHeaderChunk_t *record) {
 }
 
 void mdlPibDrawEffectInfo(sdfDrawTag_t *tag, s32 x, s32 y, s32 z, s32 attr, pibHeaderChunk_t *data) {
-    if (data->kind >= PIB_CHUNK_TYPE_P2A &&
-        data->kind <= IPU) {
-        switch (data->kind) {
+    if (data->group >= PIB_CHUNK_TYPE_P2A &&
+        data->group <= IPU) {
+        switch (data->group) {
         case PIB_CHUNK_TYPE_P2A:
         case PIB_CHUNK_TYPE_D3P: {
-            char *label = data->kind == PIB_CHUNK_TYPE_P2A ? D_0054F648 : D_0054F650;
+            char *label = data->group == PIB_CHUNK_TYPE_P2A ? D_0054F648 : D_0054F650;
 
             if (data->parameter.part.count == 1) {
                 sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
@@ -503,7 +503,7 @@ void mdlPibDrawEffectInfo(sdfDrawTag_t *tag, s32 x, s32 y, s32 z, s32 attr, pibH
         }
     } else {
         sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
-                                                            "UNKNOWN[%3d]", data->kind)));
+                                                            "UNKNOWN[%3d]", data->group)));
     }
 }
 
@@ -596,7 +596,7 @@ void mdlCreateEffectResrc_P2A(sdfItemArray_t *partList, void *descriptor) {
     mdlEffectResrcItem_t *partEntry = &((mdlEffectResrcItem_t *)partList->items)[partList->count];
 
     partEntry->count = 0;
-    partEntry->kind = MDL_PART_BILLBOARD;
+    partEntry->type = MDL_PART_BILLBOARD;
     partEntry->handle = dds3BillboardCreate(1, (u32)descriptor);
     partList->count += 1;
 }
@@ -605,7 +605,7 @@ void mdlCreateEffectResrc_P2A(sdfItemArray_t *partList, void *descriptor) {
 void mdlCreateEffectResrc_D3P(sdfItemArray_t *partList, void *descriptor) {
     mdlEffectResrcItem_t *partEntry = &((mdlEffectResrcItem_t *)partList->items)[partList->count];
 
-    partEntry->kind = MDL_PART_EFFECT;
+    partEntry->type = MDL_PART_EFFECT;
     partEntry->count = 0;
     partEntry->handle = dds3EffectLoad(descriptor);
     partList->count += 1;
@@ -615,27 +615,27 @@ void mdlCreateEffectResrc_IPU(sdfItemArray_t *list, u8 *sourceAddress, sdfMemHan
     mdlEffectResrc_IPU_t *node = sdfChipAllocZeroDirect(sizeof(*node));
     mdlEffectResrcItem_t *entry = &((mdlEffectResrcItem_t *)list->items)[list->count];
 
-    node->sourceSize = sourceSize;
-    node->sourceAddress = (u32)sourceAddress;
-    node->backingAllocation = backingAllocation;
-    entry->kind = MDL_PART_OBJECT;
+    node->dataSize = sourceSize;
+    node->data = (u32)sourceAddress;
+    node->dataMemHandle = backingAllocation;
+    entry->type = MDL_PART_OBJECT;
     entry->count = 0;
     entry->handle = node;
     list->count += 1;
 }
 
 void mdlDeleteEffectResrc_IPU(mdlEffectResrc_IPU_t *ipu) {
-    if (ipu->initialized != 0) {
+    if (ipu->playing != 0) {
         sdfIpuFree(&ipu->ipuState);
     }
-    sdfMemFreeDirect(ipu->backingAllocation);
+    sdfMemFreeDirect(ipu->dataMemHandle);
     sdfChipFreeDirect(ipu);
 }
 
 void mdlStartEffectResrc_IPU(mdlEffectResrc_IPU_t *ipu, sdfTexHandle_t *tex, mdlIpuParams_t *parm) {
-    if (ipu->initialized == 0) {
-        ipu->initialized = 1;
-        sdfIpuSetOutputTex(&ipu->ipuState, parm, (u8 *)ipu->sourceAddress, ipu->sourceSize, tex);
+    if (ipu->playing == 0) {
+        ipu->playing = 1;
+        sdfIpuSetOutputTex(&ipu->ipuState, parm, (u8 *)ipu->data, ipu->dataSize, tex);
     }
 }
 
@@ -651,7 +651,7 @@ void mdlEffectResrcListFree(sdfItemArray_t *efcResList) {
         for (partIndex = 0; partIndex < efcResList->count; partIndex++) {
             mdlEffectResrcItem_t *partEntry = &((mdlEffectResrcItem_t *)efcResList->items)[partIndex];
 
-            switch (partEntry->kind) {
+            switch (partEntry->type) {
             case MDL_PART_BILLBOARD:
                 dds3BillboardDelete(partEntry->handle);
                 break;
@@ -791,7 +791,7 @@ void mdlCreateEffect_IPU(mdlObj_t *aHandle, mdlPibIpu_t *aData, s32 aPlayGroup) 
 /* Start the IPU once its owner reaches the stored motion-frame threshold. */
 void mdlDrawEffect_IPU(dds3ModelEffectCtrlr_t *effect) {
     mdlEffectResrc_IPU_t *object = effect->payload.object.object;
-    if (object->initialized == 0) {
+    if (object->playing == 0) {
         s32 minimumTime = effect->payload.object.minimumTime;
         f32 motionTime = effect->payload.object.owner->first->frame;
         if ((u32)(s32)motionTime < (u32)minimumTime) {
@@ -804,7 +804,7 @@ void mdlDrawEffect_IPU(dds3ModelEffectCtrlr_t *effect) {
 
 /* Dispatch the five record kinds, retaining the game's native return behavior. */
 void mdlCreateEffect(mdlObj_t *owner, pibHeaderChunk_t *record, s32 motionSlotIndex) {
-    switch (record->kind) {
+    switch (record->group) {
     case PIB_CHUNK_TYPE_P2A:
         mdlCreateEffect_P2A_D3P(owner, (pibChunkItem_P2A_D3P_t *)record, motionSlotIndex, dds3ModelEffectType_P2A, mdlEffectDup_P2A);
         return;
