@@ -52,13 +52,13 @@ typedef struct fileQueue {
     /* 0x05 */ u8 nextslot;
     /* 0x06 */ u8 activeCount;
     /* 0x07 */ u8 freeCount;
-    /* 0x08 */ fileRequest_t *head;
-    /* 0x0C */ fileRequest_t *tail;
+    /* 0x08 */ fileRequest_t *queue;
+    /* 0x0C */ fileRequest_t *queueTail;
     /* 0x10 */ fileCb_t *endCallbackLink;
     /* 0x14 */ pacFileRequest_t *pacEndCallbackLink;
     /* 0x18 */ fileRequest_t *closeLink;
     /* 0x1C */ u8 *buf;
-    /* 0x20 */ fileSlot_t slots[4];
+    /* 0x20 */ fileSlot_t data[4];
 } fileMngCb_tag;
 
 
@@ -157,14 +157,14 @@ void fileLinkQueue(fileRequest_t *req, s32 kind, const char *name, void *callbac
     req->arg = arg;
 
     WaitSema(q->semaId);
-    if (q->tail == NULL) {
-        q->head = req;
+    if (q->queueTail == NULL) {
+        q->queue = req;
         first = 1;
     } else {
-        q->tail->next = req;
+        q->queueTail->next = req;
         first = 0;
     }
-    q->tail = req;
+    q->queueTail = req;
     SignalSema(q->semaId);
 
     if (first != 0) {
@@ -180,19 +180,19 @@ void fileUnlinkQueue(fileRequest_t *fileHandle) {
 
     WaitSema(work->semaId);
     for (slotIndex = 0; slotIndex != 4; slotIndex++) {
-        if (work->slots[slotIndex].req == fileHandle) {
-            work->slots[slotIndex].req = NULL;
+        if (work->data[slotIndex].req == fileHandle) {
+            work->data[slotIndex].req = NULL;
         }
     }
     previousNode = NULL;
-    currentNode = work->head;
+    currentNode = work->queue;
     while (currentNode != NULL) {
         if (currentNode == fileHandle) {
             if (currentNode->next == NULL) {
-                work->tail = previousNode;
+                work->queueTail = previousNode;
             }
             if (previousNode == NULL) {
-                work->head = currentNode->next;
+                work->queue = currentNode->next;
             } else {
                 previousNode->next = currentNode->next;
             }
@@ -305,7 +305,7 @@ void pacSync(fileRequest_t *pacFileHandle) {
 
 void fileSyncAll(void) {
     fileMngCb_tag *work = &fileQueueHead;
-    while (work->head != 0 || work->closeLink != 0) {
+    while (work->queue != 0 || work->closeLink != 0) {
         fileManager();
     }
 }
@@ -348,7 +348,7 @@ void pacRead(fileRequest_t *pacHandle) {
     }
     pacHandle->slot = slotIndex;
     work->freeCount--;
-    work->slots[slotIndex].req = pacHandle;
+    work->data[slotIndex].req = pacHandle;
     chunkBytes = pacHandle->rest;
     if (chunkBytes > 0x10000) {
         chunkBytes = 0x10000;
@@ -379,13 +379,13 @@ s32 pacLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileCb_
         if (data->pacrest != 0) {
             data->state = 5;
         } else {
-            work->slots[data->slot].size = length;
+            work->data[data->slot].size = length;
             data->rest -= length;
             if (data->rest == 0) {
                 data->state = 5;
-                work->head = (fileRequest_t *)data->next;
+                work->queue = (fileRequest_t *)data->next;
                 if (data->next == NULL) {
-                    work->tail = NULL;
+                    work->queueTail = NULL;
                 }
             } else {
                 data->state = 3;
@@ -471,10 +471,10 @@ s32 fileLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileCb
         data->rest -= length;
         if (data->rest == 0) {
             data->state = 5;
-            if (work->head == (fileRequest_t *)data) {
-                work->head = (fileRequest_t *)data->next;
+            if (work->queue == (fileRequest_t *)data) {
+                work->queue = (fileRequest_t *)data->next;
                 if (data->next == NULL) {
-                    work->tail = NULL;
+                    work->queueTail = NULL;
                 }
             }
         } else {
@@ -543,10 +543,10 @@ s32 fileSaveCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileCb
         data->rest -= length;
         if (data->rest == 0) {
             data->state = 5;
-            if (work->head == (fileRequest_t *)data) {
-                work->head = (fileRequest_t *)data->next;
+            if (work->queue == (fileRequest_t *)data) {
+                work->queue = (fileRequest_t *)data->next;
                 if (data->next == NULL) {
-                    work->tail = NULL;
+                    work->queueTail = NULL;
                 }
             }
         } else {
@@ -592,7 +592,7 @@ void fileExecQueue(void) {
     s32 locked;
 
     WaitSema(work->semaId);
-    job = (fileCb_t *)work->head;
+    job = (fileCb_t *)work->queue;
     if (job == NULL) {
         SignalSema(work->semaId);
         return;
@@ -678,13 +678,13 @@ s32 fileManager(void) {
     while (fullcnt != 0) {
         u32 slot = work->index;
         const u8 *input = work->buf + (slot << 16);
-        fileCb_t *job = (fileCb_t *)work->slots[slot].req;
+        fileCb_t *job = (fileCb_t *)work->data[slot].req;
         u8 kind = job->kind;
 
         if (kind == 1) {
             pacFileRequest_t *req = (pacFileRequest_t *)job;
             if (req != NULL &&
-                sdfPacDecode(&req->pac, input, work->slots[slot].size) == -1) {
+                sdfPacDecode(&req->pac, input, work->data[slot].size) == -1) {
                 fileUnlinkQueue((fileRequest_t *)req);
                 req->pacrest = kind;
                 if (req->callback != NULL) {
@@ -719,7 +719,7 @@ s32 fileManager(void) {
             link = &req->cbnext;
         }
     }
-    return work->head != NULL;
+    return work->queue != NULL;
 }
 
 s32 fileManagerProc(dds3ProcessID_t *procId) {
