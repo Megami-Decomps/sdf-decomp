@@ -49,7 +49,7 @@ typedef struct fileSlot {
 typedef struct fileQueue {
     /* 0x00 */ s32 semaId;
     /* 0x04 */ u8 index;
-    /* 0x05 */ u8 nextslot;
+    /* 0x05 */ u8 readIndex;
     /* 0x06 */ u8 activeCount;
     /* 0x07 */ u8 freeCount;
     /* 0x08 */ fileRequest_t *queue;
@@ -340,11 +340,11 @@ void pacRead(fileRequest_t *pacHandle) {
         return;
     }
     pacHandle->state = 4;
-    slotIndex = work->nextslot;
+    slotIndex = work->readIndex;
     if (slotIndex == 3) {
-        work->nextslot = 0;
+        work->readIndex = 0;
     } else {
-        work->nextslot = slotIndex + 1;
+        work->readIndex = slotIndex + 1;
     }
     pacHandle->slot = slotIndex;
     work->freeCount--;
