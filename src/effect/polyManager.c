@@ -306,9 +306,9 @@ extern void MultMatrixNoArg(void);
 extern void dds3SpPoly_RingBuffInit(dds3SpPolyRing_t *pRing, s32 number);
 
 dds3SpPolyOldDesc_t *dds3SpPoly_Ring_Old_Create(dds3SpPolyOldDesc_t *src);
-void dds3SpPoly_Ring_Old_Delete(dds3SpPolyOld_t *node);
+void dds3SpPoly_Ring_Old_Delete(dds3SpPolyOld_t *hData);
 void dds3SpPoly_Ring_Old_BuffInit(dds3SpPolyOld_t *hData);
-void dds3SpPoly_Ring_Old_SetScale(f32 scale, dds3SpPolyOld_t *node);
+void dds3SpPoly_Ring_Old_SetScale(f32 hData, dds3SpPolyOld_t *scale);
 void dds3SpPoly_Ring_Old_Calc(dds3SpPolyOld_t *pRing);
 void dds3SpPoly_Ring_Old_Draw(dds3SpPolyOld_t *hData);
 void dds3SpPoly_Ring_Old_New(dds3SpPolyOld_t *pRing, s32 number);
@@ -323,14 +323,14 @@ void dds3SpPoly_RingDraw(dds3SpPolyRing_t *hData);
 dds3SpPolySphereRing_t *dds3SpPoly_SphereRingCreate(dds3SpPolySphereRing_t *source);
 void dds3SpPoly_SphereRingDelete(dds3SpPolySphereRing_t *hData);
 void dds3SpPoly_SphereRingAllBuffInit(dds3SpPolySphereRing_t *arc);
-void dds3SpPoly_SphereRingBuffInit(dds3SpPolySphereRing_t *arc, s32 recordIndex);
+void dds3SpPoly_SphereRingBuffInit(dds3SpPolySphereRing_t *pSphereRing, s32 number);
 void dds3SpPoly_SphereRingMove(dds3SpPolySphereRing_t *pSphereRing, s32 number);
 void dds3SpPoly_SphereRingSetScale(f32 hData, dds3SpPolySphereRing_t *scale);
 void dds3SpPoly_SphereRingDraw(dds3SpPolySphereRing_t *hData);
 dds3SpPolyRollRing_t *dds3SpPoly_RollRingCreate(dds3SpPolyHead_t *templateHead);
 void dds3SpPoly_RollRingDelete(dds3SpPolyRollRing_t *hData);
 void dds3SpPoly_RollRingAllBuffInit(dds3SpPolyRollRing_t *rotatingBand);
-void dds3SpPoly_RollRingBuffInit(dds3SpPolyRollRing_t *spawner, u32 index);
+void dds3SpPoly_RollRingBuffInit(dds3SpPolyRollRing_t *pRollRing, u32 number);
 void dds3SpPoly_RollRingMove(dds3SpPolyRollRing_t *pRollRing, s32 number);
 void dds3SpPoly_RollRingSetScale(f32 hData, dds3SpPolyRollRing_t *scale);
 void dds3SpPoly_RollRingSetEndless(dds3SpPolyRollRing_t *pRollRing);
@@ -1295,9 +1295,9 @@ dds3TrianglePoly_t *dds3TrianglePolyCreate(s32 number) {
     return block;
 }
 
-void dds3TrianglePolyDelete(dds3TrianglePoly_t *block) {
-    sdfMatFreeDelayed(block->asset);
-    sdfMemFreeDirect(block->allocation);
+void dds3TrianglePolyDelete(dds3TrianglePoly_t *hTriPoly) {
+    sdfMatFreeDelayed(hTriPoly->asset);
+    sdfMemFreeDirect(hTriPoly->allocation);
 }
 
 void dds3TrianglePolyLinkOt(sdfGrOt_t *pOt, dds3TrianglePoly_t *hTriPoly) {
@@ -1346,9 +1346,9 @@ dds3SpPolyOldDesc_t *dds3SpPoly_Ring_Old_Create(dds3SpPolyOldDesc_t *src) {
     return desc;
 }
 
-void dds3SpPoly_Ring_Old_Delete(dds3SpPolyOld_t *node) {
-    dds3TrackPolyDelete(node->strip);
-    sdfChipFreeDirect(node);
+void dds3SpPoly_Ring_Old_Delete(dds3SpPolyOld_t *hData) {
+    dds3TrackPolyDelete(hData->strip);
+    sdfChipFreeDirect(hData);
 }
 
 void dds3SpPoly_Ring_Old_BuffInit(dds3SpPolyOld_t *hData) {
@@ -1378,9 +1378,9 @@ void dds3SpPoly_Ring_Old_BuffInit(dds3SpPolyOld_t *hData) {
     }
 }
 
-void dds3SpPoly_Ring_Old_SetScale(f32 scale, dds3SpPolyOld_t *node) {
-    node->radius = node->radius * scale;
-    node->pairDisplacement = node->pairDisplacement * scale;
+void dds3SpPoly_Ring_Old_SetScale(f32 hData, dds3SpPolyOld_t *scale) {
+    scale->radius = scale->radius * hData;
+    scale->pairDisplacement = scale->pairDisplacement * hData;
 }
 
 void dds3SpPoly_Ring_Old_Calc(dds3SpPolyOld_t *pRing) {
@@ -1711,13 +1711,13 @@ void dds3SpPoly_SphereRingAllBuffInit(dds3SpPolySphereRing_t *arc) {
     }
 }
 
-void dds3SpPoly_SphereRingBuffInit(dds3SpPolySphereRing_t *arc, s32 recordIndex) {
-    dds3SpPolySphereRecord_t *record = arc->records;
-    f32 spread = arc->radiusJitter;
+void dds3SpPoly_SphereRingBuffInit(dds3SpPolySphereRing_t *pSphereRing, s32 number) {
+    dds3SpPolySphereRecord_t *record = pSphereRing->records;
+    f32 spread = pSphereRing->radiusJitter;
 
-    record += recordIndex;
+    record += number;
     record->age = 0;
-    record->radius = arc->radius * (dds3GetRandFloatA(dds3EffectBase) * spread + (1.0f - spread));
+    record->radius = pSphereRing->radius * (dds3GetRandFloatA(dds3EffectBase) * spread + (1.0f - spread));
 }
 
 void dds3SpPoly_SphereRingMove(dds3SpPolySphereRing_t *pSphereRing, s32 number) {
@@ -1896,18 +1896,18 @@ void dds3SpPoly_RollRingAllBuffInit(dds3SpPolyRollRing_t *rotatingBand) {
     }
 }
 
-void dds3SpPoly_RollRingBuffInit(dds3SpPolyRollRing_t *spawner, u32 index) {
-    dds3SpPolyRollRecord_t *record = spawner->records;
+void dds3SpPoly_RollRingBuffInit(dds3SpPolyRollRing_t *pRollRing, u32 number) {
+    dds3SpPolyRollRecord_t *record = pRollRing->records;
     f32 spread;
 
-    record += index;
-    spread = spawner->initialRadiusJitter;
+    record += number;
+    spread = pRollRing->initialRadiusJitter;
     record->age = 0;
-    record->radius = spawner->initialRadius * (dds3GetRandFloatA(dds3EffectBase) * spread + (1.0f - spread));
-    spread = spawner->targetRadiusJitter;
-    record->radiusStep = (spawner->targetRadius * (dds3GetRandFloatA(dds3EffectBase) * spread + (1.0f - spread)) - record->radius) / (f32)spawner->head.duration;
-    record->rotationXRadians = spawner->rotationXDegrees * 0.017453292f;
-    record->rotationYRadians = 6.2831852f / (f32)spawner->spawnDelayGroupSize * (f32)(index % spawner->spawnDelayGroupSize);
+    record->radius = pRollRing->initialRadius * (dds3GetRandFloatA(dds3EffectBase) * spread + (1.0f - spread));
+    spread = pRollRing->targetRadiusJitter;
+    record->radiusStep = (pRollRing->targetRadius * (dds3GetRandFloatA(dds3EffectBase) * spread + (1.0f - spread)) - record->radius) / (f32)pRollRing->head.duration;
+    record->rotationXRadians = pRollRing->rotationXDegrees * 0.017453292f;
+    record->rotationYRadians = 6.2831852f / (f32)pRollRing->spawnDelayGroupSize * (f32)(number % pRollRing->spawnDelayGroupSize);
 }
 
 void dds3SpPoly_RollRingMove(dds3SpPolyRollRing_t *pRollRing, s32 number)
