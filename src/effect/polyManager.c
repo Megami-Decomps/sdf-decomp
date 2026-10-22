@@ -14,12 +14,12 @@ typedef struct
 typedef struct dds3TrackPoly_t
 {
     u16 type;
-    u16 bucket;
+    u16 mode;
     s32 number;
     s32 point;
     s32 rec;
     sdfMemHandle_t *hMem;
-    dds3TrackPolyList_t *list;
+    dds3TrackPolyList_t *trackList;
     u128 *pVertex;
     u32 *pVC;
     sdfMat_t *pMat;
@@ -113,9 +113,9 @@ typedef struct dds3SpPoly_Basic_t {
     u32 abgr;
     u8 loop;
     u8 pad65;
-    u16 drawBucket; /* 0x66: selected particle draw bucket. */
-    u32 startColorRampFrames;
-    u32 endColorRampFrames;
+    u16 mode; /* 0x66: selected particle draw bucket. */
+    u32 alpha_s;
+    u32 alpha_e;
     f32 matrixCopy[16]; /* Initialized from matrix when the owner is created. */
     u16 type;
     u16 state; /* Cleared when every entry finishes. */
@@ -189,7 +189,7 @@ typedef struct dds3SpPoly_Ring_t3 {
     void *dispatchArgA;             /* +0xEC */
     struct dds3TrackPoly_t *hTrackPoly;         /* +0xF0 */
     dds3SpPoly_RingPhysics_t *pPhysics;         /* +0xF4 */
-    struct sdfMemHandle_t *allocation;  /* +0xF8 */
+    struct sdfMemHandle_t *hMem;  /* +0xF8 */
     u8 padFC[4];
 } dds3SpPoly_Ring_t3;
 
@@ -225,45 +225,45 @@ enum {
 typedef struct {
     dds3SpPoly_Basic_t head;
     u32 spawnDelayStep;
-    u32 segments;
+    u32 vertex;
     f32 radialWidth;
     f32 radius;
     f32 radius_r;
     void *dispatchArgB;            /* 0xD4 */
     u8 padD8[4];
     void *dispatchArgA;            /* 0xDC */
-    dds3TrackPoly_t *strip;              /* 0xE0 */
-    dds3SpPoly_SphereRingPhysics_t *records;        /* 0xE4 */
-    struct sdfMemHandle_t *allocation; /* 0xE8 */
+    dds3TrackPoly_t *hTrackPoly;              /* 0xE0 */
+    dds3SpPoly_SphereRingPhysics_t *pPhysics;        /* 0xE4 */
+    struct sdfMemHandle_t *hMem; /* 0xE8 */
     u8 padEC[4];
-} dds3SpPoly_SphereRing_t3; /* 0xF0, followed by eight-byte records */
+} dds3SpPoly_SphereRing_t3; /* 0xF0, followed by eight-byte pPhysics */
 
 typedef struct {
     dds3SpPoly_Basic_t head;
     u32 spawnDelayStep;
-    u32 segments;
+    u32 vertex;
     f32 radialWidth;
-    f32 initialRadius;
-    f32 targetRadius;
-    f32 initialRadiusJitter;
-    f32 targetRadiusJitter;
-    u32 spawnDelayGroupSize;
-    f32 rotationXDegrees;
-    f32 rotationStepDegrees;
+    f32 radius_s;
+    f32 radius_e;
+    f32 radius_s_r;
+    f32 radius_e_r;
+    u32 simu_num;
+    f32 incline;
+    f32 roll_s;
     void *dispatchArgB;            /* 0xE8 */
     u8 padEC[4];
     void *dispatchArgA;            /* 0xF0 */
-    dds3TrackPoly_t *strip;              /* 0xF4 */
-    dds3SpPoly_RollRingPhysics_t *records; /* 0xF8 */
+    dds3TrackPoly_t *hTrackPoly;              /* 0xF4 */
+    dds3SpPoly_RollRingPhysics_t *pPhysics; /* 0xF8 */
     struct sdfMemHandle_t *allocation; /* 0xFC */
-} dds3SpPolyRollRing_t; /* 0x100, followed by 20-byte records */
+} dds3SpPoly_RollRing_t3; /* 0x100, followed by 20-byte pPhysics */
 
 /* The ring kinds share the template prefix and their leading parameter words;
  * the creation paths clamp the segment count through this shared view. */
 typedef union {
     dds3SpPoly_Ring_t3 band;
     dds3SpPoly_SphereRing_t3 arc;
-    dds3SpPolyRollRing_t rotating;
+    dds3SpPoly_RollRing_t3 rotating;
 } dds3SpPolyRingUnion_t;
 
 
@@ -327,13 +327,13 @@ void dds3SpPoly_SphereRingBuffInit(dds3SpPoly_SphereRing_t3 *pSphereRing, s32 nu
 void dds3SpPoly_SphereRingMove(dds3SpPoly_SphereRing_t3 *pSphereRing, s32 number);
 void dds3SpPoly_SphereRingSetScale(f32 hData, dds3SpPoly_SphereRing_t3 *scale);
 void dds3SpPoly_SphereRingDraw(dds3SpPoly_SphereRing_t3 *hData);
-dds3SpPolyRollRing_t *dds3SpPoly_RollRingCreate(dds3SpPoly_Basic_t *templateHead);
-void dds3SpPoly_RollRingDelete(dds3SpPolyRollRing_t *hData);
-void dds3SpPoly_RollRingAllBuffInit(dds3SpPolyRollRing_t *rotatingBand);
-void dds3SpPoly_RollRingBuffInit(dds3SpPolyRollRing_t *pRollRing, u32 number);
-void dds3SpPoly_RollRingMove(dds3SpPolyRollRing_t *pRollRing, s32 number);
-void dds3SpPoly_RollRingSetScale(f32 hData, dds3SpPolyRollRing_t *scale);
-void dds3SpPoly_RollRingSetEndless(dds3SpPolyRollRing_t *pRollRing);
+dds3SpPoly_RollRing_t3 *dds3SpPoly_RollRingCreate(dds3SpPoly_Basic_t *templateHead);
+void dds3SpPoly_RollRingDelete(dds3SpPoly_RollRing_t3 *hData);
+void dds3SpPoly_RollRingAllBuffInit(dds3SpPoly_RollRing_t3 *rotatingBand);
+void dds3SpPoly_RollRingBuffInit(dds3SpPoly_RollRing_t3 *pRollRing, u32 number);
+void dds3SpPoly_RollRingMove(dds3SpPoly_RollRing_t3 *pRollRing, s32 number);
+void dds3SpPoly_RollRingSetScale(f32 hData, dds3SpPoly_RollRing_t3 *scale);
+void dds3SpPoly_RollRingSetEndless(dds3SpPoly_RollRing_t3 *pRollRing);
 void *dds3SpPolyCreate(s32 index, void *arg);
 void *dds3SpPolyCopy(dds3SpPoly_Basic_t *effect);
 void dds3SpPolyDelete(dds3SpPoly_Basic_t *hData);
@@ -473,9 +473,9 @@ dds3TrackPoly_t *dds3TrackPolyCreate(s32 number, s32 face, s32 rec, u32 type) {
     base += total * 0x10;
     system->pVC = (u32 *)base;
     base += total * 4;
-    system->list = (dds3TrackPolyList_t *)base;
+    system->trackList = (dds3TrackPolyList_t *)base;
     for (i = 0; i < number; i++) {
-        dds3TrackPolyList_t *cell = (dds3TrackPolyList_t *)(i * sizeof(dds3TrackPolyList_t) + (s32)system->list);
+        dds3TrackPolyList_t *cell = (dds3TrackPolyList_t *)(i * sizeof(dds3TrackPolyList_t) + (s32)system->trackList);
         cell->pVertex = (u128 *)((u8 *)system->pVertex + i * face * 0x10);
         cell->pVC = system->pVC + i * face;
         dds3TrackPolyListInit(system, i);
@@ -484,7 +484,7 @@ dds3TrackPoly_t *dds3TrackPolyCreate(s32 number, s32 face, s32 rec, u32 type) {
     sdfMatSetConstant(system->pMat, 1.0f);
     system->type = type;
     system->number = number;
-    system->bucket = 2;
+    system->mode = 2;
     system->point = face;
     system->rec = rec;
     system->hMem = allocation;
@@ -500,7 +500,7 @@ void dds3TrackPolyDelete(dds3TrackPoly_t *hTrackPoly) {
 
 void dds3TrackPolyListInit(dds3TrackPoly_t *hTrackPoly, s32 number)
 {
-    dds3TrackPolyList_t *list = (dds3TrackPolyList_t *)(number * 20 + (u32)hTrackPoly->list);
+    dds3TrackPolyList_t *list = (dds3TrackPolyList_t *)(number * 20 + (u32)hTrackPoly->trackList);
 
     list->color = 0x80808080;
     list->rec = 0;
@@ -513,7 +513,7 @@ void dds3TrackPolyDraw(dds3TrackPoly_t *node) {
 }
 
 void dds3TrackPolySet(dds3TrackPoly_t *hTrackPoly, s32 number, const u128 *pV) {
-    dds3TrackPolyList_t *cell = &hTrackPoly->list[number];
+    dds3TrackPolyList_t *cell = &hTrackPoly->trackList[number];
     u128 *vertex;
     s32 shiftCount;
     s32 i;
@@ -538,7 +538,7 @@ void dds3TrackPolySet(dds3TrackPoly_t *hTrackPoly, s32 number, const u128 *pV) {
 }
 
 void dds3TrackPolyMove(dds3TrackPoly_t *hTrackPoly, s32 number, const u128 *pMove) {
-    dds3TrackPolyList_t *cell = hTrackPoly->list + number;
+    dds3TrackPolyList_t *cell = hTrackPoly->trackList + number;
     s32 count = hTrackPoly->point;
     u128 *vertex = cell->pVertex;
     s32 i;
@@ -556,7 +556,7 @@ void dds3TrackPolyMove(dds3TrackPoly_t *hTrackPoly, s32 number, const u128 *pMov
 }
 
 void dds3TrackPolySet2(dds3TrackPoly_t *hTrackPoly, s32 number, const u128 *pV) {
-    dds3TrackPolyList_t *cell = &hTrackPoly->list[number];
+    dds3TrackPolyList_t *cell = &hTrackPoly->trackList[number];
     u128 *vertex;
     s32 shiftCount;
     s32 i;
@@ -582,7 +582,7 @@ void dds3TrackPolySet2(dds3TrackPoly_t *hTrackPoly, s32 number, const u128 *pV) 
 }
 
 void dds3TrackPolyMove2(dds3TrackPoly_t *hTrackPoly, s32 number, const u128 *pMove) {
-    dds3TrackPolyList_t *cell = hTrackPoly->list + number;
+    dds3TrackPolyList_t *cell = hTrackPoly->trackList + number;
     s32 count = cell->count / 3;
     u128 *vertex = cell->pVertex;
     s32 i;
@@ -611,7 +611,7 @@ void dds3TrackPolyVCRefresh_ParType1(dds3TrackPoly_t *hTrackPoly, s32 index) {
     u32 startCarrier[4];
     u32 cellCarrier[4];
     u32 packed[4];
-    dds3TrackPolyList_t *cell = (dds3TrackPolyList_t *)((u8 *)(index * sizeof(dds3TrackPolyList_t)) + (u32)hTrackPoly->list);
+    dds3TrackPolyList_t *cell = (dds3TrackPolyList_t *)((u8 *)(index * sizeof(dds3TrackPolyList_t)) + (u32)hTrackPoly->trackList);
     u32 *vc = cell->pVC;
     u32 perCell = cell->count >> 1;
     u32 color = vc[0];
@@ -654,7 +654,7 @@ void dds3TrackPolyVCSet_Normal(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 abg
     s32 i;
 
     for (i = 0; i < count; i++) {
-        u32 *vc = hTrackPoly->list[i].pVC;
+        u32 *vc = hTrackPoly->trackList[i].pVC;
         s32 j;
 
         for (j = 0; j < perCell; j++) {
@@ -680,7 +680,7 @@ void dds3TrackPolyVCSet_Acute(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 abgr
     VU0_LERP_VF10_VF11(1.0f / (f32)perCell);
     SDF_VU0_COPYVECTOR_A_TO_C();
     for (i = 0; i < cellCount; i++) {
-        u32 *vc = hTrackPoly->list[i].pVC;
+        u32 *vc = hTrackPoly->trackList[i].pVC;
         s32 j;
 
         cellCarrier[0] = abgr_in;
@@ -709,7 +709,7 @@ void dds3TrackPolyVCSet2_Normal(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 ab
     s32 i;
 
     for (i = 0; i < cellCount; i++) {
-        u32 *vc = hTrackPoly->list[i].pVC;
+        u32 *vc = hTrackPoly->trackList[i].pVC;
         s32 j;
 
         for (j = 0; j < perCell; j++) {
@@ -737,7 +737,7 @@ void dds3TrackPolyVCSet2_AcuteW(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 ab
     abgr_out &= 0x00FFFFFF;
 
     for (i = 0; i < cellCount; i++) {
-        u32 *vc = hTrackPoly->list[i].pVC;
+        u32 *vc = hTrackPoly->trackList[i].pVC;
         u32 rampFirst = 0;
         u32 rampSecond = 0;
         s32 j;
@@ -770,7 +770,7 @@ void dds3TrackPolyVC3Set_Normal(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abg
     s32 i;
 
     for (i = 0; i < cellCount; i++) {
-        u32 *vc = hTrackPoly->list[i].pVC;
+        u32 *vc = hTrackPoly->trackList[i].pVC;
         s32 j;
 
         for (j = 0; j < perCell; j++) {
@@ -802,7 +802,7 @@ void dds3TrackPolyVC3Set_Acute(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abgr
     abgr_2 &= 0x00FFFFFF;
 
     for (i = 0; i < cellCount; i++) {
-        u32 *vc = hTrackPoly->list[i].pVC;
+        u32 *vc = hTrackPoly->trackList[i].pVC;
         u32 rampFirst = firstAlpha;
         u32 rampSecond = secondAlpha;
         u32 rampThird = thirdAlpha;
@@ -840,7 +840,7 @@ void dds3TrackPolyVC3Set_AcuteW(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abg
     abgr_2 &= 0x00FFFFFF;
 
     for (i = 0; i < cellCount; i++) {
-        u32 *vc = hTrackPoly->list[i].pVC;
+        u32 *vc = hTrackPoly->trackList[i].pVC;
         u32 rampFirst = 0;
         u32 rampSecond = 0;
         u32 rampThird = 0;
@@ -884,7 +884,7 @@ void dds3TrackPolyVCSet4_Normal(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 ab
     s32 cellIndex;
 
     for (cellIndex = 0; cellIndex < cellCount; cellIndex++) {
-        u32 *vertices = hTrackPoly->list[cellIndex].pVC;
+        u32 *vertices = hTrackPoly->trackList[cellIndex].pVC;
         s32 i;
 
         for (i = 0; i < perCell; i++) {
@@ -909,7 +909,7 @@ void dds3TrackPolyVCSet4_Acute(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 abg
     s32 i;
 
     for (i = 0; i < cellCount; i++) {
-        u32 *vc = hTrackPoly->list[i].pVC;
+        u32 *vc = hTrackPoly->trackList[i].pVC;
         u32 alphaA = firstAlpha;
         u32 alphaB = secondAlpha;
         s32 j;
@@ -939,7 +939,7 @@ void dds3TrackPolyVCSet4_AcuteW(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 ab
     s32 i;
 
     for (i = 0; i < cellCount; i++) {
-        u32 *vc = hTrackPoly->list[i].pVC;
+        u32 *vc = hTrackPoly->trackList[i].pVC;
         u32 alphaA = 0;
         u32 alphaB = 0;
         s32 j;
@@ -974,7 +974,7 @@ void dds3TrackPolyVC5Set_Normal(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abg
     s32 i;
 
     for (i = 0; i < cellCount; i++) {
-        u32 *vc = hTrackPoly->list[i].pVC;
+        u32 *vc = hTrackPoly->trackList[i].pVC;
         s32 j;
 
         for (j = 0; j < perCell; j++) {
@@ -1005,7 +1005,7 @@ void dds3TrackPolyVC5Set_Acute(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abgr
     abgr_2 &= 0x00FFFFFF;
 
     for (i = 0; i < cellCount; i++) {
-        u32 *vc = hTrackPoly->list[i].pVC;
+        u32 *vc = hTrackPoly->trackList[i].pVC;
         u32 rampFirst = firstAlpha;
         u32 rampSecond = secondAlpha;
         u32 rampThird = thirdAlpha;
@@ -1042,7 +1042,7 @@ void dds3TrackPolyVC5Set_AcuteR(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abg
     abgr_2 &= 0x00FFFFFF;
 
     for (i = 0; i < cellCount; i++) {
-        u32 *vc = hTrackPoly->list[i].pVC;
+        u32 *vc = hTrackPoly->trackList[i].pVC;
         u32 rampFirst = 0;
         u32 rampSecond = 0;
         u32 rampThird = 0;
@@ -1079,7 +1079,7 @@ void dds3TrackPolyVC5Set_AcuteW(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abg
     abgr_2 &= 0x00FFFFFF;
 
     for (i = 0; i < cellCount; i++) {
-        u32 *vc = hTrackPoly->list[i].pVC;
+        u32 *vc = hTrackPoly->trackList[i].pVC;
         u32 rampFirst = 0;
         u32 rampSecond = 0;
         u32 rampThird = 0;
@@ -1115,7 +1115,7 @@ void dds3TrackPolyVC5Set_AcuteW(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abg
 
 
 void dds3TrackPolySetMode(dds3TrackPoly_t *hTrackPoly, u16 mode) {
-    hTrackPoly->bucket = mode;
+    hTrackPoly->mode = mode;
 }
 
 void dds3TrackPolyVCSet(dds3TrackPoly_t *hTrackPoly, s32 type, void *abgr_in, void *abgr_out) {
@@ -1141,7 +1141,7 @@ void dds3TrackPolyLinkOt(void) {
     }
     memset(lists, 0, sizeof(lists));
     for (system = dds3TrackPolyTag; system != NULL; system = system->next) {
-        slot = &lists[system->bucket];
+        slot = &lists[system->mode];
         list = *slot;
         if (list == 0) {
             *slot = (sdfDrawTag_t *)sdfGrAllocPacketBuff(0x20);
@@ -1154,7 +1154,7 @@ void dds3TrackPolyLinkOt(void) {
         if (system->type == TRACK_TOPOLOGY_PAIR) {
             D_005698B0.faceIndex = D_00317380;
             for (i = 0; i < count; i++) {
-                cell = &system->list[i];
+                cell = &system->trackList[i];
                 D_005698B0.faceCount = 16;
                 D_005698B0.pointCount = 18;
                 remaining = cell->count;
@@ -1176,7 +1176,7 @@ void dds3TrackPolyLinkOt(void) {
         } else if (system->type == TRACK_TOPOLOGY_TRIANGLE) {
             D_005698B0.faceIndex = D_00317400;
             for (i = 0; i < count; i++) {
-                cell = &system->list[i];
+                cell = &system->trackList[i];
                 D_005698B0.faceCount = 16;
                 D_005698B0.pointCount = 15;
                 remaining = cell->count;
@@ -1198,7 +1198,7 @@ void dds3TrackPolyLinkOt(void) {
         } else if (system->type == TRACK_TOPOLOGY_FIVE_VECTOR) {
             D_005698B0.faceIndex = D_00317540;
             for (i = 0; i < count; i++) {
-                cell = &system->list[i];
+                cell = &system->trackList[i];
                 D_005698B0.faceCount = 8;
                 D_005698B0.pointCount = 10;
                 remaining = cell->count;
@@ -1215,7 +1215,7 @@ void dds3TrackPolyLinkOt(void) {
         } else if (system->type == TRACK_TOPOLOGY_SIX_VECTOR) {
             D_005698B0.faceIndex = D_00317470;
             for (i = 0; i < count; i++) {
-                cell = &system->list[i];
+                cell = &system->trackList[i];
                 D_005698B0.faceCount = 10;
                 D_005698B0.pointCount = 12;
                 remaining = cell->count;
@@ -1232,7 +1232,7 @@ void dds3TrackPolyLinkOt(void) {
         } else {
             D_005698B0.faceIndex = D_003174F0;
             for (i = 0; i < count; i++) {
-                cell = &system->list[i];
+                cell = &system->trackList[i];
                 D_005698B0.faceCount = 12;
                 D_005698B0.pointCount = 16;
                 remaining = cell->count;
@@ -1365,7 +1365,7 @@ void dds3SpPoly_Ring_Old_BuffInit(dds3SpPoly_Ring_Old_t3 *hData) {
     system = hData->hTrackPoly;
     i = 0;
     if (hData->entryCount != 0) {
-        cells = system->list;
+        cells = system->trackList;
         do {
             cells[i].rec = 0;
             cells[i].count = 0;
@@ -1397,7 +1397,7 @@ void dds3SpPoly_Ring_Old_Calc(dds3SpPoly_Ring_Old_t3 *pRing) {
         duration = pRing->duration;
         completed = 0;
         count = pRing->entryCount;
-        entry = pRing->hTrackPoly->list;
+        entry = pRing->hTrackPoly->trackList;
         alphaStep = 128.0f / (f32)duration;
         ages = pRing->ages;
         loop = pRing->loop;
@@ -1440,7 +1440,7 @@ INCLUDE_ASM(const s32, "effect/polyManager", dds3SpPoly_Ring_Old_New);
 
 void dds3SpPoly_Ring_Old_Move(dds3SpPoly_Ring_Old_t3 *pRing, s32 number) {
     dds3TrackPoly_t *strip = pRing->hTrackPoly;
-    dds3TrackPolyList_t *entry = &strip->list[number];
+    dds3TrackPolyList_t *entry = &strip->trackList[number];
     f32 scale[4];
     f32 *p;
     s32 pairs;
@@ -1502,7 +1502,7 @@ dds3SpPoly_Ring_t3 *dds3SpPoly_RingCreate(dds3SpPoly_Basic_t *templateHead) {
     memcpy(&band->spawnDelayStep, (u8 *)templateHead + templateHead->templateSize, tailSize);
     band->head.templateSize = sizeof(dds3SpPoly_Basic_t);
     band->pPhysics = (dds3SpPoly_RingPhysics_t *)(band + 1);
-    band->allocation = allocation;
+    band->hMem = allocation;
     if (((dds3SpPolyRingUnion_t *)band)->band.vertex < 3) {
         ((dds3SpPolyRingUnion_t *)band)->band.vertex = 3;
     }
@@ -1511,13 +1511,13 @@ dds3SpPoly_Ring_t3 *dds3SpPoly_RingCreate(dds3SpPoly_Basic_t *templateHead) {
     dds3SpPoly_RingAllBuffInit(band);
     SDF_VU0_LOADMATRIX(band->head.matrix);
     SDF_VU0_STOREMATRIX(band->head.matrixCopy);
-    dds3TrackPolySetMode(band->hTrackPoly, band->head.drawBucket);
+    dds3TrackPolySetMode(band->hTrackPoly, band->head.mode);
     return band;
 }
 
 void dds3SpPoly_RingDelete(dds3SpPoly_Ring_t3 *hData) {
     dds3TrackPolyDelete(hData->hTrackPoly);
-    sdfMemFreeDirect(hData->allocation);
+    sdfMemFreeDirect(hData->hMem);
 }
 
 void dds3SpPoly_RingAllBuffInit(dds3SpPoly_Ring_t3 *band) {
@@ -1543,7 +1543,7 @@ INCLUDE_ASM(const s32, "effect/polyManager", dds3SpPoly_RingBuffInit);
 void dds3SpPoly_RingMove(dds3SpPoly_Ring_t3 *pRing, s32 number) {
     dds3TrackPoly_t *strip = pRing->hTrackPoly;
     dds3SpPoly_RingPhysics_t *rec = &pRing->pPhysics[number];
-    dds3TrackPolyList_t *entry = &strip->list[number];
+    dds3TrackPolyList_t *entry = &strip->trackList[number];
     f32 radialDirection[4];
     f32 radiusStepVector[4];
     f32 liftVector[4];
@@ -1614,7 +1614,7 @@ void dds3SpPoly_RingDraw(dds3SpPoly_Ring_t3 *hData) {
     duration = hData->head.frame;
     loop = hData->head.loop;
     color = hData->head.abgr;
-    entry = strip->list;
+    entry = strip->trackList;
 
     if (count > 0) {
         do {
@@ -1627,11 +1627,11 @@ void dds3SpPoly_RingDraw(dds3SpPoly_Ring_t3 *hData) {
             if (age < 0) {
                 age++;
             } else {
-                if ((u32)age < hData->head.startColorRampFrames) {
-                    entry->color = dds3SpPoly_Color(age, hData->head.startColorRampFrames, color);
+                if ((u32)age < hData->head.alpha_s) {
+                    entry->color = dds3SpPoly_Color(age, hData->head.alpha_s, color);
                 } else if (age <= duration &&
-                           (u32)age >= duration - hData->head.endColorRampFrames) {
-                    entry->color = dds3SpPoly_Color(duration - age, hData->head.endColorRampFrames, color);
+                           (u32)age >= duration - hData->head.alpha_e) {
+                    entry->color = dds3SpPoly_Color(duration - age, hData->head.alpha_e, color);
                 }
 
                 if (entry->color & 0xFF000000) {
@@ -1674,28 +1674,28 @@ dds3SpPoly_SphereRing_t3 *dds3SpPoly_SphereRingCreate(dds3SpPoly_SphereRing_t3 *
     memcpy(clone, source, source->head.templateSize);
     memcpy(&clone->spawnDelayStep, (u8 *)source + source->head.templateSize, tailBytes);
     clone->head.templateSize = 0xC0;
-    clone->records = (dds3SpPoly_SphereRingPhysics_t *)(clone + 1);
-    clone->allocation = allocation;
-    if (((dds3SpPolyRingUnion_t *)clone)->arc.segments < 3) {
-        ((dds3SpPolyRingUnion_t *)clone)->arc.segments = 3;
+    clone->pPhysics = (dds3SpPoly_SphereRingPhysics_t *)(clone + 1);
+    clone->hMem = allocation;
+    if (((dds3SpPolyRingUnion_t *)clone)->arc.vertex < 3) {
+        ((dds3SpPolyRingUnion_t *)clone)->arc.vertex = 3;
     }
-    clone->strip = dds3TrackPolyCreate(clone->head.number, clone->segments, 1, 0);
-    dds3TrackPolyVCSet(clone->strip, 0, clone->dispatchArgA, clone->dispatchArgB);
+    clone->hTrackPoly = dds3TrackPolyCreate(clone->head.number, clone->vertex, 1, 0);
+    dds3TrackPolyVCSet(clone->hTrackPoly, 0, clone->dispatchArgA, clone->dispatchArgB);
     dds3SpPoly_SphereRingAllBuffInit(clone);
     SDF_VU0_LOADMATRIX(clone->head.matrix);
     SDF_VU0_STOREMATRIX(clone->head.matrixCopy);
-    dds3TrackPolySetMode(clone->strip, clone->head.drawBucket);
+    dds3TrackPolySetMode(clone->hTrackPoly, clone->head.mode);
     return clone;
 }
 
 void dds3SpPoly_SphereRingDelete(dds3SpPoly_SphereRing_t3 *hData) {
-    dds3TrackPolyDelete(hData->strip);
-    sdfMemFreeDirect(hData->allocation);
+    dds3TrackPolyDelete(hData->hTrackPoly);
+    sdfMemFreeDirect(hData->hMem);
 }
 
 void dds3SpPoly_SphereRingAllBuffInit(dds3SpPoly_SphereRing_t3 *arc) {
     u32 count = arc->head.number;
-    dds3SpPoly_SphereRingPhysics_t *record = arc->records;
+    dds3SpPoly_SphereRingPhysics_t *record = arc->pPhysics;
     u32 delayStep = arc->spawnDelayStep;
     s32 age = POLY_INACTIVE_ENTRY_AGE;
     u32 index;
@@ -1712,7 +1712,7 @@ void dds3SpPoly_SphereRingAllBuffInit(dds3SpPoly_SphereRing_t3 *arc) {
 }
 
 void dds3SpPoly_SphereRingBuffInit(dds3SpPoly_SphereRing_t3 *pSphereRing, s32 number) {
-    dds3SpPoly_SphereRingPhysics_t *record = pSphereRing->records;
+    dds3SpPoly_SphereRingPhysics_t *record = pSphereRing->pPhysics;
     f32 spread = pSphereRing->radius_r;
 
     record += number;
@@ -1721,9 +1721,9 @@ void dds3SpPoly_SphereRingBuffInit(dds3SpPoly_SphereRing_t3 *pSphereRing, s32 nu
 }
 
 void dds3SpPoly_SphereRingMove(dds3SpPoly_SphereRing_t3 *pSphereRing, s32 number) {
-    dds3TrackPoly_t *strip = pSphereRing->strip;
-    dds3SpPoly_SphereRingPhysics_t *record = &pSphereRing->records[number];
-    dds3TrackPolyList_t *stripEntry = &strip->list[number];
+    dds3TrackPoly_t *strip = pSphereRing->hTrackPoly;
+    dds3SpPoly_SphereRingPhysics_t *record = &pSphereRing->pPhysics[number];
+    dds3TrackPolyList_t *stripEntry = &strip->trackList[number];
     f32 innerPointVector[4];
     f32 outerPointVector[4];
     f32 recordRadius;
@@ -1744,7 +1744,7 @@ void dds3SpPoly_SphereRingMove(dds3SpPoly_SphereRing_t3 *pSphereRing, s32 number
     angle = (f32)record->frame / (f32)pSphereRing->head.frame * 3.14159265f;
     projectedInnerRadius = recordRadius * sdfSin(angle);
     verticalOffset = recordRadius * sdfCos(angle) - recordRadius;
-    angleStep = 3.14159265f * 2.0f / (f32)pSphereRing->segments;
+    angleStep = 3.14159265f * 2.0f / (f32)pSphereRing->vertex;
     SDF_VU0_LOADMATRIX(pSphereRing->head.matrix);
     radialWidth = pSphereRing->radialWidth;
     angle = 0.0f;
@@ -1791,13 +1791,13 @@ void dds3SpPoly_SphereRingDraw(dds3SpPoly_SphereRing_t3 *hData) {
     u32 color;
     dds3TrackPolyList_t *entry;
 
-    strip = hData->strip;
+    strip = hData->hTrackPoly;
     count = hData->head.number;
-    record = hData->records;
+    record = hData->pPhysics;
     duration = hData->head.frame;
     loop = hData->head.loop;
     color = hData->head.abgr;
-    entry = strip->list;
+    entry = strip->trackList;
 
     if (count > 0) {
         do {
@@ -1810,11 +1810,11 @@ void dds3SpPoly_SphereRingDraw(dds3SpPoly_SphereRing_t3 *hData) {
             if (age < 0) {
                 age++;
             } else {
-                if ((u32)age < hData->head.startColorRampFrames) {
-                    entry->color = dds3SpPoly_Color(age, hData->head.startColorRampFrames, color);
+                if ((u32)age < hData->head.alpha_s) {
+                    entry->color = dds3SpPoly_Color(age, hData->head.alpha_s, color);
                 } else if (age <= duration &&
-                           (u32)age >= duration - hData->head.endColorRampFrames) {
-                    entry->color = dds3SpPoly_Color(duration - age, hData->head.endColorRampFrames, color);
+                           (u32)age >= duration - hData->head.alpha_e) {
+                    entry->color = dds3SpPoly_Color(duration - age, hData->head.alpha_e, color);
                 }
 
                 if (entry->color & 0xFF000000) {
@@ -1844,41 +1844,41 @@ void dds3SpPoly_SphereRingDraw(dds3SpPoly_SphereRing_t3 *hData) {
             record++;
         } while (index < count);
     }
-    dds3TrackPolyDraw(hData->strip);
+    dds3TrackPolyDraw(hData->hTrackPoly);
 }
 
-dds3SpPolyRollRing_t *dds3SpPoly_RollRingCreate(dds3SpPoly_Basic_t *templateHead) {
-    s32 tailSize = sizeof(dds3SpPolyRollRing_t) - sizeof(dds3SpPoly_Basic_t);
-    u32 size = templateHead->number * sizeof(dds3SpPoly_RollRingPhysics_t) + sizeof(dds3SpPolyRollRing_t);
+dds3SpPoly_RollRing_t3 *dds3SpPoly_RollRingCreate(dds3SpPoly_Basic_t *templateHead) {
+    s32 tailSize = sizeof(dds3SpPoly_RollRing_t3) - sizeof(dds3SpPoly_Basic_t);
+    u32 size = templateHead->number * sizeof(dds3SpPoly_RollRingPhysics_t) + sizeof(dds3SpPoly_RollRing_t3);
     sdfMemHandle_t *allocation = sdfMemAllocDirect(size);
-    dds3SpPolyRollRing_t *band = (dds3SpPolyRollRing_t *)sdfMemLock(allocation);
+    dds3SpPoly_RollRing_t3 *band = (dds3SpPoly_RollRing_t3 *)sdfMemLock(allocation);
 
     memset(band, 0, size);
     memcpy(band, templateHead, templateHead->templateSize);
     memcpy(&band->spawnDelayStep, (u8 *)templateHead + templateHead->templateSize, tailSize);
     band->head.templateSize = sizeof(dds3SpPoly_Basic_t);
-    band->records = (dds3SpPoly_RollRingPhysics_t *)(band + 1);
+    band->pPhysics = (dds3SpPoly_RollRingPhysics_t *)(band + 1);
     band->allocation = allocation;
-    if (((dds3SpPolyRingUnion_t *)band)->rotating.segments < 3) {
-        ((dds3SpPolyRingUnion_t *)band)->rotating.segments = 3;
+    if (((dds3SpPolyRingUnion_t *)band)->rotating.vertex < 3) {
+        ((dds3SpPolyRingUnion_t *)band)->rotating.vertex = 3;
     }
-    band->strip = dds3TrackPolyCreate(band->head.number, band->segments, 1, 0);
-    dds3TrackPolyVCSet(band->strip, 0, band->dispatchArgA, band->dispatchArgB);
+    band->hTrackPoly = dds3TrackPolyCreate(band->head.number, band->vertex, 1, 0);
+    dds3TrackPolyVCSet(band->hTrackPoly, 0, band->dispatchArgA, band->dispatchArgB);
     dds3SpPoly_RollRingAllBuffInit(band);
     SDF_VU0_LOADMATRIX(band->head.matrix);
     SDF_VU0_STOREMATRIX(band->head.matrixCopy);
-    dds3TrackPolySetMode(band->strip, band->head.drawBucket);
+    dds3TrackPolySetMode(band->hTrackPoly, band->head.mode);
     return band;
 }
 
-void dds3SpPoly_RollRingDelete(dds3SpPolyRollRing_t *hData) {
-    dds3TrackPolyDelete(hData->strip);
+void dds3SpPoly_RollRingDelete(dds3SpPoly_RollRing_t3 *hData) {
+    dds3TrackPolyDelete(hData->hTrackPoly);
     sdfMemFreeDirect(hData->allocation);
 }
 
-void dds3SpPoly_RollRingAllBuffInit(dds3SpPolyRollRing_t *rotatingBand) {
+void dds3SpPoly_RollRingAllBuffInit(dds3SpPoly_RollRing_t3 *rotatingBand) {
     u32 count = rotatingBand->head.number;
-    dds3SpPoly_RollRingPhysics_t *record = rotatingBand->records;
+    dds3SpPoly_RollRingPhysics_t *record = rotatingBand->pPhysics;
     u32 delayStep = rotatingBand->spawnDelayStep;
     s32 age = POLY_INACTIVE_ENTRY_AGE;
     u32 index;
@@ -1888,7 +1888,7 @@ void dds3SpPoly_RollRingAllBuffInit(dds3SpPolyRollRing_t *rotatingBand) {
         do {
             record->frame = age;
             record++;
-            if ((index + 1) % rotatingBand->spawnDelayGroupSize == 0) {
+            if ((index + 1) % rotatingBand->simu_num == 0) {
                 age -= delayStep;
             }
             index++;
@@ -1896,25 +1896,25 @@ void dds3SpPoly_RollRingAllBuffInit(dds3SpPolyRollRing_t *rotatingBand) {
     }
 }
 
-void dds3SpPoly_RollRingBuffInit(dds3SpPolyRollRing_t *pRollRing, u32 number) {
-    dds3SpPoly_RollRingPhysics_t *record = pRollRing->records;
+void dds3SpPoly_RollRingBuffInit(dds3SpPoly_RollRing_t3 *pRollRing, u32 number) {
+    dds3SpPoly_RollRingPhysics_t *record = pRollRing->pPhysics;
     f32 spread;
 
     record += number;
-    spread = pRollRing->initialRadiusJitter;
+    spread = pRollRing->radius_s_r;
     record->frame = 0;
-    record->radius = pRollRing->initialRadius * (dds3GetRandFloatA(dds3EffectBase) * spread + (1.0f - spread));
-    spread = pRollRing->targetRadiusJitter;
-    record->spread_s = (pRollRing->targetRadius * (dds3GetRandFloatA(dds3EffectBase) * spread + (1.0f - spread)) - record->radius) / (f32)pRollRing->head.frame;
-    record->rot_x = pRollRing->rotationXDegrees * 0.017453292f;
-    record->rot_y = 6.2831852f / (f32)pRollRing->spawnDelayGroupSize * (f32)(number % pRollRing->spawnDelayGroupSize);
+    record->radius = pRollRing->radius_s * (dds3GetRandFloatA(dds3EffectBase) * spread + (1.0f - spread));
+    spread = pRollRing->radius_e_r;
+    record->spread_s = (pRollRing->radius_e * (dds3GetRandFloatA(dds3EffectBase) * spread + (1.0f - spread)) - record->radius) / (f32)pRollRing->head.frame;
+    record->rot_x = pRollRing->incline * 0.017453292f;
+    record->rot_y = 6.2831852f / (f32)pRollRing->simu_num * (f32)(number % pRollRing->simu_num);
 }
 
-void dds3SpPoly_RollRingMove(dds3SpPolyRollRing_t *pRollRing, s32 number)
+void dds3SpPoly_RollRingMove(dds3SpPoly_RollRing_t3 *pRollRing, s32 number)
 {
-    dds3TrackPoly_t *strip = pRollRing->strip;
-    dds3SpPoly_RollRingPhysics_t *rec = &pRollRing->records[number];
-    dds3TrackPolyList_t *entry = &strip->list[number];
+    dds3TrackPoly_t *strip = pRollRing->hTrackPoly;
+    dds3SpPoly_RollRingPhysics_t *rec = &pRollRing->pPhysics[number];
+    dds3TrackPolyList_t *entry = &strip->trackList[number];
     f32 dir[4];
     f32 baseRadiusVector[4];
     f32 offsetRadiusVector[4];
@@ -1932,10 +1932,10 @@ void dds3SpPoly_RollRingMove(dds3SpPolyRollRing_t *pRollRing, s32 number)
     SetRotateMatrixX(rec->rot_x);
     SetRotateMatrixY_B(rec->rot_y);
     MultMatrixRevNoArg();
-    rec->rot_y += pRollRing->rotationStepDegrees * (3.14159265f / 180.0f);
+    rec->rot_y += pRollRing->roll_s * (3.14159265f / 180.0f);
     radius = rec->radius;
     rec->radius = radius + rec->spread_s;
-    step = 3.14159265f * 2.0f / (f32)pRollRing->segments;
+    step = 3.14159265f * 2.0f / (f32)pRollRing->vertex;
     SDF_VU0_LOADMATRIX_B(pRollRing->head.matrix);
     MultMatrixRevNoArg();
     baseRadiusVector[0] = radius;
@@ -1970,12 +1970,12 @@ void dds3SpPoly_RollRingMove(dds3SpPolyRollRing_t *pRollRing, s32 number)
     SDF_VU0_COPYVECTOR(out + 4, first + 4);
 }
 
-void dds3SpPoly_RollRingSetScale(f32 hData, dds3SpPolyRollRing_t *scale) {
-    scale->initialRadius = scale->initialRadius * hData;
-    scale->targetRadius = scale->targetRadius * hData;
+void dds3SpPoly_RollRingSetScale(f32 hData, dds3SpPoly_RollRing_t3 *scale) {
+    scale->radius_s = scale->radius_s * hData;
+    scale->radius_e = scale->radius_e * hData;
 }
 
-void dds3SpPoly_RollRingDraw(dds3SpPolyRollRing_t *hData) {
+void dds3SpPoly_RollRingDraw(dds3SpPoly_RollRing_t3 *hData) {
     s32 recordIndex = 0;
     u32 completed = 0;
     u8 loop;
@@ -1986,13 +1986,13 @@ void dds3SpPoly_RollRingDraw(dds3SpPolyRollRing_t *hData) {
     u32 color;
     dds3TrackPolyList_t *entry;
 
-    strip = hData->strip;
+    strip = hData->hTrackPoly;
     count = hData->head.number;
-    record = hData->records;
+    record = hData->pPhysics;
     duration = hData->head.frame;
     loop = hData->head.loop;
     color = hData->head.abgr;
-    entry = strip->list;
+    entry = strip->trackList;
 
     if (count > 0) {
         do {
@@ -2005,11 +2005,11 @@ void dds3SpPoly_RollRingDraw(dds3SpPolyRollRing_t *hData) {
             if (age < 0) {
                 age++;
             } else {
-                if ((u32)age < hData->head.startColorRampFrames) {
-                    entry->color = dds3SpPoly_Color(age, hData->head.startColorRampFrames, color);
+                if ((u32)age < hData->head.alpha_s) {
+                    entry->color = dds3SpPoly_Color(age, hData->head.alpha_s, color);
                 } else if (age <= duration &&
-                           (u32)age >= duration - hData->head.endColorRampFrames) {
-                    entry->color = dds3SpPoly_Color(duration - age, hData->head.endColorRampFrames, color);
+                           (u32)age >= duration - hData->head.alpha_e) {
+                    entry->color = dds3SpPoly_Color(duration - age, hData->head.alpha_e, color);
                 } else {
                     entry->color = color;
                 }
@@ -2041,11 +2041,11 @@ void dds3SpPoly_RollRingDraw(dds3SpPolyRollRing_t *hData) {
             record++;
         } while (recordIndex < count);
     }
-    dds3TrackPolyDraw(hData->strip);
+    dds3TrackPolyDraw(hData->hTrackPoly);
 }
 
 
-void dds3SpPoly_RollRingSetEndless(dds3SpPolyRollRing_t *pRollRing) {
+void dds3SpPoly_RollRingSetEndless(dds3SpPoly_RollRing_t3 *pRollRing) {
     u32 count;
     dds3SpPoly_RollRingPhysics_t *entry;
     u32 i;
@@ -2053,9 +2053,9 @@ void dds3SpPoly_RollRingSetEndless(dds3SpPolyRollRing_t *pRollRing) {
     count = pRollRing->head.number;
     i = 0;
     pRollRing->head.frame = POLY_RESET_DURATION;
-    pRollRing->head.endColorRampFrames = 0;
-    pRollRing->head.startColorRampFrames = 0;
-    entry = pRollRing->records;
+    pRollRing->head.alpha_e = 0;
+    pRollRing->head.alpha_s = 0;
+    entry = pRollRing->pPhysics;
     if (count != 0) {
         do {
             if (entry->frame != POLY_INACTIVE_ENTRY_AGE) {
@@ -2167,7 +2167,7 @@ void dds3PolygonTriangleSet(dds3Polygon_t *hPolygon, const f32 *center) {
 }
 
 void dds3TrackPolyColorSet(dds3TrackPoly_t *hTrackPoly, s32 number, u32 color) {
-    hTrackPoly->list[number].color = color;
+    hTrackPoly->trackList[number].color = color;
 }
 INCLUDE_SDATA(const s32, "effect/polyManager", hDrawListTop);
 
