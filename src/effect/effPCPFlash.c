@@ -771,10 +771,10 @@ extern f32 effPCPFlashPolyRingExpVertex[];
 
 /* Advance caller-owned state, returning its next 32-bit value. NULL selects
  * the shared effect RNG state. */
-u32 dds3GetRandA(EffRandState *state);
+u32 dds3GetRandA(EffRandState *name);
 
 /* Returns 24 random bits scaled to [0, 1); NULL selects the shared state. */
-f32 dds3GetRandFloatA(EffRandState *state);
+f32 dds3GetRandFloatA(EffRandState *name);
 
 extern u32 effMagaCylinderCalcColor(u32 color, u32 colorB);
 
@@ -808,38 +808,38 @@ extern sdfGrOt_t *D_0031F2A8[];
 
 extern sdfGrOt_t *D_0031F238[];
 
-extern void *memcpy(void *dst, const void *src, u32 n);
+extern void *memcpy(void *a, const void *b, u32 c);
 
 extern void *memset(void *, s32, u32);
 
-struct sdfMemHandle_t *sdfMemAllocDirect(s32 requestedBytes);
+struct sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
 
 /* Reserve size bytes from the active packet buffer, rounded up to 16 bytes.
  * Returns the prior cursor as a 32-bit address; the buffer owns this storage. */
-s32 sdfGrAllocPacketBuff(s32 size);
+s32 sdfGrAllocPacketBuff(s32 aSize);
 
-void sdfDrawTagLink(struct sdfDrawTag_t *list, u32 packetAddress);
+void sdfDrawTagLink(struct sdfDrawTag_t *aTag, u32 aPacket);
 
 /* Load axis-angle rotation into VU0 vf28-vf31. */
-void SetRotateMatrixAxis(f32 angle, const sdfVector3_t *axis);
+void SetRotateMatrixAxis(f32 aAngle, const sdfVector3_t *aAxis);
 
-void sdf3DPrimLinkMat(sdfDrawTag_t *packetList, sdfMat_t *asset,
-                              s32 (*allocatePacket)(s32));
+void sdf3DPrimLinkMat(sdfDrawTag_t *aTag, sdfMat_t *aMat,
+                              s32 (*aAllocator)(s32));
 
-void sdf3DPrimLinkTm(sdfDrawTag_t *packetList,
-                           s32 (*allocatePacket)(s32));
+void sdf3DPrimLinkTm(sdfDrawTag_t *aTag,
+                           s32 (*aAllocator)(s32));
 
 struct sdfMat_t *sdfMatNew(void);
 
-f32 sdfCos(f32 angle);
+f32 sdfCos(f32 aRadius);
 
-void sdfDrawTagInit(struct sdfDrawTag_t *list);
+void sdfDrawTagInit(struct sdfDrawTag_t *a);
 
-u32 sdfMemLock(struct sdfMemHandle_t *allocation);
+u32 sdfMemLock(struct sdfMemHandle_t *aHandle);
 
-void sdfMatSetConstant(struct sdfMat_t *asset, f32 value);
+void sdfMatSetConstant(struct sdfMat_t *aMat, f32 aRatio);
 
-f32 sdfSin(f32 angle);
+f32 sdfSin(f32 aRadius);
 
 extern sdfGrOt_t sdfGrOtTable[85];
 
@@ -989,9 +989,9 @@ typedef struct effRingBlock_t {
 #define EFFECT_RING_START_ANGLE (-1.5707963f)
 #define EFFECT_RING_FULL_TURN (6.2831853f)
 extern void *dds3EffectPCPDataGetData(void *table, s32 index);
-extern u32 effColorBlend(u32 firstColor, u32 secondColor, f32 blend);
-extern void sdfMemFreeDirect(sdfMemHandle_t *allocation);
-extern void sdfMatFreeDelayed(sdfMat_t *material);
+extern u32 effColorBlend(u32 abgr0, u32 abgr1, f32 rate);
+extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
+extern void sdfMatFreeDelayed(sdfMat_t *aMat);
 extern f32 aViewEye[], aViewTarget[];
 extern f32 effPCPFlashPolySphere2Vertex[], effPCPFlashPolySphereVertex[];
 extern f32 effPCPFlashPolyRingVertex[], effPCPFlashPolySphereExpVertex[];
@@ -1002,38 +1002,38 @@ typedef struct effFlashOrbitArcBlock_t {
     PcpFlashMotionParticle parts[1];
 } effFlashOrbitArcBlock_t;
 
-dds3FlashPolyList_t *dds3FlashPolyListCreate(u32 count);
+dds3FlashPolyList_t *dds3FlashPolyListCreate(u32 face);
 void dds3FlashPolyListDraw(dds3FlashPolyList_t *work);
 void *dds3FlashPolyListGetVertex(dds3FlashPolyList_t *group, s32 groupIndex);
 void *dds3FlashPolyListGetVC(dds3FlashPolyList_t *group, s32 groupIndex);
-dds3FlashPolyList_t *dds3FlashPolyList2Create(s32 triangleCount);
+dds3FlashPolyList_t *dds3FlashPolyList2Create(s32 face);
 void dds3FlashPolyList2Draw(dds3FlashPolyList_t *pool);
 void *dds3FlashPolyList2GetVertex(dds3FlashPolyList_t *group, s32 groupIndex);
 void *dds3FlashPolyList2GetVC(dds3FlashPolyList_t *group, s32 groupIndex);
-dds3FlashPolyList_t *dds3FlashPolyList3Create(s32 quadCount);
+dds3FlashPolyList_t *dds3FlashPolyList3Create(s32 face);
 void dds3FlashPolyList3Draw(dds3FlashPolyList_t *pool);
 void *dds3FlashPolyList3GetVertex(dds3FlashPolyList_t *group, s32 groupIndex);
 void *dds3FlashPolyList3GetVC(dds3FlashPolyList_t *group, s32 groupIndex);
-dds3FlashPolyList_t *dds3FlashPolyListHCreate(u32 fanCount);
+dds3FlashPolyList_t *dds3FlashPolyListHCreate(u32 face);
 void dds3FlashPolyListHDraw(dds3FlashPolyList_t *work);
 void *dds3FlashPolyListHGetVertex(dds3FlashPolyList_t *group, s32 groupIndex);
 u32 *dds3FlashPolyListHGetVC(dds3FlashPolyList_t *group, s32 groupIndex);
-void dds3FlashPolyListDelete(dds3FlashPolyList_t *group);
-void dds3FlashPolyListSetBlend(dds3FlashPolyList_t *pool, u32 mode);
-void dds3FlashPolyListSetABGR(dds3FlashPolyList_t *group, u32 color);
-void dds3FlashPolyListSetScale(dds3FlashPolyList_t *work, f32 scale);
-void dds3FlashPolyList2Delete(dds3FlashPolyList_t *group);
-void dds3FlashPolyList3Delete(dds3FlashPolyList_t *group);
-void dds3FlashPolyListHDelete(dds3FlashPolyList_t *pool);
+void dds3FlashPolyListDelete(dds3FlashPolyList_t *hPoly);
+void dds3FlashPolyListSetBlend(dds3FlashPolyList_t *hPoly, u32 blend);
+void dds3FlashPolyListSetABGR(dds3FlashPolyList_t *hPoly, u32 abgr);
+void dds3FlashPolyListSetScale(dds3FlashPolyList_t *hPoly, f32 scale);
+void dds3FlashPolyList2Delete(dds3FlashPolyList_t *hPoly);
+void dds3FlashPolyList3Delete(dds3FlashPolyList_t *hPoly);
+void dds3FlashPolyListHDelete(dds3FlashPolyList_t *hPoly);
 
-PcpFlashTrianglePulseWork *effPCPFlashPolySphere2Create(effPCPFlashPolySphere2Param_t *params)
+PcpFlashTrianglePulseWork *effPCPFlashPolySphere2Create(effPCPFlashPolySphere2Param_t *pParam)
 {
-    sdfMemHandle_t *allocation = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashPulseParticle) + sizeof(PcpFlashTrianglePulseWork));
+    sdfMemHandle_t *allocation = sdfMemAllocDirect(pParam->particleCount * sizeof(PcpFlashPulseParticle) + sizeof(PcpFlashTrianglePulseWork));
     PcpFlashTrianglePulseWork *work = (PcpFlashTrianglePulseWork *)sdfMemLock(allocation);
     dds3FlashPolyList_t *record;
     u32 i;
 
-    memcpy(work, params, 0x30);
+    memcpy(work, pParam, 0x30);
     work->parts = (PcpFlashPulseParticle *)(work + 1);
     work->tintColor = EFF_NEUTRAL_COLOR;
     work->allocationHandle = allocation;
@@ -1058,24 +1058,24 @@ PcpFlashTrianglePulseWork *effPCPFlashPolySphere2Copy(effPCPFlashPolySphere2Para
     return effPCPFlashPolySphere2Create(params);
 }
 
-void effPCPFlashPolySphere2Delete(PcpFlashTrianglePulseWork *work)
+void effPCPFlashPolySphere2Delete(PcpFlashTrianglePulseWork *hData)
 {
-    dds3FlashPolyList2Delete(work->resourceHandle);
-    sdfMemFreeDirect(work->allocationHandle);
+    dds3FlashPolyList2Delete(hData->resourceHandle);
+    sdfMemFreeDirect(hData->allocationHandle);
 }
 
-void effPCPFlashPolySphere2SetPosition(void *dst, void *src) {
-    SDF_VU0_COPYVECTOR(dst, src);
+void effPCPFlashPolySphere2SetPosition(void *hData, void *pPos) {
+    SDF_VU0_COPYVECTOR(hData, pPos);
 }
 
-void effPCPFlashPolySphere2SetColor(PcpFlashTrianglePulseWork *work, u32 value)
+void effPCPFlashPolySphere2SetColor(PcpFlashTrianglePulseWork *hData, u32 abgr)
 {
-    work->tintColor = value;
+    hData->tintColor = abgr;
 }
 
-void effPCPFlashPolySphere2SetScale(PcpFlashTrianglePulseWork *work, f32 value)
+void effPCPFlashPolySphere2SetScale(PcpFlashTrianglePulseWork *hData, f32 scale)
 {
-    work->renderScale = value;
+    hData->renderScale = scale;
 }
 
 void effPCPFlashPolySphere2PartSetVC(PcpFlashTrianglePulseWork *work, s32 index, s32 color)
@@ -1133,7 +1133,7 @@ void effPCPFlashPolySphere2PartSetVertex(PcpFlashTrianglePulseWork *work, s32 in
     SDF_VU0_STOREVECTOR(quad + 4);
 }
 
-void effPCPFlashPolySphere2Draw(PcpFlashTrianglePulseWork *work) {
+void effPCPFlashPolySphere2Draw(PcpFlashTrianglePulseWork *hData) {
     f32 axis[4];
     s32 particleIndex;
     s32 lifetime;
@@ -1151,22 +1151,22 @@ void effPCPFlashPolySphere2Draw(PcpFlashTrianglePulseWork *work) {
         SDF_VU0_SUBVECTOR();
         SDF_VU0_NORMALIZE();
     SDF_VU0_STOREVECTOR(axis);
-    lifetime = work->lifetime;
-    particleCount = work->particleCount;
-    part = work->parts;
+    lifetime = hData->lifetime;
+    particleCount = hData->particleCount;
+    part = hData->parts;
     half = lifetime >> 1;
-    ramp = work->scaleRampTime;
-    maxScale = work->maxScale;
-    restart = work->restartRandomly;
-    tintColor = work->tintColor;
+    ramp = hData->scaleRampTime;
+    maxScale = hData->maxScale;
+    restart = hData->restartRandomly;
+    tintColor = hData->tintColor;
     for (particleIndex = 0; particleIndex < particleCount; particleIndex++, part++) {
         s32 age = part->age;
         s32 color;
         f32 blend;
 
         if (part->age == 0) {
-            effPCPFlashPolySphere2PartSetVertex(work, particleIndex, axis);
-            effPCPFlashPolySphere2PartSetVC(work, particleIndex, 0);
+            effPCPFlashPolySphere2PartSetVertex(hData, particleIndex, axis);
+            effPCPFlashPolySphere2PartSetVC(hData, particleIndex, 0);
             if (ramp == 0) {
                 part->scale = maxScale;
             } else {
@@ -1179,7 +1179,7 @@ void effPCPFlashPolySphere2Draw(PcpFlashTrianglePulseWork *work) {
                     part->age = 0;
                 }
                 color = 0;
-                effPCPFlashPolySphere2PartSetVC(work, particleIndex, color);
+                effPCPFlashPolySphere2PartSetVC(hData, particleIndex, color);
             } else if (part->age > 0) {
                 if (ramp == 0) {
                     part->scale = maxScale;
@@ -1189,24 +1189,24 @@ void effPCPFlashPolySphere2Draw(PcpFlashTrianglePulseWork *work) {
                         part->scale = maxScale;
                     }
                 }
-                effPCPFlashPolySphere2PartSetVertex(work, particleIndex, axis);
+                effPCPFlashPolySphere2PartSetVertex(hData, particleIndex, axis);
                 if (part->age < half) {
                     blend = (f32)age / (f32)half;
                 } else {
                     blend = (f32)(lifetime - age) / (f32)half;
                 }
                 color = effMagaCylinderCalcColor(effColorBlend(0, part->color, blend), tintColor);
-                effPCPFlashPolySphere2PartSetVC(work, particleIndex, color);
+                effPCPFlashPolySphere2PartSetVC(hData, particleIndex, color);
             }
         }
         part->age = part->age + 1;
     }
-    handle = work->resourceHandle;
-    handle->origin[0] = work->origin[0];
-    work->updateCount = work->updateCount + 1;
-    handle->origin[1] = work->origin[1];
-    handle->origin[2] = work->origin[2];
-    handle->scale = work->renderScale;
+    handle = hData->resourceHandle;
+    handle->origin[0] = hData->origin[0];
+    hData->updateCount = hData->updateCount + 1;
+    handle->origin[1] = hData->origin[1];
+    handle->origin[2] = hData->origin[2];
+    handle->scale = hData->renderScale;
     dds3FlashPolyList2Draw(handle);
 }
 
@@ -1246,24 +1246,24 @@ PcpFlashStreakWork *effPCPFlashPolySphereCopy(PcpFlashStreakParams *src)
     return effPCPFlashPolySphereCreate(src);
 }
 
-void effPCPFlashPolySphereDelete(PcpFlashStreakWork *work)
+void effPCPFlashPolySphereDelete(PcpFlashStreakWork *hData)
 {
-    dds3FlashPolyListDelete(work->resourceHandle);
-    sdfMemFreeDirect(work->allocationHandle);
+    dds3FlashPolyListDelete(hData->resourceHandle);
+    sdfMemFreeDirect(hData->allocationHandle);
 }
 
-void effPCPFlashPolySphereSetPosition(void *dst, void *src) {
-    SDF_VU0_COPYVECTOR(dst, src);
+void effPCPFlashPolySphereSetPosition(void *hData, void *pPos) {
+    SDF_VU0_COPYVECTOR(hData, pPos);
 }
 
-void effPCPFlashPolySphereSetColor(PcpFlashStreakWork *work, u32 value)
+void effPCPFlashPolySphereSetColor(PcpFlashStreakWork *hData, u32 abgr)
 {
-    work->tintColor = value;
+    hData->tintColor = abgr;
 }
 
-void effPCPFlashPolySphereSetScale(PcpFlashStreakWork *work, f32 value)
+void effPCPFlashPolySphereSetScale(PcpFlashStreakWork *hData, f32 scale)
 {
-    work->renderScale = value;
+    hData->renderScale = scale;
 }
 
 void effPCPFlashPolySpherePartSetVC(PcpFlashStreakWork *work, s32 index, s32 color)
@@ -1288,8 +1288,8 @@ void effPCPFlashPolySpherePartSetVC(PcpFlashStreakWork *work, s32 index, s32 col
     }
 }
 
-void effPCPFlashPolySpherePartInit(PcpFlashStreakWork *work, s32 index, void *orientation) {
-    PcpFlashRotatingParticle *part = work->parts + index;
+void effPCPFlashPolySpherePartInit(PcpFlashStreakWork *pFlashPoly, s32 number, void *pLook) {
+    PcpFlashRotatingParticle *part = pFlashPoly->parts + number;
     f32 direction[4];
     f32 factor;
     f32 scale;
@@ -1300,7 +1300,7 @@ void effPCPFlashPolySpherePartInit(PcpFlashStreakWork *work, s32 index, void *or
     /* Two plain quadword loads, no memory clobber: retail keeps `direction`
      * and `orientation` CSE'd across them. */
     SDF_VU0_LOADVECTOR(direction);
-    SDF_VU0_LOADVECTOR_B(orientation);
+    SDF_VU0_LOADVECTOR_B(pLook);
     SDF_VU0_OUTERPRODUCT();
         SDF_VU0_NORMALIZE();;
     SDF_VU0_STOREVECTOR(direction);
@@ -1308,13 +1308,13 @@ void effPCPFlashPolySpherePartInit(PcpFlashStreakWork *work, s32 index, void *or
     part->position[1] = direction[1];
     part->position[2] = direction[2];
     factor = dds3GetRandFloatA(dds3EffectBase) * 0.3f + 0.7f;
-    scale = work->maxScale * factor;
+    scale = pFlashPoly->maxScale * factor;
     part->initialScale = scale;
     part->scale = scale;
     factor = (dds3GetRandFloatA(dds3EffectBase) * 0.5f + 0.5f) * 0.5f;
-    part->upSpan = work->upSpan * factor;
-    part->acrossSpan = work->acrossSpan * factor;
-    part->rotationStep = work->rotationStepRange * ((dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f);
+    part->upSpan = pFlashPoly->upSpan * factor;
+    part->acrossSpan = pFlashPoly->acrossSpan * factor;
+    part->rotationStep = pFlashPoly->rotationStepRange * ((dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f);
 }
 
 void effPCPFlashPolySpherePartSetVertex(PcpFlashStreakWork *work, s32 index, void *view)
@@ -1374,15 +1374,15 @@ void effPCPFlashPolySpherePartSetVertex(PcpFlashStreakWork *work, s32 index, voi
     SDF_VU0_STOREVECTOR(quad + 4);
 }
 
-void effPCPFlashPolySpherePartRotate(PcpFlashStreakWork *work, s32 index, void *orientation)
+void effPCPFlashPolySpherePartRotate(PcpFlashStreakWork *pFlashPoly, s32 number, void *pLook)
 {
-    PcpFlashRotatingParticle *part = &work->parts[index];
+    PcpFlashRotatingParticle *part = &pFlashPoly->parts[number];
     f32 position[4];
 
     position[0] = part->position[0];
     position[1] = part->position[1];
     position[2] = part->position[2];
-    SetRotateMatrixAxis(part->rotationStep, (const sdfVector3_t *)orientation);
+    SetRotateMatrixAxis(part->rotationStep, (const sdfVector3_t *)pLook);
     SDF_VU0_LOADVECTOR(position);
     SDF_VU0_APPLYMATRIX_XYZ();
     SDF_VU0_STOREVECTOR(position);
@@ -1391,7 +1391,7 @@ void effPCPFlashPolySpherePartRotate(PcpFlashStreakWork *work, s32 index, void *
     part->position[2] = position[2];
 }
 
-void effPCPFlashPolySphereDraw(PcpFlashStreakWork *work) {
+void effPCPFlashPolySphereDraw(PcpFlashStreakWork *hData) {
     s128 axis;
     s32 index;
     s32 lifetime;
@@ -1409,24 +1409,24 @@ void effPCPFlashPolySphereDraw(PcpFlashStreakWork *work) {
     SDF_VU0_LOADVECTOR_B(aViewEye);
         SDF_VU0_SUBVECTOR();
     SDF_VU0_STOREVECTOR(&axis);
-    lifetime = work->lifetime;
-    count = work->particleCount;
-    part = work->parts;
+    lifetime = hData->lifetime;
+    count = hData->particleCount;
+    part = hData->parts;
     half = lifetime >> 1;
-    ramp = work->scaleRampTime;
-    maxScale = work->maxScale;
-    restart = work->restartRandomly;
-    range = work->randomRange;
-    tintColor = work->tintColor;
+    ramp = hData->scaleRampTime;
+    maxScale = hData->maxScale;
+    restart = hData->restartRandomly;
+    range = hData->randomRange;
+    tintColor = hData->tintColor;
     for (index = 0; index < count; index++, part++) {
         s32 age = part->age;
         s32 color;
         f32 blend;
 
         if (part->age == 0) {
-            effPCPFlashPolySpherePartInit(work, index, &axis);
-            effPCPFlashPolySpherePartSetVertex(work, index, &axis);
-            effPCPFlashPolySpherePartSetVC(work, index, 0);
+            effPCPFlashPolySpherePartInit(hData, index, &axis);
+            effPCPFlashPolySpherePartSetVertex(hData, index, &axis);
+            effPCPFlashPolySpherePartSetVC(hData, index, 0);
             if (ramp == 0) {
                 part->scale = maxScale;
             } else {
@@ -1439,7 +1439,7 @@ void effPCPFlashPolySphereDraw(PcpFlashStreakWork *work) {
                     part->age = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
                 }
                 color = 0;
-                effPCPFlashPolySpherePartSetVC(work, index, color);
+                effPCPFlashPolySpherePartSetVC(hData, index, color);
             } else if (part->age > 0) {
                 if (ramp == 0) {
                     part->scale = maxScale;
@@ -1449,31 +1449,31 @@ void effPCPFlashPolySphereDraw(PcpFlashStreakWork *work) {
                         part->scale = maxScale;
                     }
                 }
-                effPCPFlashPolySpherePartRotate(work, index, &axis);
-                effPCPFlashPolySpherePartSetVertex(work, index, &axis);
+                effPCPFlashPolySpherePartRotate(hData, index, &axis);
+                effPCPFlashPolySpherePartSetVertex(hData, index, &axis);
                 if (part->age < half) {
                     blend = (f32)age / (f32)half;
                 } else {
                     blend = (f32)(lifetime - age) / (f32)half;
                 }
                 color = effMagaCylinderCalcColor(effColorBlend(0, part->color, blend), tintColor);
-                effPCPFlashPolySpherePartSetVC(work, index, color);
+                effPCPFlashPolySpherePartSetVC(hData, index, color);
             }
         }
         part->age = part->age + 1;
     }
-    handle = work->resourceHandle;
-    handle->origin[0] = work->origin[0];
-    work->updateCount = work->updateCount + 1;
-    handle->origin[1] = work->origin[1];
-    handle->origin[2] = work->origin[2];
-    handle->scale = work->renderScale;
+    handle = hData->resourceHandle;
+    handle->origin[0] = hData->origin[0];
+    hData->updateCount = hData->updateCount + 1;
+    handle->origin[1] = hData->origin[1];
+    handle->origin[2] = hData->origin[2];
+    handle->scale = hData->renderScale;
     dds3FlashPolyListDraw(handle);
 }
 
-PcpFlashScalingOrbitWork *effPCPFlashPolyRingCreate(effFlashScalingOrbitParam_t *params)
+PcpFlashScalingOrbitWork *effPCPFlashPolyRingCreate(effFlashScalingOrbitParam_t *pParam)
 {
-    sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashOrbitParticle) + sizeof(PcpFlashScalingOrbitWork));
+    sdfMemHandle_t *handle = sdfMemAllocDirect(pParam->particleCount * sizeof(PcpFlashOrbitParticle) + sizeof(PcpFlashScalingOrbitWork));
     PcpFlashScalingOrbitWork *work = (PcpFlashScalingOrbitWork *)sdfMemLock(handle);
     dds3FlashPolyList_t *record;
     f32 angle;
@@ -1481,7 +1481,7 @@ PcpFlashScalingOrbitWork *effPCPFlashPolyRingCreate(effFlashScalingOrbitParam_t 
     u32 range;
     u32 i;
 
-    memcpy(work, params, 0x48);
+    memcpy(work, pParam, 0x48);
     work->parts = (PcpFlashOrbitParticle *)(work + 1);
     work->allocationHandle = handle;
     work->tintColor = EFF_NEUTRAL_COLOR;
@@ -1515,24 +1515,24 @@ PcpFlashScalingOrbitWork *effPCPFlashPolyRingCopy(effFlashScalingOrbitParam_t *p
     return effPCPFlashPolyRingCreate(params);
 }
 
-void effPCPFlashPolyRingDelete(PcpFlashScalingOrbitWork *work)
+void effPCPFlashPolyRingDelete(PcpFlashScalingOrbitWork *hData)
 {
-    dds3FlashPolyListDelete(work->resourceHandle);
-    sdfMemFreeDirect(work->allocationHandle);
+    dds3FlashPolyListDelete(hData->resourceHandle);
+    sdfMemFreeDirect(hData->allocationHandle);
 }
 
-void effPCPFlashPolyRingSetPosition(void *dst, void *src) {
-    SDF_VU0_COPYVECTOR(dst, src);
+void effPCPFlashPolyRingSetPosition(void *hData, void *pPos) {
+    SDF_VU0_COPYVECTOR(hData, pPos);
 }
 
-void effPCPFlashPolyRingSetColor(PcpFlashScalingOrbitWork *work, u32 value)
+void effPCPFlashPolyRingSetColor(PcpFlashScalingOrbitWork *hData, u32 abgr)
 {
-    work->tintColor = value;
+    hData->tintColor = abgr;
 }
 
-void effPCPFlashPolyRingSetScale(PcpFlashScalingOrbitWork *work, f32 value)
+void effPCPFlashPolyRingSetScale(PcpFlashScalingOrbitWork *hData, f32 scale)
 {
-    work->renderScale = value;
+    hData->renderScale = scale;
 }
 
 void effPCPFlashPolyRingPartSetVC(PcpFlashScalingOrbitWork *work, s32 index, s32 color)
@@ -1627,15 +1627,15 @@ void effPCPFlashPolyRingPartSetVertex(PcpFlashScalingOrbitWork *work, s32 index)
     SDF_VU0_STOREVECTOR(quad + 4);
 }
 
-void effPCPFlashPolyRingPartRotate(PcpFlashScalingOrbitWork *work, s32 index)
+void effPCPFlashPolyRingPartRotate(PcpFlashScalingOrbitWork *pFlashPoly, s32 number)
 {
     PcpFlashOrbitParticle *part;
 
-    part = &work->parts[index];
-    part->angle += work->angularStep;
+    part = &pFlashPoly->parts[number];
+    part->angle += pFlashPoly->angularStep;
 }
 
-void effPCPFlashPolyRingDraw(PcpFlashScalingOrbitWork *work) {
+void effPCPFlashPolyRingDraw(PcpFlashScalingOrbitWork *hData) {
     s32 index;
     s32 lifetime;
     s32 count;
@@ -1648,15 +1648,15 @@ void effPCPFlashPolyRingDraw(PcpFlashScalingOrbitWork *work) {
     PcpFlashOrbitParticle *part;
     dds3FlashPolyList_t *handle;
 
-    lifetime = work->lifetime;
-    count = work->particleCount;
-    part = work->parts;
+    lifetime = hData->lifetime;
+    count = hData->particleCount;
+    part = hData->parts;
     half = lifetime >> 1;
-    ramp = work->scaleRampTime;
-    maxScale = work->maxScale;
-    restart = work->restartRandomly;
-    range = work->randomRange;
-    tintColor = work->tintColor;
+    ramp = hData->scaleRampTime;
+    maxScale = hData->maxScale;
+    restart = hData->restartRandomly;
+    range = hData->randomRange;
+    tintColor = hData->tintColor;
     for (index = 0; index < count; index++, part++) {
         s32 age = part->age;
         s32 color;
@@ -1669,8 +1669,8 @@ void effPCPFlashPolyRingDraw(PcpFlashScalingOrbitWork *work) {
             } else {
                 part->scale = 0.0f;
             }
-            effPCPFlashPolyRingPartSetVertex(work, index);
-            effPCPFlashPolyRingPartSetVC(work, index, 0);
+            effPCPFlashPolyRingPartSetVertex(hData, index);
+            effPCPFlashPolyRingPartSetVC(hData, index, 0);
             part->color = EFF_NEUTRAL_COLOR;
         } else {
             if (part->age >= lifetime) {
@@ -1678,7 +1678,7 @@ void effPCPFlashPolyRingDraw(PcpFlashScalingOrbitWork *work) {
                     part->age = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
                 }
                 color = 0;
-                effPCPFlashPolyRingPartSetVC(work, index, color);
+                effPCPFlashPolyRingPartSetVC(hData, index, color);
             } else if (part->age > 0) {
                 if (ramp == 0) {
                     part->scale = maxScale;
@@ -1688,25 +1688,25 @@ void effPCPFlashPolyRingDraw(PcpFlashScalingOrbitWork *work) {
                         part->scale = maxScale;
                     }
                 }
-                effPCPFlashPolyRingPartRotate(work, index);
-                effPCPFlashPolyRingPartSetVertex(work, index);
+                effPCPFlashPolyRingPartRotate(hData, index);
+                effPCPFlashPolyRingPartSetVertex(hData, index);
                 if (part->age < half) {
                     blend = (f32)age / (f32)half;
                 } else {
                     blend = (f32)(lifetime - age) / (f32)half;
                 }
                 color = effMagaCylinderCalcColor(effColorBlend(0, part->color, blend), tintColor);
-                effPCPFlashPolyRingPartSetVC(work, index, color);
+                effPCPFlashPolyRingPartSetVC(hData, index, color);
             }
         }
         part->age = part->age + 1;
     }
-    handle = work->resourceHandle;
-    handle->origin[0] = work->origin[0];
-    work->updateCount = work->updateCount + 1;
-    handle->origin[1] = work->origin[1];
-    handle->origin[2] = work->origin[2];
-    handle->scale = work->renderScale;
+    handle = hData->resourceHandle;
+    handle->origin[0] = hData->origin[0];
+    hData->updateCount = hData->updateCount + 1;
+    handle->origin[1] = hData->origin[1];
+    handle->origin[2] = hData->origin[2];
+    handle->scale = hData->renderScale;
     dds3FlashPolyListDraw(handle);
 }
 
@@ -1754,24 +1754,24 @@ effPCPFlashPolyPipe_tag *effPCPFlashPolyPipeCopy(effFlashAccumulatingParam_t *pa
     return effPCPFlashPolyPipeCreate(params);
 }
 
-void effPCPFlashPolyPipeDelete(effPCPFlashPolyPipe_tag *work)
+void effPCPFlashPolyPipeDelete(effPCPFlashPolyPipe_tag *hData)
 {
-    dds3FlashPolyList3Delete(work->resourceHandle);
-    sdfMemFreeDirect(work->allocationHandle);
+    dds3FlashPolyList3Delete(hData->resourceHandle);
+    sdfMemFreeDirect(hData->allocationHandle);
 }
 
-void effPCPFlashPolyPipeSetPosition(void *dst, void *src) {
-    SDF_VU0_COPYVECTOR(dst, src);
+void effPCPFlashPolyPipeSetPosition(void *hData, void *pPos) {
+    SDF_VU0_COPYVECTOR(hData, pPos);
 }
 
-void effPCPFlashPolyPipeSetColor(effPCPFlashPolyPipe_tag *work, u32 value)
+void effPCPFlashPolyPipeSetColor(effPCPFlashPolyPipe_tag *hData, u32 abgr)
 {
-    work->tintColor = value;
+    hData->tintColor = abgr;
 }
 
-void effPCPFlashPolyPipeSetScale(effPCPFlashPolyPipe_tag *work, f32 value)
+void effPCPFlashPolyPipeSetScale(effPCPFlashPolyPipe_tag *hData, f32 scale)
 {
-    work->renderScale = value;
+    hData->renderScale = scale;
 }
 
 void effPCPFlashPolyPipePartSetVC(effPCPFlashPolyPipe_tag *work, s32 index, u32 colorMultiplier) {
@@ -1880,15 +1880,15 @@ void effPCPFlashPolyPipePartSetVertex(effPCPFlashPolyPipe_tag *work, s32 index)
     SDF_VU0_STOREVECTOR(mirror);
 }
 
-void effPCPFlashPolyPipePartRotate(effPCPFlashPolyPipe_tag *work, s32 index)
+void effPCPFlashPolyPipePartRotate(effPCPFlashPolyPipe_tag *pFlashPoly, s32 number)
 {
     effPCPFlashPolyPipePart_tag *part;
 
-    part = &work->parts[index];
-    part->rotate += work->increment;
+    part = &pFlashPoly->parts[number];
+    part->rotate += pFlashPoly->increment;
 }
 
-void effPCPFlashPolyPipeDraw(effPCPFlashPolyPipe_tag *work)
+void effPCPFlashPolyPipeDraw(effPCPFlashPolyPipe_tag *hData)
 {
     s32 index;
     s32 count;
@@ -1901,38 +1901,38 @@ void effPCPFlashPolyPipeDraw(effPCPFlashPolyPipe_tag *work)
     s32 tintColor;
     dds3FlashPolyList_t *handle;
 
-    count = work->particleCount;
-    part = work->parts;
-    lifetime = work->lifetime;
-    fadeIn = work->fadeInTime;
-    fadeOut = work->fadeOutTime;
-    restart = work->restartRandomly;
-    randomRange = work->randomRange;
-    tintColor = work->tintColor;
+    count = hData->particleCount;
+    part = hData->parts;
+    lifetime = hData->lifetime;
+    fadeIn = hData->fadeInTime;
+    fadeOut = hData->fadeOutTime;
+    restart = hData->restartRandomly;
+    randomRange = hData->randomRange;
+    tintColor = hData->tintColor;
     for (index = 0; index < count; index++, part++) {
         s32 age = part->frame;
         s32 color;
         f32 factor;
 
         if (age == 0) {
-            effPCPFlashPolyPipePartSetVertex(work, index);
-            effPCPFlashPolyPipePartSetVC(work, index, 0);
+            effPCPFlashPolyPipePartSetVertex(hData, index);
+            effPCPFlashPolyPipePartSetVC(hData, index, 0);
             part->abgr = EFF_NEUTRAL_COLOR;
             factor = dds3GetRandFloatA(dds3EffectBase) * 0.5f + 0.5f;
-            part->length = work->radialHalfThicknessBase * factor;
+            part->length = hData->radialHalfThicknessBase * factor;
             factor = dds3GetRandFloatA(dds3EffectBase) * 0.7f + 0.3f;
-            part->width_in = work->spanBase * factor;
-            part->width_out = work->unk34 * factor;
+            part->width_in = hData->spanBase * factor;
+            part->width_out = hData->unk34 * factor;
             part->up = 0;
         } else if (age >= lifetime) {
             if (restart != 0) {
                 part->frame = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % randomRange);
             }
             color = 0;
-            effPCPFlashPolyPipePartSetVC(work, index, color);
+            effPCPFlashPolyPipePartSetVC(hData, index, color);
         } else if (age > 0) {
-            effPCPFlashPolyPipePartRotate(work, index);
-            effPCPFlashPolyPipePartSetVertex(work, index);
+            effPCPFlashPolyPipePartRotate(hData, index);
+            effPCPFlashPolyPipePartSetVertex(hData, index);
             if (part->frame < fadeIn && fadeIn != 0) {
                 factor = (f32)part->frame / (f32)fadeIn;
             } else if (fadeOut >= lifetime - part->frame && fadeOut != 0) {
@@ -1941,20 +1941,20 @@ void effPCPFlashPolyPipeDraw(effPCPFlashPolyPipe_tag *work)
                 factor = 1.0f;
             }
             color = effMagaCylinderCalcColor(effColorBlend(0, part->abgr, factor), tintColor);
-            effPCPFlashPolyPipePartSetVC(work, index, color);
+            effPCPFlashPolyPipePartSetVC(hData, index, color);
         }
         part->frame = part->frame + 1;
     }
-    handle = work->resourceHandle;
-    handle->origin[0] = work->origin[0];
-    work->updateCount = work->updateCount + 1;
-    handle->origin[1] = work->origin[1];
-    handle->origin[2] = work->origin[2];
-    handle->scale = work->renderScale;
+    handle = hData->resourceHandle;
+    handle->origin[0] = hData->origin[0];
+    hData->updateCount = hData->updateCount + 1;
+    handle->origin[1] = hData->origin[1];
+    handle->origin[2] = hData->origin[2];
+    handle->scale = hData->renderScale;
     dds3FlashPolyList3Draw(handle);
 }
 
-PcpFlashOrbitArcWork *effPCPFlashPolyRingExpCreate(effFlashOrbitArcParam_t *params)
+PcpFlashOrbitArcWork *effPCPFlashPolyRingExpCreate(effFlashOrbitArcParam_t *pParam)
 {
     sdfMemHandle_t *handle;
     effFlashOrbitArcBlock_t *block;
@@ -1965,10 +1965,10 @@ PcpFlashOrbitArcWork *effPCPFlashPolyRingExpCreate(effFlashOrbitArcParam_t *para
     u32 spread;
     u32 i;
 
-    handle = sdfMemAllocDirect((u32)params->particleCount * 16 + 0x80);
+    handle = sdfMemAllocDirect((u32)pParam->particleCount * 16 + 0x80);
     block = (effFlashOrbitArcBlock_t *)sdfMemLock(handle);
     ring = &block->header;
-    memcpy(ring, params, 0x58);
+    memcpy(ring, pParam, 0x58);
     ring->parts = block->parts;
     ring->allocationHandle = handle;
     ring->tintColor = EFF_NEUTRAL_COLOR;
@@ -2005,24 +2005,24 @@ PcpFlashOrbitArcWork *effPCPFlashPolyRingExpCopy(effFlashOrbitArcParam_t *params
     return effPCPFlashPolyRingExpCreate(params);
 }
 
-void effPCPFlashPolyRingExpDelete(PcpFlashOrbitArcWork *work)
+void effPCPFlashPolyRingExpDelete(PcpFlashOrbitArcWork *hData)
 {
-    dds3FlashPolyListDelete(work->resourceHandle);
-    sdfMemFreeDirect(work->allocationHandle);
+    dds3FlashPolyListDelete(hData->resourceHandle);
+    sdfMemFreeDirect(hData->allocationHandle);
 }
 
-void effPCPFlashPolyRingExpSetPosition(void *dst, void *src) {
-    SDF_VU0_COPYVECTOR(dst, src);
+void effPCPFlashPolyRingExpSetPosition(void *hData, void *pPos) {
+    SDF_VU0_COPYVECTOR(hData, pPos);
 }
 
-void effPCPFlashPolyRingExpSetColor(PcpFlashOrbitArcWork *work, u32 value)
+void effPCPFlashPolyRingExpSetColor(PcpFlashOrbitArcWork *hData, u32 abgr)
 {
-    work->tintColor = value;
+    hData->tintColor = abgr;
 }
 
-void effPCPFlashPolyRingExpSetScale(PcpFlashOrbitArcWork *work, f32 value)
+void effPCPFlashPolyRingExpSetScale(PcpFlashOrbitArcWork *hData, f32 scale)
 {
-    work->renderScale = value;
+    hData->renderScale = scale;
 }
 
 void effPCPFlashPolyRingExpPartSetVC(PcpFlashOrbitArcWork *work, s32 index, s32 color)
@@ -2110,15 +2110,15 @@ void effPCPFlashPolyRingExpPartSetVertex(PcpFlashOrbitArcWork *work, s32 index)
     SDF_VU0_STOREVECTOR(quad + 4);
 }
 
-void effPCPFlashPolyRingExpPartRotate(PcpFlashOrbitArcWork *work, s32 index)
+void effPCPFlashPolyRingExpPartRotate(PcpFlashOrbitArcWork *pFlashPoly, s32 number)
 {
     PcpFlashMotionParticle *part;
 
-    part = &work->parts[index];
-    part->accumulator += work->angularStep;
+    part = &pFlashPoly->parts[number];
+    part->accumulator += pFlashPoly->angularStep;
 }
 
-void effPCPFlashPolyRingExpDraw(PcpFlashOrbitArcWork *work)
+void effPCPFlashPolyRingExpDraw(PcpFlashOrbitArcWork *hData)
 {
     s32 index;
     s32 count;
@@ -2142,61 +2142,61 @@ void effPCPFlashPolyRingExpDraw(PcpFlashOrbitArcWork *work)
     f32 acrossEnd;
     f32 normalEnd;
 
-    part = work->parts;
-    count = work->particleCount;
-    lifetime = work->lifetime;
-    fadeIn = work->fadeInTime;
-    fadeOut = work->fadeOutTime;
-    restart = work->restartRandomly;
-    randomRange = work->randomRange;
-    tintColor = work->tintColor;
-    heightDelta = work->heightEnd - work->heightStart;
+    part = hData->parts;
+    count = hData->particleCount;
+    lifetime = hData->lifetime;
+    fadeIn = hData->fadeInTime;
+    fadeOut = hData->fadeOutTime;
+    restart = hData->restartRandomly;
+    randomRange = hData->randomRange;
+    tintColor = hData->tintColor;
+    heightDelta = hData->heightEnd - hData->heightStart;
     progress = 1.0f;
     if (lifetime > 0) {
-        progress = (f32)work->shapeProgressFrame / (f32)lifetime;
+        progress = (f32)hData->shapeProgressFrame / (f32)lifetime;
     }
-    start = work->orbitRadiusStart;
-    radiusEnd = work->orbitRadiusEnd;
+    start = hData->orbitRadiusStart;
+    radiusEnd = hData->orbitRadiusEnd;
     delta = radiusEnd - start;
-    work->orbitRadius = start + delta * progress;
+    hData->orbitRadius = start + delta * progress;
     if (start > 0.0f) {
         factor = radiusEnd / start;
     } else {
         factor = radiusEnd;
     }
-    upStart = work->upSpanStart;
-    acrossStart = work->acrossSpanStart;
+    upStart = hData->upSpanStart;
+    acrossStart = hData->acrossSpanStart;
     upEnd = upStart * factor;
     acrossEnd = acrossStart * factor;
-    start = work->normalSpanStart;
-    normalEnd = work->normalSpanEnd;
+    start = hData->normalSpanStart;
+    normalEnd = hData->normalSpanEnd;
     delta = upEnd - upStart;
-    work->upSpan = upStart + delta * progress;
+    hData->upSpan = upStart + delta * progress;
     delta = acrossEnd - acrossStart;
-    work->acrossSpan = acrossStart + delta * progress;
+    hData->acrossSpan = acrossStart + delta * progress;
     delta = normalEnd - start;
-    work->normalSpan = start + delta * progress;
+    hData->normalSpan = start + delta * progress;
 
     for (index = 0; index < count; index++, part++) {
         s32 age = part->age;
         s32 color;
 
         if (age == 0) {
-            part->stepSpeed = work->heightStart;
-            effPCPFlashPolyRingExpPartSetVertex(work, index);
-            effPCPFlashPolyRingExpPartSetVC(work, index, 0);
+            part->stepSpeed = hData->heightStart;
+            effPCPFlashPolyRingExpPartSetVertex(hData, index);
+            effPCPFlashPolyRingExpPartSetVC(hData, index, 0);
             part->color = EFF_NEUTRAL_COLOR;
         } else if (age >= lifetime) {
             if (restart != 0) {
                 part->age = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % randomRange);
             }
             color = 0;
-            effPCPFlashPolyRingExpPartSetVC(work, index, color);
+            effPCPFlashPolyRingExpPartSetVC(hData, index, color);
         } else if (age > 0) {
             progress = (f32)age / (f32)lifetime;
-            part->stepSpeed = heightDelta * progress + work->heightStart;
-            effPCPFlashPolyRingExpPartRotate(work, index);
-            effPCPFlashPolyRingExpPartSetVertex(work, index);
+            part->stepSpeed = heightDelta * progress + hData->heightStart;
+            effPCPFlashPolyRingExpPartRotate(hData, index);
+            effPCPFlashPolyRingExpPartSetVertex(hData, index);
             if (part->age < fadeIn && fadeIn != 0) {
                 factor = (f32)part->age / (f32)fadeIn;
             } else if (fadeOut >= lifetime - part->age && fadeOut != 0) {
@@ -2205,32 +2205,32 @@ void effPCPFlashPolyRingExpDraw(PcpFlashOrbitArcWork *work)
                 factor = 1.0f;
             }
             color = effMagaCylinderCalcColor(effColorBlend(0, part->color, factor), tintColor);
-            effPCPFlashPolyRingExpPartSetVC(work, index, color);
+            effPCPFlashPolyRingExpPartSetVC(hData, index, color);
         }
         part->age = part->age + 1;
     }
-    if (work->shapeProgressFrame == lifetime) {
-        work->shapeProgressFrame = 0;
+    if (hData->shapeProgressFrame == lifetime) {
+        hData->shapeProgressFrame = 0;
     } else {
-        work->shapeProgressFrame++;
+        hData->shapeProgressFrame++;
     }
-    handle = work->resourceHandle;
-    handle->origin[0] = work->origin[0];
-    handle->origin[1] = work->origin[1];
-    handle->origin[2] = work->origin[2];
-    handle->scale = work->renderScale;
+    handle = hData->resourceHandle;
+    handle->origin[0] = hData->origin[0];
+    handle->origin[1] = hData->origin[1];
+    handle->origin[2] = hData->origin[2];
+    handle->scale = hData->renderScale;
     dds3FlashPolyListDraw(handle);
 }
 
-PcpFlashRotatingQuadWork *effPCPFlashPolySphereExpCreate(effFlashRotatingQuadParam_t *params)
+PcpFlashRotatingQuadWork *effPCPFlashPolySphereExpCreate(effFlashRotatingQuadParam_t *pParam)
 {
-    sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashRotatingQuadParticle) + sizeof(PcpFlashRotatingQuadWork));
+    sdfMemHandle_t *handle = sdfMemAllocDirect(pParam->particleCount * sizeof(PcpFlashRotatingQuadParticle) + sizeof(PcpFlashRotatingQuadWork));
     PcpFlashRotatingQuadWork *work = (PcpFlashRotatingQuadWork *)sdfMemLock(handle);
     dds3FlashPolyList_t *record;
     u32 range;
     u32 i;
 
-    memcpy(work, params, 0x4C);
+    memcpy(work, pParam, 0x4C);
     work->parts = (PcpFlashRotatingQuadParticle *)(work + 1);
     work->allocationHandle = handle;
     work->tintColor = EFF_NEUTRAL_COLOR;
@@ -2259,24 +2259,24 @@ PcpFlashRotatingQuadWork *effPCPFlashPolySphereExpCopy(effFlashRotatingQuadParam
     return effPCPFlashPolySphereExpCreate(params);
 }
 
-void effPCPFlashPolySphereExpDelete(PcpFlashRotatingQuadWork *work)
+void effPCPFlashPolySphereExpDelete(PcpFlashRotatingQuadWork *hData)
 {
-    dds3FlashPolyListDelete(work->resourceHandle);
-    sdfMemFreeDirect(work->allocationHandle);
+    dds3FlashPolyListDelete(hData->resourceHandle);
+    sdfMemFreeDirect(hData->allocationHandle);
 }
 
-void effPCPFlashPolySphereExpSetPosition(void *dst, void *src) {
-    SDF_VU0_COPYVECTOR(dst, src);
+void effPCPFlashPolySphereExpSetPosition(void *hData, void *pPos) {
+    SDF_VU0_COPYVECTOR(hData, pPos);
 }
 
-void effPCPFlashPolySphereExpSetColor(PcpFlashRotatingQuadWork *work, u32 value)
+void effPCPFlashPolySphereExpSetColor(PcpFlashRotatingQuadWork *hData, u32 abgr)
 {
-    work->tintColor = value;
+    hData->tintColor = abgr;
 }
 
-void effPCPFlashPolySphereExpSetScale(PcpFlashRotatingQuadWork *work, f32 value)
+void effPCPFlashPolySphereExpSetScale(PcpFlashRotatingQuadWork *hData, f32 scale)
 {
-    work->renderScale = value;
+    hData->renderScale = scale;
 }
 
 void effPCPFlashPolySphereExpPartSetVC(PcpFlashRotatingQuadWork *work, s32 index, s32 color)
@@ -2301,20 +2301,20 @@ void effPCPFlashPolySphereExpPartSetVC(PcpFlashRotatingQuadWork *work, s32 index
     }
 }
 
-void effPCPFlashPolySphereExpPartInit(PcpFlashRotatingQuadWork *work, s32 index, void *orientation) {
-    PcpFlashRotatingQuadParticle *part = work->parts + index;
+void effPCPFlashPolySphereExpPartInit(PcpFlashRotatingQuadWork *pFlashPoly, s32 number, void *pLook) {
+    PcpFlashRotatingQuadParticle *part = pFlashPoly->parts + number;
     f32 factor;
     f32 scale;
 
     part->angle = dds3GetRandFloatA(dds3EffectBase) * 6.2831853f;
     factor = dds3GetRandFloatA(dds3EffectBase) * 0.3f + 0.7f;
-    scale = work->maxScale * factor;
+    scale = pFlashPoly->maxScale * factor;
     part->initialScale = scale;
     part->scale = scale;
     factor = (dds3GetRandFloatA(dds3EffectBase) * 0.5f + 0.5f) * 0.5f;
-    part->upSpan = work->upSpan * factor;
-    part->acrossSpan = work->acrossSpan * factor;
-    part->angularStep = work->angularStepRange * ((dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f);
+    part->upSpan = pFlashPoly->upSpan * factor;
+    part->acrossSpan = pFlashPoly->acrossSpan * factor;
+    part->angularStep = pFlashPoly->angularStepRange * ((dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f);
 }
 
 void effPCPFlashPolySphereExpPartSetVertex(PcpFlashRotatingQuadWork *work, s32 index, void *view)
@@ -2379,15 +2379,15 @@ void effPCPFlashPolySphereExpPartSetVertex(PcpFlashRotatingQuadWork *work, s32 i
     SDF_VU0_STOREVECTOR(quad + 4);
 }
 
-void effPCPFlashPolySphereExpPartRotate(PcpFlashRotatingQuadWork *work, s32 index, void *orientation)
+void effPCPFlashPolySphereExpPartRotate(PcpFlashRotatingQuadWork *pFlashPoly, s32 number, void *pLook)
 {
     PcpFlashRotatingQuadParticle *part;
 
-    part = &work->parts[index];
+    part = &pFlashPoly->parts[number];
     part->angle += part->angularStep;
 }
 
-void effPCPFlashPolySphereExpDraw(PcpFlashRotatingQuadWork *work) {
+void effPCPFlashPolySphereExpDraw(PcpFlashRotatingQuadWork *hData) {
     s128 axis;
     s32 index;
     s32 lifetime;
@@ -2406,25 +2406,25 @@ void effPCPFlashPolySphereExpDraw(PcpFlashRotatingQuadWork *work) {
     SDF_VU0_LOADVECTOR_B(aViewEye);
         SDF_VU0_SUBVECTOR();
     SDF_VU0_STOREVECTOR(&axis);
-    count = work->particleCount;
-    part = work->parts;
-    lifetime = work->lifetime;
-    ramp = work->scaleRampTime;
-    maxScale = work->maxScale;
-    fadeIn = work->fadeInTime;
-    fadeOut = work->fadeOutTime;
-    restart = work->restartRandomly;
-    range = work->randomRange;
-    tintColor = work->tintColor;
+    count = hData->particleCount;
+    part = hData->parts;
+    lifetime = hData->lifetime;
+    ramp = hData->scaleRampTime;
+    maxScale = hData->maxScale;
+    fadeIn = hData->fadeInTime;
+    fadeOut = hData->fadeOutTime;
+    restart = hData->restartRandomly;
+    range = hData->randomRange;
+    tintColor = hData->tintColor;
     for (index = 0; index < count; index++, part++) {
         s32 age = part->age;
         s32 color;
         f32 blend;
 
         if (part->age == 0) {
-            effPCPFlashPolySphereExpPartInit(work, index, &axis);
-            effPCPFlashPolySphereExpPartSetVertex(work, index, &axis);
-            effPCPFlashPolySphereExpPartSetVC(work, index, 0);
+            effPCPFlashPolySphereExpPartInit(hData, index, &axis);
+            effPCPFlashPolySphereExpPartSetVertex(hData, index, &axis);
+            effPCPFlashPolySphereExpPartSetVC(hData, index, 0);
             if (ramp == 0) {
                 part->scale = maxScale;
             } else {
@@ -2437,7 +2437,7 @@ void effPCPFlashPolySphereExpDraw(PcpFlashRotatingQuadWork *work) {
                     part->age = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
                 }
                 color = 0;
-                effPCPFlashPolySphereExpPartSetVC(work, index, color);
+                effPCPFlashPolySphereExpPartSetVC(hData, index, color);
             } else if (part->age > 0) {
                 s32 remain;
 
@@ -2449,8 +2449,8 @@ void effPCPFlashPolySphereExpDraw(PcpFlashRotatingQuadWork *work) {
                         part->scale = maxScale;
                     }
                 }
-                effPCPFlashPolySphereExpPartRotate(work, index, &axis);
-                effPCPFlashPolySphereExpPartSetVertex(work, index, &axis);
+                effPCPFlashPolySphereExpPartRotate(hData, index, &axis);
+                effPCPFlashPolySphereExpPartSetVertex(hData, index, &axis);
                 age = part->age;
                 if (age < fadeIn && fadeIn != 0) {
                     blend = (f32)age / (f32)fadeIn;
@@ -2463,28 +2463,28 @@ void effPCPFlashPolySphereExpDraw(PcpFlashRotatingQuadWork *work) {
                     }
                 }
                 color = effMagaCylinderCalcColor(effColorBlend(0, part->color, blend), tintColor);
-                effPCPFlashPolySphereExpPartSetVC(work, index, color);
+                effPCPFlashPolySphereExpPartSetVC(hData, index, color);
             }
         }
         part->age = part->age + 1;
     }
-    handle = work->resourceHandle;
-    handle->origin[0] = work->origin[0];
-    work->updateCount = work->updateCount + 1;
-    handle->origin[1] = work->origin[1];
-    handle->origin[2] = work->origin[2];
-    handle->scale = work->renderScale;
+    handle = hData->resourceHandle;
+    handle->origin[0] = hData->origin[0];
+    hData->updateCount = hData->updateCount + 1;
+    handle->origin[1] = hData->origin[1];
+    handle->origin[2] = hData->origin[2];
+    handle->scale = hData->renderScale;
     dds3FlashPolyListDraw(handle);
 }
 
-PcpFlashRadialTriangleWork *effPCPFlashPolySphere2ExpCreate(effPCPFlashPolySphere2ExpParam_t *params)
+PcpFlashRadialTriangleWork *effPCPFlashPolySphere2ExpCreate(effPCPFlashPolySphere2ExpParam_t *pParam)
 {
-    sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashMotionParticle) + sizeof(PcpFlashRadialTriangleWork));
+    sdfMemHandle_t *handle = sdfMemAllocDirect(pParam->particleCount * sizeof(PcpFlashMotionParticle) + sizeof(PcpFlashRadialTriangleWork));
     PcpFlashRadialTriangleWork *work = (PcpFlashRadialTriangleWork *)sdfMemLock(handle);
     dds3FlashPolyList_t *record;
     u32 i;
 
-    memcpy(work, params, 0x3C);
+    memcpy(work, pParam, 0x3C);
     work->parts = (PcpFlashMotionParticle *)(work + 1);
     work->tintColor = EFF_NEUTRAL_COLOR;
     work->allocationHandle = handle;
@@ -2509,24 +2509,24 @@ PcpFlashRadialTriangleWork *effPCPFlashPolySphere2ExpCopy(effPCPFlashPolySphere2
     return effPCPFlashPolySphere2ExpCreate(params);
 }
 
-void effPCPFlashPolySphere2ExpDelete(PcpFlashRadialTriangleWork *work)
+void effPCPFlashPolySphere2ExpDelete(PcpFlashRadialTriangleWork *hData)
 {
-    dds3FlashPolyList2Delete(work->resourceHandle);
-    sdfMemFreeDirect(work->allocationHandle);
+    dds3FlashPolyList2Delete(hData->resourceHandle);
+    sdfMemFreeDirect(hData->allocationHandle);
 }
 
-void effPCPFlashPolySphere2ExpSetPosition(void *dst, void *src) {
-    SDF_VU0_COPYVECTOR(dst, src);
+void effPCPFlashPolySphere2ExpSetPosition(void *hData, void *pPos) {
+    SDF_VU0_COPYVECTOR(hData, pPos);
 }
 
-void effPCPFlashPolySphere2ExpSetColor(PcpFlashRadialTriangleWork *work, u32 value)
+void effPCPFlashPolySphere2ExpSetColor(PcpFlashRadialTriangleWork *hData, u32 abgr)
 {
-    work->tintColor = value;
+    hData->tintColor = abgr;
 }
 
-void effPCPFlashPolySphere2ExpSetScale(PcpFlashRadialTriangleWork *work, f32 value)
+void effPCPFlashPolySphere2ExpSetScale(PcpFlashRadialTriangleWork *hData, f32 scale)
 {
-    work->renderScale = value;
+    hData->renderScale = scale;
 }
 
 void effPCPFlashPolySphere2ExpPartSetVC(PcpFlashRadialTriangleWork *work, s32 index, s32 color)
@@ -2584,7 +2584,7 @@ void effPCPFlashPolySphere2ExpPartSetVertex(PcpFlashRadialTriangleWork *work, s3
     SDF_VU0_STOREVECTOR(quad + 4);
 }
 
-void effPCPFlashPolySphere2ExpDraw(PcpFlashRadialTriangleWork *work) {
+void effPCPFlashPolySphere2ExpDraw(PcpFlashRadialTriangleWork *hData) {
     s128 axis;
     s32 restart;
     s32 tintColor;
@@ -2605,26 +2605,26 @@ void effPCPFlashPolySphere2ExpDraw(PcpFlashRadialTriangleWork *work) {
         SDF_VU0_SUBVECTOR();
         SDF_VU0_NORMALIZE();
     SDF_VU0_STOREVECTOR(&axis);
-    count = work->particleCount;
-    part = work->parts;
-    lifetime = work->lifetime;
-    startA = work->initialRadius;
-    startB = work->initialRadialSpeed;
-    decay = work->radialDamping;
-    fadeIn = work->fadeInTime;
-    fadeOut = work->fadeOutTime;
-    restart = work->restartRandomly;
-    tintColor = work->tintColor;
+    count = hData->particleCount;
+    part = hData->parts;
+    lifetime = hData->lifetime;
+    startA = hData->initialRadius;
+    startB = hData->initialRadialSpeed;
+    decay = hData->radialDamping;
+    fadeIn = hData->fadeInTime;
+    fadeOut = hData->fadeOutTime;
+    restart = hData->restartRandomly;
+    tintColor = hData->tintColor;
     active = 0;
     for (index = 0; index < count; index++, part++) {
         s32 age = part->age;
 
         if (lifetime < age) {
-            effPCPFlashPolySphere2ExpPartSetVC(work, index, 0);
+            effPCPFlashPolySphere2ExpPartSetVC(hData, index, 0);
         } else {
             if (age == 0) {
-                effPCPFlashPolySphere2ExpPartSetVertex(work, index, &axis);
-                effPCPFlashPolySphere2ExpPartSetVC(work, index, 0);
+                effPCPFlashPolySphere2ExpPartSetVertex(hData, index, &axis);
+                effPCPFlashPolySphere2ExpPartSetVC(hData, index, 0);
                 part->accumulator = startA;
                 part->stepSpeed = startB;
                 part->color = EFF_NEUTRAL_COLOR;
@@ -2635,7 +2635,7 @@ void effPCPFlashPolySphere2ExpDraw(PcpFlashRadialTriangleWork *work) {
 
                 part->stepSpeed = speed * decay;
                 part->accumulator = part->accumulator + speed;
-                effPCPFlashPolySphere2ExpPartSetVertex(work, index, &axis);
+                effPCPFlashPolySphere2ExpPartSetVertex(hData, index, &axis);
                 if (age < fadeIn && fadeIn != 0) {
                     blend = (f32)age / (f32)fadeIn;
                 } else {
@@ -2647,7 +2647,7 @@ void effPCPFlashPolySphere2ExpDraw(PcpFlashRadialTriangleWork *work) {
                     }
                 }
                 active++;
-                effPCPFlashPolySphere2ExpPartSetVC(work, index, effMagaCylinderCalcColor(effColorBlend(0, part->color, blend), tintColor));
+                effPCPFlashPolySphere2ExpPartSetVC(hData, index, effMagaCylinderCalcColor(effColorBlend(0, part->color, blend), tintColor));
             }
             if (age == lifetime && restart != 0) {
                 part->age = 0;
@@ -2656,26 +2656,26 @@ void effPCPFlashPolySphere2ExpDraw(PcpFlashRadialTriangleWork *work) {
             }
         }
     }
-    handle = work->resourceHandle;
-    handle->origin[0] = work->origin[0];
-    work->updateCount = work->updateCount + 1;
-    handle->origin[1] = work->origin[1];
-    handle->origin[2] = work->origin[2];
-    handle->scale = work->renderScale;
+    handle = hData->resourceHandle;
+    handle->origin[0] = hData->origin[0];
+    hData->updateCount = hData->updateCount + 1;
+    handle->origin[1] = hData->origin[1];
+    handle->origin[2] = hData->origin[2];
+    handle->scale = hData->renderScale;
     if (active != 0) {
         dds3FlashPolyList2Draw(handle);
     }
 }
 
-PcpFlashRadialStripWork *effPCPFlashPolySphere3Create(effFlashRadialStripParam_t *params)
+PcpFlashRadialStripWork *effPCPFlashPolySphere3Create(effFlashRadialStripParam_t *pParam)
 {
-    sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashRadialStripParticle) + sizeof(PcpFlashRadialStripWork));
+    sdfMemHandle_t *handle = sdfMemAllocDirect(pParam->particleCount * sizeof(PcpFlashRadialStripParticle) + sizeof(PcpFlashRadialStripWork));
     PcpFlashRadialStripWork *work = (PcpFlashRadialStripWork *)sdfMemLock(handle);
     dds3FlashPolyList_t *record;
     u32 range;
     u32 i;
 
-    memcpy(work, params, 0xD0);
+    memcpy(work, pParam, 0xD0);
     work->parts = (PcpFlashRadialStripParticle *)(work + 1);
     work->allocationHandle = handle;
     work->tintColor = EFF_NEUTRAL_COLOR;
@@ -2705,24 +2705,24 @@ PcpFlashRadialStripWork *effPCPFlashPolySphere3Copy(effFlashRadialStripParam_t *
     return effPCPFlashPolySphere3Create(params);
 }
 
-void effPCPFlashPolySphere3Delete(PcpFlashRadialStripWork *work)
+void effPCPFlashPolySphere3Delete(PcpFlashRadialStripWork *hData)
 {
-    dds3FlashPolyList3Delete(work->resourceHandle);
-    sdfMemFreeDirect(work->allocationHandle);
+    dds3FlashPolyList3Delete(hData->resourceHandle);
+    sdfMemFreeDirect(hData->allocationHandle);
 }
 
-void effPCPFlashPolySphere3SetPosition(void *dst, void *src) {
-    SDF_VU0_COPYVECTOR(dst, src);
+void effPCPFlashPolySphere3SetPosition(void *hData, void *pPos) {
+    SDF_VU0_COPYVECTOR(hData, pPos);
 }
 
-void effPCPFlashPolySphere3SetColor(PcpFlashRadialStripWork *work, u32 value)
+void effPCPFlashPolySphere3SetColor(PcpFlashRadialStripWork *hData, u32 abgr)
 {
-    work->tintColor = value;
+    hData->tintColor = abgr;
 }
 
-void effPCPFlashPolySphere3SetScale(PcpFlashRadialStripWork *work, f32 value)
+void effPCPFlashPolySphere3SetScale(PcpFlashRadialStripWork *hData, f32 scale)
 {
-    work->renderScale = value;
+    hData->renderScale = scale;
 }
 
 void effPCPFlashPolySphere3PartSetVC(PcpFlashRadialStripWork *work, s32 index, u32 colorMultiplier) {
@@ -2745,16 +2745,16 @@ void effPCPFlashPolySphere3PartSetVC(PcpFlashRadialStripWork *work, s32 index, u
     mirror[3] = colors[3];
 }
 
-void effPCPFlashPolySphere3PartInit(PcpFlashRadialStripWork *work, s32 index, void *orientation) {
-    PcpFlashRadialStripParticle *part = work->parts + index;
+void effPCPFlashPolySphere3PartInit(PcpFlashRadialStripWork *pFlashPoly, s32 number, void *pLook) {
+    PcpFlashRadialStripParticle *part = pFlashPoly->parts + number;
     f32 factor;
 
     part->angle = dds3GetRandFloatA(dds3EffectBase) * 6.2831853f;
     factor = dds3GetRandFloatA(dds3EffectBase) * 0.3f + 0.7f;
-    part->thickness = work->maxThickness * factor;
-    factor = work->spanVariation;
-    part->span = work->spanBase * (dds3GetRandFloatA(dds3EffectBase) * factor + (1.0f - factor));
-    part->angularStep = work->angularStepRange * ((dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f);
+    part->thickness = pFlashPoly->maxThickness * factor;
+    factor = pFlashPoly->spanVariation;
+    part->span = pFlashPoly->spanBase * (dds3GetRandFloatA(dds3EffectBase) * factor + (1.0f - factor));
+    part->angularStep = pFlashPoly->angularStepRange * ((dds3GetRandFloatA(dds3EffectBase) - 0.5f) * 2.0f);
 }
 
 /* vu0 routine: two quads of corner offsets for a flash particle (a strip and its mirror), turned around the view axis by the particle's angle */
@@ -2832,15 +2832,15 @@ void effPCPFlashPolySphere3PartSetVertex(PcpFlashRadialStripWork *work, s32 inde
     SDF_VU0_STOREVECTOR(mirror);
 }
 
-void effPCPFlashPolySphere3PartRotate(PcpFlashRadialStripWork *work, s32 index, void *orientation)
+void effPCPFlashPolySphere3PartRotate(PcpFlashRadialStripWork *pFlashPoly, s32 number, void *pLook)
 {
     PcpFlashRadialStripParticle *part;
 
-    part = &work->parts[index];
+    part = &pFlashPoly->parts[number];
     part->angle += part->angularStep;
 }
 
-void effPCPFlashPolySphere3Draw(PcpFlashRadialStripWork *work) {
+void effPCPFlashPolySphere3Draw(PcpFlashRadialStripWork *hData) {
     s128 axis;
     s32 index;
     s32 count;
@@ -2861,28 +2861,28 @@ void effPCPFlashPolySphere3Draw(PcpFlashRadialStripWork *work) {
     SDF_VU0_LOADVECTOR_B(aViewEye);
         SDF_VU0_SUBVECTOR();
     SDF_VU0_STOREVECTOR(&axis);
-    count = work->particleCount;
-    part = work->parts;
-    lifetime = work->lifetime;
-    maxThickness = work->maxThickness;
-    fadeIn = work->fadeInTime;
-    fadeOut = work->fadeOutTime;
-    startA = work->initialRadius;
-    startB = work->initialRadialSpeed;
-    decay = work->radialDamping;
-    restart = work->restartRandomly;
-    range = work->randomRange;
-    tintColor = work->tintColor;
+    count = hData->particleCount;
+    part = hData->parts;
+    lifetime = hData->lifetime;
+    maxThickness = hData->maxThickness;
+    fadeIn = hData->fadeInTime;
+    fadeOut = hData->fadeOutTime;
+    startA = hData->initialRadius;
+    startB = hData->initialRadialSpeed;
+    decay = hData->radialDamping;
+    restart = hData->restartRandomly;
+    range = hData->randomRange;
+    tintColor = hData->tintColor;
     for (index = 0; index < count; index++, part++) {
         s32 age = part->age;
 
         if (lifetime < age) {
-            effPCPFlashPolySphere3PartSetVC(work, index, 0);
+            effPCPFlashPolySphere3PartSetVC(hData, index, 0);
         } else {
             if (age == 0) {
-                effPCPFlashPolySphere3PartInit(work, index, &axis);
-                effPCPFlashPolySphere3PartSetVertex(work, index, &axis);
-                effPCPFlashPolySphere3PartSetVC(work, index, 0);
+                effPCPFlashPolySphere3PartInit(hData, index, &axis);
+                effPCPFlashPolySphere3PartSetVertex(hData, index, &axis);
+                effPCPFlashPolySphere3PartSetVC(hData, index, 0);
                 part->thickness = maxThickness;
                 part->radius = startA;
                 part->radialSpeed = startB;
@@ -2894,8 +2894,8 @@ void effPCPFlashPolySphere3Draw(PcpFlashRadialStripWork *work) {
 
                 part->radialSpeed = speed * decay;
                 part->radius = part->radius + speed;
-                effPCPFlashPolySphere3PartRotate(work, index, &axis);
-                effPCPFlashPolySphere3PartSetVertex(work, index, &axis);
+                effPCPFlashPolySphere3PartRotate(hData, index, &axis);
+                effPCPFlashPolySphere3PartSetVertex(hData, index, &axis);
                 age = part->age;
                 if (age < fadeIn && fadeIn != 0) {
                     blend = (f32)age / (f32)fadeIn;
@@ -2907,28 +2907,28 @@ void effPCPFlashPolySphere3Draw(PcpFlashRadialStripWork *work) {
                         blend = 1.0f;
                     }
                 }
-                effPCPFlashPolySphere3PartSetVC(work, index, effMagaCylinderCalcColor(effColorBlend(0, part->color, blend), tintColor));
+                effPCPFlashPolySphere3PartSetVC(hData, index, effMagaCylinderCalcColor(effColorBlend(0, part->color, blend), tintColor));
             }
             if (age == lifetime && restart != 0) {
                 part->age = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
-                effPCPFlashPolySphere3PartSetVC(work, index, 0);
+                effPCPFlashPolySphere3PartSetVC(hData, index, 0);
             } else {
                 part->age = part->age + 1;
             }
         }
     }
-    handle = work->resourceHandle;
-    handle->origin[0] = work->origin[0];
-    work->updateCount = work->updateCount + 1;
-    handle->origin[1] = work->origin[1];
-    handle->origin[2] = work->origin[2];
-    handle->scale = work->renderScale;
+    handle = hData->resourceHandle;
+    handle->origin[0] = hData->origin[0];
+    hData->updateCount = hData->updateCount + 1;
+    handle->origin[1] = hData->origin[1];
+    handle->origin[2] = hData->origin[2];
+    handle->scale = hData->renderScale;
     dds3FlashPolyList3Draw(handle);
 }
 
-PcpFlashFadingOrbitWork *effPCPFlashPolyRingExp2Create(effFlashFadingOrbitParam_t *params)
+PcpFlashFadingOrbitWork *effPCPFlashPolyRingExp2Create(effFlashFadingOrbitParam_t *pParam)
 {
-    sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashOrbitParticle) + sizeof(PcpFlashFadingOrbitWork));
+    sdfMemHandle_t *handle = sdfMemAllocDirect(pParam->particleCount * sizeof(PcpFlashOrbitParticle) + sizeof(PcpFlashFadingOrbitWork));
     PcpFlashFadingOrbitWork *work = (PcpFlashFadingOrbitWork *)sdfMemLock(handle);
     dds3FlashPolyList_t *record;
     f32 angle;
@@ -2936,7 +2936,7 @@ PcpFlashFadingOrbitWork *effPCPFlashPolyRingExp2Create(effFlashFadingOrbitParam_
     u32 range;
     u32 i;
 
-    memcpy(work, params, 0x50);
+    memcpy(work, pParam, 0x50);
     work->parts = (PcpFlashOrbitParticle *)(work + 1);
     work->allocationHandle = handle;
     work->tintColor = EFF_NEUTRAL_COLOR;
@@ -2970,24 +2970,24 @@ PcpFlashFadingOrbitWork *effPCPFlashPolyRingExp2Copy(effFlashFadingOrbitParam_t 
     return effPCPFlashPolyRingExp2Create(params);
 }
 
-void effPCPFlashPolyRingExp2Delete(PcpFlashFadingOrbitWork *work)
+void effPCPFlashPolyRingExp2Delete(PcpFlashFadingOrbitWork *hData)
 {
-    dds3FlashPolyListDelete(work->resourceHandle);
-    sdfMemFreeDirect(work->allocationHandle);
+    dds3FlashPolyListDelete(hData->resourceHandle);
+    sdfMemFreeDirect(hData->allocationHandle);
 }
 
-void effPCPFlashPolyRingExp2SetPosition(void *dst, void *src) {
-    SDF_VU0_COPYVECTOR(dst, src);
+void effPCPFlashPolyRingExp2SetPosition(void *hData, void *pPos) {
+    SDF_VU0_COPYVECTOR(hData, pPos);
 }
 
-void effPCPFlashPolyRingExp2SetColor(PcpFlashFadingOrbitWork *work, u32 value)
+void effPCPFlashPolyRingExp2SetColor(PcpFlashFadingOrbitWork *hData, u32 abgr)
 {
-    work->tintColor = value;
+    hData->tintColor = abgr;
 }
 
-void effPCPFlashPolyRingExp2SetScale(PcpFlashFadingOrbitWork *work, f32 value)
+void effPCPFlashPolyRingExp2SetScale(PcpFlashFadingOrbitWork *hData, f32 scale)
 {
-    work->renderScale = value;
+    hData->renderScale = scale;
 }
 
 void effPCPFlashPolyRingExp2PartSetVC(PcpFlashFadingOrbitWork *work, s32 index, s32 color)
@@ -3082,15 +3082,15 @@ void effPCPFlashPolyRingExp2PartSetVertex(PcpFlashFadingOrbitWork *work, s32 ind
     SDF_VU0_STOREVECTOR(quad + 4);
 }
 
-void effPCPFlashPolyRingExp2PartRotate(PcpFlashFadingOrbitWork *work, s32 index)
+void effPCPFlashPolyRingExp2PartRotate(PcpFlashFadingOrbitWork *pFlashPoly, s32 number)
 {
     PcpFlashOrbitParticle *part;
 
-    part = &work->parts[index];
-    part->angle += work->angularStep;
+    part = &pFlashPoly->parts[number];
+    part->angle += pFlashPoly->angularStep;
 }
 
-void effPCPFlashPolyRingExp2Draw(PcpFlashFadingOrbitWork *work) {
+void effPCPFlashPolyRingExp2Draw(PcpFlashFadingOrbitWork *hData) {
     s32 restart;
     s32 tintColor;
     s32 count;
@@ -3104,21 +3104,21 @@ void effPCPFlashPolyRingExp2Draw(PcpFlashFadingOrbitWork *work) {
     PcpFlashOrbitParticle *part;
     dds3FlashPolyList_t *handle;
 
-    count = work->particleCount;
-    part = work->parts;
-    lifetime = work->lifetime;
-    fadeIn = work->fadeInTime;
-    fadeOut = work->fadeOutTime;
-    ramp = work->scaleRampTime;
-    maxScale = work->maxScale;
-    restart = work->restartRandomly;
-    range = work->randomRange;
-    tintColor = work->tintColor;
+    count = hData->particleCount;
+    part = hData->parts;
+    lifetime = hData->lifetime;
+    fadeIn = hData->fadeInTime;
+    fadeOut = hData->fadeOutTime;
+    ramp = hData->scaleRampTime;
+    maxScale = hData->maxScale;
+    restart = hData->restartRandomly;
+    range = hData->randomRange;
+    tintColor = hData->tintColor;
     for (index = 0; index < count; index++, part++) {
         s32 age = part->age;
 
         if (lifetime < age) {
-            effPCPFlashPolyRingExp2PartSetVC(work, index, 0);
+            effPCPFlashPolyRingExp2PartSetVC(hData, index, 0);
         } else {
             if (age == 0) {
                 part->initialScale = maxScale;
@@ -3127,8 +3127,8 @@ void effPCPFlashPolyRingExp2Draw(PcpFlashFadingOrbitWork *work) {
                 } else {
                     part->scale = 0.0f;
                 }
-                effPCPFlashPolyRingExp2PartSetVertex(work, index);
-                effPCPFlashPolyRingExp2PartSetVC(work, index, 0);
+                effPCPFlashPolyRingExp2PartSetVertex(hData, index);
+                effPCPFlashPolyRingExp2PartSetVC(hData, index, 0);
                 part->color = EFF_NEUTRAL_COLOR;
             } else if (age > 0) {
                 s32 remain;
@@ -3142,8 +3142,8 @@ void effPCPFlashPolyRingExp2Draw(PcpFlashFadingOrbitWork *work) {
                         part->scale = maxScale;
                     }
                 }
-                effPCPFlashPolyRingExp2PartRotate(work, index);
-                effPCPFlashPolyRingExp2PartSetVertex(work, index);
+                effPCPFlashPolyRingExp2PartRotate(hData, index);
+                effPCPFlashPolyRingExp2PartSetVertex(hData, index);
                 if (age < fadeIn && fadeIn != 0) {
                     blend = (f32)age / (f32)fadeIn;
                 } else {
@@ -3154,33 +3154,33 @@ void effPCPFlashPolyRingExp2Draw(PcpFlashFadingOrbitWork *work) {
                         blend = 1.0f;
                     }
                 }
-                effPCPFlashPolyRingExp2PartSetVC(work, index, effMagaCylinderCalcColor(effColorBlend(0, part->color, blend), tintColor));
+                effPCPFlashPolyRingExp2PartSetVC(hData, index, effMagaCylinderCalcColor(effColorBlend(0, part->color, blend), tintColor));
             }
             if (age == lifetime && restart != 0) {
                 part->age = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
-                effPCPFlashPolyRingExp2PartSetVC(work, index, 0);
+                effPCPFlashPolyRingExp2PartSetVC(hData, index, 0);
             } else {
                 part->age = part->age + 1;
             }
         }
     }
-    handle = work->resourceHandle;
-    handle->origin[0] = work->origin[0];
-    work->updateCount = work->updateCount + 1;
-    handle->origin[1] = work->origin[1];
-    handle->origin[2] = work->origin[2];
-    handle->scale = work->renderScale;
+    handle = hData->resourceHandle;
+    handle->origin[0] = hData->origin[0];
+    hData->updateCount = hData->updateCount + 1;
+    handle->origin[1] = hData->origin[1];
+    handle->origin[2] = hData->origin[2];
+    handle->scale = hData->renderScale;
     dds3FlashPolyListDraw(handle);
 }
 
-PcpFlashOffsetRadialWork *effPCPFlashPolyCircleCreate(effPCPFlashPolyCircleParam_t *params)
+PcpFlashOffsetRadialWork *effPCPFlashPolyCircleCreate(effPCPFlashPolyCircleParam_t *pParam)
 {
-    sdfMemHandle_t *handle = sdfMemAllocDirect(params->particleCount * sizeof(PcpFlashMotionParticle) + sizeof(PcpFlashOffsetRadialWork));
+    sdfMemHandle_t *handle = sdfMemAllocDirect(pParam->particleCount * sizeof(PcpFlashMotionParticle) + sizeof(PcpFlashOffsetRadialWork));
     PcpFlashOffsetRadialWork *work = (PcpFlashOffsetRadialWork *)sdfMemLock(handle);
     dds3FlashPolyList_t *record;
     u32 i;
 
-    memcpy(work, params, 0x40);
+    memcpy(work, pParam, 0x40);
     work->parts = (PcpFlashMotionParticle *)(work + 1);
     work->tintColor = EFF_NEUTRAL_COLOR;
     work->allocationHandle = handle;
@@ -3205,24 +3205,24 @@ PcpFlashOffsetRadialWork *effPCPFlashPolyCircleCopy(effPCPFlashPolyCircleParam_t
     return effPCPFlashPolyCircleCreate(params);
 }
 
-void effPCPFlashPolyCircleDelete(PcpFlashOffsetRadialWork *work)
+void effPCPFlashPolyCircleDelete(PcpFlashOffsetRadialWork *hData)
 {
-    dds3FlashPolyList2Delete(work->resourceHandle);
-    sdfMemFreeDirect(work->allocationHandle);
+    dds3FlashPolyList2Delete(hData->resourceHandle);
+    sdfMemFreeDirect(hData->allocationHandle);
 }
 
-void effPCPFlashPolyCircleSetPosition(void *dst, void *src) {
-    SDF_VU0_COPYVECTOR(dst, src);
+void effPCPFlashPolyCircleSetPosition(void *hData, void *pPos) {
+    SDF_VU0_COPYVECTOR(hData, pPos);
 }
 
-void effPCPFlashPolyCircleSetColor(PcpFlashOffsetRadialWork *work, u32 value)
+void effPCPFlashPolyCircleSetColor(PcpFlashOffsetRadialWork *hData, u32 abgr)
 {
-    work->tintColor = value;
+    hData->tintColor = abgr;
 }
 
-void effPCPFlashPolyCircleSetScale(PcpFlashOffsetRadialWork *work, f32 value)
+void effPCPFlashPolyCircleSetScale(PcpFlashOffsetRadialWork *hData, f32 scale)
 {
-    work->renderScale = value;
+    hData->renderScale = scale;
 }
 
 void effPCPFlashPolyCirclePartSetVC(PcpFlashOffsetRadialWork *work, s32 index, s32 color)
@@ -3280,7 +3280,7 @@ void effPCPFlashPolyCirclePartSetVertex(PcpFlashOffsetRadialWork *work, s32 inde
     SDF_VU0_STOREVECTOR(quad + 4);
 }
 
-void effPCPFlashPolyCircleDraw(PcpFlashOffsetRadialWork *work) {
+void effPCPFlashPolyCircleDraw(PcpFlashOffsetRadialWork *hData) {
     f32 axis[4];
     s32 restart;
     s32 tintColor;
@@ -3302,26 +3302,26 @@ void effPCPFlashPolyCircleDraw(PcpFlashOffsetRadialWork *work) {
         SDF_VU0_SUBVECTOR();
         SDF_VU0_NORMALIZE();
     SDF_VU0_STOREVECTOR(axis);
-    count = work->particleCount;
-    part = work->parts;
-    lifetime = work->lifetime;
-    startA = work->initialRadius;
-    startB = work->initialRadialSpeed;
-    decay = work->radialDamping;
-    fadeIn = work->fadeInTime;
-    fadeOut = work->fadeOutTime;
-    restart = work->restartRandomly;
-    tintColor = work->tintColor;
+    count = hData->particleCount;
+    part = hData->parts;
+    lifetime = hData->lifetime;
+    startA = hData->initialRadius;
+    startB = hData->initialRadialSpeed;
+    decay = hData->radialDamping;
+    fadeIn = hData->fadeInTime;
+    fadeOut = hData->fadeOutTime;
+    restart = hData->restartRandomly;
+    tintColor = hData->tintColor;
     active = 0;
     for (index = 0; index < count; index++, part++) {
         s32 age = part->age;
 
         if (lifetime < age) {
-            effPCPFlashPolyCirclePartSetVC(work, index, 0);
+            effPCPFlashPolyCirclePartSetVC(hData, index, 0);
         } else {
             if (age == 0) {
-                effPCPFlashPolyCirclePartSetVertex(work, index, axis);
-                effPCPFlashPolyCirclePartSetVC(work, index, 0);
+                effPCPFlashPolyCirclePartSetVertex(hData, index, axis);
+                effPCPFlashPolyCirclePartSetVC(hData, index, 0);
                 part->accumulator = startA;
                 part->stepSpeed = startB;
                 part->color = EFF_NEUTRAL_COLOR;
@@ -3332,7 +3332,7 @@ void effPCPFlashPolyCircleDraw(PcpFlashOffsetRadialWork *work) {
 
                 part->stepSpeed = speed * decay;
                 part->accumulator = part->accumulator + speed;
-                effPCPFlashPolyCirclePartSetVertex(work, index, axis);
+                effPCPFlashPolyCirclePartSetVertex(hData, index, axis);
                 if (age < fadeIn && fadeIn != 0) {
                     blend = (f32)age / (f32)fadeIn;
                 } else {
@@ -3344,7 +3344,7 @@ void effPCPFlashPolyCircleDraw(PcpFlashOffsetRadialWork *work) {
                     }
                 }
                 active++;
-                effPCPFlashPolyCirclePartSetVC(work, index, effMagaCylinderCalcColor(effColorBlend(0, part->color, blend), tintColor));
+                effPCPFlashPolyCirclePartSetVC(hData, index, effMagaCylinderCalcColor(effColorBlend(0, part->color, blend), tintColor));
             }
             if (age == lifetime && restart != 0) {
                 part->age = 0;
@@ -3353,19 +3353,19 @@ void effPCPFlashPolyCircleDraw(PcpFlashOffsetRadialWork *work) {
             }
         }
     }
-    scale = work->originOffset * work->renderScale;
-    handle = work->resourceHandle;
-    work->updateCount = work->updateCount + 1;
-    handle->origin[0] = work->origin[0] + axis[0] * scale;
-    handle->origin[1] = work->origin[1] + axis[1] * scale;
-    handle->origin[2] = work->origin[2] + axis[2] * scale;
-    handle->scale = work->renderScale;
+    scale = hData->originOffset * hData->renderScale;
+    handle = hData->resourceHandle;
+    hData->updateCount = hData->updateCount + 1;
+    handle->origin[0] = hData->origin[0] + axis[0] * scale;
+    handle->origin[1] = hData->origin[1] + axis[1] * scale;
+    handle->origin[2] = hData->origin[2] + axis[2] * scale;
+    handle->scale = hData->renderScale;
     if (active != 0) {
         dds3FlashPolyList2Draw(handle);
     }
 }
 
-EffRingWork *effPCPFlashPolyRingExpHCreate(EffRingWork *source)
+EffRingWork *effPCPFlashPolyRingExpHCreate(EffRingWork *pParam)
 {
     sdfMemHandle_t *allocation;
     EffRingWork *ring;
@@ -3375,10 +3375,10 @@ EffRingWork *effPCPFlashPolyRingExpHCreate(EffRingWork *source)
     u32 spread;
     u32 i;
 
-    allocation = sdfMemAllocDirect(source->count * EFF_RING_VERTEX_BYTES + EFF_RING_HEADER_BYTES);
+    allocation = sdfMemAllocDirect(pParam->count * EFF_RING_VERTEX_BYTES + EFF_RING_HEADER_BYTES);
     block = (effRingBlock_t *)sdfMemLock(allocation);
     ring = &block->header;
-    memcpy(ring, source, EFF_RING_PARAM_BYTES);
+    memcpy(ring, pParam, EFF_RING_PARAM_BYTES);
     ring->vertices = &block->vertices[0];
     ring->allocationHandle = allocation;
     ring->color = EFF_NEUTRAL_COLOR;
@@ -3416,28 +3416,28 @@ EffRingWork *effPCPFlashPolyRingExpHCopy(EffRingWork *params)
     return effPCPFlashPolyRingExpHCreate(params);
 }
 
-void effPCPFlashPolyRingExpHDelete(EffRingWork *work)
+void effPCPFlashPolyRingExpHDelete(EffRingWork *hData)
 {
-    dds3FlashPolyListHDelete(work->recordPool);
-    sdfMemFreeDirect(work->allocationHandle);
+    dds3FlashPolyListHDelete(hData->recordPool);
+    sdfMemFreeDirect(hData->allocationHandle);
 }
 
-void effPCPFlashPolyRingExpHSetPosition(void *dst, void *src) {
-    SDF_VU0_COPYVECTOR(dst, src);
+void effPCPFlashPolyRingExpHSetPosition(void *hData, void *pPos) {
+    SDF_VU0_COPYVECTOR(hData, pPos);
 }
 
-void effPCPFlashPolyRingExpHSetColor(EffRingWork *ring, u32 color) {
-    ring->color = color;
+void effPCPFlashPolyRingExpHSetColor(EffRingWork *hData, u32 abgr) {
+    hData->color = abgr;
 }
 
-void effPCPFlashPolyRingExpHSetScale(EffRingWork *work, f32 scale) {
-    work->scale = scale;
+void effPCPFlashPolyRingExpHSetScale(EffRingWork *hData, f32 scale) {
+    hData->scale = scale;
 }
 
 /* vu0 routine: copy the four matrix rows through vf28-vf31. */
-void effPCPFlashPolyRingExpHSetRotateMatrix(EffRingWork *work, void *matrixSource) {
-    SDF_VU0_LOADMATRIX(matrixSource);
-    SDF_VU0_STOREMATRIX(work->recordPool->matrix);
+void effPCPFlashPolyRingExpHSetRotateMatrix(EffRingWork *hData, void *pMatrix) {
+    SDF_VU0_LOADMATRIX(pMatrix);
+    SDF_VU0_STOREMATRIX(hData->recordPool->matrix);
 }
 
 void effPCPFlashPolyRingExpHPartSetVC(EffRingWork *work, s32 index, s32 modulationColor) {
@@ -3524,14 +3524,14 @@ void effPCPFlashPolyRingExpHPartSetVertex(EffRingWork *work, s32 index) {
     SDF_VU0_STOREVECTOR(positions + 4);
 }
 
-void effPCPFlashPolyRingExpHPartRotate(EffRingWork *work, s32 index) {
+void effPCPFlashPolyRingExpHPartRotate(EffRingWork *pFlashPoly, s32 number) {
     EffRingParticle *particle;
 
-    particle = &work->vertices[index];
-    particle->angle = particle->angle + work->increment;
+    particle = &pFlashPoly->vertices[number];
+    particle->angle = particle->angle + pFlashPoly->increment;
 }
 
-void effPCPFlashPolyRingExpHDraw(EffRingWork *work)
+void effPCPFlashPolyRingExpHDraw(EffRingWork *hData)
 {
     s32 index;
     s32 count;
@@ -3555,61 +3555,61 @@ void effPCPFlashPolyRingExpHDraw(EffRingWork *work)
     f32 acrossEnd;
     f32 normalEnd;
 
-    part = work->vertices;
-    count = work->count;
-    lifetime = work->duration;
-    fadeIn = work->fadeIn;
-    fadeOut = work->fadeOut;
-    restart = work->respawn;
-    randomRange = work->spread;
-    tintColor = work->color;
-    heightDelta = work->param4C - work->param48;
+    part = hData->vertices;
+    count = hData->count;
+    lifetime = hData->duration;
+    fadeIn = hData->fadeIn;
+    fadeOut = hData->fadeOut;
+    restart = hData->respawn;
+    randomRange = hData->spread;
+    tintColor = hData->color;
+    heightDelta = hData->param4C - hData->param48;
     progress = 1.0f;
     if (lifetime > 0) {
-        progress = (f32)work->updateCount / (f32)lifetime;
+        progress = (f32)hData->updateCount / (f32)lifetime;
     }
-    start = work->param38;
-    radiusEnd = work->param3C;
+    start = hData->param38;
+    radiusEnd = hData->param3C;
     delta = radiusEnd - start;
-    work->currentRadius = start + delta * progress;
+    hData->currentRadius = start + delta * progress;
     if (start > 0.0f) {
         factor = radiusEnd / start;
     } else {
         factor = radiusEnd;
     }
-    upStart = work->param30;
-    acrossStart = work->param34;
+    upStart = hData->param30;
+    acrossStart = hData->param34;
     upEnd = upStart * factor;
     acrossEnd = acrossStart * factor;
-    start = work->param40;
-    normalEnd = work->param44;
+    start = hData->param40;
+    normalEnd = hData->param44;
     delta = upEnd - upStart;
-    work->currentSideOffsetB = upStart + delta * progress;
+    hData->currentSideOffsetB = upStart + delta * progress;
     delta = acrossEnd - acrossStart;
-    work->currentSideOffsetA = acrossStart + delta * progress;
+    hData->currentSideOffsetA = acrossStart + delta * progress;
     delta = normalEnd - start;
-    work->currentAxisOffset = start + delta * progress;
+    hData->currentAxisOffset = start + delta * progress;
 
     for (index = 0; index < count; index++, part++) {
         s32 age = part->age;
         s32 color;
 
         if (age == 0) {
-            part->basisFactor = work->param48;
-            effPCPFlashPolyRingExpHPartSetVertex(work, index);
-            effPCPFlashPolyRingExpHPartSetVC(work, index, 0);
+            part->basisFactor = hData->param48;
+            effPCPFlashPolyRingExpHPartSetVertex(hData, index);
+            effPCPFlashPolyRingExpHPartSetVC(hData, index, 0);
             part->color = EFF_NEUTRAL_COLOR;
         } else if (age >= lifetime) {
             if (restart != 0) {
                 part->age = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % randomRange);
             }
             color = 0;
-            effPCPFlashPolyRingExpHPartSetVC(work, index, color);
+            effPCPFlashPolyRingExpHPartSetVC(hData, index, color);
         } else if (age > 0) {
             progress = (f32)age / (f32)lifetime;
-            part->basisFactor = heightDelta * progress + work->param48;
-            effPCPFlashPolyRingExpHPartRotate(work, index);
-            effPCPFlashPolyRingExpHPartSetVertex(work, index);
+            part->basisFactor = heightDelta * progress + hData->param48;
+            effPCPFlashPolyRingExpHPartRotate(hData, index);
+            effPCPFlashPolyRingExpHPartSetVertex(hData, index);
             if (part->age < fadeIn && fadeIn != 0) {
                 factor = (f32)part->age / (f32)fadeIn;
             } else if (fadeOut >= lifetime - part->age && fadeOut != 0) {
@@ -3618,24 +3618,24 @@ void effPCPFlashPolyRingExpHDraw(EffRingWork *work)
                 factor = 1.0f;
             }
             color = effMagaCylinderCalcColor(effColorBlend(0, part->color, factor), tintColor);
-            effPCPFlashPolyRingExpHPartSetVC(work, index, color);
+            effPCPFlashPolyRingExpHPartSetVC(hData, index, color);
         }
         part->age = part->age + 1;
     }
-    if (work->updateCount == lifetime) {
-        work->updateCount = 0;
+    if (hData->updateCount == lifetime) {
+        hData->updateCount = 0;
     } else {
-        work->updateCount++;
+        hData->updateCount++;
     }
-    handle = work->recordPool;
-    handle->origin[0] = work->origin[0];
-    handle->origin[1] = work->origin[1];
-    handle->origin[2] = work->origin[2];
-    handle->scale = work->scale;
+    handle = hData->recordPool;
+    handle->origin[0] = hData->origin[0];
+    handle->origin[1] = hData->origin[1];
+    handle->origin[2] = hData->origin[2];
+    handle->scale = hData->scale;
     dds3FlashPolyListHDraw(handle);
 }
 
-dds3FlashPolyList_t *dds3FlashPolyListCreate(u32 count) {
+dds3FlashPolyList_t *dds3FlashPolyListCreate(u32 face) {
     dds3FlashPolyList_t *pool;
     sdfMemHandle_t *handle;
     u8 *block;
@@ -3644,7 +3644,7 @@ dds3FlashPolyList_t *dds3FlashPolyListCreate(u32 count) {
     s32 size;
     s32 quads;
 
-    vertexCount = count * 5;
+    vertexCount = face * 5;
     recordBytes = vertexCount * 5 * 4;
     quads = recordBytes >> 4;
     recordBytes = ((recordBytes & 0xF) != 0 ? quads + 1 : quads) << 4;
@@ -3667,9 +3667,9 @@ dds3FlashPolyList_t *dds3FlashPolyListCreate(u32 count) {
     return pool;
 }
 
-void dds3FlashPolyListDelete(dds3FlashPolyList_t *group) {
-    sdfMatFreeDelayed(group->resource);
-    sdfMemFreeDirect(group->buffer);
+void dds3FlashPolyListDelete(dds3FlashPolyList_t *hPoly) {
+    sdfMatFreeDelayed(hPoly->resource);
+    sdfMemFreeDirect(hPoly->buffer);
 }
 
 void dds3FlashPolyListDraw(dds3FlashPolyList_t *work)
@@ -3746,19 +3746,19 @@ void *dds3FlashPolyListGetVC(dds3FlashPolyList_t *group, s32 groupIndex) {
     return group->auxRecordBase + groupIndex * EFF_FAN_COLOR_BYTES;
 }
 
-void dds3FlashPolyListSetBlend(dds3FlashPolyList_t *pool, u32 mode) {
-    pool->drawMode = mode;
+void dds3FlashPolyListSetBlend(dds3FlashPolyList_t *hPoly, u32 blend) {
+    hPoly->drawMode = blend;
 }
 
-void dds3FlashPolyListSetABGR(dds3FlashPolyList_t *group, u32 color) {
-    group->color = color;
+void dds3FlashPolyListSetABGR(dds3FlashPolyList_t *hPoly, u32 abgr) {
+    hPoly->color = abgr;
 }
 
-void dds3FlashPolyListSetScale(dds3FlashPolyList_t *work, f32 scale) {
-    work->scale = scale;
+void dds3FlashPolyListSetScale(dds3FlashPolyList_t *hPoly, f32 scale) {
+    hPoly->scale = scale;
 }
 
-dds3FlashPolyList_t *dds3FlashPolyList2Create(s32 triangleCount) {
+dds3FlashPolyList_t *dds3FlashPolyList2Create(s32 face) {
     dds3FlashPolyList_t *pool;
     sdfMemHandle_t *handle;
     u32 *block;
@@ -3767,7 +3767,7 @@ dds3FlashPolyList_t *dds3FlashPolyList2Create(s32 triangleCount) {
     s32 colorWordCount;
     u32 size;
 
-    vertexCount = triangleCount * EFF_TRIANGLE_VERTEX_COUNT;
+    vertexCount = face * EFF_TRIANGLE_VERTEX_COUNT;
     positionWordCount = vertexCount * 4;
     colorWordCount = vertexCount;
     size = (positionWordCount + colorWordCount) * 4 + EFF_POOL_HEADER_BYTES;
@@ -3789,9 +3789,9 @@ dds3FlashPolyList_t *dds3FlashPolyList2Create(s32 triangleCount) {
     return pool;
 }
 
-void dds3FlashPolyList2Delete(dds3FlashPolyList_t *group) {
-    sdfMatFreeDelayed(group->resource);
-    sdfMemFreeDirect(group->buffer);
+void dds3FlashPolyList2Delete(dds3FlashPolyList_t *hPoly) {
+    sdfMatFreeDelayed(hPoly->resource);
+    sdfMemFreeDirect(hPoly->buffer);
 }
 
 void dds3FlashPolyList2Draw(dds3FlashPolyList_t *pool)
@@ -3842,7 +3842,7 @@ void *dds3FlashPolyList2GetVC(dds3FlashPolyList_t *group, s32 groupIndex) {
     return group->auxRecordBase + groupIndex * EFF_TRIANGLE_COLOR_BYTES;
 }
 
-dds3FlashPolyList_t *dds3FlashPolyList3Create(s32 quadCount) {
+dds3FlashPolyList_t *dds3FlashPolyList3Create(s32 face) {
     dds3FlashPolyList_t *pool;
     sdfMemHandle_t *handle;
     u32 *block;
@@ -3850,8 +3850,8 @@ dds3FlashPolyList_t *dds3FlashPolyList3Create(s32 quadCount) {
     s32 colorWordCount;
     u32 size;
 
-    positionWordCount = quadCount * 16;
-    colorWordCount = quadCount * EFF_QUAD_VERTEX_COUNT;
+    positionWordCount = face * 16;
+    colorWordCount = face * EFF_QUAD_VERTEX_COUNT;
     size = (positionWordCount + colorWordCount) * 4 + EFF_POOL_HEADER_BYTES;
     handle = sdfMemAllocDirect(size);
     block = (u32 *)sdfMemLock(handle);
@@ -3871,9 +3871,9 @@ dds3FlashPolyList_t *dds3FlashPolyList3Create(s32 quadCount) {
     return pool;
 }
 
-void dds3FlashPolyList3Delete(dds3FlashPolyList_t *group) {
-    sdfMatFreeDelayed(group->resource);
-    sdfMemFreeDirect(group->buffer);
+void dds3FlashPolyList3Delete(dds3FlashPolyList_t *hPoly) {
+    sdfMatFreeDelayed(hPoly->resource);
+    sdfMemFreeDirect(hPoly->buffer);
 }
 
 void dds3FlashPolyList3Draw(dds3FlashPolyList_t *pool)
@@ -3924,15 +3924,15 @@ void *dds3FlashPolyList3GetVC(dds3FlashPolyList_t *group, s32 groupIndex) {
     return group->auxRecordBase + groupIndex * EFF_QUAD_COLOR_BYTES;
 }
 
-dds3FlashPolyList_t *dds3FlashPolyListHCreate(u32 fanCount) {
-    dds3FlashPolyList_t *pool = dds3FlashPolyListCreate(fanCount);
+dds3FlashPolyList_t *dds3FlashPolyListHCreate(u32 face) {
+    dds3FlashPolyList_t *pool = dds3FlashPolyListCreate(face);
 
     SDF_VU0_STOREIDENTITY(pool->matrix);
     return pool;
 }
 
-void dds3FlashPolyListHDelete(dds3FlashPolyList_t *pool) {
-    dds3FlashPolyListDelete(pool);
+void dds3FlashPolyListHDelete(dds3FlashPolyList_t *hPoly) {
+    dds3FlashPolyListDelete(hPoly);
 }
 
 void dds3FlashPolyListHDraw(dds3FlashPolyList_t *work)
@@ -4006,14 +4006,14 @@ u32 *dds3FlashPolyListHGetVC(dds3FlashPolyList_t *group, s32 groupIndex) {
     return (u32 *)(group->auxRecordBase + groupIndex * EFF_FAN_COLOR_BYTES);
 }
 
-void dds3FlashPolyListHSetBlend(dds3FlashPolyList_t *pool, u32 mode) {
-    pool->drawMode = mode;
+void dds3FlashPolyListHSetBlend(dds3FlashPolyList_t *hPoly, u32 blend) {
+    hPoly->drawMode = blend;
 }
 
-void dds3FlashPolyListHSetABGR(dds3FlashPolyList_t *pool, u32 color) {
-    pool->color = color;
+void dds3FlashPolyListHSetABGR(dds3FlashPolyList_t *hPoly, u32 abgr) {
+    hPoly->color = abgr;
 }
 
-void dds3FlashPolyListHSetScale(dds3FlashPolyList_t *work, f32 scale) {
-    work->scale = scale;
+void dds3FlashPolyListHSetScale(dds3FlashPolyList_t *hPoly, f32 scale) {
+    hPoly->scale = scale;
 }
