@@ -151,7 +151,7 @@ void dds3NeedleModelVNCListCreate(effNeedleWork_t *hNModel, u32 split, u32 radiu
 void dds3NeedleModelSetPosition(effNeedleWork_t *hNModel, s32 index, f32 *pPos);
 void dds3NeedleModelGetPosition(effNeedleWork_t *hNModel, s32 index, f32 *pPos);
 void dds3NeedleModelSetColor(effNeedleWork_t *hNModel, s32 index, u32 abgr);
-void dds3NeedleModelSetMatrix(effNeedleWork_t *work, const f32 *matrix);
+void dds3NeedleModelSetMatrix(effNeedleWork_t *hNModel, const f32 *pMatrix);
 
 
 effNeedleSpiralWork_t *effPCPNeedleSpiralCreate(effNeedleSpiralParams_t *pParam) {
@@ -588,8 +588,8 @@ void dds3NeedleModelSetColor(effNeedleWork_t *hNModel, s32 index, u32 abgr)
 }
 
 /* vu0 routine: copy the resource transform through the matrix bank. */
-void dds3NeedleModelSetMatrix(effNeedleWork_t *work, const f32 *matrix) {
-    VU0_COPY_MATRIX(work->matrix, matrix);
+void dds3NeedleModelSetMatrix(effNeedleWork_t *hNModel, const f32 *pMatrix) {
+    VU0_COPY_MATRIX(hNModel->matrix, pMatrix);
 }
 
 
