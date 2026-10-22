@@ -879,7 +879,7 @@ typedef struct effPCPFlashPolyPipeParam_t {
     u32 centerColor;
     u32 edgeColor;
     f32 spanBase;
-    f32 unk34;
+    f32 width_out;
     f32 orbitRadius;
     f32 radialHalfThicknessBase;
     f32 tilt;
