@@ -54,7 +54,7 @@ typedef struct fileQueue {
     /* 0x07 */ u8 freeCount;
     /* 0x08 */ fileRequest_t *head;
     /* 0x0C */ fileRequest_t *tail;
-    /* 0x10 */ fileCb_t *done;
+    /* 0x10 */ fileCb_t *endCallbackLink;
     /* 0x14 */ pacFileRequest_t *pacEndCallbackLink;
     /* 0x18 */ fileRequest_t *closeLink;
     /* 0x1C */ u8 *buf;
@@ -501,7 +501,7 @@ s32 fileLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileCb
         WaitSema(work->semaId);
         fileUnlinkCloseWait(work, (fileRequest_t *)data);
         if (data->callback != NULL) {
-            fileCb_t **link = &work->done;
+            fileCb_t **link = &work->endCallbackLink;
             fileCb_t *next;
 
             while ((next = *link) != NULL) {
@@ -572,7 +572,7 @@ s32 fileSaveCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileCb
         WaitSema(work->semaId);
         fileUnlinkCloseWait(work, (fileRequest_t *)data);
         if (data->callback != NULL) {
-            fileCb_t **link = &work->done;
+            fileCb_t **link = &work->endCallbackLink;
             fileCb_t *next;
 
             while ((next = *link) != NULL) {
@@ -658,8 +658,8 @@ void fileExecCallback(void) {
     fileCb_t *node;
 
     WaitSema(work->semaId);
-    while ((node = work->done) != NULL) {
-        work->done = node->donenext;
+    while ((node = work->endCallbackLink) != NULL) {
+        work->endCallbackLink = node->donenext;
         SignalSema(work->semaId);
         node->callback(node, (u32)node->arg);
         WaitSema(work->semaId);
