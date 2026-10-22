@@ -768,7 +768,7 @@ void dds3TrackPolyVCRefresh_ParType1(parSystem_t *hTrackPoly, s32 index);
 extern void dds3TrackPolyColorSet(parSystem_t *hTrackPoly, s32 number, u32 color);
 void dds3TrackPolyVCRefresh_ParType2(parSystem_t *hTrackPoly, s32 index);
 void dds3TrackPolyDraw(parSystem_t *node);
-void Eff_ModelTrackPolyListDrawOnly(effTrackPolyList_t *list);
+void Eff_ModelTrackPolyListDrawOnly(effTrackPolyList_t *hMTPolyList);
 void MultMatrixNoArg(void);
 struct billObj_t *dds3BillboardCreate(s32 kind, u32 data);
 void dds3BillboardSetAnimColorAdvMode(billObj_t *hBillboard);
