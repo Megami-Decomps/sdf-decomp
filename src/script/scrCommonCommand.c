@@ -37,82 +37,82 @@ extern u64 sdfFloatToULong(f32 value);
 
 EQUATE_FPTODP();
 
-extern s32 scrGetIntPara(s32 index);
-extern f32 scrGetFloatPara(s32 index);
-extern char *scrGetStrPara(s32 index);
-extern void scrSetIntReturnValue(s32 value);
+extern s32 scrGetIntPara(s32 n);
+extern f32 scrGetFloatPara(s32 n);
+extern char *scrGetStrPara(s32 n);
+extern void scrSetIntReturnValue(s32 i);
 extern s32 scrGetCommandTimer(void);
-extern s32 scrGetLabelCodeAddress(s32 index);
-extern void scrSetCodePointer(s32 address);
+extern s32 scrGetLabelCodeAddress(s32 labelindex);
+extern void scrSetCodePointer(s32 cp);
 extern scrProcessWork_s *scrGetScriptHandle(void);
 extern s32 scrRunScriptEx(s32 priority, void *header, void *typeTable, void *procTable,
                           void *labelTable, void *code, void *messageData, void *stringData,
                           s32 startProc);
 
-extern s32 evtBitCheck(s32 bit);
-extern void evtBitOn(s32 bit);
-extern void evtBitOff(s32 bit);
+extern s32 evtBitCheck(s32 no);
+extern void evtBitOn(s32 no);
+extern void evtBitOff(s32 no);
 
-extern s32 dds3GetRandIntA(s32 min, s32 max);
-extern void dds3FadeIn(s32 r, s32 g, s32 b, s32 frames);
-extern void dds3FadeOut(s32 r, s32 g, s32 b, s32 frames);
+extern s32 dds3GetRandIntA(s32 aLimit, s32 name);
+extern void dds3FadeIn(s32 r, s32 g, s32 b, s32 frame);
+extern void dds3FadeOut(s32 r, s32 g, s32 b, s32 frame);
 extern void dds3PadVibrationSet(s32 port, s32 motor, s32 level);
 extern void dds3SetScreenFovy(f32 fovy);
 extern s32 dds3ExistProcess(dds3ProcessID_t *id);
 extern s32 dds3KillProcess(dds3ProcessID_t *id, s32 shutdowntimer);
 extern u32 dds3GetProcessRunTime(dds3ProcessID_t *id);
-extern void dds3SetQuake(s32 frames, s32 level);
+extern void dds3SetQuake(s32 frame, s32 range);
 extern void dds3StopQuake(void);
-extern void dds3SetLightColor(s32 frames, s32 light, void *color);
-extern void dds3SetLightDir(s32 frames, s32 light, void *dir);
-extern void dds3SetAmbientColor(s32 frames, void *color);
-extern void dds3SetFogColor(s32 frames, f32 *color);
-extern void dds3SetFogPara(s32 frames, f32 x, f32 y, f32 z, f32 w);
-extern void dds3SetSoftenBias(s32 frames, f32 soften, f32 bias);
-extern void dds3SetBlur(s32 frames, s32 alpha, s32 mode);
+extern void dds3SetLightColor(s32 frame, s32 no, void *col);
+extern void dds3SetLightDir(s32 frame, s32 no, void *dir);
+extern void dds3SetAmbientColor(s32 frame, void *col);
+extern void dds3SetFogColor(s32 frame, f32 *col);
+extern void dds3SetFogPara(s32 frame, f32 max, f32 min, f32 z, f32 w);
+extern void dds3SetSoftenBias(s32 frame, f32 soften, f32 bias);
+extern void dds3SetBlur(s32 frame, s32 alpha, s32 scale);
 
-extern void dds3SetMultiBlurPara(f32 rotation, f32 scale, u32 blendControl);
+extern void dds3SetMultiBlurPara(f32 rotate, f32 scale, u32 blend);
 extern void dds3SetMultiBlurRGBA(s32 rgba);
-extern void dds3SetMultiBlurArea(s32 size, s32 x, s32 y);
-extern void dds3MultiBlurSwap(s32 frames);
-extern void dds3MultiBlurOn(s32 frames);
-extern void dds3MultiBlurOff(s32 frames);
+extern void dds3SetMultiBlurArea(s32 area, s32 posx, s32 posy);
+extern void dds3MultiBlurSwap(s32 frame);
+extern void dds3MultiBlurOn(s32 frame);
+extern void dds3MultiBlurOff(s32 frame);
 
-extern void dds3SetDistBlurPara(s32 count, s32 size, s32 spread, f32 f3, f32 f4, f32 f5,
-                                s32 blendControl);
+extern void dds3SetDistBlurPara(s32 number, s32 width, s32 intval, f32 speed, f32 rotate, f32 distor,
+                                s32 blend);
 extern void dds3SetDistBlurRGBA(s32 rgba);
-extern void dds3SetDistBlurArea(s32 size, s32 x, s32 y);
-extern void dds3DistBlurSwap(s32 frames);
-extern void dds3DistBlurOn(s32 frames);
-extern void dds3DistBlurOff(s32 frames);
+extern void dds3SetDistBlurArea(s32 area, s32 posx, s32 posy);
+extern void dds3DistBlurSwap(s32 frame);
+extern void dds3DistBlurOn(s32 frame);
+extern void dds3DistBlurOff(s32 frame);
 
-extern void dds3SetRipBlurPara(s32 count, f32 f1, f32 f2, f32 f3, f32 f4, f32 f5,
-                               s32 blendControl);
+extern void dds3SetRipBlurPara(s32 number, f32 speed, f32 intval, f32 rotate, f32 distor, f32 distor_s,
+                               s32 blend);
 extern void dds3SetRipBlurRGBA(s32 rgba);
-extern void dds3SetRipBlurArea(s32 size, s32 x, s32 y);
-extern void dds3RipBlurSwap(s32 frames);
-extern void dds3RipBlurOn(s32 frames);
-extern void dds3RipBlurOff(s32 frames);
+extern void dds3SetRipBlurArea(s32 area, s32 posx, s32 posy);
+extern void dds3RipBlurSwap(s32 frame);
+extern void dds3RipBlurOn(s32 frame);
+extern void dds3RipBlurOff(s32 frame);
 
-extern void dds3SetBlur2Para(f32 rotation, f32 scale, u32 blendControl);
+extern void dds3SetBlur2Para(f32 rotate, f32 scale, u32 blend);
 extern void dds3SetBlur2RGBA(s32 rgba);
-extern void dds3SetBlur2Area(s32 size, s32 x);
-extern void dds3Blur2Swap(s32 frames);
-extern void dds3Blur2On(s32 frames);
-extern void dds3Blur2Off(s32 frames);
+extern void dds3SetBlur2Area(s32 posx, s32 posy);
+extern void dds3Blur2Swap(s32 frame);
+extern void dds3Blur2On(s32 frame);
+extern void dds3Blur2Off(s32 frame);
 
-extern void dds3SetFilter2Para(s32 blendControl);
+extern void dds3SetFilter2Para(s32 blend);
 extern void dds3SetFilter2RGBA(s32 rgba);
-extern void dds3Filter2Swap(s32 frames);
-extern void dds3Filter2On(s32 frames);
-extern void dds3Filter2Off(s32 frames);
+extern void dds3Filter2Swap(s32 frame);
+extern void dds3Filter2On(s32 frame);
+extern void dds3Filter2Off(s32 frame);
 
-extern void dds3SetMFilterPara(s32 blendControl);
+extern void dds3SetMFilterPara(s32 blend);
 extern void dds3SetMFilterRGBA(s32 rgba);
-extern void dds3SetMFilterArea(s32 size, s32 x, s32 y);
-extern void dds3MFilterSwap(s32 frames);
-extern void dds3MFilterOn(s32 frames);
-extern void dds3MFilterOff(s32 frames);
+extern void dds3SetMFilterArea(s32 area, s32 posx, s32 posy);
+extern void dds3MFilterSwap(s32 frame);
+extern void dds3MFilterOn(s32 frame);
+extern void dds3MFilterOff(s32 frame);
 
 s32 scrCommand_KEY(void)
 {
