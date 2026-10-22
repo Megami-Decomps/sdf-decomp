@@ -67,7 +67,7 @@ extern void dds3SetLightColor(s32 frame, s32 no, void *col);
 extern void dds3SetLightDir(s32 frame, s32 no, void *dir);
 extern void dds3SetAmbientColor(s32 frame, void *col);
 extern void dds3SetFogColor(s32 frame, f32 *col);
-extern void dds3SetFogPara(s32 frame, f32 max, f32 min, f32 z, f32 w);
+extern void dds3SetFogPara(s32 frame, f32 max, f32 min, f32 near, f32 far);
 extern void dds3SetSoftenBias(s32 frame, f32 soften, f32 bias);
 extern void dds3SetBlur(s32 frame, s32 alpha, s32 scale);
 
