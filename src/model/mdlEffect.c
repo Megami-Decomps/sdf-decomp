@@ -54,12 +54,12 @@ typedef struct mdlEffectResrcItem_t {
 } mdlEffectResrcItem_t;
 
 typedef struct pibChunkItem_P2A_D3P_t {
-    u8 opaque00[4];
+    u8 type[4];
     u32 size;          /* 0x04: checked against the optional anchor-scale extent */
-    s32 firstId;       /* 0x08 */
+    s32 markId;       /* 0x08 */
     u16 count;         /* 0x0C */
-    u16 partIndex;     /* 0x0E */
-    f32 anchorScale;   /* 0x10: read when size >= 0x11 */
+    u16 effectIndex;     /* 0x0E */
+    f32 zOffset;   /* 0x10: read when size >= 0x11 */
 } pibChunkItem_P2A_D3P_t;
 
 typedef struct mdlPibIpu_t {
@@ -706,17 +706,17 @@ mdlEffectResrcItem_t *mdlGetEffectResrc(mdlObj_t *handle, s32 effectIndex) {
 
 /* Bind each consecutive record ID to a newly created part when the chunk contains it. */
 void mdlCreateEffect_P2A_D3P(mdlObj_t *owner, pibChunkItem_P2A_D3P_t *partRecord, s32 motionSlotIndex, s32 resourceType, void *(*createPart)(mdlEffectResrcItem_t *)) {
-    mdlEffectResrcItem_t *partSlot = mdlGetEffectResrc(owner, partRecord->partIndex);
+    mdlEffectResrcItem_t *partSlot = mdlGetEffectResrc(owner, partRecord->effectIndex);
 
     if (partSlot != NULL) {
         sdfModelRootNode_t *model = owner->inner;
-        s32 recordId = partRecord->firstId;
+        s32 recordId = partRecord->markId;
         s32 remainingRecords = partRecord->count;
         f32 optionalAnchorScale = 0.0f;
 
         /* Retain the native 17-byte size threshold for the optional anchor scale. */
         if (partRecord->size >= MDL_PART_VALUE_SIZE_THRESHOLD) {
-            optionalAnchorScale = partRecord->anchorScale;
+            optionalAnchorScale = partRecord->zOffset;
         }
         do {
             mdlMarkPos_t *chunkRecord = sdfModelSearchMarkPosData(model, recordId++);
