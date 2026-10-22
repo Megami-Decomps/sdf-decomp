@@ -58,7 +58,7 @@ extern u8 sdf3DScreenTm[];
  * described here, and its trailing allocation bytes remain unknown. */
 typedef struct sdfDecompCb_t {
     u8 stat;             /* 0x00 */
-    u8 command;           /* 0x01 */
+    u8 direc;           /* 0x01 */
     u16 direcLeng;     /* 0x02 */
     u8 *dstPtr;           /* 0x04 */
     const u8 *srcPtr;      /* 0x08 */
@@ -128,7 +128,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                             return 1;
                         }
                     } else {
-                        cb->command = command & SDF_DECOMP_DIRECTIVE_MASK;
+                        cb->direc = command & SDF_DECOMP_DIRECTIVE_MASK;
                         commandBytes = command & SDF_DECOMP_LENGTH_MASK;
                         if (commandBytes == 0) {
                             cb->stat = SDF_DECOMP_STAT_DIREC_LENG0;
@@ -150,7 +150,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                     cb->stat = SDF_DECOMP_STAT_DIREC;
                     break;
                 case SDF_DECOMP_STAT_DIREC:
-                    switch (cb->command) {
+                    switch (cb->direc) {
                     case SDF_DECOMP_DIRECTIVE_NORMAL:
                         cb->stat = SDF_DECOMP_STAT_DEC_NORMAL;
                         break;

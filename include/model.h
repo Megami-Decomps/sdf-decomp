@@ -344,7 +344,7 @@ typedef struct
     s16 playGroup;
     s16 firstMotion;
     struct sdfMotionPlayBook_t *ptr;
-    sdfMemHandle_t *resourceHandle;
+    sdfMemHandle_t *handle;
 } dds3ModelResrcPlayBook_t;
 
 typedef struct mdlIpuAttachment_t {
@@ -412,7 +412,7 @@ typedef struct
     s16 interval;
     s16 growStep;
     s32 keepCount;
-    f32 color[4];
+    f32 colorBase[4];
     f32 colorDelta[4];
 } dds3ModelBlurCb_t;
 

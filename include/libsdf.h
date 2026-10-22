@@ -285,7 +285,7 @@ typedef struct
  * of flags is the encoding, the high nibble the extra header bytes. */
 typedef struct
 {
-    u8 command;
+    u8 fileType;
     u8 flags;
     u16 kind;
     s32 size;
@@ -367,7 +367,7 @@ typedef void (*sdfPacDecodeFunc)(sdfPacDecodeCb_t *aState);
 struct sdfPacDecodeCb_t
 {
     u8 stat;
-    u8 flags;
+    u8 flag;
     s16 currBlockNum;
     sdfPacCallbackFunc callback;
     sdfPacDecodeFunc decoder;
@@ -388,8 +388,8 @@ struct sdfPacDecodeCb_t
         sdfPacTmxDecodeCb_t *decodeCb;
         sdfPacList_t *list;
     } slot;
-    sdfPacWork_t *head;
-    sdfPacWork_t *tail;
+    sdfPacWork_t *resrcHead;
+    sdfPacWork_t *resrcTail;
 };
 
 /* The LZ decoder sdfDecompInit sets up in 32 chip bytes; sdfDecomp returns

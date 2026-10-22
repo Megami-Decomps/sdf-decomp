@@ -61,17 +61,17 @@ void sdfPacInit(sdfPacDecodeCb_t *cb, sdfPacCallbackFunc callback)
 
 void sdfPacSetStay(sdfPacDecodeCb_t *cb)
 {
-    cb->flags |= SDF_PAC_STATE_STAY;
+    cb->flag |= SDF_PAC_STATE_STAY;
 }
 
 void sdfPacSetFromTail(sdfPacDecodeCb_t *cb)
 {
-    cb->flags |= SDF_PAC_STATE_FROMTAIL;
+    cb->flag |= SDF_PAC_STATE_FROMTAIL;
 }
 
 void sdfPacFree(sdfPacDecodeCb_t *cb)
 {
-    sdfPacWork_t *cursor = cb->head;
+    sdfPacWork_t *cursor = cb->resrcHead;
     sdfPacWork_t *current = cursor;
 
     while (cursor != NULL) {
@@ -137,17 +137,17 @@ void sdfPacEndBlock(sdfPacDecodeCb_t *cb)
     sdfPacWork_t *scan;
     sdfPacWork_t *next;
 
-    result = cb->callback(cb, 1, (sdfPacStdBlockHeader_t *)cb->tail->header);
+    result = cb->callback(cb, 1, (sdfPacStdBlockHeader_t *)cb->resrcTail->header);
     if (result == 1) {
         func_002C60E0(cb);
         return;
     }
     if (result == 4) {
-        tail = cb->tail;
-        scan = cb->head;
+        tail = cb->resrcTail;
+        scan = cb->resrcHead;
         if (scan == tail) {
-            cb->tail = NULL;
-            cb->head = NULL;
+            cb->resrcTail = NULL;
+            cb->resrcHead = NULL;
         } else {
             while ((next = scan->next) != tail) {
                 scan = next;
@@ -199,20 +199,20 @@ sdfPacWork_t *sdfPacNewResrc(sdfPacDecodeCb_t *cb, const sdfPacStdBlockHeader_t 
 
     aWork->state = cb;
     memcpy(aWork->header, hdr, extra + sizeof(*hdr));
-    if (cb->tail == NULL) {
-        cb->head = aWork;
+    if (cb->resrcTail == NULL) {
+        cb->resrcHead = aWork;
     } else {
-        cb->tail->next = aWork;
+        cb->resrcTail->next = aWork;
     }
-    cb->tail = aWork;
+    cb->resrcTail = aWork;
     return aWork;
 }
 
 sdfPacWork_t *sdfPacFreeResrc(sdfPacWork_t *resrc)
 {
     sdfPacDecodeCb_t *aState = resrc->state;
-    sdfPacWork_t **link = &aState->head;
-    sdfPacWork_t *current = aState->head;
+    sdfPacWork_t **link = &aState->resrcHead;
+    sdfPacWork_t *current = aState->resrcHead;
     sdfPacWork_t *previous = NULL;
     sdfPacWork_t *next;
 
@@ -225,8 +225,8 @@ sdfPacWork_t *sdfPacFreeResrc(sdfPacWork_t *resrc)
     }
     next = resrc->next;
     *link = next;
-    if (aState->tail == resrc) {
-        aState->tail = previous;
+    if (aState->resrcTail == resrc) {
+        aState->resrcTail = previous;
     }
     sdfChipFreeDirect(resrc);
     return next;
@@ -235,7 +235,7 @@ sdfPacWork_t *sdfPacFreeResrc(sdfPacWork_t *resrc)
 s32 sdfPacStdCallback(sdfPacDecodeCb_t *cb, s32 cause, sdfPacStdBlockHeader_t *hdr)
 {
     if (cause == 0) {
-        switch (hdr->command) {
+        switch (hdr->fileType) {
         case DDS3_FT_EFFECT:
             sdfPacMemDecoderInit(cb, hdr);
             return 0;
@@ -325,7 +325,7 @@ void sdfPacMemDecoderFuncInit(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr)
     if (size == 0) {
         size = hdr->size + (hdr->flags & SDF_PAC_EXTRA_MASK) - sizeof(*hdr);
     }
-    if (cb->flags & SDF_PAC_STATE_STAY) {
+    if (cb->flag & SDF_PAC_STATE_STAY) {
         aWork = sdfPacNewResrc(cb, hdr);
         aWork->data = (u8 *)(hdr + 1);
         cb->decoder = sdfPacMemStayDecoderFunc;
@@ -333,7 +333,7 @@ void sdfPacMemDecoderFuncInit(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr)
     }
     cb->stat = 2;
     aWork = sdfPacNewResrc(cb, hdr);
-    if (cb->flags & SDF_PAC_STATE_FROMTAIL) {
+    if (cb->flag & SDF_PAC_STATE_FROMTAIL) {
         aWork->resrc = sdfMemAllocFromTailDirect(size);
     } else {
         aWork->resrc = sdfMemAllocDirect(size);
@@ -363,7 +363,7 @@ void sdfPacMemDecoderInit(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr)
 
 void sdfPacModelDecoderEndFunc(sdfPacDecodeCb_t *cb)
 {
-    sdfPacWork_t *aWork = cb->tail;
+    sdfPacWork_t *aWork = cb->resrcTail;
     sdfPacReloc_t *reloc = (sdfPacReloc_t *)aWork->data;
     u8 *payload = reloc->payload;
     s32 bytes = reloc->tableBytes;
@@ -384,7 +384,7 @@ void sdfPacModelDecoderInit(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr)
 
 void sdfPacMotionDecoderEndFunc(sdfPacDecodeCb_t *cb)
 {
-    sdfPacWork_t *aWork = cb->tail;
+    sdfPacWork_t *aWork = cb->resrcTail;
     sdfPacReloc_t *reloc = (sdfPacReloc_t *)aWork->data;
     u8 *payload = reloc->payload;
     s32 bytes = reloc->tableBytes;
@@ -463,12 +463,12 @@ void sdfPacTmxDecoderInitFunc(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr,
 {
     cb->decodeCb = tmxCb;
     tmxCb->rest = hdr->size - 0x10;
-    if (cb->flags & SDF_PAC_STATE_STAY) {
+    if (cb->flag & SDF_PAC_STATE_STAY) {
         cb->decoder = sdfPacTmxStayDecoderFunc;
         tmxCb->workPtr = (u8 *)(cb->srcData - 0x10);
         return;
     }
-    if (cb->flags & SDF_PAC_STATE_FROMTAIL) {
+    if (cb->flag & SDF_PAC_STATE_FROMTAIL) {
         tmxCb->memHandle = sdfMemAllocFromTailDirect(hdr->size);
     } else {
         tmxCb->memHandle = sdfMemAllocDirect(hdr->size);
@@ -493,7 +493,7 @@ void sdfPacTmxDecoderInitFunc(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr,
 
 void sdfPacTmxDecoderEndFunc(sdfPacDecodeCb_t *cb)
 {
-    cb->tail->resrc = cb->slot.decodeCb->texHandle;
+    cb->resrcTail->resrc = cb->slot.decodeCb->texHandle;
     sdfChipFreeDirect(cb->slot.decodeCb);
     sdfPacEndBlock(cb);
 }
@@ -527,7 +527,7 @@ void sdfPacTexListDecoderTmxBodyEndFunc(sdfPacDecodeCb_t *cb)
 {
     sdfPacList_t *list = cb->slot.list;
 
-    sdfTexListAdd(cb->tail->resrc, list->buf.texHandle);
+    sdfTexListAdd(cb->resrcTail->resrc, list->buf.texHandle);
     {
         s32 nextIndex = list->index + 1;
 
@@ -570,7 +570,7 @@ void sdfPacTexListDecoder0(sdfPacDecodeCb_t *cb)
         count = *(const u32 *)cb->srcData;
         sdfPacUseSrc(cb, 4);
         list = cb->slot.list;
-        aWork = cb->tail;
+        aWork = cb->resrcTail;
         list->count = count;
         list->index = 0;
         aWork->resrc = sdfTexListNew(count);

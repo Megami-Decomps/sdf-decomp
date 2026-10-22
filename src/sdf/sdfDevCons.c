@@ -47,7 +47,7 @@ typedef struct
     s32 x;
     s32 y;
     s32 z;
-    u32 color;
+    u32 attr;
 } sdfDevPrintCB_t;
 
 typedef struct
@@ -514,7 +514,7 @@ void *sdfDevVprintf(u32 *aCB, const char *aStr, void *LegacyParamArray) {
         /* This dual-use command carries x, y, depth and RGBA in its four words. */
         position = (u32)((u16)input->x | ((u32)(u16)input->y << 16)) |
                    ((u64)(u32)input->z << 32);
-        color = input->color;
+        color = input->attr;
         textCursor = (u8 *)text;
         while ((character = *textCursor++) != 0) {
             if (character >= 0x20) {

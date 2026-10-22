@@ -264,10 +264,10 @@ typedef struct sdfGrFramePacket_t {
     sdfGrPacketHeader_t packetHeader;
     sdfGrTagStdReg_t frame;
     sdfGrTagStdReg_t zbuf;
-    sdfGrFrameSet_t *source;
+    sdfGrFrameSet_t *frameSet;
     u32 frameMask;
     s32 zbuffMask;
-    s32 mode;
+    s32 context;
 } sdfGrFramePacket_t;
 
 /* Packet-list code views the same 16-byte row as QWC/ID/ADDR/VIF commands. */
@@ -305,7 +305,7 @@ typedef struct sdfPreDrawTag_t {
 
 /* Frame submission joins these 0x10-byte linked owners through head/tail. */
 typedef struct sdfPreDrawChain_t {
-    sdfPreDrawTag_t *head;
+    sdfPreDrawTag_t *tagHead;
     sdfPreDrawTag_t *tail;
 } sdfPreDrawChain_t;
 
@@ -678,13 +678,13 @@ void sdfPreDrawTagLink(sdfPreDrawTag_t *aTag, SdfPacketPatchLink *aHook) {
 }
 
 void sdfPreDrawChainInit(sdfPreDrawChain_t *aChain) {
-    aChain->head = NULL;
+    aChain->tagHead = NULL;
     aChain->tail = NULL;
 }
 
 void sdfPreDrawChainLink(sdfPreDrawChain_t *aChain, sdfPreDrawTag_t *aTag) {
     if (aChain->tail == NULL) {
-        aChain->head = aTag;
+        aChain->tagHead = aTag;
     }
     else {
         aChain->tail->tail->next = aTag->tail;
@@ -865,12 +865,12 @@ void sdfGrLinkDrawFrameTex(sdfDrawTag_t *aTag, u32 aEnv, sdfGrRefPacketHeader_t 
 }
 
 void sdfGrFramePacketPredraw(sdfGrFramePacket_t *aPre, s32 aEvenOdd) {
-    sdfGrFrameSet_t *view = aPre->source;
+    sdfGrFrameSet_t *view = aPre->frameSet;
     u64 frameRegister;
     u64 depthRegister;
     s16 widthPages;
 
-    if (aPre->mode == 0) {
+    if (aPre->context == 0) {
         frameRegister = 0x4C;
         depthRegister = 0x4E;
     } else {
@@ -889,8 +889,8 @@ void sdfGrFramePacketPredraw(sdfGrFramePacket_t *aPre, s32 aEvenOdd) {
 
 void sdfGrSetFramePacket(sdfGrFramePacket_t *aFrame, sdfGrFrameSet_t *aFrameSet, u32 aFrameMask, s32 aZBuffMask, s32 aContext) {
     sdfGrSetRegsPacketHeader(&aFrame->packetHeader, 2);
-    aFrame->mode = aContext;
-    aFrame->source = aFrameSet;
+    aFrame->context = aContext;
+    aFrame->frameSet = aFrameSet;
     aFrame->frameMask = aFrameMask;
     aFrame->zbuffMask = aZBuffMask;
     aFrame->prepare = sdfGrFramePacketPredraw;
@@ -917,7 +917,7 @@ void sdfGrReqDraw(sdfDrawTag_t *aTag, sdfPreDrawChain_t *aPreDraw) {
     if (aTag != NULL && aTag->tail != 0) {
         slot->drawTag = aTag;
         if (aPreDraw != NULL) {
-            slot->preDraw = aPreDraw->head->head;
+            slot->preDraw = aPreDraw->tagHead->head;
             if (slot->preDraw != NULL) {
                 aPreDraw->tail->tail->next = NULL;
             }

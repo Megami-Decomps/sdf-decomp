@@ -148,7 +148,7 @@ typedef struct sdfFileCmdHandle_t {
     s32 offset;
     s32 length;
     void *buffer;
-    s32 options;
+    s32 cmdParm;
     s32 fd;
     s32 result;
     s32 currentOffset;

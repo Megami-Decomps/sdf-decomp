@@ -51,7 +51,7 @@ typedef struct sdfFileCmdHandle_t {
     s32 offset;
     s32 length;
     void *buffer;
-    s32 options;
+    s32 cmdParm;
     s32 fd;
     s32 result;
     s32 currentOffset;
@@ -236,7 +236,7 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
             continue;
         case SDF_FILE_CMD_WRITEOPEN - SDF_FILE_CMD_READOPEN:
             state->state = SDF_FILE_CMD_STAT_OPEN;
-            fileHandle = sceOpen(state->filename, 0x202, state->options);
+            fileHandle = sceOpen(state->filename, 0x202, state->cmdParm);
             if (fileHandle < 0) {
                 sdfFileCmdFinish(state, fileHandle);
                 continue;
@@ -251,7 +251,7 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
             continue;
         case SDF_FILE_CMD_SEEK - SDF_FILE_CMD_READOPEN:
             state->state = SDF_FILE_CMD_STAT_SEEK;
-            endOffset = sceLseek(state->fd, state->offset, state->options);
+            endOffset = sceLseek(state->fd, state->offset, state->cmdParm);
             if (endOffset < 0) {
                 sdfFileCmdFinish(state, endOffset);
                 continue;
@@ -384,7 +384,7 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
             continue;
         case SDF_FILE_CMD_WRITEFILE - SDF_FILE_CMD_READOPEN:
             state->state = SDF_FILE_CMD_STAT_OPEN;
-            fileHandle = sceOpen(state->filename, 0x202, state->options);
+            fileHandle = sceOpen(state->filename, 0x202, state->cmdParm);
             if (fileHandle < 0) {
                 sdfFileCmdFinish(state, fileHandle);
                 continue;
@@ -623,7 +623,7 @@ sdfFileCmdHandle_t *sdfFileCmdWriteOpen(const char *path, void (*callback)(sdfFi
         return NULL;
     }
     state = sdfFileCmdNewHandle(resolvedPath, workerIndex, SDF_FILE_CMD_WRITEOPEN, callback, callbackContext);
-    state->options = options != 0 ? options : sdfFileCmdDefaultCreateMode;
+    state->cmdParm = options != 0 ? options : sdfFileCmdDefaultCreateMode;
     sdfFileCmdAllocHandle(state);
     return state;
 }
@@ -635,7 +635,7 @@ s32 sdfFileCmdSeek(void *aHandle, s32 aOffset, s32 aWhence) {
         return -1;
     }
     state->offset = aOffset;
-    state->options = aWhence;
+    state->cmdParm = aWhence;
     state->operation = SDF_FILE_CMD_SEEK;
     SignalSema(sdfFileDeviceCB[state->device].semaId);
     return 0;
@@ -731,7 +731,7 @@ sdfFileCmdHandle_t *sdfFileCmdWriteFile(const char *path, s32 buffer, s32 byteCo
     state = sdfFileCmdNewHandle(resolvedPath, workerIndex, SDF_FILE_CMD_WRITEFILE, callback, callbackContext);
     state->length = byteCount;
     state->buffer = (void *)buffer;
-    state->options = options != 0 ? options : sdfFileCmdDefaultCreateMode;
+    state->cmdParm = options != 0 ? options : sdfFileCmdDefaultCreateMode;
     state->offset = 0;
     sdfFileCmdAllocHandle(state);
     return state;
