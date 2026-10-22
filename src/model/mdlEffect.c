@@ -16,7 +16,7 @@ typedef struct mdlTrackWork_t mdlTrackWork_t;
 
 typedef struct mdlEffectResrc_IPU_t mdlEffectResrc_IPU_t;
 
-typedef struct mdlPartSlot_t mdlPartSlot_t;
+typedef struct mdlEffectResrcItem_t mdlEffectResrcItem_t;
 
 typedef struct mdlMarkPos_t mdlMarkPos_t;
 
@@ -46,21 +46,21 @@ typedef struct pibHeaderChunk_t {
     } tail;
 } pibHeaderChunk_t;
 
-typedef struct mdlPartSlot_t {
+typedef struct mdlEffectResrcItem_t {
     u32 kind;       /* 0x00 */
-    s32 state;      /* 0x04 */
-    void *object;   /* 0x08 */
+    s32 count;      /* 0x04 */
+    void *handle;   /* 0x08 */
     u8 opaque0C[4]; /* 0x0C */
-} mdlPartSlot_t;
+} mdlEffectResrcItem_t;
 
-typedef struct mdlPibEffect_t {
+typedef struct pibChunkItem_P2A_D3P_t {
     u8 opaque00[4];
     u32 size;          /* 0x04: checked against the optional anchor-scale extent */
     s32 firstId;       /* 0x08 */
     u16 count;         /* 0x0C */
     u16 partIndex;     /* 0x0E */
     f32 anchorScale;   /* 0x10: read when size >= 0x11 */
-} mdlPibEffect_t;
+} pibChunkItem_P2A_D3P_t;
 
 typedef struct mdlPibIpu_t {
     u8 opaque00[8];
@@ -71,17 +71,17 @@ typedef struct mdlPibIpu_t {
     u16 index;         /* 0x12: part-slot index */
 } mdlPibIpu_t;
 
-typedef struct mdlPibTrack_t {
+typedef struct pibChunkItem_TRACK_t {
     u8 pad00[8];
-    s32 startPositionId;   /* +0x08: first sampled endpoint lookup */
+    s32 mark;   /* +0x08: first sampled endpoint lookup */
     s32 endPositionId;     /* +0x0C: second sampled endpoint lookup */
     u16 startFrame;        /* +0x10: inclusive update start */
     u16 endFrame;          /* +0x12: inclusive update end */
-    u16 sampleInterval;    /* +0x14: update-count modulus */
-    u8 historyLength;      /* +0x16: history allocation input */
-    u8 drawKind;           /* +0x17: selected by the track's draw data */
-    u32 gradientColors[4]; /* +0x18: copied to mdlTrackCreateParams_t */
-} mdlPibTrack_t;
+    u16 interval;    /* +0x14: update-count modulus */
+    u8 face;      /* +0x16: history allocation input */
+    u8 blendAlgo;           /* +0x17: selected by the track's draw data */
+    u32 colors[4]; /* +0x18: copied to mdlTrackCreateParams_t */
+} pibChunkItem_TRACK_t;
 
 typedef struct mdlTrackParams_t {
     u8 opaque00[8];
@@ -593,34 +593,34 @@ void mdlPibEditTrackInfo(mdlTrackParams_t *data, s16 *cursor_p) {
 
 /* Append a newly created billboard to the next part-list slot. */
 void mdlCreateEffectResrc_P2A(sdfItemArray_t *partList, void *descriptor) {
-    mdlPartSlot_t *partEntry = &((mdlPartSlot_t *)partList->items)[partList->count];
+    mdlEffectResrcItem_t *partEntry = &((mdlEffectResrcItem_t *)partList->items)[partList->count];
 
-    partEntry->state = 0;
+    partEntry->count = 0;
     partEntry->kind = MDL_PART_BILLBOARD;
-    partEntry->object = dds3BillboardCreate(1, (u32)descriptor);
+    partEntry->handle = dds3BillboardCreate(1, (u32)descriptor);
     partList->count += 1;
 }
 
 /* Append a newly created effect to the next part-list slot. */
 void mdlCreateEffectResrc_D3P(sdfItemArray_t *partList, void *descriptor) {
-    mdlPartSlot_t *partEntry = &((mdlPartSlot_t *)partList->items)[partList->count];
+    mdlEffectResrcItem_t *partEntry = &((mdlEffectResrcItem_t *)partList->items)[partList->count];
 
     partEntry->kind = MDL_PART_EFFECT;
-    partEntry->state = 0;
-    partEntry->object = dds3EffectLoad(descriptor);
+    partEntry->count = 0;
+    partEntry->handle = dds3EffectLoad(descriptor);
     partList->count += 1;
 }
 
 void mdlCreateEffectResrc_IPU(sdfItemArray_t *list, u8 *sourceAddress, sdfMemHandle_t *backingAllocation, s32 sourceSize) {
     mdlEffectResrc_IPU_t *node = sdfChipAllocZeroDirect(sizeof(*node));
-    mdlPartSlot_t *entry = &((mdlPartSlot_t *)list->items)[list->count];
+    mdlEffectResrcItem_t *entry = &((mdlEffectResrcItem_t *)list->items)[list->count];
 
     node->sourceSize = sourceSize;
     node->sourceAddress = (u32)sourceAddress;
     node->backingAllocation = backingAllocation;
     entry->kind = MDL_PART_OBJECT;
-    entry->state = 0;
-    entry->object = node;
+    entry->count = 0;
+    entry->handle = node;
     list->count += 1;
 }
 
@@ -649,17 +649,17 @@ void mdlEffectResrcListFree(sdfItemArray_t *efcResList) {
 
     if (efcResList != NULL) {
         for (partIndex = 0; partIndex < efcResList->count; partIndex++) {
-            mdlPartSlot_t *partEntry = &((mdlPartSlot_t *)efcResList->items)[partIndex];
+            mdlEffectResrcItem_t *partEntry = &((mdlEffectResrcItem_t *)efcResList->items)[partIndex];
 
             switch (partEntry->kind) {
             case MDL_PART_BILLBOARD:
-                dds3BillboardDelete(partEntry->object);
+                dds3BillboardDelete(partEntry->handle);
                 break;
             case MDL_PART_EFFECT:
-                dds3EffectDelete(partEntry->object);
+                dds3EffectDelete(partEntry->handle);
                 break;
             case MDL_PART_OBJECT:
-                mdlDeleteEffectResrc_IPU(partEntry->object);
+                mdlDeleteEffectResrc_IPU(partEntry->handle);
                 break;
             }
         }
@@ -678,20 +678,20 @@ dds3ModelEffectCtrlr_t *mdlCreateEffectCtrlr(mdlObj_t *aHandle, s32 aType, s32 a
     return item;
 }
 
-void *mdlEffectDup_P2A(mdlPartSlot_t *efcResPtr) {
-    struct mdlBillboard_t *clone = dds3BillboardCopy(efcResPtr->object);
-    efcResPtr->state = efcResPtr->state + 1;
+void *mdlEffectDup_P2A(mdlEffectResrcItem_t *efcResPtr) {
+    struct mdlBillboard_t *clone = dds3BillboardCopy(efcResPtr->handle);
+    efcResPtr->count = efcResPtr->count + 1;
     return clone;
 }
 
-void *mdlEffectDup_D3P(mdlPartSlot_t *efcResPtr) {
-    mdlEffect_t *clone = dds3EffectCopy(efcResPtr->object);
-    efcResPtr->state = efcResPtr->state + 1;
+void *mdlEffectDup_D3P(mdlEffectResrcItem_t *efcResPtr) {
+    mdlEffect_t *clone = dds3EffectCopy(efcResPtr->handle);
+    efcResPtr->count = efcResPtr->count + 1;
     return clone;
 }
 
 /* Resolve a 16-byte part slot; retail checks only the upper index bound. */
-mdlPartSlot_t *mdlGetEffectResrc(mdlObj_t *handle, s32 effectIndex) {
+mdlEffectResrcItem_t *mdlGetEffectResrc(mdlObj_t *handle, s32 effectIndex) {
     sdfItemArray_t *slotTable;
 
     slotTable = handle->sub->effectResrcList;
@@ -701,12 +701,12 @@ mdlPartSlot_t *mdlGetEffectResrc(mdlObj_t *handle, s32 effectIndex) {
     if (effectIndex >= slotTable->count) {
         return NULL;
     }
-    return (mdlPartSlot_t *)((u8 *)slotTable->items + effectIndex * MDL_PART_SLOT_BYTES);
+    return (mdlEffectResrcItem_t *)((u8 *)slotTable->items + effectIndex * MDL_PART_SLOT_BYTES);
 }
 
 /* Bind each consecutive record ID to a newly created part when the chunk contains it. */
-void mdlCreateEffect_P2A_D3P(mdlObj_t *owner, mdlPibEffect_t *partRecord, s32 motionSlotIndex, s32 resourceType, void *(*createPart)(mdlPartSlot_t *)) {
-    mdlPartSlot_t *partSlot = mdlGetEffectResrc(owner, partRecord->partIndex);
+void mdlCreateEffect_P2A_D3P(mdlObj_t *owner, pibChunkItem_P2A_D3P_t *partRecord, s32 motionSlotIndex, s32 resourceType, void *(*createPart)(mdlEffectResrcItem_t *)) {
+    mdlEffectResrcItem_t *partSlot = mdlGetEffectResrc(owner, partRecord->partIndex);
 
     if (partSlot != NULL) {
         sdfModelRootNode_t *model = owner->inner;
@@ -734,23 +734,23 @@ void mdlCreateEffect_P2A_D3P(mdlObj_t *owner, mdlPibEffect_t *partRecord, s32 mo
 }
 
 /* Convert the effect record to native track parameters and retain its work pointer. */
-void mdlCreateEffect_TRACK(mdlObj_t *owner, mdlPibTrack_t *record, s32 motionSlotIndex) {
+void mdlCreateEffect_TRACK(mdlObj_t *owner, pibChunkItem_TRACK_t *record, s32 motionSlotIndex) {
     mdlTrackCreateParams_t effectParams;
     dds3ModelEffectCtrlr_t *resourceItem;
 
     effectParams.model = owner;
-    effectParams.idA = record->startPositionId;
+    effectParams.idA = record->mark;
     effectParams.idB = record->endPositionId;
     effectParams.startFrame = record->startFrame;
     effectParams.endFrame = record->endFrame;
-    effectParams.sampleInterval = record->sampleInterval;
-    effectParams.historyLength = record->historyLength;
+    effectParams.sampleInterval = record->interval;
+    effectParams.historyLength = record->face;
     effectParams.unk1C = 3;
-    effectParams.kind = record->drawKind;
-    effectParams.gradientColors[0] = record->gradientColors[0];
-    effectParams.gradientColors[1] = record->gradientColors[1];
-    effectParams.gradientColors[2] = record->gradientColors[2];
-    effectParams.gradientColors[3] = record->gradientColors[3];
+    effectParams.kind = record->blendAlgo;
+    effectParams.gradientColors[0] = record->colors[0];
+    effectParams.gradientColors[1] = record->colors[1];
+    effectParams.gradientColors[2] = record->colors[2];
+    effectParams.gradientColors[3] = record->colors[3];
     resourceItem = mdlCreateEffectCtrlr(owner, dds3ModelEffectType_TRACK, motionSlotIndex);
     resourceItem->payload.part.track = Eff_ModelTrackPolyCreate(&effectParams);
 }
@@ -763,10 +763,10 @@ void mdlCreateEffect_BLUR(mdlObj_t *owner, pibHeaderChunk_t *record) {
 
 /* Claim an unused object only after its data resource resolves, retaining record flags and deferred-init parameters. */
 void mdlCreateEffect_IPU(mdlObj_t *aHandle, mdlPibIpu_t *aData, s32 aPlayGroup) {
-    mdlPartSlot_t *partSlot = mdlGetEffectResrc(aHandle, aData->index);
+    mdlEffectResrcItem_t *partSlot = mdlGetEffectResrc(aHandle, aData->index);
 
     if (partSlot != 0) {
-        mdlEffectResrc_IPU_t *object = partSlot->object;
+        mdlEffectResrc_IPU_t *object = partSlot->handle;
         if (object->inUse == 0) {
             sdfTexHandle_t *texture = sdfTexSearch(aData->dataId);
             if (texture != 0) {
@@ -806,13 +806,13 @@ void mdlDrawEffect_IPU(dds3ModelEffectCtrlr_t *effect) {
 void mdlCreateEffect(mdlObj_t *owner, pibHeaderChunk_t *record, s32 motionSlotIndex) {
     switch (record->kind) {
     case PIB_CHUNK_TYPE_P2A:
-        mdlCreateEffect_P2A_D3P(owner, (mdlPibEffect_t *)record, motionSlotIndex, dds3ModelEffectType_P2A, mdlEffectDup_P2A);
+        mdlCreateEffect_P2A_D3P(owner, (pibChunkItem_P2A_D3P_t *)record, motionSlotIndex, dds3ModelEffectType_P2A, mdlEffectDup_P2A);
         return;
     case PIB_CHUNK_TYPE_D3P:
-        mdlCreateEffect_P2A_D3P(owner, (mdlPibEffect_t *)record, motionSlotIndex, dds3ModelEffectType_D3P, mdlEffectDup_D3P);
+        mdlCreateEffect_P2A_D3P(owner, (pibChunkItem_P2A_D3P_t *)record, motionSlotIndex, dds3ModelEffectType_D3P, mdlEffectDup_D3P);
         return;
     case PIB_CHUNK_TYPE_TRACK:
-        mdlCreateEffect_TRACK(owner, (mdlPibTrack_t *)record, motionSlotIndex);
+        mdlCreateEffect_TRACK(owner, (pibChunkItem_TRACK_t *)record, motionSlotIndex);
         return;
     case PIB_CHUNK_TYPE_BLUR:
         mdlCreateEffect_BLUR(owner, record);

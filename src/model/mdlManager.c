@@ -42,7 +42,7 @@ typedef struct
     u8 pad7;
     u32 options;
     mdlSetDef_t payload;
-} mdlLoadRequest_t;
+} mdlManager_mdlTbMbAbLoadCb_t;
 
 
 extern s32 mdlManagerWork;
@@ -94,7 +94,7 @@ extern sdfModelTexList_t *sdfTexSetTB(void *aData);
 extern sdfModelDef_t *sdfFixupModelBinary(void *aData);
 extern sdfMotionPlayBook_t *sdfFixupMotionBinary(void *aData);
 
-void TbMbAbLoadEnd(mdlLoadRequest_t *tmaCb);
+void TbMbAbLoadEnd(mdlManager_mdlTbMbAbLoadCb_t *tmaCb);
 void mdlFreeBlur(mdlObj_t *aHandle);
 
 
@@ -111,12 +111,12 @@ typedef struct
     void *owner;
     void (*done)(u32);
     u32 doneArg;
-} mdlDoneJob_t;
+} mdlManager_mdlFileLoadCb_t;
 
 typedef struct
 {
     u8 pad0[0x60];
-    struct sdfPacWork_t *queueHead;
+    struct sdfPacDecodeResrc_t *queueHead;
 } filePacRequest_t;
 
 extern char *strcpy(char *dst, const char *src);
@@ -132,12 +132,12 @@ extern void sdfPacSetStay(sdfPacDecodeCb_t *cb);
 extern s32 sdfPacDecode(sdfPacDecodeCb_t *cb, const u8 *data, s32 length);
 extern void sdfPacFree(sdfPacDecodeCb_t *cb);
 
-sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags);
+sdfPacDecodeResrc_t *mdlPackSet(sdfPacDecodeResrc_t *resrc, s32 major, s32 minor, s32 regFlags);
 
 extern filePacRequest_t *pacLoadEx(const char *filename, s32 headOrTail, s32 callback, void *pendCallback, void *callbackParm);
 extern void pacSync(filePacRequest_t *pacFileHandle);
 
-void mdlFileCbFree(mdlDoneJob_t *cb);
+void mdlFileCbFree(mdlManager_mdlFileLoadCb_t *cb);
 
 extern void sdfMotionNext(sdfMotionCtrlr_t *aCtrlr);
 extern void sdfModelEvalTm(sdfModelRootNode_t *aRoot);
@@ -269,7 +269,7 @@ extern void mdlStopEffect(mdlObj_t *aHandle, s32 aPlayGroup);
 extern s32 mdlPibGetEffectCount(mdlPibRecord_t *record);
 extern s32 mdlPibGetMotionCount(mdlPibRecord_t *record);
 extern s32 mdlPibGetVersion(mdlPibRecord_t *record);
-extern sdfPacWork_t *sdfPacFreeResrc(sdfPacWork_t *resrc);
+extern sdfPacDecodeResrc_t *sdfPacFreeResrc(sdfPacDecodeResrc_t *resrc);
 extern sdfMatrix4_t D_002FA240;
 extern sdf3DScreenParam_t dds3ScreenParam;
 extern void MultMatrixRev(sdfMatrix4_t *aMatrix);
@@ -622,7 +622,7 @@ dds3ModelResrc_t *mdlWaitLoadEnd(s32 aMajor, s32 aMinor)
     return mdlSearchResrc(aMajor, aMinor);
 }
 
-void TbMbAbLoadEnd(mdlLoadRequest_t *tmaCb)
+void TbMbAbLoadEnd(mdlManager_mdlTbMbAbLoadCb_t *tmaCb)
 {
     mdlRegistModelSet(tmaCb->group, tmaCb->id, tmaCb->options, &tmaCb->payload);
     WaitSema(mdlManagerWork);
@@ -631,14 +631,14 @@ void TbMbAbLoadEnd(mdlLoadRequest_t *tmaCb)
     sdfChipFreeDirect(tmaCb);
 }
 
-void TbLoadCallback(fileRequest_t *fileHandle, mdlLoadRequest_t *parm)
+void TbLoadCallback(fileRequest_t *fileHandle, mdlManager_mdlTbMbAbLoadCb_t *parm)
 {
     parm->payload.texList = sdfTexSetTB(fileGetLoadPtr(fileHandle));
     sdfMemFreeDirect(fileGetMemHandle(fileHandle));
     fileHandleFree(fileHandle);
 }
 
-void MbLoadCallback(fileRequest_t *fileHandle, mdlLoadRequest_t *parm)
+void MbLoadCallback(fileRequest_t *fileHandle, mdlManager_mdlTbMbAbLoadCb_t *parm)
 {
     parm->payload.modelDefHandle = fileGetMemHandle(fileHandle);
     parm->payload.modelDefPtr = sdfFixupModelBinary(fileGetLoadPtr(fileHandle));
@@ -649,7 +649,7 @@ void MbLoadCallback(fileRequest_t *fileHandle, mdlLoadRequest_t *parm)
     }
 }
 
-void AbLoadCallback(fileRequest_t *fileHandle, mdlLoadRequest_t *parm)
+void AbLoadCallback(fileRequest_t *fileHandle, mdlManager_mdlTbMbAbLoadCb_t *parm)
 {
     parm->payload.playbookHandle = fileGetMemHandle(fileHandle);
     parm->payload.playbookPtr = sdfFixupMotionBinary(fileGetLoadPtr(fileHandle));
@@ -667,7 +667,7 @@ s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
     dds3ModelResrc_t *entity;
     dds3ModelFileIndex_t *selection;
     mdlHddFile_t *paths;
-    mdlLoadRequest_t *request;
+    mdlManager_mdlTbMbAbLoadCb_t *request;
     char *extension;
     s32 packedBundle;
 
@@ -1355,7 +1355,7 @@ void mdlGetFilebase(s32 aMajor, s32 aMinor, char *aName, s32 aNameLeng) {
     aName[copyLength] = '\0';
 }
 
-s32 mdlPackCheck(sdfPacWork_t *resrc)
+s32 mdlPackCheck(sdfPacDecodeResrc_t *resrc)
 {
     s32 result;
 
@@ -1367,7 +1367,7 @@ s32 mdlPackCheck(sdfPacWork_t *resrc)
     return result;
 }
 
-sdfPacWork_t *mdlPackSetOld(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags) {
+sdfPacDecodeResrc_t *mdlPackSetOld(sdfPacDecodeResrc_t *resrc, s32 major, s32 minor, s32 regFlags) {
     mdlSetDef_t setup;
     sdfItemArray_t *parts;
     s32 count;
@@ -1419,7 +1419,7 @@ sdfPacWork_t *mdlPackSetOld(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFl
     return resrc;
 }
 
-sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags) {
+sdfPacDecodeResrc_t *mdlPackSet(sdfPacDecodeResrc_t *resrc, s32 major, s32 minor, s32 regFlags) {
     mdlSetDef_t groupSetup;
     mdlPartTagRecord_t partTagRecord;
     sdfPacStdBlockHeader_t *packetHeader;
@@ -1507,13 +1507,13 @@ sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags
     return resrc;
 }
 
-void mdlFileCbFree(mdlDoneJob_t *cb)
+void mdlFileCbFree(mdlManager_mdlFileLoadCb_t *cb)
 {
     pacFileHandleFree_(cb->owner);
     sdfChipFreeDirect(cb);
 }
 
-void mdlFileLoadCallback(filePacRequest_t *pacHandle, mdlDoneJob_t *data)
+void mdlFileLoadCallback(filePacRequest_t *pacHandle, mdlManager_mdlFileLoadCb_t *data)
 {
     data->owner = pacHandle;
     mdlPackSet(pacHandle->queueHead, data->group, data->id, data->arg);
@@ -1530,10 +1530,10 @@ void mdlFileLoadCallback(filePacRequest_t *pacHandle, mdlDoneJob_t *data)
 s32 mdlFileLoad(s32 major, s32 minor, s32 regFlags, const char *filename, void (*callback)(u32),
                 u32 parm)
 {
-    mdlDoneJob_t *job;
+    mdlManager_mdlFileLoadCb_t *job;
     filePacRequest_t *request;
 
-    job = sdfChipAllocZeroDirect(sizeof(mdlDoneJob_t));
+    job = sdfChipAllocZeroDirect(sizeof(mdlManager_mdlFileLoadCb_t));
     job->group = major;
     job->id = minor;
     job->arg = regFlags;
