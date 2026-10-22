@@ -8,7 +8,7 @@ struct dds3WhirlwindPolyList_tag;
 struct effPCPWhirlwindPoly_tag;
 struct effPCPWhirlwind2Poly_tag;
 struct effPCPWhirlwind3Poly_tag;
-struct PcpScatterParamsA;
+struct effPCPWhirlwindPolyParam_t;
 struct PcpScatterParamsB;
 struct PcpScatterParamsC;
 struct effPCPWhirlwindPolyPart_tag;
@@ -19,7 +19,7 @@ struct dds3ScatterPolyList_tag;
 struct PcpScatterRadialParams;
 struct PcpScatterRadialParticle;
 struct effPCPHamaCardSpiral_tag;
-struct PcpScatterRibbonParams;
+struct effPCPHamaCardScatterParam_t;
 struct effPCPHamaCardScatterPart_tag;
 struct effPCPHamaCardScatter_tag;
 struct PcpScatterSpinParams;
@@ -37,7 +37,7 @@ typedef struct SdfGsTextureStateValues SdfGsTextureStateValues;
 typedef struct sdfMatPacket_t sdfMatPacket_t;
 typedef union sdfMatUvwParm_t sdfMatUvwParm_t;
 typedef struct dds3WhirlwindPolyList_tag dds3WhirlwindPolyList_tag;
-typedef struct PcpScatterParamsA PcpScatterParamsA;
+typedef struct effPCPWhirlwindPolyParam_t effPCPWhirlwindPolyParam_t;
 typedef struct effPCPWhirlwindPolyPart_tag effPCPWhirlwindPolyPart_tag;
 typedef struct effPCPWhirlwindPoly_tag effPCPWhirlwindPoly_tag;
 typedef struct PcpScatterParamsB PcpScatterParamsB;
@@ -52,7 +52,7 @@ typedef struct PcpScatterRadialParams PcpScatterRadialParams;
 typedef struct PcpScatterRadialParticle PcpScatterRadialParticle;
 typedef struct effPCPHamaCardSpiral_tag effPCPHamaCardSpiral_tag;
 typedef struct effPCPHamaCardScatterPart_tag effPCPHamaCardScatterPart_tag;
-typedef struct PcpScatterRibbonParams PcpScatterRibbonParams;
+typedef struct effPCPHamaCardScatterParam_t effPCPHamaCardScatterParam_t;
 typedef struct effPCPHamaCardScatter_tag effPCPHamaCardScatter_tag;
 typedef struct PcpScatterSpinParams PcpScatterSpinParams;
 typedef struct effPCPWwSpherePolyPart_tag effPCPWwSpherePolyPart_tag;
@@ -233,7 +233,7 @@ struct dds3WhirlwindPolyList_tag {
 
 /* The first ring variant retains its complete copied parameter head in the
  * runtime owner. Its particle array follows the fixed 0x18C-byte owner. */
-struct PcpScatterParamsA {
+struct effPCPWhirlwindPolyParam_t {
     f32 origin[4];
     f32 matrix[16];
     u32 packetQueueIndex;
@@ -282,7 +282,7 @@ struct effPCPWhirlwindPolyPart_tag {
 
 struct effPCPWhirlwindPoly_tag {
     f32 matrix[16];
-    PcpScatterParamsA param;
+    effPCPWhirlwindPolyParam_t param;
     effPCPWhirlwindPolyPart_tag *pPart;
     f32 scale;
     u32 color;
@@ -332,7 +332,7 @@ struct effPCPWhirlwind2Poly_tag {
     effPCPWhirlwindPolyPart_tag *pPart;
     f32 scale;
     u32 abgr;
-    s32 age;
+    s32 frame_all;
     dds3WhirlwindPolyList_tag *hPoly;
     sdfMemHandle_t *allocationHandle;
 };
@@ -380,9 +380,9 @@ struct effPCPWhirlwind3Poly_tag {
     effPCPWhirlwindPolyPart_tag *pPart;
     f32 scale;
     u32 color;
-    s32 age;
+    s32 frame_all;
     dds3WhirlwindPolyList_tag *hPoly;
-    sdfMemHandle_t *allocationHandle;
+    sdfMemHandle_t *hMem;
 };
 
 /* Plain is a distinct 0xE8-byte parameter and 0x28-byte particle variant. */
@@ -434,7 +434,7 @@ struct effPCPWwSpherePoly_tag {
     f32 scale;
     u32 abgr;
     dds3WhirlwindPolyList_tag *hPoly;
-    sdfMemHandle_t *allocationHandle;
+    sdfMemHandle_t *hMem;
 };
 
 /* Appended after the two record arrays; resource helpers own this same control block. */
@@ -509,15 +509,15 @@ struct PcpScatterRadialParticle {
 
 /* Runtime owner followed inline by its variable-length particle array. */
 struct effPCPHamaCardSpiral_tag {
-    PcpScatterRadialParams params;
-    PcpScatterRadialParticle *particles;
+    PcpScatterRadialParams param;
+    PcpScatterRadialParticle *pPart;
     f32 scale;
-    u32 color;
-    dds3ScatterPolyList_tag *childWork;
-    sdfMemHandle_t *allocation;
-    u32 duplicateGroupCount;
-    effPartHandle_t **duplicatedHandles;
-    sdfMemHandle_t *duplicateAllocation;
+    u32 abgr;
+    dds3ScatterPolyList_tag *hPoly;
+    sdfMemHandle_t *hMem;
+    u32 AttachNum;
+    effPartHandle_t **pAttach;
+    sdfMemHandle_t *hAttachMem;
 };
 
 struct effPCPHamaCardScatterPart_tag {
@@ -534,7 +534,7 @@ struct effPCPHamaCardScatterPart_tag {
 };
 
 /* Serialized parameters copied into each ribbon-scatter work owner. */
-struct PcpScatterRibbonParams {
+struct effPCPHamaCardScatterParam_t {
     f32 origin[4];
     f32 width;
     f32 height;
@@ -557,15 +557,15 @@ struct PcpScatterRibbonParams {
 
 /* Runtime owner followed inline by its variable-length particle array. */
 struct effPCPHamaCardScatter_tag {
-    PcpScatterRibbonParams param;
+    effPCPHamaCardScatterParam_t param;
     effPCPHamaCardScatterPart_tag *pPart;
     f32 scale;
-    u32 color;
+    u32 abgr;
     dds3ScatterPolyList_tag *hPoly;
-    sdfMemHandle_t *allocation;
-    u32 duplicateGroupCount;
+    sdfMemHandle_t *hMem;
+    u32 AttachNum;
     effPartHandle_t **pAttach;
-    sdfMemHandle_t *duplicateAllocation;
+    sdfMemHandle_t *hAttachMem;
 };
 
 /* Serialized parameters copied into each spin-scatter work owner. */
@@ -610,15 +610,15 @@ struct effPCPWwSpherePolyPart_tag {
 
 /* Runtime owner followed inline by its variable-length particle array. */
 struct effPCPHamaCardSphere_tag {
-    PcpScatterSpinParams params;
-    effPCPWwSpherePolyPart_tag *particles;
+    PcpScatterSpinParams param;
+    effPCPWwSpherePolyPart_tag *pPart;
     f32 scale;
     u32 abgr;
-    dds3ScatterPolyList_tag *childWork;
-    sdfMemHandle_t *allocation;
-    u32 duplicateGroupCount;
+    dds3ScatterPolyList_tag *hPoly;
+    sdfMemHandle_t *hMem;
+    u32 AttachNum;
     effPartHandle_t **duplicatedHandles;
-    sdfMemHandle_t *duplicateAllocation;
+    sdfMemHandle_t *hAttachMem;
 };
 
 struct sdfDrawTag_t;
@@ -660,7 +660,7 @@ f32 dds3GetRandFloatA(EffRandState *name);
 
 /* Constructors copy one serialized parameter variant into its runtime owner. */
 effPCPWhirlwindPoly_tag *effPCPWhirlwindPolyCreate(
-    PcpScatterParamsA *pParam, u32 pTex);
+    effPCPWhirlwindPolyParam_t *pParam, u32 pTex);
 
 effPCPWwSpherePoly_tag *effPCPWwSpherePolyCreate(
     PcpScatterPlainParams *pParam, u32 pTex);
@@ -763,7 +763,7 @@ extern void SetRotateMatrixAxis(f32 aAngle, const void *aAxis);
 extern void *memcpy(void *a, const void *b, u32 c);
 effPCPHamaCardSpiral_tag *effPCPHamaCardSpiralCreate(const PcpScatterRadialParams *pParam, u32 pTex, void *pData);
 effPCPHamaCardSphere_tag *effPCPHamaCardSphereCreate(const PcpScatterSpinParams *pParam, u32 pTex, void *pData);
-effPCPHamaCardScatter_tag *effPCPHamaCardScatterCreate(const PcpScatterRibbonParams *pParam, u32 pTex, void *pData);
+effPCPHamaCardScatter_tag *effPCPHamaCardScatterCreate(const effPCPHamaCardScatterParam_t *pParam, u32 pTex, void *pData);
 dds3WhirlwindPolyList_tag *dds3WhirlwindPolyListCreate(u32 number, u32 face);
 void dds3WhirlwindPolyListSetRotateMatrix(dds3WhirlwindPolyList_tag *hPoly, const void *pMatrix);
 dds3ScatterPolyList_tag *dds3ScatterPolyListCreate(s32 face);
@@ -808,44 +808,44 @@ effPCPHamaCardSpiral_tag *effPCPHamaCardSpiralCreate(params, resource, particleP
 
     handle = sdfMemAllocDirect(sizeof(effPCPHamaCardSpiral_tag) + params->particleCount * sizeof(PcpScatterRadialParticle));
     work = (effPCPHamaCardSpiral_tag *)sdfMemLock(handle);
-    work->particles = (PcpScatterRadialParticle *)(work + 1);
-    work->params = *params;
-    work->color = EFF_SCATTER_NEUTRAL_COLOR;
-    work->allocation = handle;
+    work->pPart = (PcpScatterRadialParticle *)(work + 1);
+    work->param = *params;
+    work->abgr = EFF_SCATTER_NEUTRAL_COLOR;
+    work->hMem = handle;
     work->scale = 1.0f;
-    work->duplicatedHandles = NULL;
-    work->duplicateAllocation = NULL;
-    work->childWork = dds3ScatterPolyListCreate(params->particleCount);
-    work->childWork->poolMode = params->poolMode;
+    work->pAttach = NULL;
+    work->hAttachMem = NULL;
+    work->hPoly = dds3ScatterPolyListCreate(params->particleCount);
+    work->hPoly->poolMode = params->poolMode;
     if (resource != 0) {
-        dds3ScatterPolyListSetTex(work->childWork, resource);
+        dds3ScatterPolyListSetTex(work->hPoly, resource);
     }
-    if (particleParams != NULL && work->params.duplicateParticles != 0) {
-        if (work->params.particlesPerGroup == 0) {
-            work->params.particlesPerGroup = 1;
+    if (particleParams != NULL && work->param.duplicateParticles != 0) {
+        if (work->param.particlesPerGroup == 0) {
+            work->param.particlesPerGroup = 1;
         }
-        work->duplicateGroupCount = work->params.particleCount / work->params.particlesPerGroup;
-        if (work->params.particleCount % work->params.particlesPerGroup != 0) {
-            work->duplicateGroupCount++;
+        work->AttachNum = work->param.particleCount / work->param.particlesPerGroup;
+        if (work->param.particleCount % work->param.particlesPerGroup != 0) {
+            work->AttachNum++;
         }
-        count = work->duplicateGroupCount;
+        count = work->AttachNum;
         handle = sdfMemAllocDirect(count * sizeof(u32));
         handles = (effPartHandle_t **)sdfMemLock(handle);
-        work->duplicateAllocation = handle;
-        work->duplicatedHandles = handles;
-        work->duplicatedHandles[0] = dds3EffectPartCreate(EFF_PARAM_WORK_KIND_EXTENDED_WORK_WITH_MATRIX_CALLBACK, particleParams);
+        work->hAttachMem = handle;
+        work->pAttach = handles;
+        work->pAttach[0] = dds3EffectPartCreate(EFF_PARAM_WORK_KIND_EXTENDED_WORK_WITH_MATRIX_CALLBACK, particleParams);
         for (i = 1; i < count; i++) {
-            work->duplicatedHandles[i] = dds3EffectPartCopy(work->duplicatedHandles[0]);
+            work->pAttach[i] = dds3EffectPartCopy(work->pAttach[0]);
         }
     }
-    delaySpread = work->params.delaySpread;
+    delaySpread = work->param.delaySpread;
     ageOffset = 0;
-    count = work->params.particleCount;
-    particle = work->particles;
+    count = work->param.particleCount;
+    particle = work->pPart;
     if (delaySpread <= 0) {
         delaySpread = 1;
     }
-    segments = work->params.radialSegments;
+    segments = work->param.radialSegments;
     for (i = 0; i < count; i++, particle++) {
         particle->age = ageOffset - dds3GetRandA((EffRandState *)dds3EffectBase) % delaySpread;
         if ((i + 1) % segments == 0) {
@@ -872,20 +872,20 @@ effPCPHamaCardSpiral_tag *effPCPHamaCardSpiralCopy(source)
     effPartHandle_t **handles;
     u32 i;
 
-    work = effPCPHamaCardSpiralCreate(&source->params, 0, 0);
-    dds3ScatterPolyListCopyTex(work->childWork, source->childWork);
-    if (work->params.duplicateParticles != 0) {
-        work->duplicateGroupCount = work->params.particleCount / work->params.particlesPerGroup;
-        if (work->params.particleCount % work->params.particlesPerGroup != 0) {
-            work->duplicateGroupCount = work->duplicateGroupCount + 1;
+    work = effPCPHamaCardSpiralCreate(&source->param, 0, 0);
+    dds3ScatterPolyListCopyTex(work->hPoly, source->hPoly);
+    if (work->param.duplicateParticles != 0) {
+        work->AttachNum = work->param.particleCount / work->param.particlesPerGroup;
+        if (work->param.particleCount % work->param.particlesPerGroup != 0) {
+            work->AttachNum = work->AttachNum + 1;
         }
-        count = work->duplicateGroupCount;
+        count = work->AttachNum;
         allocation = sdfMemAllocDirect(count * EFF_SCATTER_WORD_BYTES);
         handles = (effPartHandle_t **)sdfMemLock(allocation);
-        work->duplicateAllocation = allocation;
-        work->duplicatedHandles = handles;
+        work->hAttachMem = allocation;
+        work->pAttach = handles;
         for (i = 0; i < count; i++) {
-            work->duplicatedHandles[i] = dds3EffectPartCopy(*source->duplicatedHandles);
+            work->pAttach[i] = dds3EffectPartCopy(*source->pAttach);
         }
     }
     return work;
@@ -896,24 +896,24 @@ void effPCPHamaCardSpiralDelete(effPCPHamaCardSpiral_tag *hData)
     u32 duplicatedHandleIndex;
     u32 count;
 
-    if (hData->duplicateAllocation != 0) {
-        count = hData->duplicateGroupCount;
+    if (hData->hAttachMem != 0) {
+        count = hData->AttachNum;
         duplicatedHandleIndex = 0;
         if (count != 0) {
             do {
-                dds3EffectPartDelete(hData->duplicatedHandles[duplicatedHandleIndex]);
+                dds3EffectPartDelete(hData->pAttach[duplicatedHandleIndex]);
                 duplicatedHandleIndex++;
             } while (duplicatedHandleIndex < count);
         }
-        sdfMemFreeDirect(hData->duplicateAllocation);
+        sdfMemFreeDirect(hData->hAttachMem);
     }
-    dds3ScatterPolyListDelete(hData->childWork);
-    sdfMemFreeDirect(hData->allocation);
+    dds3ScatterPolyListDelete(hData->hPoly);
+    sdfMemFreeDirect(hData->hMem);
 }
 
 void effPCPHamaCardSpiralPartInit(effPCPHamaCardSpiral_tag *pHCardSpiral, u32 number) {
-    u32 segments = pHCardSpiral->params.radialSegments;
-    PcpScatterRadialParticle *particle = &pHCardSpiral->particles[number];
+    u32 segments = pHCardSpiral->param.radialSegments;
+    PcpScatterRadialParticle *particle = &pHCardSpiral->pPart[number];
     f32 angleStep;
     f32 jitter;
 
@@ -922,15 +922,15 @@ void effPCPHamaCardSpiralPartInit(effPCPHamaCardSpiral_tag *pHCardSpiral, u32 nu
     }
     angleStep = EFF_SCATTER_FULL_TURN / segments;
     particle->angle = angleStep * (number % segments) + angleStep * EFF_SCATTER_HALF_SEGMENT * dds3GetRandFloatA(dds3EffectBase);
-    jitter = pHCardSpiral->params.radiusJitter;
-    particle->radius = pHCardSpiral->params.startRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
+    jitter = pHCardSpiral->param.radiusJitter;
+    particle->radius = pHCardSpiral->param.startRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     particle->height = 0.0f;
-    jitter = pHCardSpiral->params.targetRadiusJitter;
-    particle->radiusStep = (pHCardSpiral->params.endRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) - particle->radius) / pHCardSpiral->params.duration;
-    jitter = pHCardSpiral->params.speedJitter;
-    particle->heightStep = pHCardSpiral->params.initialHeightStep * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
+    jitter = pHCardSpiral->param.targetRadiusJitter;
+    particle->radiusStep = (pHCardSpiral->param.endRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) - particle->radius) / pHCardSpiral->param.duration;
+    jitter = pHCardSpiral->param.speedJitter;
+    particle->heightStep = pHCardSpiral->param.initialHeightStep * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     particle->age = 0;
-    particle->angleStep = pHCardSpiral->params.initialAngleStep;
+    particle->angleStep = pHCardSpiral->param.initialAngleStep;
 }
 
 void effPCPHamaCardSpiralDraw(effPCPHamaCardSpiral_tag *hData) {
@@ -961,28 +961,28 @@ void effPCPHamaCardSpiralDraw(effPCPHamaCardSpiral_tag *hData) {
     f32 angleDamping;
 
     i = 0;
-    duration = hData->params.duration;
-    endAge = hData->params.fadeDuration + duration;
-    duplicates = hData->duplicatedHandles != NULL;
-    count = hData->params.particleCount;
-    VEC3_SPLAT(halfWidth, hData->params.width * 0.5f);
-    VEC3_SPLAT(halfHeight, hData->params.height * 0.5f);
-    particle = hData->particles;
-    respawn = hData->params.respawn;
-    pulse = hData->params.pulseEnabled;
-    pulseAngle = hData->params.pulseAngle;
-    fadeIn = hData->params.fadeIn;
-    fadeOut = hData->params.fadeOut;
-    heightDamping = hData->params.heightDamping;
-    angleDamping = hData->params.angleDamping;
-    duplicateStart = hData->params.duplicateStartAge;
-    perGroup = hData->params.particlesPerGroup;
-    baseColor = hData->color;
+    duration = hData->param.duration;
+    endAge = hData->param.fadeDuration + duration;
+    duplicates = hData->pAttach != NULL;
+    count = hData->param.particleCount;
+    VEC3_SPLAT(halfWidth, hData->param.width * 0.5f);
+    VEC3_SPLAT(halfHeight, hData->param.height * 0.5f);
+    particle = hData->pPart;
+    respawn = hData->param.respawn;
+    pulse = hData->param.pulseEnabled;
+    pulseAngle = hData->param.pulseAngle;
+    fadeIn = hData->param.fadeIn;
+    fadeOut = hData->param.fadeOut;
+    heightDamping = hData->param.heightDamping;
+    angleDamping = hData->param.angleDamping;
+    duplicateStart = hData->param.duplicateStartAge;
+    perGroup = hData->param.particlesPerGroup;
+    baseColor = hData->abgr;
 
     for (; i < count; i++, particle++) {
         s32 age = particle->age;
-        u128 *vertices = dds3ScatterPolyListGetVertex(hData->childWork, i);
-        u32 *colors = dds3ScatterPolyListGetVC(hData->childWork, i);
+        u128 *vertices = dds3ScatterPolyListGetVertex(hData->hPoly, i);
+        u32 *colors = dds3ScatterPolyListGetVC(hData->hPoly, i);
         if (age == 0) {
             effPCPHamaCardSpiralPartInit(hData, i);
         } else if (age > 0) {
@@ -1083,20 +1083,20 @@ void effPCPHamaCardSpiralDraw(effPCPHamaCardSpiral_tag *hData) {
         }
         if (duplicates && age >= duplicateStart && age >= 0 && i % perGroup == 0) {
             u32 group = i / perGroup;
-            dds3EffectPartSetColor(hData->duplicatedHandles[group], baseColor);
-            SDF_VU0_LOADVECTOR(hData->params.origin);
+            dds3EffectPartSetColor(hData->pAttach[group], baseColor);
+            SDF_VU0_LOADVECTOR(hData->param.origin);
             SDF_VU0_LOADVECTOR_B(duplicatePosition);
             SDF_VU0_ADDVECTOR();
             SDF_VU0_STOREVECTOR_NOMEM(duplicatePosition);
-            dds3EffectPartSetPosition(hData->duplicatedHandles[group], duplicatePosition);
-            dds3EffectPartDraw(hData->duplicatedHandles[group]);
+            dds3EffectPartSetPosition(hData->pAttach[group], duplicatePosition);
+            dds3EffectPartDraw(hData->pAttach[group]);
         }
         particle->age++;
     }
-    hData->childWork->origin[0] = hData->params.origin[0];
-    hData->childWork->origin[1] = hData->params.origin[1];
-    hData->childWork->origin[2] = hData->params.origin[2];
-    dds3ScatterPolyListDraw(hData->childWork);
+    hData->hPoly->origin[0] = hData->param.origin[0];
+    hData->hPoly->origin[1] = hData->param.origin[1];
+    hData->hPoly->origin[2] = hData->param.origin[2];
+    dds3ScatterPolyListDraw(hData->hPoly);
 }
 
 void effPCPHamaCardSpiralSetPosition(void *hData, void *pPos) {
@@ -1105,14 +1105,14 @@ void effPCPHamaCardSpiralSetPosition(void *hData, void *pPos) {
 
 void effPCPHamaCardSpiralSetColor(effPCPHamaCardSpiral_tag *hData, u32 abgr)
 {
-    hData->color = abgr;
+    hData->abgr = abgr;
 }
 
 void effPCPHamaCardSpiralSetScale(f32 hData, effPCPHamaCardSpiral_tag *scale)
 {
-    scale->params.initialHeightStep *= hData;
-    scale->params.startRadius *= hData;
-    scale->params.endRadius *= hData;
+    scale->param.initialHeightStep *= hData;
+    scale->param.startRadius *= hData;
+    scale->param.endRadius *= hData;
 }
 
 effPCPHamaCardSphere_tag *effPCPHamaCardSphereCreate(params, resource, particleParams)
@@ -1130,30 +1130,30 @@ effPCPHamaCardSphere_tag *effPCPHamaCardSphereCreate(params, resource, particleP
 
     allocation = sdfMemAllocDirect(sizeof(effPCPHamaCardSphere_tag) + params->particleCount * sizeof(effPCPWwSpherePolyPart_tag));
     work = (effPCPHamaCardSphere_tag *)sdfMemLock(allocation);
-    work->particles = (effPCPWwSpherePolyPart_tag *)(work + 1);
-    work->params = *params;
+    work->pPart = (effPCPWwSpherePolyPart_tag *)(work + 1);
+    work->param = *params;
     work->abgr = EFF_SCATTER_NEUTRAL_COLOR;
-    work->allocation = allocation;
+    work->hMem = allocation;
     work->scale = 1.0f;
     work->duplicatedHandles = NULL;
-    work->duplicateAllocation = NULL;
-    work->childWork = dds3ScatterPolyListCreate(params->particleCount);
-    work->childWork->poolMode = params->poolMode;
+    work->hAttachMem = NULL;
+    work->hPoly = dds3ScatterPolyListCreate(params->particleCount);
+    work->hPoly->poolMode = params->poolMode;
     if (resource != 0) {
-        dds3ScatterPolyListSetTex(work->childWork, resource);
+        dds3ScatterPolyListSetTex(work->hPoly, resource);
     }
-    if (particleParams != NULL && work->params.duplicateParticles != 0) {
-        if (work->params.particlesPerGroup == 0) {
-            work->params.particlesPerGroup = 1;
+    if (particleParams != NULL && work->param.duplicateParticles != 0) {
+        if (work->param.particlesPerGroup == 0) {
+            work->param.particlesPerGroup = 1;
         }
-        work->duplicateGroupCount = work->params.particleCount / work->params.particlesPerGroup;
-        if (work->params.particleCount % work->params.particlesPerGroup != 0) {
-            work->duplicateGroupCount++;
+        work->AttachNum = work->param.particleCount / work->param.particlesPerGroup;
+        if (work->param.particleCount % work->param.particlesPerGroup != 0) {
+            work->AttachNum++;
         }
-        count = work->duplicateGroupCount;
+        count = work->AttachNum;
         allocation = sdfMemAllocDirect(count * sizeof(u32));
         handles = (effPartHandle_t **)sdfMemLock(allocation);
-        work->duplicateAllocation = allocation;
+        work->hAttachMem = allocation;
         work->duplicatedHandles = handles;
         /* Native setup seeds group zero even when the computed group count is zero. */
         work->duplicatedHandles[0] = dds3EffectPartCreate(EFF_PARAM_WORK_KIND_EXTENDED_WORK_WITH_MATRIX_CALLBACK, particleParams);
@@ -1161,9 +1161,9 @@ effPCPHamaCardSphere_tag *effPCPHamaCardSphereCreate(params, resource, particleP
             work->duplicatedHandles[i] = dds3EffectPartCopy(work->duplicatedHandles[0]);
         }
     }
-    delaySpread = work->params.delaySpread;
-    count = work->params.particleCount;
-    particle = work->particles;
+    delaySpread = work->param.delaySpread;
+    count = work->param.particleCount;
+    particle = work->pPart;
     if (delaySpread <= 0) {
         delaySpread = 1;
     }
@@ -1187,17 +1187,17 @@ effPCPHamaCardSphere_tag *effPCPHamaCardSphereCopy(source)
     effPartHandle_t **handles;
     u32 i;
 
-    work = effPCPHamaCardSphereCreate(&source->params, 0, 0);
-    dds3ScatterPolyListCopyTex(work->childWork, source->childWork);
-    if (work->params.duplicateParticles != 0) {
-        work->duplicateGroupCount = work->params.particleCount / work->params.particlesPerGroup;
-        if (work->params.particleCount % work->params.particlesPerGroup != 0) {
-            work->duplicateGroupCount = work->duplicateGroupCount + 1;
+    work = effPCPHamaCardSphereCreate(&source->param, 0, 0);
+    dds3ScatterPolyListCopyTex(work->hPoly, source->hPoly);
+    if (work->param.duplicateParticles != 0) {
+        work->AttachNum = work->param.particleCount / work->param.particlesPerGroup;
+        if (work->param.particleCount % work->param.particlesPerGroup != 0) {
+            work->AttachNum = work->AttachNum + 1;
         }
-        count = work->duplicateGroupCount;
+        count = work->AttachNum;
         allocation = sdfMemAllocDirect(count * EFF_SCATTER_WORD_BYTES);
         handles = (effPartHandle_t **)sdfMemLock(allocation);
-        work->duplicateAllocation = allocation;
+        work->hAttachMem = allocation;
         work->duplicatedHandles = handles;
         for (i = 0; i < count; i++) {
             work->duplicatedHandles[i] = dds3EffectPartCopy(*source->duplicatedHandles);
@@ -1211,8 +1211,8 @@ void effPCPHamaCardSphereDelete(effPCPHamaCardSphere_tag *hData)
     u32 duplicatedHandleIndex;
     u32 count;
 
-    if (hData->duplicateAllocation != 0) {
-        count = hData->duplicateGroupCount;
+    if (hData->hAttachMem != 0) {
+        count = hData->AttachNum;
         duplicatedHandleIndex = 0;
         if (count != 0) {
             do {
@@ -1220,24 +1220,24 @@ void effPCPHamaCardSphereDelete(effPCPHamaCardSphere_tag *hData)
                 duplicatedHandleIndex++;
             } while (duplicatedHandleIndex < count);
         }
-        sdfMemFreeDirect(hData->duplicateAllocation);
+        sdfMemFreeDirect(hData->hAttachMem);
     }
-    dds3ScatterPolyListDelete(hData->childWork);
-    sdfMemFreeDirect(hData->allocation);
+    dds3ScatterPolyListDelete(hData->hPoly);
+    sdfMemFreeDirect(hData->hMem);
 }
 
 void effPCPHamaCardSpherePartInit(effPCPHamaCardSphere_tag *pHCardSphere, s32 number)
 {
-    effPCPWwSpherePolyPart_tag *sprite = &pHCardSphere->particles[number];
+    effPCPWwSpherePolyPart_tag *sprite = &pHCardSphere->pPart[number];
     f32 direction[4];
     f32 jitter;
 
     sprite->radian_add = dds3GetRandFloatA(dds3EffectBase) * (EFF_SCATTER_HALF_TURN * 2.0f);
-    jitter = pHCardSphere->params.startRadiusJitter;
-    sprite->radian_s = pHCardSphere->params.startRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
-    jitter = pHCardSphere->params.endRadiusJitter;
-    sprite->frame = (pHCardSphere->params.endRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) - sprite->radian_s) / (f32)pHCardSphere->params.duration;
-    sprite->radian = pHCardSphere->params.angleStep;
+    jitter = pHCardSphere->param.startRadiusJitter;
+    sprite->radian_s = pHCardSphere->param.startRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
+    jitter = pHCardSphere->param.endRadiusJitter;
+    sprite->frame = (pHCardSphere->param.endRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) - sprite->radian_s) / (f32)pHCardSphere->param.duration;
+    sprite->radian = pHCardSphere->param.angleStep;
     direction[0] = (dds3GetRandFloatA(dds3EffectBase) - EFF_SCATTER_RANDOM_MIDPOINT) * EFF_SCATTER_RANDOM_SPAN;
     direction[1] = (dds3GetRandFloatA(dds3EffectBase) - EFF_SCATTER_RANDOM_MIDPOINT) * EFF_SCATTER_RANDOM_SPAN;
     direction[2] = (dds3GetRandFloatA(dds3EffectBase) - EFF_SCATTER_RANDOM_MIDPOINT) * EFF_SCATTER_RANDOM_SPAN;
@@ -1278,27 +1278,27 @@ void effPCPHamaCardSphereDraw(effPCPHamaCardSphere_tag *hData) {
     f32 angleDamping;
 
     i = 0;
-    duration = hData->params.duration;
-    endAge = hData->params.fadeDuration + duration;
+    duration = hData->param.duration;
+    endAge = hData->param.fadeDuration + duration;
     duplicates = hData->duplicatedHandles != NULL;
-    count = hData->params.particleCount;
-    VEC3_SPLAT(halfWidth, hData->params.width * 0.5f);
-    VEC3_SPLAT(halfHeight, hData->params.height * 0.5f);
-    particle = hData->particles;
-    respawn = hData->params.respawn;
-    pulse = hData->params.adjustAngle;
-    pulseAngle = hData->params.endAngleStep;
-    fadeIn = hData->params.fadeIn;
-    fadeOut = hData->params.fadeOut;
-    angleDamping = hData->params.angleDamping;
-    duplicateStart = hData->params.duplicateStartAge;
-    perGroup = hData->params.particlesPerGroup;
+    count = hData->param.particleCount;
+    VEC3_SPLAT(halfWidth, hData->param.width * 0.5f);
+    VEC3_SPLAT(halfHeight, hData->param.height * 0.5f);
+    particle = hData->pPart;
+    respawn = hData->param.respawn;
+    pulse = hData->param.adjustAngle;
+    pulseAngle = hData->param.endAngleStep;
+    fadeIn = hData->param.fadeIn;
+    fadeOut = hData->param.fadeOut;
+    angleDamping = hData->param.angleDamping;
+    duplicateStart = hData->param.duplicateStartAge;
+    perGroup = hData->param.particlesPerGroup;
     baseColor = hData->abgr;
 
     for (; i < count; i++, particle++) {
         s32 age = particle->rot;
-        u128 *vertices = dds3ScatterPolyListGetVertex(hData->childWork, i);
-        u32 *colors = dds3ScatterPolyListGetVC(hData->childWork, i);
+        u128 *vertices = dds3ScatterPolyListGetVertex(hData->hPoly, i);
+        u32 *colors = dds3ScatterPolyListGetVC(hData->hPoly, i);
         if (age == 0) {
             effPCPHamaCardSpherePartInit(hData, i);
         } else if (age > 0) {
@@ -1402,7 +1402,7 @@ void effPCPHamaCardSphereDraw(effPCPHamaCardSphere_tag *hData) {
         if (duplicates && age >= duplicateStart && age >= 0 && i % perGroup == 0) {
             u32 group = i / perGroup;
             dds3EffectPartSetColor(hData->duplicatedHandles[group], baseColor);
-            SDF_VU0_LOADVECTOR(hData->params.origin);
+            SDF_VU0_LOADVECTOR(hData->param.origin);
             SDF_VU0_LOADVECTOR_B(duplicatePosition);
             SDF_VU0_ADDVECTOR();
             SDF_VU0_STOREVECTOR_NOMEM(duplicatePosition);
@@ -1411,10 +1411,10 @@ void effPCPHamaCardSphereDraw(effPCPHamaCardSphere_tag *hData) {
         }
         particle->rot++;
     }
-    hData->childWork->origin[0] = hData->params.origin[0];
-    hData->childWork->origin[1] = hData->params.origin[1];
-    hData->childWork->origin[2] = hData->params.origin[2];
-    dds3ScatterPolyListDraw(hData->childWork);
+    hData->hPoly->origin[0] = hData->param.origin[0];
+    hData->hPoly->origin[1] = hData->param.origin[1];
+    hData->hPoly->origin[2] = hData->param.origin[2];
+    dds3ScatterPolyListDraw(hData->hPoly);
 }
 
 void effPCPHamaCardSphereSetPosition(void *hData, void *pPos) {
@@ -1428,12 +1428,12 @@ void effPCPHamaCardSphereSetColor(effPCPHamaCardSphere_tag *hData, u32 abgr)
 
 void effPCPHamaCardSphereSetScale(f32 hData, effPCPHamaCardSphere_tag *scale)
 {
-    scale->params.startRadius *= hData;
-    scale->params.endRadius *= hData;
+    scale->param.startRadius *= hData;
+    scale->param.endRadius *= hData;
 }
 
 effPCPHamaCardScatter_tag *effPCPHamaCardScatterCreate(params, resource, particleParams)
-    const PcpScatterRibbonParams *params;
+    const effPCPHamaCardScatterParam_t *params;
     u32 resource;
     void *particleParams;
 {
@@ -1449,11 +1449,11 @@ effPCPHamaCardScatter_tag *effPCPHamaCardScatterCreate(params, resource, particl
     work = (effPCPHamaCardScatter_tag *)sdfMemLock(allocation);
     work->pPart = (effPCPHamaCardScatterPart_tag *)(work + 1);
     work->param = *params;
-    work->color = EFF_SCATTER_NEUTRAL_COLOR;
-    work->allocation = allocation;
+    work->abgr = EFF_SCATTER_NEUTRAL_COLOR;
+    work->hMem = allocation;
     work->scale = 1.0f;
     work->pAttach = NULL;
-    work->duplicateAllocation = NULL;
+    work->hAttachMem = NULL;
     work->hPoly = dds3ScatterPolyListCreate(params->particleCount);
     work->hPoly->poolMode = params->poolMode;
     if (resource != 0) {
@@ -1463,14 +1463,14 @@ effPCPHamaCardScatter_tag *effPCPHamaCardScatterCreate(params, resource, particl
         if (work->param.particlesPerGroup == 0) {
             work->param.particlesPerGroup = 1;
         }
-        work->duplicateGroupCount = work->param.particleCount / work->param.particlesPerGroup;
+        work->AttachNum = work->param.particleCount / work->param.particlesPerGroup;
         if (work->param.particleCount % work->param.particlesPerGroup != 0) {
-            work->duplicateGroupCount++;
+            work->AttachNum++;
         }
-        count = work->duplicateGroupCount;
+        count = work->AttachNum;
         allocation = sdfMemAllocDirect(count * sizeof(u32));
         handles = (effPartHandle_t **)sdfMemLock(allocation);
-        work->duplicateAllocation = allocation;
+        work->hAttachMem = allocation;
         work->pAttach = handles;
         /* Native setup seeds group zero even when the computed group count is zero. */
         work->pAttach[0] = dds3EffectPartCreate(EFF_PARAM_WORK_KIND_EXTENDED_WORK_WITH_MATRIX_CALLBACK, particleParams);
@@ -1510,14 +1510,14 @@ effPCPHamaCardScatter_tag *effPCPHamaCardScatterCopy(source)
         if (work->param.particlesPerGroup == 0) {
             work->param.particlesPerGroup = 1;
         }
-        work->duplicateGroupCount = work->param.particleCount / work->param.particlesPerGroup;
+        work->AttachNum = work->param.particleCount / work->param.particlesPerGroup;
         if (work->param.particleCount % work->param.particlesPerGroup != 0) {
-            work->duplicateGroupCount = work->duplicateGroupCount + 1;
+            work->AttachNum = work->AttachNum + 1;
         }
-        count = work->duplicateGroupCount;
+        count = work->AttachNum;
         allocation = sdfMemAllocDirect(count * EFF_SCATTER_WORD_BYTES);
         handles = (effPartHandle_t **)sdfMemLock(allocation);
-        work->duplicateAllocation = allocation;
+        work->hAttachMem = allocation;
         work->pAttach = handles;
         for (i = 0; i < count; i++) {
             work->pAttach[i] = dds3EffectPartCopy(*source->pAttach);
@@ -1531,8 +1531,8 @@ void effPCPHamaCardScatterDelete(effPCPHamaCardScatter_tag *hData)
     u32 duplicatedHandleIndex;
     u32 count;
 
-    if (hData->duplicateAllocation != 0) {
-        count = hData->duplicateGroupCount;
+    if (hData->hAttachMem != 0) {
+        count = hData->AttachNum;
         duplicatedHandleIndex = 0;
         if (count != 0) {
             do {
@@ -1540,10 +1540,10 @@ void effPCPHamaCardScatterDelete(effPCPHamaCardScatter_tag *hData)
                 duplicatedHandleIndex++;
             } while (duplicatedHandleIndex < count);
         }
-        sdfMemFreeDirect(hData->duplicateAllocation);
+        sdfMemFreeDirect(hData->hAttachMem);
     }
     dds3ScatterPolyListDelete(hData->hPoly);
-    sdfMemFreeDirect(hData->allocation);
+    sdfMemFreeDirect(hData->hMem);
 }
 
 void effPCPHamaCardScatterPartInit(effPCPHamaCardScatter_tag *pHCardScatter, s32 number)
@@ -1610,7 +1610,7 @@ void effPCPHamaCardScatterDraw(effPCPHamaCardScatter_tag *hData) {
     fadeOut = hData->param.fadeOut;
     duplicateStart = hData->param.duplicateStartAge;
     perGroup = hData->param.particlesPerGroup;
-    baseColor = hData->color;
+    baseColor = hData->abgr;
 
     for (; i < count; i++, particle++) {
         s32 age = particle->frame;
@@ -1732,7 +1732,7 @@ void effPCPHamaCardScatterSetPosition(void *pHCardScatter, void *pPos) {
 
 void effPCPHamaCardScatterSetColor(effPCPHamaCardScatter_tag *pHCardScatter, u32 abgr)
 {
-    pHCardScatter->color = abgr;
+    pHCardScatter->abgr = abgr;
 }
 
 void effPCPHamaCardScatterSetScale(void) {
@@ -1872,7 +1872,7 @@ dds3ScatterPolyListTexResource_tag *dds3ScatterPolyListTexResourceCopy(dds3Scatt
 }
 
 effPCPWhirlwindPoly_tag *effPCPWhirlwindPolyCreate(src, resource)
-    PcpScatterParamsA *src;
+    effPCPWhirlwindPolyParam_t *src;
     u32 resource;
 {
     sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(effPCPWhirlwindPolyPart_tag) + sizeof(effPCPWhirlwindPoly_tag));
@@ -2139,7 +2139,7 @@ effPCPWhirlwind2Poly_tag *effPCPWhirlwind2PolyCreate(src, resource)
     inst->scale = 1.0f;
     inst->allocationHandle = allocation;
     inst->pPart = particle;
-    inst->age = 0;
+    inst->frame_all = 0;
     VU0_COPY_MATRIX(inst->matrix, src->matrix);
     object = dds3WhirlwindPolyListCreate(src->particleCount, src->segmentsPerParticle);
     drawWord = src->packetQueueIndex;
@@ -2320,7 +2320,7 @@ void effPCPWhirlwind2PolyDraw(effPCPWhirlwind2Poly_tag *hData) {
     fadeRange = hData->param.fadeRange;
     delayModulus = hData->param.randomDelayRange;
     color = effMagaCylinderCalcColor(hData->abgr, hData->param.baseColor);
-    instanceAge = hData->age;
+    instanceAge = hData->frame_all;
     if (duration < instanceAge) {
         return;
     }
@@ -2356,9 +2356,9 @@ void effPCPWhirlwind2PolyDraw(effPCPWhirlwind2Poly_tag *hData) {
         particle++;
     }
     if (loop != 0 && instanceAge >= duration) {
-        hData->age = 0;
+        hData->frame_all = 0;
     } else {
-        hData->age++;
+        hData->frame_all++;
     }
     draw->scale = hData->scale;
     SDF_VU0_COPYVECTOR(draw->origin, hData->param.origin);
@@ -2408,9 +2408,9 @@ effPCPWhirlwind3Poly_tag *effPCPWhirlwind3PolyCreate(src, resource)
     memcpy(&inst->param, src, sizeof(inst->param));
     inst->color = EFF_SCATTER_NEUTRAL_COLOR;
     inst->scale = 1.0f;
-    inst->allocationHandle = allocation;
+    inst->hMem = allocation;
     inst->pPart = particle;
-    inst->age = 0;
+    inst->frame_all = 0;
     VU0_COPY_MATRIX(inst->matrix, src->matrix);
     object = dds3WhirlwindPolyListCreate(src->particleCount, src->segmentsPerParticle);
     drawWord = src->packetQueueIndex;
@@ -2450,7 +2450,7 @@ effPCPWhirlwind3Poly_tag *effPCPWhirlwind3PolyCopy(effPCPWhirlwind3Poly_tag *wor
 void effPCPWhirlwind3PolyDelete(effPCPWhirlwind3Poly_tag *hData)
 {
     dds3WhirlwindPolyListDelete(hData->hPoly);
-    sdfMemFreeDirect(hData->allocationHandle);
+    sdfMemFreeDirect(hData->hMem);
 }
 
 void effPCPWhirlwind3PolyPartInit(effPCPWhirlwind3Poly_tag *pWhirlwind3Poly, s32 index)
@@ -2588,7 +2588,7 @@ void effPCPWhirlwind3PolyDraw(effPCPWhirlwind3Poly_tag *hData) {
     s32 color;
     u32 i;
 
-    instanceAge = hData->age;
+    instanceAge = hData->frame_all;
     loop = hData->param.loop;
     fadeIn = hData->param.fadeIn;
     fadeRange = hData->param.fadeRange;
@@ -2634,9 +2634,9 @@ void effPCPWhirlwind3PolyDraw(effPCPWhirlwind3Poly_tag *hData) {
         particle++;
     }
     if (loop != 0 && instanceAge >= duration) {
-        hData->age = 0;
+        hData->frame_all = 0;
     } else {
-        hData->age++;
+        hData->frame_all++;
     }
     draw->scale = hData->scale;
     SDF_VU0_COPYVECTOR(draw->origin, hData->param.origin);
@@ -2685,7 +2685,7 @@ effPCPWwSpherePoly_tag *effPCPWwSpherePolyCreate(src, resource)
     memcpy(&inst->param, src, sizeof(inst->param));
     inst->abgr = EFF_SCATTER_NEUTRAL_COLOR;
     inst->scale = 1.0f;
-    inst->allocationHandle = allocation;
+    inst->hMem = allocation;
     inst->pPart = particle;
     SDF_VU0_STOREIDENTITY(inst->matrix);
     object = dds3WhirlwindPolyListCreate(src->particleCount, src->segmentsPerParticle);
@@ -2724,7 +2724,7 @@ effPCPWwSpherePoly_tag *effPCPWwSpherePolyCopy(effPCPWwSpherePoly_tag *work)
 void effPCPWwSpherePolyDelete(effPCPWwSpherePoly_tag *hData)
 {
     dds3WhirlwindPolyListDelete(hData->hPoly);
-    sdfMemFreeDirect(hData->allocationHandle);
+    sdfMemFreeDirect(hData->hMem);
 }
 
 void effPCPWwSpherePolyPartInit(effPCPWwSpherePoly_tag *pWwSpherePoly, s32 index) {
