@@ -6,18 +6,18 @@
 
 #define MDL_GROUP_COUNT 8
 
-/* sdfPacPacketHeader_t.tag for the chunks the PIB unit dispatches on, as the
+/* sdfPacStdBlockHeader_t.tag for the chunks the PIB unit dispatches on, as the
  * four bytes each value spells. The IDB has no enum for them. */
 #define PIB_TAG_PIB0 0x30424950
 #define PIB_TAG_P2A 0x413250
 #define PIB_TAG_D3P 0x503344
 #define PIB_TAG_IPU 0x555049
 
-typedef struct mdlLoadingEntry_t
+typedef struct mdlLoadingTag_t
 {
-    struct mdlLoadingEntry_t *next;
+    struct mdlLoadingTag_t *next;
     s32 id;
-} mdlLoadingEntry_t;
+} mdlLoadingTag_t;
 
 
 typedef struct
@@ -26,11 +26,11 @@ typedef struct
     sdfModelDef_t *itemList;
     sdfMemHandle_t *requestAllocation;
     sdfMotionPlayBook_t *motionTable;
-    sdfMemHandle_t *motionResource;
+    sdfMemHandle_t *playbookHandle;
     void *partInfo;
     sdfMemHandle_t *resourceHandle;
     sdfItemArray_t *partList;
-} mdlLoadPayload_t;
+} mdlSetDef_t;
 
 typedef struct
 {
@@ -41,13 +41,13 @@ typedef struct
     u8 deferred;
     u8 pad7;
     u32 options;
-    mdlLoadPayload_t payload;
+    mdlSetDef_t payload;
 } mdlLoadRequest_t;
 
 
 extern s32 mdlManagerWork;
-extern mdlResrc_t *mdlResrcMajorList[MDL_GROUP_COUNT];
-extern mdlLoadingEntry_t *mdlLoadingMajorList[MDL_GROUP_COUNT];
+extern dds3ModelResrc_t *mdlResrcMajorList[MDL_GROUP_COUNT];
+extern mdlLoadingTag_t *mdlLoadingMajorList[MDL_GROUP_COUNT];
 
 extern s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
 extern s32 WaitSema(s32 sema);
@@ -67,18 +67,18 @@ extern void sdfMotionCtrlrFree(sdfMotionCtrlr_t *aCtrlr);
 extern void sdfMotionPause(sdfMotionCtrlr_t *aCtrlr);
 extern void sdfMotionPauseOff(sdfMotionCtrlr_t *aCtrlr);
 extern void fileManager(void);
-extern void mdlSetEffectColorSub(mdlObj_t *aHandle, mdlEffectResrc_t *aEffect, u32 aColor);
-extern void mdlSetEffectScaleSub(mdlObj_t *aHandle, mdlEffectResrc_t *aEffect, f32 aScale);
+extern void mdlSetEffectColorSub(mdlObj_t *aHandle, dds3ModelEffectCtrlr_t *aEffect, u32 aColor);
+extern void mdlSetEffectScaleSub(mdlObj_t *aHandle, dds3ModelEffectCtrlr_t *aEffect, f32 aScale);
 extern void ToMatrix(void);
 
 void mdlUnRegist(s32 aMajor, s32 aMinor);
-void mdlUnRegistResrc(mdlResrc_t *resrc_p);
+void mdlUnRegistResrc(dds3ModelResrc_t *resrc_p);
 void mdlFree(mdlObj_t *aHandle);
 void mdlFreeMotion(mdlObj_t *aHandle, s32 aGroup);
-void mdlUnRegistResrcMotion(mdlResrc_t *aResrc, s32 aGroup);
+void mdlUnRegistResrcMotion(dds3ModelResrc_t *aResrc, s32 aGroup);
 void mdlRegistMotion(s32 aMajor, s32 aMinor, u32 aFlags, s32 aFirstMotion, s32 aGroup, s32 aPlayGroup,
                      sdfMotionPlayBook_t *aData, sdfMemHandle_t *aHandle);
-mdlResrc_t *mdlSearchResrc(s32 aMajor, s32 aMinor);
+dds3ModelResrc_t *mdlSearchResrc(s32 aMajor, s32 aMinor);
 void mdlMotion(mdlObj_t *aHandle, s32 aGroup, s32 aNumber, s32 aType, f32 aBeforeLeng,
                f32 aSmoothLeng);
 sdfMotionCtrlr_t *mdlGetMotionCtrlr(mdlObj_t *aHandle, s32 aGroup);
@@ -98,9 +98,9 @@ void TbMbAbLoadEnd(mdlLoadRequest_t *tmaCb);
 void mdlFreeBlur(mdlObj_t *aHandle);
 
 
-extern mdlResrc_t *mdlLoadPrepare(u32 group, u32 id);
+extern dds3ModelResrc_t *mdlLoadPrepare(u32 group, u32 id);
 extern void mdlGenEffect(mdlObj_t *aHandle, s32 aGroup, s32 aPlayGroup);
-extern void mdlFreeEffect(mdlEffectResrc_t *aCtrlr);
+extern void mdlFreeEffect(dds3ModelEffectCtrlr_t *aCtrlr);
 
 
 typedef struct
@@ -127,10 +127,10 @@ s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode);
 void mdlFreeMotionCtrlr(mdlObj_t *aHandle, sdfMotionCtrlr_t *aCtrlr);
 
 
-extern void sdfPacInit(sdfPacState_t *cb, sdfPacCallbackFunc callback);
-extern void sdfPacSetStay(sdfPacState_t *cb);
-extern s32 sdfPacDecode(sdfPacState_t *cb, const u8 *data, s32 length);
-extern void sdfPacFree(sdfPacState_t *cb);
+extern void sdfPacInit(sdfPacDecodeCb_t *cb, sdfPacCallbackFunc callback);
+extern void sdfPacSetStay(sdfPacDecodeCb_t *cb);
+extern s32 sdfPacDecode(sdfPacDecodeCb_t *cb, const u8 *data, s32 length);
+extern void sdfPacFree(sdfPacDecodeCb_t *cb);
 
 sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags);
 
@@ -142,7 +142,7 @@ void mdlFileCbFree(mdlDoneJob_t *cb);
 extern void sdfMotionNext(sdfMotionCtrlr_t *aCtrlr);
 extern void sdfModelEvalTm(sdfModelRootNode_t *aRoot);
 extern void sdfModelLinkOt(void *aOt, sdfModelRootNode_t *aRoot);
-extern void mdlLinkEffect(mdlObj_t *ctx, mdlEffectResrc_t *item);
+extern void mdlLinkEffect(mdlObj_t *ctx, dds3ModelEffectCtrlr_t *item);
 extern void mdlLinkBlur(mdlObj_t *ctx, sdfGrOt_t **surfaces);
 void mdlLoopMotion(mdlObj_t *aHandle, s32 aGroup, s32 aNumber);
 
@@ -165,17 +165,17 @@ typedef struct
     u16 index;
     u16 unk4;
     u16 unk6;
-} mdlFileKind_t;
+} dds3ModelFileIndex_t;
 
 typedef struct
 {
-    mdlFileKind_t *entries;
+    dds3ModelFileIndex_t *entries;
     s32 count;
 } mdlFileKindSlot_t;
 
 extern mdlFileSlot_t modelFileTable[];
 extern mdlFileKindSlot_t modelFileKindTable[];
-extern mdlFileKind_t *D_00551F04;
+extern dds3ModelFileIndex_t *D_00551F04;
 extern mdlHddFile_t *mdlHddFileList;
 extern sdfMemHandle_t *sdfMemAllocDirect(u32 aSize);
 extern void *sdfMemLock(sdfMemHandle_t *aHandle);
@@ -309,9 +309,9 @@ void mdlInitManager(void)
     }
 }
 
-mdlResrc_t *mdlSearchResrc(s32 aMajor, s32 aMinor)
+dds3ModelResrc_t *mdlSearchResrc(s32 aMajor, s32 aMinor)
 {
-    mdlResrc_t *entry;
+    dds3ModelResrc_t *entry;
 
     entry = mdlResrcMajorList[aMajor];
     while (entry != NULL)
@@ -327,7 +327,7 @@ mdlResrc_t *mdlSearchResrc(s32 aMajor, s32 aMinor)
 
 s32 mdlCheckLoading(s32 aMajor, s32 aMinor)
 {
-    mdlLoadingEntry_t *cursor;
+    mdlLoadingTag_t *cursor;
 
     cursor = mdlLoadingMajorList[aMajor];
     while (cursor != NULL)
@@ -343,10 +343,10 @@ s32 mdlCheckLoading(s32 aMajor, s32 aMinor)
 
 void mdlRegLoading(s32 aMajor, s32 aMinor)
 {
-    mdlLoadingEntry_t *entry;
-    mdlLoadingEntry_t **head;
+    mdlLoadingTag_t *entry;
+    mdlLoadingTag_t **head;
 
-    entry = sdfChipAllocDirect(sizeof(mdlLoadingEntry_t));
+    entry = sdfChipAllocDirect(sizeof(mdlLoadingTag_t));
     head = &mdlLoadingMajorList[aMajor];
     entry->id = aMinor;
     entry->next = *head;
@@ -355,8 +355,8 @@ void mdlRegLoading(s32 aMajor, s32 aMinor)
 
 void mdlUnRegLoading(s32 aMajor, s32 aMinor)
 {
-    mdlLoadingEntry_t **link;
-    mdlLoadingEntry_t *cursor;
+    mdlLoadingTag_t **link;
+    mdlLoadingTag_t *cursor;
 
     link = &mdlLoadingMajorList[aMajor];
     cursor = *link;
@@ -384,12 +384,12 @@ void mdlRegist(s32 aMajor, s32 aMinor, s32 aFlag,
                sdfModelTexList_t *aTexList, sdfModelDef_t *aData,
                sdfMemHandle_t *aHandle)
 {
-    mdlResrc_t *groupNode;
-    mdlResrc_t *previousHead;
+    dds3ModelResrc_t *groupNode;
+    dds3ModelResrc_t *previousHead;
     s32 slotIndex;
 
     mdlUnRegist(aMajor, aMinor);
-    groupNode = sdfChipAllocDirect(sizeof(mdlResrc_t));
+    groupNode = sdfChipAllocDirect(sizeof(dds3ModelResrc_t));
     previousHead = mdlResrcMajorList[aMajor];
     if (previousHead != NULL)
     {
@@ -414,14 +414,14 @@ void mdlRegist(s32 aMajor, s32 aMinor, s32 aFlag,
     groupNode->resourceHandle = NULL;
     groupNode->partInfo = NULL;
     groupNode->partList = NULL;
-    groupNode->defaultScale = 1.0f;
+    groupNode->scale = 1.0f;
     groupNode->objectRadius = 100.0f;
 }
 
-void mdlUnRegistResrc(mdlResrc_t *resrc_p)
+void mdlUnRegistResrc(dds3ModelResrc_t *resrc_p)
 {
-    mdlResrc_t *previousNode;
-    mdlResrc_t *nextNode;
+    dds3ModelResrc_t *previousNode;
+    dds3ModelResrc_t *nextNode;
     u8 ownsResources;
     s32 slotIndex;
 
@@ -477,9 +477,9 @@ void mdlUnRegist(s32 aMajor, s32 aMinor)
 void mdlUnRegistAll(void)
 {
     u32 groupIndex;
-    mdlResrc_t **groupHead;
-    mdlResrc_t *groupNode;
-    mdlResrc_t *nextNode;
+    dds3ModelResrc_t **groupHead;
+    dds3ModelResrc_t *groupNode;
+    dds3ModelResrc_t *nextNode;
 
     groupIndex = 0;
     groupHead = mdlResrcMajorList;
@@ -537,7 +537,7 @@ void mdlFreeMotion(mdlObj_t *aHandle, s32 aGroup) {
     }
 }
 
-void mdlUnRegistResrcMotion(mdlResrc_t *aResrc, s32 aGroup)
+void mdlUnRegistResrcMotion(dds3ModelResrc_t *aResrc, s32 aGroup)
 {
     mdlObj_t *ctx;
 
@@ -565,7 +565,7 @@ void mdlUnRegistResrcMotion(mdlResrc_t *aResrc, s32 aGroup)
 
 void mdlUnRegistMotion(s32 aMajor, s32 aMinor, s32 aGroup)
 {
-    mdlResrc_t *entity;
+    dds3ModelResrc_t *entity;
 
     entity = mdlSearchResrc(aMajor, aMinor);
     mdlUnRegistResrcMotion(entity, aGroup);
@@ -574,8 +574,8 @@ void mdlUnRegistMotion(s32 aMajor, s32 aMinor, s32 aGroup)
 void mdlRegistMotion(s32 aMajor, s32 aMinor, u32 aFlags, s32 aFirstMotion, s32 aGroup, s32 aPlayGroup,
                      sdfMotionPlayBook_t *aData, sdfMemHandle_t *aHandle)
 {
-    mdlResrc_t *owner;
-    mdlResrcSlot_t *slot;
+    dds3ModelResrc_t *owner;
+    dds3ModelResrcPlayBook_t *slot;
 
     owner = mdlSearchResrc(aMajor, aMinor);
     mdlUnRegistResrcMotion(owner, aGroup);
@@ -595,14 +595,14 @@ void mdlRegistMotion(s32 aMajor, s32 aMinor, u32 aFlags, s32 aFirstMotion, s32 a
     }
 }
 
-void mdlRegistModelSet(s32 aMajor, s32 aMinor, s32 aFlag, mdlLoadPayload_t *aSet)
+void mdlRegistModelSet(s32 aMajor, s32 aMinor, s32 aFlag, mdlSetDef_t *aSet)
 {
-    mdlResrc_t *entity;
+    dds3ModelResrc_t *entity;
 
     mdlRegist(aMajor, aMinor, aFlag, aSet->resourceList, aSet->itemList, aSet->requestAllocation);
     if (aSet->motionTable != NULL)
     {
-        mdlRegistMotion(aMajor, aMinor, aFlag, 0, 0, 0, aSet->motionTable, aSet->motionResource);
+        mdlRegistMotion(aMajor, aMinor, aFlag, 0, 0, 0, aSet->motionTable, aSet->playbookHandle);
     }
     if (aSet->partInfo != NULL)
     {
@@ -613,7 +613,7 @@ void mdlRegistModelSet(s32 aMajor, s32 aMinor, s32 aFlag, mdlLoadPayload_t *aSet
     }
 }
 
-mdlResrc_t *mdlWaitLoadEnd(s32 aMajor, s32 aMinor)
+dds3ModelResrc_t *mdlWaitLoadEnd(s32 aMajor, s32 aMinor)
 {
     while (mdlCheckLoading(aMajor, aMinor))
     {
@@ -651,7 +651,7 @@ void MbLoadCallback(fileRequest_t *fileHandle, mdlLoadRequest_t *parm)
 
 void AbLoadCallback(fileRequest_t *fileHandle, mdlLoadRequest_t *parm)
 {
-    parm->payload.motionResource = fileGetMemHandle(fileHandle);
+    parm->payload.playbookHandle = fileGetMemHandle(fileHandle);
     parm->payload.motionTable = sdfFixupMotionBinary(fileGetLoadPtr(fileHandle));
     fileHandleFree(fileHandle);
     TbMbAbLoadEnd(parm);
@@ -664,8 +664,8 @@ char *mdlSetFileName(char *buff, const char *fname) {
 
 s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
     char requestPath[0x80];
-    mdlResrc_t *entity;
-    mdlFileKind_t *selection;
+    dds3ModelResrc_t *entity;
+    dds3ModelFileIndex_t *selection;
     mdlHddFile_t *paths;
     mdlLoadRequest_t *request;
     char *extension;
@@ -684,7 +684,7 @@ s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
         }
         return -1;
     }
-    selection = (mdlFileKind_t *)modelFileKindTable[aMajor].entries;
+    selection = (dds3ModelFileIndex_t *)modelFileKindTable[aMajor].entries;
     selection += aMinor;
     paths = &((mdlHddFile_t *)modelFileTable[selection->kind].entries)[selection->index];
     packedBundle = 0;
@@ -725,16 +725,16 @@ s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
     return 0;
 }
 
-mdlResrc_t *mdlLoadPrepare(u32 group, u32 id)
+dds3ModelResrc_t *mdlLoadPrepare(u32 group, u32 id)
 {
-    return (mdlResrc_t *)mdlPrepare(group, id, 1);
+    return (dds3ModelResrc_t *)mdlPrepare(group, id, 1);
 }
 
 void mdlUnlinkResrc(mdlObj_t *aHandle)
 {
     mdlObj_t *nextContext;
     mdlObj_t *previousContext;
-    mdlResrc_t *group;
+    dds3ModelResrc_t *group;
 
     nextContext = aHandle->next;
     previousContext = aHandle->prev;
@@ -766,7 +766,7 @@ void mdlUnlinkResrc(mdlObj_t *aHandle)
 
 void mdlSetBlur(mdlObj_t *aHandle, s32 interval, s32 count,
                          u32 startColor, u32 endColor) {
-    mdlDevList_t *deviceList;
+    dds3ModelBlurCb_t *deviceList;
     f32 inverseSpan;
     /* Both retail versions home the packed colors 16 bytes apart. */
     u32 startCarrier[4];
@@ -774,7 +774,7 @@ void mdlSetBlur(mdlObj_t *aHandle, s32 interval, s32 count,
 
     mdlFreeBlur(aHandle);
     if (count > 0) {
-        deviceList = sdfChipAllocZeroDirect(sizeof(mdlDevList_t));
+        deviceList = sdfChipAllocZeroDirect(sizeof(dds3ModelBlurCb_t));
         deviceList->growStep = 1;
         aHandle->devList = deviceList;
         deviceList->usedCount = count;
@@ -797,9 +797,9 @@ void mdlSetBlur(mdlObj_t *aHandle, s32 interval, s32 count,
 
 void mdlFreeBlur(mdlObj_t *aHandle)
 {
-    mdlDevList_t *list;
-    mdlDevSlot_t *slot;
-    mdlDevSlot_t *next;
+    dds3ModelBlurCb_t *list;
+    dds3ModelBlurInstance_t *slot;
+    dds3ModelBlurInstance_t *next;
 
     list = aHandle->devList;
     if (list == NULL)
@@ -819,9 +819,9 @@ void mdlFreeBlur(mdlObj_t *aHandle)
 }
 
 void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
-    mdlDevList_t *list = ctx->devList;
+    dds3ModelBlurCb_t *list = ctx->devList;
     sdfModelRootNode_t *original = ctx->inner;
-    mdlDevSlot_t *slot;
+    dds3ModelBlurInstance_t *slot;
     sdfModelRootNode_t *model;
     f32 tint[4];
     s32 remaining;
@@ -830,7 +830,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
     if (list->usedCount != 0 && --list->growStep == 0) {
         list->usedCount--;
         list->growStep = list->stride;
-        slot = sdfChipAllocDirect(sizeof(mdlDevSlot_t));
+        slot = sdfChipAllocDirect(sizeof(dds3ModelBlurInstance_t));
         model = sdfModelMake(ctx->sub->resourceList, ctx->sub->itemList);
         /* Finish initialization before publishing the new list head. */
         slot->next = list->first;
@@ -866,7 +866,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
 
 mdlObj_t *mdlLoad(u32 aMajor, u32 aMinor)
 {
-    mdlResrc_t *node;
+    dds3ModelResrc_t *node;
     mdlObj_t *ctx;
     mdlObj_t *head;
     sdfModelRootNode_t *inner;
@@ -885,7 +885,7 @@ mdlObj_t *mdlLoad(u32 aMajor, u32 aMinor)
     }
     node->modelContext = ctx;
     inner = sdfModelMake(sdfTexListDup(node->resourceList), node->itemList);
-    modelScale = node->defaultScale;
+    modelScale = node->scale;
     ctx->inner = inner;
     scale[0] = modelScale;
     scale[1] = modelScale;
@@ -917,8 +917,8 @@ mdlObj_t *mdlLoad(u32 aMajor, u32 aMinor)
 void mdlFree(mdlObj_t *aHandle)
 {
     sdfModelRootNode_t *inner;
-    mdlEffectResrc_t *item;
-    mdlEffectResrc_t *next;
+    dds3ModelEffectCtrlr_t *item;
+    dds3ModelEffectCtrlr_t *next;
 
     inner = aHandle->inner;
     while (inner->motion != NULL)
@@ -941,7 +941,7 @@ void mdlLink(mdlObj_t *aHandle, void *aModelOt)
 {
     sdfMotionCtrlr_t **slot;
     sdfModelRootNode_t *inner;
-    mdlEffectResrc_t *item;
+    dds3ModelEffectCtrlr_t *item;
     s32 i;
 
     slot = aHandle->slots;
@@ -1174,7 +1174,7 @@ u32 mdlGetColor(mdlObj_t *aHandle)
 
 void mdlSetEffectColor(mdlObj_t *aHandle, u32 aColor)
 {
-    mdlEffectResrc_t *item;
+    dds3ModelEffectCtrlr_t *item;
 
     for (item = aHandle->resourceItems; item != NULL; item = item->next)
     {
@@ -1196,7 +1196,7 @@ void mdlSetColorWithEffect(mdlObj_t *aHandle, u32 aColor)
 
 void mdlSetEffectScale(mdlObj_t *aHandle, f32 aScale)
 {
-    mdlEffectResrc_t *item;
+    dds3ModelEffectCtrlr_t *item;
 
     for (item = aHandle->resourceItems; item != NULL; item = item->next)
     {
@@ -1307,7 +1307,7 @@ void mdlSetClutColor(mdlObj_t *ctx, s32 a, s32 b, s32 c)
 }
 
 void mdlGetFilebase(s32 aMajor, s32 aMinor, char *aName, s32 aNameLeng) {
-    mdlFileKind_t *selection;
+    dds3ModelFileIndex_t *selection;
     mdlHddFile_t *pathEntry;
     const char *path;
     const char *basename;
@@ -1316,7 +1316,7 @@ void mdlGetFilebase(s32 aMajor, s32 aMinor, char *aName, s32 aNameLeng) {
     s32 endIndex;
     s32 copyLength;
 
-    selection = (mdlFileKind_t *)modelFileKindTable[aMajor].entries;
+    selection = (dds3ModelFileIndex_t *)modelFileKindTable[aMajor].entries;
     selection += aMinor;
     pathEntry = (mdlHddFile_t *)modelFileTable[selection->kind].entries;
     pathEntry += selection->index;
@@ -1360,24 +1360,24 @@ s32 mdlPackCheck(sdfPacWork_t *resrc)
     s32 result;
 
     result = 0;
-    if (((sdfPacPacketHeader_t *)resrc->header)->command == DDS3_FT_EFFECT)
+    if (((sdfPacStdBlockHeader_t *)resrc->header)->command == DDS3_FT_EFFECT)
     {
-        result = ((sdfPacPacketHeader_t *)resrc->header)->tag == PIB_TAG_PIB0;
+        result = ((sdfPacStdBlockHeader_t *)resrc->header)->tag == PIB_TAG_PIB0;
     }
     return result;
 }
 
 sdfPacWork_t *mdlPackSetOld(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags) {
-    mdlLoadPayload_t setup;
+    mdlSetDef_t setup;
     sdfItemArray_t *parts;
     s32 count;
 
     memset(&setup, 0, sizeof(setup));
     parts = NULL;
     while (resrc != NULL) {
-        switch (((sdfPacPacketHeader_t *)resrc->header)->command) {
+        switch (((sdfPacStdBlockHeader_t *)resrc->header)->command) {
         case DDS3_FT_EFFECT:
-            switch (((sdfPacPacketHeader_t *)resrc->header)->tag) {
+            switch (((sdfPacStdBlockHeader_t *)resrc->header)->tag) {
             case PIB_TAG_PIB0:
                 setup.partInfo = resrc->data;
                 setup.resourceHandle = (sdfMemHandle_t *)resrc->resrc;
@@ -1407,8 +1407,8 @@ sdfPacWork_t *mdlPackSetOld(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFl
             }
             break;
         case DDS3_FT_MOTION:
-            if (setup.motionResource == NULL) {
-                setup.motionResource = (sdfMemHandle_t *)resrc->resrc;
+            if (setup.playbookHandle == NULL) {
+                setup.playbookHandle = (sdfMemHandle_t *)resrc->resrc;
                 setup.motionTable = (sdfMotionPlayBook_t *)resrc->data;
             }
             break;
@@ -1420,9 +1420,9 @@ sdfPacWork_t *mdlPackSetOld(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFl
 }
 
 sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags) {
-    mdlLoadPayload_t groupSetup;
+    mdlSetDef_t groupSetup;
     mdlPartTagRecord_t partTagRecord;
-    sdfPacPacketHeader_t *packetHeader;
+    sdfPacStdBlockHeader_t *packetHeader;
     mdlPibRecord_t *record;
     mdlPibRecord_t *slotRecord;
     s32 partCount;
@@ -1453,7 +1453,7 @@ sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags
     }
     if (remainingParts > 0) {
         do {
-            switch (((sdfPacPacketHeader_t *)resrc->header)->tag) {
+            switch (((sdfPacStdBlockHeader_t *)resrc->header)->tag) {
             case PIB_TAG_P2A:
                 mdlCreateEffectResrc_P2A(partList, resrc->data);
                 sdfMemFreeDirect((sdfMemHandle_t *)resrc->resrc);
@@ -1463,10 +1463,10 @@ sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags
                 sdfMemFreeDirect((sdfMemHandle_t *)resrc->resrc);
                 break;
             case PIB_TAG_IPU:
-                objectSize = ((sdfPacPacketHeader_t *)resrc->header)->decodedSize;
+                objectSize = ((sdfPacStdBlockHeader_t *)resrc->header)->decodedSize;
                 if (objectSize == 0) {
-                    objectSize = ((sdfPacPacketHeader_t *)resrc->header)->size
-                               + (((sdfPacPacketHeader_t *)resrc->header)->flags & 0xF0) - 0x10;
+                    objectSize = ((sdfPacStdBlockHeader_t *)resrc->header)->size
+                               + (((sdfPacStdBlockHeader_t *)resrc->header)->flags & 0xF0) - 0x10;
                 }
                 mdlCreateEffectResrc_IPU(partList, resrc->data,
                                     (sdfMemHandle_t *)resrc->resrc, objectSize);
@@ -1474,7 +1474,7 @@ sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags
             default:
                 /* Retained metadata stores: SMT3 1DE078/1DE07C and
                  * DDS1 2188E0/2188E4 (same otherwise-unused local record). */
-                packetHeader = (sdfPacPacketHeader_t *)resrc->header;
+                packetHeader = (sdfPacStdBlockHeader_t *)resrc->header;
                 partTagRecord.tag = packetHeader->tag;
                 partTagRecord.state = 0;
                 break;
@@ -1484,7 +1484,7 @@ sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags
         } while (remainingParts != 0);
     }
 
-    if (((sdfPacPacketHeader_t *)resrc->header)->command == DDS3_FT_TEXLIST) {
+    if (((sdfPacStdBlockHeader_t *)resrc->header)->command == DDS3_FT_TEXLIST) {
         groupSetup.resourceList = (sdfModelTexList_t *)resrc->resrc;
         resrc = sdfPacFreeResrc(resrc);
     }
@@ -1551,7 +1551,7 @@ s32 mdlFileLoad(s32 major, s32 minor, s32 regFlags, const char *filename, void (
 
 void mdlPackDecode(s32 major, s32 minor, s32 regFlags, const u8 *buff, s32 leng)
 {
-    sdfPacState_t state;
+    sdfPacDecodeCb_t state;
 
     sdfPacInit(&state, 0);
     if (regFlags & 2)
@@ -1602,7 +1602,7 @@ void mdlMakeHddFileListDummy(void)
     s32 i;
 
     mdlReleaseHddFileList();
-    D_0054F634 = sdfMemAllocDirect(sizeof(mdlFileKind_t));
+    D_0054F634 = sdfMemAllocDirect(sizeof(dds3ModelFileIndex_t));
     D_00551F04 = sdfMemLock(D_0054F634);
     D_00551F04->kind = 5;
     D_00551F04->index = 0;
@@ -1726,7 +1726,7 @@ void mdlMakeHddFileList(void) {
         }
         if (count != 0) {
             index = 0;
-            D_0054F634 = sdfMemAllocDirect(count * sizeof(mdlFileKind_t));
+            D_0054F634 = sdfMemAllocDirect(count * sizeof(dds3ModelFileIndex_t));
             D_00551F04 = sdfMemLock(D_0054F634);
             D_0054F638 = sdfMemAllocDirect(count * sizeof(mdlHddFile_t));
             mdlHddFileList = sdfMemLock(D_0054F638);
