@@ -125,7 +125,7 @@ typedef struct dds3SpPoly_Basic_t {
 
 typedef struct dds3SpPoly_RingPhysics_t {
     s32 frame;
-    f32 radiusStep;
+    f32 spread_s;
 } dds3SpPoly_RingPhysics_t;
 
 typedef struct dds3SpPoly_SphereRingPhysics_t {
@@ -1557,7 +1557,7 @@ void dds3SpPoly_RingMove(dds3SpPoly_Ring_t3 *pRing, s32 number) {
     entry->count = strip->point;
     pointCursor = (f32 *)entry->pVertex;
     pairs = strip->point >> 1;
-    radiusStepVector[2] = radiusStepVector[1] = radiusStepVector[0] = rec->radiusStep;
+    radiusStepVector[2] = radiusStepVector[1] = radiusStepVector[0] = rec->spread_s;
     liftVector[1] = pRing->liftStep;
     liftVector[2] = liftVector[0] = 0;
     angleStep = 3.14159265f * 2.0f / (f32)pRing->vertex;
