@@ -16,17 +16,17 @@ typedef enum McPollResult {
     MC_POLL_SPECIAL_ERROR = -2
 } McPollResult;
 
-extern s32 sceMcSync(s32 mode, void *cmd, s32 *result);
-extern s32 sceMcGetInfo(s32 port, s32 slot, s32 *type, s32 *free, s32 *format);
-extern s32 sceMcChdir(s32 port, s32 slot, const char *path, char *cwd);
-extern s32 sceMcGetDir(s32 port, s32 slot, const char *path, u32 mode, s32 maxent, void *table);
-extern s32 sceMcOpen(s32 port, s32 slot, const char *path, s32 flags);
+extern s32 sceMcSync(s32 a, void *b, s32 *c);
+extern s32 sceMcGetInfo(s32 a, s32 b, s32 *c, s32 *d, s32 *e);
+extern s32 sceMcChdir(s32 a, s32 b, const char *c, char *d);
+extern s32 sceMcGetDir(s32 a, s32 b, const char *c, u32 d, s32 e, void *f);
+extern s32 sceMcOpen(s32 a, s32 b, const char *c, s32 d);
 extern s32 sceMcFormat(u32 port, s32 slot);
-extern s32 sceMcMkdir(u32 port, s32 slot, const char *path);
+extern s32 sceMcMkdir(u32 a, s32 b, const char *c);
 extern s32 sceMcDelete(u32 port, s32 slot, const char *path);
-extern s32 sceMcClose(s32 descriptor);
-extern s32 sceMcRead(s32 descriptor, void *buffer, s32 size);
-extern s32 sceMcWrite(s32 descriptor, const void *buffer, s32 size);
+extern s32 sceMcClose(s32 a);
+extern s32 sceMcRead(s32 a, void *b, s32 c);
+extern s32 sceMcWrite(s32 a, const void *b, s32 c);
 
 /* One control block per port. */
 typedef struct
@@ -202,9 +202,9 @@ McPollResult sdfMcFuncChdir1(void)
     return MC_POLL_PENDING;
 }
 
-void sdfMcFuncMkdir(u32 port, const char *path)
+void sdfMcFuncMkdir(u32 mccb, const char *cb)
 {
-    sceMcMkdir(port, MC_CARD_SLOT, path);
+    sceMcMkdir(mccb, MC_CARD_SLOT, cb);
 }
 
 McPollResult sdfMcFuncMkdir1(void)
