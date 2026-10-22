@@ -71,18 +71,18 @@ typedef struct dds3Effect_Blur_t {
 } dds3Effect_Blur_t;
 
 /* Phase-driven blur parameters and the scale-slot allocation they own. */
-typedef struct effBlurScaleParams_t {
-    s32 count;
-    f32 phaseStep;
-    f32 spacing;
-    u32 color;
-    s32 blendControl;
-    f32 uvDisplacementAngleDegrees;
-    f32 uvDisplacementAmplitude;
-    f32 angleStep;
-    s32 position[2];
-    s32 size;
-} effBlurScaleParams_t;
+typedef struct dds3Effect_RippleBlurParam_t {
+    s32 number;
+    f32 speed;
+    f32 interval;
+    u32 abgr;
+    s32 blend;
+    f32 rotate;
+    f32 power;
+    f32 frequency;
+    s32 center[2];
+    s32 area;
+} dds3Effect_RippleBlurParam_t;
 
 typedef struct effBlurScaleSlot_t {
     f32 phase;
@@ -91,25 +91,25 @@ typedef struct effBlurScaleSlot_t {
 } effBlurScaleSlot_t;
 
 typedef struct effBlurScaleWork_t {
-    effBlurScaleParams_t params;
+    dds3Effect_RippleBlurParam_t params;
     sdfTexHandle_t *texture;
     sdfMemHandle_t *allocation;
     effBlurScaleSlot_t *slots;
 } effBlurScaleWork_t;
 
 /* Random-position blur parameters and their allocated slot owner. */
-typedef struct effBlurScatterParams_t {
-    s32 count;
-    s32 delaySpread;
-    f32 angleStep;
-    u32 color;
-    s32 blendControl;
-    f32 uvDisplacementAngleDegrees;
-    f32 uvDisplacementAmplitude;
-    s32 position[2];
-    s32 positionSpread;
-    s32 size;
-} effBlurScatterParams_t;
+typedef struct dds3Effect_DistortionBlurParam_t {
+    s32 number;
+    s32 interval;
+    f32 speed;
+    u32 abgr;
+    s32 blend;
+    f32 rotate;
+    f32 distortion;
+    s32 center[2];
+    s32 area;
+    s32 width;
+} dds3Effect_DistortionBlurParam_t;
 
 typedef struct effBlurScatterSlot_t {
     s32 delay;
@@ -118,7 +118,7 @@ typedef struct effBlurScatterSlot_t {
 } effBlurScatterSlot_t;
 
 typedef struct effBlurScatterWork_t {
-    effBlurScatterParams_t params;
+    dds3Effect_DistortionBlurParam_t params;
     sdfTexHandle_t *texture;
     sdfMemHandle_t *allocation;
     effBlurScatterSlot_t *slots;
