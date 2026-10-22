@@ -16,10 +16,10 @@ typedef struct sdfPreDrawTag_t sdfPreDrawTag_t;
 typedef struct sdfMatUvwParm_t sdfMatUvwParm_t;
 typedef struct sdfMatPacket_t sdfMatPacket_t;
 typedef struct sdfPreDrawHook_t sdfPreDrawHook_t;
-typedef struct sdfModelPacketHeader_t sdfModelPacketHeader_t;
+typedef struct sdfModelPacketHeader_tag sdfModelPacketHeader_tag;
 typedef struct sdfItemArray_t sdfItemArray_t;
 typedef struct sdfGrOt_t sdfGrOt_t;
-typedef struct sdfPacState_t sdfPacState_t;
+typedef struct sdfPacDecodeCb_t sdfPacDecodeCb_t;
 
 /* Bodies in sdf_lighting.h and draw3d.h; draw tags only need pointers here. */
 struct sdf3DLightParallelPacket_t;
@@ -128,7 +128,7 @@ typedef struct
     sdfMemHandle_t tailGuard;
     void *allocPtr;
     s32 allocSize;
-} sdfMemHandleCB_t;
+} sdfMemHandleCB_tag;
 
 typedef struct sdfMemRecord_t
 {
@@ -178,9 +178,9 @@ struct sdfPreDrawTag_t
 };
 
 /* One entry of a model's per-ordering-table packet list. */
-struct sdfModelPacketHeader_t
+struct sdfModelPacketHeader_tag
 {
-    sdfModelPacketHeader_t *next;
+    sdfModelPacketHeader_tag *next;
     u8 type;
     u8 otIndex;
     u16 size;
@@ -235,8 +235,8 @@ struct sdfMatPacket_t
     /* sdfMatSetUvwParm writes one transform per texture: a 2x2 then an offset. */
     sdfMatTexTm_t texTm;
     sdfMatTexTm_t mtexTexTm;
-    u32 vifcode3;
-    u32 vifcode4;
+    u32 cmd_call_spec;
+    u32 cmd_call_kind;
 };
 
 /* Every growable list in the engine: a 16-byte header plus one element block in
@@ -291,16 +291,16 @@ typedef struct
     s32 size;
     u32 tag;
     s32 decodedSize;
-} sdfPacPacketHeader_t;
+} sdfPacStdBlockHeader_t;
 
-/* sdfPacPacketHeader_t.flags. */
+/* sdfPacStdBlockHeader_t.flags. */
 enum sdf_pac_flag
 {
     SDF_PAC_ENCODING_MASK = 0xF,
     SDF_PAC_EXTRA_MASK = 0xF0
 };
 
-/* sdfPacPacketHeader_t.command, as sdfPacStdCallback dispatches on it. */
+/* sdfPacStdBlockHeader_t.command, as sdfPacStdCallback dispatches on it. */
 enum DDS3_FILE_TYPE
 {
     DDS3_FT_EFFECT = 1,
@@ -311,7 +311,7 @@ enum DDS3_FILE_TYPE
     DDS3_FT_END = 0xFF
 };
 
-/* sdfPacState_t.flags, set by sdfPacSetStay and sdfPacSetFromTail. */
+/* sdfPacDecodeCb_t.flags, set by sdfPacSetStay and sdfPacSetFromTail. */
 enum sdf_pac_state_flag
 {
     SDF_PAC_STATE_STAY = 1,
@@ -323,7 +323,7 @@ enum sdf_pac_state_flag
 typedef struct sdfPacWork_t
 {
     struct sdfPacWork_t *next;
-    sdfPacState_t *state;
+    sdfPacDecodeCb_t *state;
     void *resrc;
     u8 *data;
     u8 header[16];
@@ -347,7 +347,7 @@ typedef struct
     sdfMemHandle_t *memHandle;
     u8 *cursor;
     s32 remain;
-} sdfPacBuf_t;
+} sdfPacTmxDecodeCb_t;
 
 /* A texture list packet in progress: the entry count, the entry being decoded,
  * and the header and buffer that entry reuses. */
@@ -356,36 +356,36 @@ typedef struct
     u32 count;
     s32 index;
     u32 pad[2];
-    sdfPacPacketHeader_t header;
-    sdfPacBuf_t buf;
+    sdfPacStdBlockHeader_t header;
+    sdfPacTmxDecodeCb_t buf;
 } sdfPacList_t;
 
-typedef s32 (*sdfPacCallbackFunc)(sdfPacState_t *aState, s32 aStat,
-                                  sdfPacPacketHeader_t *aPacket);
-typedef void (*sdfPacDecodeFunc)(sdfPacState_t *aState);
+typedef s32 (*sdfPacCallbackFunc)(sdfPacDecodeCb_t *aState, s32 aStat,
+                                  sdfPacStdBlockHeader_t *aPacket);
+typedef void (*sdfPacDecodeFunc)(sdfPacDecodeCb_t *aState);
 
-struct sdfPacState_t
+struct sdfPacDecodeCb_t
 {
     u8 phase;
     u8 flags;
-    s16 blockId;
+    s16 currBlockNum;
     sdfPacCallbackFunc callback;
-    sdfPacDecodeFunc decodeFunc;
-    sdfPacDecodeFunc endFunc;
+    sdfPacDecodeFunc decoder;
+    sdfPacDecodeFunc onEnd;
     const u8 *src;
-    s32 srcLeft;
-    s32 srcUsed;
+    s32 srcLength;
+    s32 srcTotal;
     u8 *dst;
-    s32 dstLeft;
+    s32 rest;
     union
     {
         struct sdfDecomp_t *decomp;
         u8 *decompBuffer;
     };
-    sdfPacBuf_t *buf;
+    sdfPacTmxDecodeCb_t *buf;
     union
     {
-        sdfPacBuf_t *buf;
+        sdfPacTmxDecodeCb_t *buf;
         sdfPacList_t *list;
     } slot;
     sdfPacWork_t *head;

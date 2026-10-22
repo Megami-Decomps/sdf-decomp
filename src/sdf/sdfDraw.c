@@ -110,7 +110,7 @@ struct sdfGrFramePacket_t;
 
 struct SdfDmaTag;
 
-struct SdfPacketSlot;
+struct sdfDrawReqRec_t;
 
 struct sdfPreDrawTag_t;
 
@@ -213,7 +213,7 @@ typedef struct SdfDmaReferenceChainPacket {
 /* Accessed output span of the common scene-context builder. */
 typedef struct sdfGrDrawFrame_t {
     sdfGrPacketHeader_t header;
-    sdfGrDrawFramePacket_t registers;
+    sdfGrDrawFramePacket_t packet;
 } sdfGrDrawFrame_t;
 
 /* TEST/ALPHA A+D state for the two independent GS drawing contexts. */
@@ -285,15 +285,15 @@ void sdfDrawTagLink2(struct sdfDrawTag_t *aTag, u32 aHeadPacket,
 void sdfDrawTagLinkRef(struct sdfDrawTag_t *aTag, u32 aPacket);
 
 /* One 0x10-byte entry in the three-slot frame packet submission ring. */
-typedef struct SdfPacketSlot {
+typedef struct sdfDrawReqRec_t {
     struct sdfDrawTag_t *packetList;
-    SdfPacketPatchLink *callbackHead;
+    SdfPacketPatchLink *preDraw;
     u8 slotUpdatePhase;
     u8 queuedBufferIndex;
     u8 bufferIndex;
     u8 bufferSlotIndex;
     u8 pad0C[4];
-} SdfPacketSlot;
+} sdfDrawReqRec_t;
 
 /* Complete linked-packet list, distinct from the 0x20-byte DMA list head. */
 typedef struct sdfPreDrawTag_t {
@@ -337,7 +337,7 @@ extern s32 DIntr(void);
 
 extern s32 sdfDrawReqQueueIndex;
 
-extern SdfPacketSlot sdfGrDrawState[];
+extern sdfDrawReqRec_t sdfGrDrawState[];
 
 typedef struct effDebugPolyParams_t {
     s16 parameterCount;
@@ -779,7 +779,7 @@ void sdfGrSetDrawDefParmPacket(sdfGrRefGifPacketHeader_t *aDef) {
 void sdfGrSetDrawFrame(sdfGrDrawFrame_t *aFrame, s32 aFrameAddr, s32 aW, s32 aH,
                            s32 aPixelFormat, s32 aZBuffAddr, s32 aZBuffFormat, s32 aContext) {
     sdfGrSetRegsPacketHeader(&aFrame->header, SDF_SCENE_DRAW_PAYLOAD_QWORDS);
-    sdfGrSetDrawFramePacket(&aFrame->registers, aFrameAddr, aW, aH, aPixelFormat, aZBuffAddr, aZBuffFormat, 0, aContext);
+    sdfGrSetDrawFramePacket(&aFrame->packet, aFrameAddr, aW, aH, aPixelFormat, aZBuffAddr, aZBuffFormat, 0, aContext);
 }
 
 void sdfGrSetDrawEnv(SdfSceneDrawPacket *aEnv, sdfGrFrameSet_t *aFrameSet, s32 aEvenOdd) {
@@ -900,7 +900,7 @@ void sdfGrReqDraw(sdfDrawTag_t *aTag, sdfPreDrawChain_t *aPreDraw) {
     u32 start = sdfGetRunTimeCountBase();
     s32 interrupts;
     s32 index;
-    SdfPacketSlot *slot;
+    sdfDrawReqRec_t *slot;
 
     while (sdfReqDrawDelayCount != 0) {
     }
@@ -912,13 +912,13 @@ void sdfGrReqDraw(sdfDrawTag_t *aTag, sdfPreDrawChain_t *aPreDraw) {
     }
     slot = &sdfGrDrawState[index];
     slot->packetList = NULL;
-    slot->callbackHead = NULL;
+    slot->preDraw = NULL;
     slot->slotUpdatePhase = 0;
     if (aTag != NULL && aTag->tail != 0) {
         slot->packetList = aTag;
         if (aPreDraw != NULL) {
-            slot->callbackHead = aPreDraw->head->head;
-            if (slot->callbackHead != NULL) {
+            slot->preDraw = aPreDraw->head->head;
+            if (slot->preDraw != NULL) {
                 aPreDraw->tail->tail->next = NULL;
             }
         }
@@ -945,7 +945,7 @@ void sdfGrInitDraw(void) {
 INCLUDE_ASM(const s32, "sdf/sdfDraw", sdfGrDrawFrame);
 
 void sdfDrawSync(void) {
-    SdfPacketSlot *table = sdfGrDrawState;
+    sdfDrawReqRec_t *table = sdfGrDrawState;
 
     for (;;) {
         while (sdfDrawSyncFlag != 0) {

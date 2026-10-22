@@ -34,7 +34,7 @@ typedef struct
 } sdfModelBounds_t;
 
 /* The four ordering tables a model's draws can reach. sdfModelLinkOt picks one
- * per packet by sdfModelPacketHeader_t.otIndex. */
+ * per packet by sdfModelPacketHeader_tag.otIndex. */
 typedef struct
 {
     sdfGrOt_t *ot[4];
@@ -137,10 +137,10 @@ struct sdfModelNode_t
     u32 id;
     u32 color;
     /* unconfirmed: nothing in the model code reads these two. The draw
-     * packets' own sdfModelPacketHeader_t.memHandle is what gets freed. */
+     * packets' own sdfModelPacketHeader_tag.memHandle is what gets freed. */
     sdfMemHandle_t *drawPacketMemHandle[2];
     /* One packet chain per frame buffer, indexed by sdfFrameId. */
-    sdfModelPacketHeader_t *drawPacket[2];
+    sdfModelPacketHeader_tag *drawPacket[2];
     /* 256 bytes from sdfModelAllocTmPacket: two 128-byte VU1 transform
      * packets, one per frame buffer. */
     void *tmPacket;
@@ -182,7 +182,7 @@ struct sdfModelDef_t
     void *modelDef;
     /* Material-def block: the material count, then that many variable-length
      * material defs, which sdfMatSet walks. */
-    void *matDef;
+    void *matDef_New;
     u32 morphCount;
     void *extraData;
 };
@@ -305,7 +305,7 @@ enum SDF_MODEL_NODE_FLAG_e
     SDF_MODEL_NODE_FLAG_MOTION_HIDE = 16
 };
 
-/* sdfModelPacketHeader_t.type, as sdfModelLinkOt switches on it. */
+/* sdfModelPacketHeader_tag.type, as sdfModelLinkOt switches on it. */
 enum MODEL_PACKET_HEADER_TYPE_e
 {
     MODEL_PACKET_HEADER_TYPE_END = 0, /* no IDB member; sdfModelLinkOt stops here */
@@ -333,10 +333,10 @@ enum PACKET_TYPE_e
  * 0x38-byte owners and 0xB4-byte groups; the PIB unit prepends 0x20-byte
  * controllers and interprets their type-dependent payload. */
 typedef struct mdlObj_t mdlObj_t;
-typedef struct mdlResrc_t mdlResrc_t;
+typedef struct dds3ModelResrc_t dds3ModelResrc_t;
 struct mdlPartSlot_t;
 struct mdlMarkPos_t;
-struct mdlIpuResrc_t;
+struct mdlEffectResrc_IPU_t;
 struct mdlTrackWork_t;
 typedef struct
 {
@@ -345,18 +345,18 @@ typedef struct
     s16 motionIndex;
     struct sdfMotionPlayBook_t *motionTable;
     sdfMemHandle_t *resourceHandle;
-} mdlResrcSlot_t;
+} dds3ModelResrcPlayBook_t;
 
 typedef struct mdlIpuAttachment_t {
     mdlObj_t *owner;
-    struct mdlIpuResrc_t *object; /* Borrowed from the owner's heterogeneous part list. */
+    struct mdlEffectResrc_IPU_t *object; /* Borrowed from the owner's heterogeneous part list. */
     struct sdfTexHandle_t *texture; /* Borrowed texture-list node used for stream creation. */
     s32 minimumTime;
     u8 attributes[8];
 } mdlIpuAttachment_t;
 
-typedef struct mdlEffectResrc_t {
-    struct mdlEffectResrc_t *next;
+typedef struct dds3ModelEffectCtrlr_t {
+    struct dds3ModelEffectCtrlr_t *next;
     u16 type; /* dds3ModelEffectType value, with native halfword storage. */
     s16 motionSlotIndex; /* Owning Motion.slotIndex; -1 tags context-wide entries. */
     union {
@@ -373,14 +373,14 @@ typedef struct mdlEffectResrc_t {
         } part;
         mdlIpuAttachment_t object;
     } payload;
-} mdlEffectResrc_t;
+} dds3ModelEffectCtrlr_t;
 
 #define MDL_SLOT_COUNT 8
 
-struct mdlResrc_t
+struct dds3ModelResrc_t
 {
-    mdlResrc_t *next;
-    mdlResrc_t *prev;
+    dds3ModelResrc_t *next;
+    dds3ModelResrc_t *prev;
     u16 group;
     u16 type;
     u8 ownsResources;
@@ -389,24 +389,24 @@ struct mdlResrc_t
     sdfModelTexList_t *resourceList;
     sdfModelDef_t *itemList;
     sdfMemHandle_t *requestAllocation;
-    mdlResrcSlot_t slots[MDL_SLOT_COUNT];
+    dds3ModelResrcPlayBook_t slots[MDL_SLOT_COUNT];
     sdfMemHandle_t *resourceHandle;
     void *partInfo;
     sdfItemArray_t *partList;
-    f32 defaultScale;                  /* 0xAC: uniform scale of a new model */
+    f32 scale;                  /* 0xAC: uniform scale of a new model */
     f32 objectRadius;
 };
 
-typedef struct mdlDevSlot_t
+typedef struct dds3ModelBlurInstance_t
 {
-    struct mdlDevSlot_t *next;
+    struct dds3ModelBlurInstance_t *next;
     sdfModelRootNode_t *model;
     s32 remaining;
-} mdlDevSlot_t;
+} dds3ModelBlurInstance_t;
 
 typedef struct
 {
-    mdlDevSlot_t *first;
+    dds3ModelBlurInstance_t *first;
     s16 usedCount;
     u16 capacity;
     s16 stride;
@@ -414,14 +414,14 @@ typedef struct
     s32 byteCount;
     f32 color[4];
     f32 colorStep[4];
-} mdlDevList_t;
+} dds3ModelBlurCb_t;
 
 struct mdlObj_t
 {
     u32 flags;
     mdlObj_t *next;
     mdlObj_t *prev;
-    mdlResrc_t *sub;
+    dds3ModelResrc_t *sub;
     union
     {
         u32 word;
@@ -431,11 +431,11 @@ struct mdlObj_t
             s16 motionIndex;
         } h;
     } current;
-    mdlEffectResrc_t *resourceItems;
+    dds3ModelEffectCtrlr_t *resourceItems;
     sdfModelRootNode_t *inner;
     struct sdfMotionCtrlr_t *first;
     struct sdfMotionCtrlr_t *slots[4];
-    mdlDevList_t *devList;
+    dds3ModelBlurCb_t *devList;
     f32 objectRadius;
 };
 

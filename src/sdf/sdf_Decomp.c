@@ -59,11 +59,11 @@ extern u8 sdf3DScreenTm[];
 typedef struct sdfDecompCb_t {
     u8 state;             /* 0x00 */
     u8 command;           /* 0x01 */
-    u16 pendingBytes;     /* 0x02 */
-    u8 *output;           /* 0x04 */
-    const u8 *input;      /* 0x08 */
-    s32 inputBytes;       /* 0x0C */
-    u8 backrefLow;        /* 0x10 */
+    u16 direcLeng;     /* 0x02 */
+    u8 *dstPtr;           /* 0x04 */
+    const u8 *srcPtr;      /* 0x08 */
+    s32 srcRemain;       /* 0x0C */
+    u8 sdOfs;        /* 0x10 */
     u8 pad11[3];          /* 0x11: opaque */
 } sdfDecompCb_t;
 
@@ -106,7 +106,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
     }
 
     D_00552170 = 0;
-    output = cb->output;
+    output = cb->dstPtr;
     if (length > 0) {
         do {
             switch (cb->state) {
@@ -121,9 +121,9 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                     command = *src++;
                     if (command >= SDF_DECOMP_DIRECTIVE_CMD) {
                         if (command == SDF_DECOMP_CMD_END) {
-                            cb->output = output;
-                            cb->input = src;
-                            cb->inputBytes = length;
+                            cb->dstPtr = output;
+                            cb->srcPtr = src;
+                            cb->srcRemain = length;
                             cb->state = 0;
                             return 1;
                         }
@@ -133,19 +133,19 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                         if (commandBytes == 0) {
                             cb->state = SDF_DECOMP_STAT_DIREC_LENG0;
                         } else {
-                            cb->pendingBytes = commandBytes;
+                            cb->direcLeng = commandBytes;
                             cb->state = SDF_DECOMP_STAT_DIREC;
                         }
                     }
                     break;
                 }
                 case SDF_DECOMP_STAT_DIREC_LENG0:
-                    cb->pendingBytes = *src++;
+                    cb->direcLeng = *src++;
                     length--;
                     cb->state = SDF_DECOMP_STAT_DIREC_LENG1;
                     break;
                 case SDF_DECOMP_STAT_DIREC_LENG1:
-                    cb->pendingBytes |= *src++ << 8;
+                    cb->direcLeng |= *src++ << 8;
                     length--;
                     cb->state = SDF_DECOMP_STAT_DIREC;
                     break;
@@ -155,7 +155,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                         cb->state = SDF_DECOMP_STAT_DEC_NORMAL;
                         break;
                     case SDF_DECOMP_DIRECTIVE_ZERO:
-                        count = cb->pendingBytes;
+                        count = cb->direcLeng;
                         memset(output, 0, count);
                         output += count;
                         cb->state = SDF_DECOMP_STAT_IDLE;
@@ -175,7 +175,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                     }
                     break;
                 case SDF_DECOMP_STAT_DEC_NORMAL:
-                    count = cb->pendingBytes;
+                    count = cb->direcLeng;
                     if (length < count) {
                         count = length;
                     }
@@ -183,13 +183,13 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                     output += count;
                     src += count;
                     length -= count;
-                    cb->pendingBytes -= count;
-                    if (cb->pendingBytes == 0) {
+                    cb->direcLeng -= count;
+                    if (cb->direcLeng == 0) {
                         cb->state = SDF_DECOMP_STAT_IDLE;
                     }
                     break;
                 case SDF_DECOMP_STAT_DEC_RLE:
-                    count = cb->pendingBytes;
+                    count = cb->direcLeng;
                     memset(output, *src++, count);
                     output += count;
                     length--;
@@ -197,7 +197,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                     break;
                 case SDF_DECOMP_STAT_DEC_SD_STEP0:
                     sourceAddress = (u32)(output - *src++);
-                    count = cb->pendingBytes;
+                    count = cb->direcLeng;
                     length--;
                     do {
                         *output++ = *(u8 *)sourceAddress++;
@@ -205,7 +205,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                     cb->state = SDF_DECOMP_STAT_IDLE;
                     break;
                 case SDF_DECOMP_STAT_DEC_SD_STEP1:
-                    cb->backrefLow = *src++;
+                    cb->sdOfs = *src++;
                     length--;
                     if (length == 0) {
                         cb->state = SDF_DECOMP_STAT_DEC_SD_STEP2;
@@ -216,11 +216,11 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                     s32 combinedOffset;
 
                     offset = *src++ << 8;
-                    sourceAddress = cb->backrefLow;
+                    sourceAddress = cb->sdOfs;
                     length--;
                     combinedOffset = sourceAddress | offset;
                     sourceAddress = (u32)(output - combinedOffset);
-                    count = cb->pendingBytes;
+                    count = cb->direcLeng;
                     do {
                         *output++ = *(u8 *)sourceAddress++;
                     } while (--count != 0);
@@ -228,13 +228,13 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                     break;
                 }
                 case SDF_DECOMP_STAT_DEC_WORD:
-                    count = cb->pendingBytes;
+                    count = cb->direcLeng;
                     if (length < count) {
                         count = length;
                         length = 0;
-                        cb->pendingBytes -= count;
+                        cb->direcLeng -= count;
                     } else {
-                        cb->pendingBytes = 0;
+                        cb->direcLeng = 0;
                         cb->state = SDF_DECOMP_STAT_IDLE;
                         length -= count;
                     }
@@ -246,14 +246,14 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
             }
         } while (length > 0);
     }
-    cb->input = src;
-    cb->inputBytes = length;
-    cb->output = output;
+    cb->srcPtr = src;
+    cb->srcRemain = length;
+    cb->dstPtr = output;
     return 0;
 }
 
 void sdfDecompInit(sdfDecompCb_t *cb, u8 *dst) {
-    cb->output = dst;
+    cb->dstPtr = dst;
     cb->state = 1;
 }
 

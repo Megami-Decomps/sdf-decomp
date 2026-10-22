@@ -26,7 +26,7 @@ extern s32 sceSifMCallRpc(sdfIopRpcClient_t *client, s32 function, s32 mode, voi
                           s32 sendSize, void *receive, s32 receiveSize, void (*end)(void *),
                           void *endArgument);
 
-extern sdfMemHandleCB_t sdfMemCB;
+extern sdfMemHandleCB_tag sdfMemCB;
 extern sdfIopRpcClient_t sdfIopRpcClient;
 extern sdfDelayedResrcCB_t sdfMemDelayedResrcCB;
 /* Called when the heap cannot satisfy a request; the unit's .sdata holds it. */
@@ -40,7 +40,7 @@ sdfMemHandle_t *sdfMemGetHandleByPtr(void *aPtr);
 /* Align the usable span to 128 bytes and link one free handle between the guards. */
 void sdfMemInit(u32 aSize)
 {
-    sdfMemHandleCB_t *cb = &sdfMemCB;
+    sdfMemHandleCB_tag *cb = &sdfMemCB;
     sdfMemHandle_t *freeHandle;
     u32 alignedTop;
     u32 alignedEnd;
@@ -116,7 +116,7 @@ void *sdfMemGetPtr(sdfMemHandle_t *aHandle)
  * and keeps walking. */
 sdfMemHandle_t *sdfMemAllocDirect(s32 aSize)
 {
-    sdfMemHandleCB_t *cb = &sdfMemCB;
+    sdfMemHandleCB_tag *cb = &sdfMemCB;
     s32 want = (aSize + SDF_MEM_ALIGN_MASK) & ~SDF_MEM_ALIGN_MASK;
     s32 intrEnabled;
     sdfMemHandle_t *handle;
@@ -161,7 +161,7 @@ sdfMemHandle_t *sdfMemAllocDirect(s32 aSize)
  * becomes a new free handle in front of it. */
 sdfMemHandle_t *sdfMemAllocFromTailDirect(s32 aSize)
 {
-    sdfMemHandleCB_t *cb = &sdfMemCB;
+    sdfMemHandleCB_tag *cb = &sdfMemCB;
     s32 want = (aSize + SDF_MEM_ALIGN_MASK) & ~SDF_MEM_ALIGN_MASK;
     s32 intrEnabled;
     sdfMemHandle_t *handle;
@@ -203,7 +203,7 @@ sdfMemHandle_t *sdfMemAllocFromTailDirect(s32 aSize)
 /* sdfMemAllocDirect without the full-heap callback: returns NULL instead. */
 sdfMemHandle_t *sdfMemAlloc2Direct(s32 aSize)
 {
-    sdfMemHandleCB_t *cb = &sdfMemCB;
+    sdfMemHandleCB_tag *cb = &sdfMemCB;
     s32 want = (aSize + SDF_MEM_ALIGN_MASK) & ~SDF_MEM_ALIGN_MASK;
     s32 intrEnabled;
     sdfMemHandle_t *handle;
@@ -397,7 +397,7 @@ void sdfMemUnlock(sdfMemHandle_t *aHandle)
  * does not end this scan. */
 sdfMemHandle_t *sdfMemGetHandleByPtr(void *aPtr)
 {
-    sdfMemHandleCB_t *cb = &sdfMemCB;
+    sdfMemHandleCB_tag *cb = &sdfMemCB;
     sdfMemHandle_t *handle;
     s32 intrEnabled;
 

@@ -43,25 +43,25 @@ typedef struct sdfFileCmdHandle_t {
     struct sdfFileCmdHandle_t *previous;
     struct sdfFileCmdHandle_t *workerNext;
     struct sdfFileCmdHandle_t *workerPrev;
-    char *resolvedPath;
-    u8 workerIndex;
+    char *filename;
+    u8 device;
     sdfDevOperationCode_t operation;
     sdfDevStateCode_t state;
     u8 pad17;
-    s32 operationArg;
-    s32 requestExtra;
-    void *requestData;
+    s32 offset;
+    s32 length;
+    void *buffer;
     s32 options;
     s32 resourceId;
     s32 result;
-    s32 transferred;
+    s32 currentOffset;
     u8 pad34[4];
     void (*callback)(struct sdfFileCmdHandle_t *, s32, s32, s32, s32);
     s32 callbackContext;
 } sdfFileCmdHandle_t;
 
 typedef struct sdfFileDeviceCB_t {
-    s32 threadId;
+    s32 thId;
     s32 semaphore;
     struct sdfFileCmdHandle_t *first;
     struct sdfFileCmdHandle_t *last;
@@ -221,14 +221,14 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
         switch (operationIndex) {
         case SDF_FILE_CMD_READOPEN - SDF_FILE_CMD_READOPEN:
             state->state = SDF_FILE_CMD_STAT_OPEN;
-            fileHandle = sceOpen(state->resolvedPath, 1, 0);
+            fileHandle = sceOpen(state->filename, 1, 0);
             if (fileHandle < 0) {
                 sdfFileCmdFinish(state, fileHandle);
                 continue;
             }
             state->state = SDF_FILE_CMD_STAT_SUSPEND;
             state->resourceId = fileHandle;
-            state->transferred = 0;
+            state->currentOffset = 0;
             callback = state->callback;
             if (callback != NULL) {
                 callback(state, 2, 0, 0, state->callbackContext);
@@ -236,14 +236,14 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
             continue;
         case SDF_FILE_CMD_WRITEOPEN - SDF_FILE_CMD_READOPEN:
             state->state = SDF_FILE_CMD_STAT_OPEN;
-            fileHandle = sceOpen(state->resolvedPath, 0x202, state->options);
+            fileHandle = sceOpen(state->filename, 0x202, state->options);
             if (fileHandle < 0) {
                 sdfFileCmdFinish(state, fileHandle);
                 continue;
             }
             state->state = SDF_FILE_CMD_STAT_SUSPEND;
             state->resourceId = fileHandle;
-            state->transferred = 0;
+            state->currentOffset = 0;
             callback = state->callback;
             if (callback != NULL) {
                 callback(state, 2, 0, 0, state->callbackContext);
@@ -251,13 +251,13 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
             continue;
         case SDF_FILE_CMD_SEEK - SDF_FILE_CMD_READOPEN:
             state->state = SDF_FILE_CMD_STAT_SEEK;
-            endOffset = sceLseek(state->resourceId, state->operationArg, state->options);
+            endOffset = sceLseek(state->resourceId, state->offset, state->options);
             if (endOffset < 0) {
                 sdfFileCmdFinish(state, endOffset);
                 continue;
             }
             state->state = SDF_FILE_CMD_STAT_SUSPEND;
-            state->transferred = endOffset;
+            state->currentOffset = endOffset;
             callback = state->callback;
             if (callback != NULL) {
                 callback(state, 3, 0, endOffset, state->callbackContext);
@@ -281,7 +281,7 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
                 continue;
             }
             state->state = SDF_FILE_CMD_STAT_SUSPEND;
-            state->transferred = endOffset;
+            state->currentOffset = endOffset;
             callback = state->callback;
             if (callback != NULL) {
                 callback(state, 4, 0, endOffset, state->callbackContext);
@@ -289,33 +289,33 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
             continue;
         case SDF_FILE_CMD_READ - SDF_FILE_CMD_READOPEN:
             state->state = SDF_FILE_CMD_STAT_READ;
-            result = sceRead(state->resourceId, (s32)state->requestData,
-                           state->requestExtra);
+            result = sceRead(state->resourceId, (s32)state->buffer,
+                           state->length);
             if (result < 0) {
                 sdfFileCmdFinish(state, result);
                 continue;
             }
             state->state = SDF_FILE_CMD_STAT_SUSPEND;
-            state->transferred += result;
+            state->currentOffset += result;
             callback = state->callback;
             if (callback != NULL) {
-                callback(state, 5, (s32)state->requestData, result,
+                callback(state, 5, (s32)state->buffer, result,
                                 state->callbackContext);
             }
             continue;
         case SDF_FILE_CMD_WRITE - SDF_FILE_CMD_READOPEN:
             state->state = SDF_FILE_CMD_STAT_WRITE;
-            result = sceWrite(state->resourceId, (s32)state->requestData,
-                            state->requestExtra);
+            result = sceWrite(state->resourceId, (s32)state->buffer,
+                            state->length);
             if (result < 0) {
                 sdfFileCmdFinish(state, result);
                 continue;
             }
             state->state = SDF_FILE_CMD_STAT_SUSPEND;
-            state->transferred += result;
+            state->currentOffset += result;
             callback = state->callback;
             if (callback != NULL) {
-                callback(state, 6, (s32)state->requestData, result,
+                callback(state, 6, (s32)state->buffer, result,
                                 state->callbackContext);
             }
             continue;
@@ -336,13 +336,13 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
             continue;
         case SDF_FILE_CMD_READFILE - SDF_FILE_CMD_READOPEN:
             state->state = SDF_FILE_CMD_STAT_OPEN;
-            fileHandle = sceOpen(state->resolvedPath, 1, 0);
+            fileHandle = sceOpen(state->filename, 1, 0);
             if (fileHandle < 0) {
                 sdfFileCmdFinish(state, fileHandle);
                 continue;
             }
             state->resourceId = fileHandle;
-            transferResult = state->requestExtra;
+            transferResult = state->length;
             /* A negative count means the whole file; NULL storage is allocated below. */
             if (transferResult < 0) {
                 state->state = SDF_FILE_CMD_STAT_SEEK;
@@ -358,11 +358,11 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
                 }
             }
             if (transferResult != 0) {
-                buffer = state->requestData;
+                buffer = state->buffer;
                 if (buffer == NULL) {
                     buffer = (void *)sdfMemLock((sdfMemHandle_t *)(sdfMemAllocDirect(transferResult)));
                 }
-                state->requestData = buffer;
+                state->buffer = buffer;
                 state->state = SDF_FILE_CMD_STAT_READ;
                 transferResult = sceRead(state->resourceId, (s32)buffer, transferResult);
                 if (transferResult < 0) {
@@ -377,23 +377,23 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
             state->state = SDF_FILE_CMD_STAT_DONE;
             callback = state->callback;
             if (callback != NULL) {
-                callback(state, 8, (s32)state->requestData, transferResult,
+                callback(state, 8, (s32)state->buffer, transferResult,
                          state->callbackContext);
             }
             SignalSema(aCB->semaphore);
             continue;
         case SDF_FILE_CMD_WRITEFILE - SDF_FILE_CMD_READOPEN:
             state->state = SDF_FILE_CMD_STAT_OPEN;
-            fileHandle = sceOpen(state->resolvedPath, 0x202, state->options);
+            fileHandle = sceOpen(state->filename, 0x202, state->options);
             if (fileHandle < 0) {
                 sdfFileCmdFinish(state, fileHandle);
                 continue;
             }
             state->resourceId = fileHandle;
-            transferResult = state->requestExtra;
+            transferResult = state->length;
             if (transferResult != 0) {
                 state->state = SDF_FILE_CMD_STAT_WRITE;
-                transferResult = sceWrite(fileHandle, (s32)state->requestData, transferResult);
+                transferResult = sceWrite(fileHandle, (s32)state->buffer, transferResult);
                 if (transferResult < 0) {
                     sdfFileCmdFinish(state, transferResult);
                     continue;
@@ -410,7 +410,7 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
         state->state = SDF_FILE_CMD_STAT_DONE;
         callback = state->callback;
         if (callback != NULL) {
-            callback(state, 8, (s32)state->requestData, transferResult,
+            callback(state, 8, (s32)state->buffer, transferResult,
                             state->callbackContext);
         }
         SignalSema(aCB->semaphore);
@@ -436,13 +436,13 @@ void sdfFileCdImageCmdThread(sdfFileDeviceCB_t *aCB) {
         switch (operation) {
         case SDF_FILE_CMD_READOPEN - SDF_FILE_CMD_READOPEN:
             state->state = SDF_FILE_CMD_STAT_OPEN;
-            result = sdfCdImageLoadStart(state->resolvedPath);
+            result = sdfCdImageLoadStart(state->filename);
             if (result < 0) {
                 sdfFileCmdFinish(state, 0);
                 continue;
             }
             state->state = SDF_FILE_CMD_STAT_SUSPEND;
-            state->transferred = 0;
+            state->currentOffset = 0;
             callback = state->callback;
             if (callback != NULL) {
                 callback(state, 2, 0, 0, state->callbackContext);
@@ -458,16 +458,16 @@ void sdfFileCdImageCmdThread(sdfFileDeviceCB_t *aCB) {
             continue;
         case SDF_FILE_CMD_READ - SDF_FILE_CMD_READOPEN:
             state->state = SDF_FILE_CMD_STAT_READ;
-            result = sdfCdImageRead(state->requestData, state->requestExtra);
+            result = sdfCdImageRead(state->buffer, state->length);
             if (result < 0) {
                 sdfFileCmdFinish(state, result);
                 continue;
             }
             state->state = SDF_FILE_CMD_STAT_SUSPEND;
-            state->transferred += result;
+            state->currentOffset += result;
             callback = state->callback;
             if (callback != NULL) {
-                callback(state, 5, (s32)state->requestData, result,
+                callback(state, 5, (s32)state->buffer, result,
                                 state->callbackContext);
             }
             continue;
@@ -483,21 +483,21 @@ void sdfFileCdImageCmdThread(sdfFileDeviceCB_t *aCB) {
             continue;
         case SDF_FILE_CMD_READFILE - SDF_FILE_CMD_READOPEN:
             state->state = SDF_FILE_CMD_STAT_OPEN;
-            result = sdfCdImageLoadStart(state->resolvedPath);
+            result = sdfCdImageLoadStart(state->filename);
             if (result < 0) {
                 sdfFileCmdFinish(state, 0);
                 continue;
             }
-            transferResult = state->requestExtra;
+            transferResult = state->length;
             if (transferResult < 0) {
                 transferResult = sdfCdImageGetCurrFileSize();
             }
             if (transferResult != 0) {
-                readBuffer = state->requestData;
+                readBuffer = state->buffer;
                 if (readBuffer == NULL) {
                     readBuffer = (void *)sdfMemLock((sdfMemHandle_t *)(sdfMemAllocDirect(transferResult)));
                 }
-                state->requestData = readBuffer;
+                state->buffer = readBuffer;
                 state->state = SDF_FILE_CMD_STAT_READ;
                 transferResult = sdfCdImageRead(readBuffer, transferResult);
                 if (transferResult < 0) {
@@ -512,7 +512,7 @@ void sdfFileCdImageCmdThread(sdfFileDeviceCB_t *aCB) {
             state->state = SDF_FILE_CMD_STAT_DONE;
             callback = state->callback;
             if (callback != NULL) {
-                callback(state, 8, (s32)state->requestData, transferResult,
+                callback(state, 8, (s32)state->buffer, transferResult,
                                 state->callbackContext);
             }
             continue;
@@ -589,8 +589,8 @@ INCLUDE_ASM(const s32, "sdf/sdfFileIO", sdfFileCmdAnalyzeFileName);
 sdfFileCmdHandle_t *sdfFileCmdNewHandle(void *resource, s32 workerIndex, s32 operation,
                         void (*callback)(sdfFileCmdHandle_t *, s32, s32, s32, s32), s32 callbackContext) {
     sdfFileCmdHandle_t *state = (sdfFileCmdHandle_t *)sdfChipAllocZeroDirect(sizeof(sdfFileCmdHandle_t));
-    state->resolvedPath = resource;
-    state->workerIndex = workerIndex;
+    state->filename = resource;
+    state->device = workerIndex;
     state->operation = operation;
     state->state = 0;
     state->resourceId = -1;
@@ -634,10 +634,10 @@ s32 sdfFileCmdSeek(void *aHandle, s32 aOffset, s32 aWhence) {
     if (state->state != SDF_FILE_CMD_STAT_SUSPEND) {
         return -1;
     }
-    state->operationArg = aOffset;
+    state->offset = aOffset;
     state->options = aWhence;
     state->operation = SDF_FILE_CMD_SEEK;
-    SignalSema(sdfFileDeviceCB[state->workerIndex].semaphore);
+    SignalSema(sdfFileDeviceCB[state->device].semaphore);
     return 0;
 }
 
@@ -648,7 +648,7 @@ s32 sdfFileCmdFileSize(void *aHandle) {
         return -1;
     }
     state->operation = SDF_FILE_CMD_FILESIZE;
-    SignalSema(sdfFileDeviceCB[state->workerIndex].semaphore);
+    SignalSema(sdfFileDeviceCB[state->device].semaphore);
     return 0;
 }
 
@@ -658,10 +658,10 @@ s32 sdfFileCmdRead(void *aHandle, void *aBuffer, s32 aLength) {
     if (state->state != SDF_FILE_CMD_STAT_SUSPEND) {
         return -1;
     }
-    state->requestExtra = aLength;
+    state->length = aLength;
     state->operation = SDF_FILE_CMD_READ;
-    state->requestData = aBuffer;
-    SignalSema(sdfFileDeviceCB[state->workerIndex].semaphore);
+    state->buffer = aBuffer;
+    SignalSema(sdfFileDeviceCB[state->device].semaphore);
     return 0;
 }
 
@@ -670,10 +670,10 @@ s32 sdfFileCmdWrite(sdfFileCmdHandle_t *aHandle, const void *aBuffer, s32 aLengt
     if (aHandle->state != SDF_FILE_CMD_STAT_SUSPEND) {
         return -1;
     }
-    aHandle->requestExtra = aLength;
+    aHandle->length = aLength;
     aHandle->operation = SDF_FILE_CMD_WRITE;
-    aHandle->requestData = (void *)aBuffer;
-    SignalSema(sdfFileDeviceCB[aHandle->workerIndex].semaphore);
+    aHandle->buffer = (void *)aBuffer;
+    SignalSema(sdfFileDeviceCB[aHandle->device].semaphore);
     return 0;
 }
 
@@ -695,7 +695,7 @@ s32 sdfFileCmdClose(void *aHandle) {
         return -1;
     }
     request->operation = requestState;
-    SignalSema(sdfFileDeviceCB[request->workerIndex].semaphore);
+    SignalSema(sdfFileDeviceCB[request->device].semaphore);
     return 0;
 }
 
@@ -711,9 +711,9 @@ sdfFileCmdHandle_t *sdfFileCmdReadFile(const char *path, s32 buffer, s32 byteCou
         return NULL;
     }
     state = sdfFileCmdNewHandle(resolvedPath, workerIndex, SDF_FILE_CMD_READFILE, callback, callbackContext);
-    state->requestExtra = byteCount;
-    state->requestData = (void *)buffer;
-    state->operationArg = 0;
+    state->length = byteCount;
+    state->buffer = (void *)buffer;
+    state->offset = 0;
     sdfFileCmdAllocHandle(state);
     return state;
 }
@@ -729,10 +729,10 @@ sdfFileCmdHandle_t *sdfFileCmdWriteFile(const char *path, s32 buffer, s32 byteCo
         return NULL;
     }
     state = sdfFileCmdNewHandle(resolvedPath, workerIndex, SDF_FILE_CMD_WRITEFILE, callback, callbackContext);
-    state->requestExtra = byteCount;
-    state->requestData = (void *)buffer;
+    state->length = byteCount;
+    state->buffer = (void *)buffer;
     state->options = options != 0 ? options : sdfFileCmdDefaultCreateMode;
-    state->operationArg = 0;
+    state->offset = 0;
     sdfFileCmdAllocHandle(state);
     return state;
 }
@@ -748,7 +748,7 @@ void sdfFileCmdThreadSetPrio(s32 prio) {
     worker = sdfFileDeviceCB;
     index = 0;
     do {
-        s32 threadId = worker->threadId;
+        s32 threadId = worker->thId;
         worker++;
         if (threadId >= 0) {
             ChangeThreadPriority(threadId, prio);
@@ -783,7 +783,7 @@ void sdfFileCmdStartThread(s32 deviceType) {
     sdfFileDeviceCB_t *worker = &sdfFileDeviceCB[deviceType];
     void (*entry)();
     s32 thread;
-    thread = worker->threadId;
+    thread = worker->thId;
     if (thread < 0) {
         worker->semaphore = sdfCreateSema(0, 0xFF, 0);
         entry = sdfFileCdImageCmdThread;
@@ -792,7 +792,7 @@ void sdfFileCmdStartThread(s32 deviceType) {
         }
         sdfFileCmdThreadPrio = 0x48;
         thread = sdfCreateThreadWithStack(entry, 0x4000, 0x48);
-        worker->threadId = thread;
+        worker->thId = thread;
         StartThread(thread, (s32)worker);
     }
 }

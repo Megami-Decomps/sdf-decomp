@@ -59,7 +59,7 @@ typedef struct sdfImageSetCB
     sdfImageSetRelease_t *releaseTail;
     u32 dmaAddr;
     sdfImageSetTag_t *tagTail;
-} sdfImageSetCB_t;
+} sdfImageSetCb_t;
 
 typedef struct sdfImageSetReqParam
 {
@@ -103,7 +103,7 @@ extern void FlushCache(s32 mode);
 
 extern void SleepThread(void);
 
-extern sdfImageSetCB_t sdfImageSetCb;
+extern sdfImageSetCb_t sdfImageSetCb;
 
 extern u64 D_005293A0[];
 
@@ -111,7 +111,7 @@ s32 sdfImageDataSize(u32 format, s32 width, s32 height);
 
 s32 sdfImageSetDmacHandler(s32 channel, s32 threadId);
 
-void sdfImageSetClearCb(sdfImageSetCB_t *cb);
+void sdfImageSetClearCb(sdfImageSetCb_t *cb);
 
 s32 sdfImageDataSize(u32 format, s32 width, s32 height)
 {
@@ -146,7 +146,7 @@ s32 sdfImageDataSize(u32 format, s32 width, s32 height)
 
 void sdfImageSetReq(sdfImageSetReqParam_t *parm)
 {
-    sdfImageSetCB_t *cb = &sdfImageSetCb;
+    sdfImageSetCb_t *cb = &sdfImageSetCb;
     sdfImageSetRelease_t *release;
     sdfImageSetTag_t *tagTail;
     u64 *setup;
@@ -248,7 +248,7 @@ void sdfImageSetReq(sdfImageSetReqParam_t *parm)
 
 void sdfImageSetChainTag(u32 head, sdfImageSetTag_t *tail)
 {
-    sdfImageSetCB_t *cb = &sdfImageSetCb;
+    sdfImageSetCb_t *cb = &sdfImageSetCb;
     sdfImageSetTag_t *last;
 
     WaitSema(cb->semaId);
@@ -265,7 +265,7 @@ void sdfImageSetChainTag(u32 head, sdfImageSetTag_t *tail)
 
 void sdfImageSetChainReleaseMem(s32 p)
 {
-    sdfImageSetCB_t *cb = &sdfImageSetCb;
+    sdfImageSetCb_t *cb = &sdfImageSetCb;
     sdfImageSetRelease_t *release;
 
     if (p != 0) {
@@ -288,7 +288,7 @@ void sdfImageSetChainReleaseMem(s32 p)
     }
 }
 
-void sdfImageSetClearCb(sdfImageSetCB_t *cb)
+void sdfImageSetClearCb(sdfImageSetCb_t *cb)
 {
     cb->releaseHead = NULL;
     cb->releaseTail = NULL;
@@ -305,7 +305,7 @@ s32 sdfImageSetDmacHandler(s32 channel, s32 threadId)
 
 void sdfImageSetTrans(void)
 {
-    sdfImageSetCB_t *cb = &sdfImageSetCb;
+    sdfImageSetCb_t *cb = &sdfImageSetCb;
     sdfImageSetRelease_t *release;
     sdfImageSetTag_t *tagTail;
     u32 dmaAddr;
@@ -351,7 +351,7 @@ void sdfImageSetTrans(void)
 
 void sdfImageSetInit(void)
 {
-    sdfImageSetCB_t *cb;
+    sdfImageSetCb_t *cb;
 
     cb = &sdfImageSetCb;
     cb->semaId = sdfCreateSema(1, 0x7F, 0);

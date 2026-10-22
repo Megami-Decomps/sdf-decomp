@@ -2,10 +2,10 @@
 #include "libsdf.h"
 
 #include "ps2asm.h"
-typedef struct sdfDevConsCB_t
+typedef struct sdfDevConsCB_tag
 {
-    struct sdfDevConsCB_t *prev;
-    struct sdfDevConsCB_t *next;
+    struct sdfDevConsCB_tag *prev;
+    struct sdfDevConsCB_tag *next;
     u16 x;
     u16 y;
     s16 w;
@@ -18,9 +18,9 @@ typedef struct sdfDevConsCB_t
     u8 tabwidth;
     sdfMemHandle_t *bufferHandle;
     u8 *bufferPtr;
-} sdfDevConsCB_t;
+} sdfDevConsCB_tag;
 
-typedef struct sdfDevConsBuf_t
+typedef struct sdfDevConsDrawCB_t
 {
     u8 *cur;
     u8 *start;
@@ -30,7 +30,7 @@ typedef struct sdfDevConsBuf_t
     s32 bufSize;
     u16 bufIdx;
     u16 rowStep;
-} sdfDevConsBuf_t;
+} sdfDevConsDrawCB_t;
 
 /* SMT3 DrawAll and the DDS1 twin reserve this same 0x1040-byte stack
  * allocation: only the central 0x1000 bytes are passed as DMA storage. */
@@ -86,11 +86,11 @@ extern void *sceDmaGetChan(s32 channel);
 extern u64 sdfTexGetTex0Reg(sdfTexHandle_t *aHandle);
 extern void *sdfGrOpenPacketBuff(void);
 extern void sdfGrClosePacketBuff(s32 aBuffPtr);
-void sdfDevConsDrawBG(sdfDevConsCB_t *aHndl, sdfDevConsBuf_t *aCB);
+void sdfDevConsDrawBG(sdfDevConsCB_tag *aHndl, sdfDevConsDrawCB_t *aCB);
 
-extern void sdfDevConsDrawInit(sdfDevConsBuf_t *aCB, void *aPacketBuffer, s32 aBufferSize);
-extern void sdfDevConsDraw(sdfDevConsCB_t *aHndl, sdfDevConsBuf_t *aBuf);
-extern void sdfDevConsDrawFlush(sdfDevConsBuf_t *aCB);
+extern void sdfDevConsDrawInit(sdfDevConsDrawCB_t *aCB, void *aPacketBuffer, s32 aBufferSize);
+extern void sdfDevConsDraw(sdfDevConsCB_tag *aHndl, sdfDevConsDrawCB_t *aBuf);
+extern void sdfDevConsDrawFlush(sdfDevConsDrawCB_t *aCB);
 
 extern void *memset(void *a, s32 b, u32 c);
 extern void *memmove(void *a, const void *b, u32 c);
@@ -108,7 +108,7 @@ extern s32 alreadyInitDevCons;
 extern u8 sdfDebugFontTex[];
 extern u32 sdfDevConsFontUvTable[];
 
-extern sdfDevConsCB_t *devConsTop;
+extern sdfDevConsCB_tag *devConsTop;
 extern u32 sdfDevConsColorTable[];
 
 extern void *sdfDevVprintf(u32 *aCB, const char *aStr, void *LegacyParamArray);
@@ -133,9 +133,9 @@ s16 *sdfDevConsGetFontUvTable(void)
     return (s16 *)sdfDevConsFontUvTable;
 }
 
-void sdfDevConsLinkToTop(sdfDevConsCB_t *aHndl)
+void sdfDevConsLinkToTop(sdfDevConsCB_tag *aHndl)
 {
-    sdfDevConsCB_t *top;
+    sdfDevConsCB_tag *top;
 
     top = devConsTop;
     aHndl->prev = NULL;
@@ -146,10 +146,10 @@ void sdfDevConsLinkToTop(sdfDevConsCB_t *aHndl)
     devConsTop = aHndl;
 }
 
-void sdfDevConsUnlink(sdfDevConsCB_t *aHndl)
+void sdfDevConsUnlink(sdfDevConsCB_tag *aHndl)
 {
-    sdfDevConsCB_t *prev;
-    sdfDevConsCB_t *next;
+    sdfDevConsCB_tag *prev;
+    sdfDevConsCB_tag *next;
 
     prev = aHndl->prev;
     next = aHndl->next;
@@ -163,31 +163,31 @@ void sdfDevConsUnlink(sdfDevConsCB_t *aHndl)
     }
 }
 
-void sdfDevConsClose(sdfDevConsCB_t *aHndl)
+void sdfDevConsClose(sdfDevConsCB_tag *aHndl)
 {
     sdfDevConsUnlink(aHndl);
     sdfMemFreeDirect(aHndl->bufferHandle);
     sdfChipFreeDirect(aHndl);
 }
 
-void sdfDevConsClearInside(sdfDevConsCB_t *aHndl)
+void sdfDevConsClearInside(sdfDevConsCB_tag *aHndl)
 {
     aHndl->locX = 0;
     aHndl->locY = 0;
     memset(aHndl->bufferPtr, 0, aHndl->w * aHndl->h * 2);
 }
 
-void sdfDevConsClear(sdfDevConsCB_t *aHndl)
+void sdfDevConsClear(sdfDevConsCB_tag *aHndl)
 {
     sdfDevConsClearInside(aHndl);
 }
 
-sdfDevConsCB_t *sdfDevConsOpen(s32 aX, s32 aY, s32 aW, s32 aH)
+sdfDevConsCB_tag *sdfDevConsOpen(s32 aX, s32 aY, s32 aW, s32 aH)
 {
-    sdfDevConsCB_t *hndl;
+    sdfDevConsCB_tag *hndl;
 
     sdfDevConsInit();
-    hndl = sdfChipAllocDirect(sizeof(sdfDevConsCB_t));
+    hndl = sdfChipAllocDirect(sizeof(sdfDevConsCB_tag));
     hndl->x = aX;
     hndl->y = aY;
     hndl->w = aW;
@@ -202,7 +202,7 @@ sdfDevConsCB_t *sdfDevConsOpen(s32 aX, s32 aY, s32 aW, s32 aH)
     return hndl;
 }
 
-void sdfDevConsNewLine(sdfDevConsCB_t *aHndl)
+void sdfDevConsNewLine(sdfDevConsCB_tag *aHndl)
 {
     s32 lineSize;
     s32 size;
@@ -220,7 +220,7 @@ void sdfDevConsNewLine(sdfDevConsCB_t *aHndl)
     aHndl->locX = 0;
 }
 
-void sdfDevConsPutInside(sdfDevConsCB_t *aHndl, s32 aChar, s32 aAttr)
+void sdfDevConsPutInside(sdfDevConsCB_tag *aHndl, s32 aChar, s32 aAttr)
 {
     s32 cnt;
     s32 off;
@@ -265,12 +265,12 @@ void sdfDevConsPutInside(sdfDevConsCB_t *aHndl, s32 aChar, s32 aAttr)
     }
 }
 
-void sdfDevConsPut(sdfDevConsCB_t *aHndl, s32 aChar, s32 aAttr)
+void sdfDevConsPut(sdfDevConsCB_tag *aHndl, s32 aChar, s32 aAttr)
 {
     sdfDevConsPutInside(aHndl, aChar, aAttr);
 }
 
-s32 sdfDevConsPrintf(sdfDevConsCB_t *aHndl, const char *aFmt, ...)
+s32 sdfDevConsPrintf(sdfDevConsCB_tag *aHndl, const char *aFmt, ...)
 {
     char buf[0x200];
     __builtin_va_list args;
@@ -290,28 +290,28 @@ s32 sdfDevConsPrintf(sdfDevConsCB_t *aHndl, const char *aFmt, ...)
     return count;
 }
 
-void sdfDevConsLocate(sdfDevConsCB_t *aHndl, s32 aX, s32 aY)
+void sdfDevConsLocate(sdfDevConsCB_tag *aHndl, s32 aX, s32 aY)
 {
     aHndl->locX = aX;
     aHndl->locY = aY;
 }
 
-void sdfDevConsAttribute(sdfDevConsCB_t *aHndl, s32 aAttr)
+void sdfDevConsAttribute(sdfDevConsCB_tag *aHndl, s32 aAttr)
 {
     aHndl->attr = aAttr;
 }
 
-s32 sdfDevConsGetMode(sdfDevConsCB_t *aHndl)
+s32 sdfDevConsGetMode(sdfDevConsCB_tag *aHndl)
 {
     return aHndl->mode;
 }
 
-void sdfDevConsSetMode(sdfDevConsCB_t *aHndl, s32 aMode)
+void sdfDevConsSetMode(sdfDevConsCB_tag *aHndl, s32 aMode)
 {
     aHndl->mode = aMode;
 }
 
-void sdfDevConsTagClose(sdfDevConsBuf_t *aCB)
+void sdfDevConsTagClose(sdfDevConsDrawCB_t *aCB)
 {
     u8 *cur = aCB->cur;
     volatile u64 *tag = (volatile u64 *)aCB->tag;
@@ -329,7 +329,7 @@ void sdfDevConsTagClose(sdfDevConsBuf_t *aCB)
     }
 }
 
-void sdfDevConsDrawFlush(sdfDevConsBuf_t *aCB) {
+void sdfDevConsDrawFlush(sdfDevConsDrawCB_t *aCB) {
     s32 packetBytes;
     u32 *channelRegisters;
     u32 nextBufferIndex;
@@ -351,7 +351,7 @@ void sdfDevConsDrawFlush(sdfDevConsBuf_t *aCB) {
     }
 }
 
-void sdfDevConsDrawBG(sdfDevConsCB_t *aHndl, sdfDevConsBuf_t *aCB) {
+void sdfDevConsDrawBG(sdfDevConsCB_tag *aHndl, sdfDevConsDrawCB_t *aCB) {
     vu64 *packet;
     u32 origin;
     u32 extent;
@@ -381,7 +381,7 @@ void sdfDevConsDrawBG(sdfDevConsCB_t *aHndl, sdfDevConsBuf_t *aCB) {
     aCB->cur = aCB->tag + 0x10;
 }
 
-void sdfDevConsDraw(sdfDevConsCB_t *console, sdfDevConsBuf_t *buffers) {
+void sdfDevConsDraw(sdfDevConsCB_tag *console, sdfDevConsDrawCB_t *buffers) {
     u8 *cells;
     vu64 *writeCursor;
     u8 *packetStart;
@@ -440,7 +440,7 @@ void sdfDevConsDraw(sdfDevConsCB_t *console, sdfDevConsBuf_t *buffers) {
     buffers->cur = (u8 *)writeCursor;
 }
 
-void sdfDevConsDrawInit(sdfDevConsBuf_t *aCB, void *aPacketBuffer, s32 aBufferSize) {
+void sdfDevConsDrawInit(sdfDevConsDrawCB_t *aCB, void *aPacketBuffer, s32 aBufferSize) {
     u32 ringAddress;
     u8 *ring;
     vu64 *packet;
@@ -475,8 +475,8 @@ void sdfDevConsDrawInit(sdfDevConsBuf_t *aCB, void *aPacketBuffer, s32 aBufferSi
 
 void sdfDevConsDrawAll(void) {
     sdfDevConsStackPackets_t storage;
-    sdfDevConsBuf_t packetBuffers;
-    sdfDevConsCB_t *console;
+    sdfDevConsDrawCB_t packetBuffers;
+    sdfDevConsCB_tag *console;
 
     if (devConsTop != NULL) {
         sdfDevConsDrawInit(&packetBuffers, storage.data, 0x1000);

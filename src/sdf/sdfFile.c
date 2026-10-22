@@ -54,18 +54,18 @@ typedef struct sdfFileCmdHandle_t {
     struct sdfFileCmdHandle_t *previous;
     struct sdfFileCmdHandle_t *workerNext;
     struct sdfFileCmdHandle_t *workerPrev;
-    char *resolvedPath;
-    u8 workerIndex;
+    char *filename;
+    u8 device;
     sdfDevOperationCode_t operation;
     sdfDevStateCode_t state;
     u8 pad17;
-    s32 operationArg;
-    s32 requestExtra;
-    void *requestData;
+    s32 offset;
+    s32 length;
+    void *buffer;
     s32 options;
     s32 resourceId;
     s32 result;
-    s32 transferred;
+    s32 currentOffset;
     u8 pad34[4];
     void (*callback)(struct sdfFileCmdHandle_t *, s32, s32, s32, s32);
     s32 callbackContext;
@@ -77,7 +77,7 @@ typedef struct sdfDevicePrefix_t {
 } sdfDevicePrefix_t;
 
 typedef struct sdfFileDeviceCB_t {
-    s32 threadId;
+    s32 thId;
     s32 semaphore;
     struct sdfFileCmdHandle_t *first;
     struct sdfFileCmdHandle_t *last;
@@ -366,9 +366,9 @@ void sdfFileCmdAllocHandle(sdfFileCmdHandle_t *state) {
     s32 wake = 0;
     sdfFileCmdHandle_t *last;
     interrupts = DIntr(state);
-    worker = &sdfFileDeviceCB[state->workerIndex];
-    if (worker->threadId < 0) {
-        sdfFileCmdStartThread(state->workerIndex);
+    worker = &sdfFileDeviceCB[state->device];
+    if (worker->thId < 0) {
+        sdfFileCmdStartThread(state->device);
     }
     state->previous = sdfFileCmdFreeList;
     if (sdfFileCmdFreeList != NULL) {

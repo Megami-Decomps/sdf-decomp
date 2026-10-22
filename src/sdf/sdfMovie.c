@@ -21,26 +21,26 @@ typedef struct IpuDmaState
 
 typedef struct sdfIpuDecodeCb_t
 {
-    struct sdfIpuDecodeCb_t *streamPrev;
+    struct sdfIpuDecodeCb_t *prev;
     struct sdfIpuDecodeCb_t *streamNext;
     struct sdfIpuDecodeCb_t *next;
     u8 active;
-    u8 queued;
+    u8 queueLinked;
     u8 ipuCycleInitialized;
     u8 drained;
     u8 playbackPhase;
     u8 inputFeedEnabled;
     u8 inputDmaStartPending;
-    u8 pendingPlaybackSubmissions;
-    u8 audioMode;
+    u8 imageTrans;
+    u8 rgbMode;
     u8 loopMode;
     u8 playbackCadenceStep;
     u8 playbackCadenceRemainder;
     u8 bufferIndex;
-    u8 transferPacketIndex;
-    u8 completedBufferCount;
+    u8 getBuffId;
+    u8 activeBuffCount;
     u8 pad1B;
-    s32 bufferSize;
+    s32 buffSize;
     void *frameBuffers[2];
     void *transferPacketBuffers[2];
     u32 transferPacketBytes;
@@ -50,7 +50,7 @@ typedef struct sdfIpuDecodeCb_t
     u16 height;
     u32 cycleLength;
     u32 tickCount;
-    s32 playbackFrameIndex;
+    s32 frame;
     struct SdfStreamInputDmaTag *inputDmaChain;
     u8 headerReady;
     u8 done;
@@ -59,7 +59,7 @@ typedef struct sdfIpuDecodeCb_t
     u8 *scratchBuffer;
     u8 pad58[4];
     s32 (*read)(struct sdfIpuDecodeCb_t *, struct movieStream_t *, s32, void *, s32);
-    struct movieStream_t *readContext;
+    struct movieStream_t *strmCallbackParm;
     u8 inputFeedDmaInFlight;
     u8 unk65;
     u8 pad66[2];
@@ -200,8 +200,8 @@ u8 *movieWaitSema(s32 aSize)
         obj->scratchSize -= aSize;
         obj->scratch = ptr + aSize;
     } else if (obj->ringLength < aSize) {
-        if (movieSemaCount != mov->soundNode.playbackFrameIndex) {
-            movieSemaCount = mov->soundNode.playbackFrameIndex;
+        if (movieSemaCount != mov->soundNode.frame) {
+            movieSemaCount = mov->soundNode.frame;
         }
     } else {
         ptr = obj->ringBuffer + obj->ringOffset;
@@ -660,7 +660,7 @@ s32 sdfMovieIsFinished(movieStream_t *aMov)
     if (aMov->soundNode.drained == 0) {
         return 0;
     }
-    return aMov->soundNode.completedBufferCount == 0;
+    return aMov->soundNode.activeBuffCount == 0;
 }
 INCLUDE_SDATA(const s32, "sdf/sdfMovie", movieStreamSema);
 

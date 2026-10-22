@@ -356,8 +356,8 @@ sdfMat_t *sdfMatNew(void)
         packet[0x18 / 4] = 0x6005C005;
         packet[0x30 / 4] = 0;
         packet[0x34 / 4] = 0x640CC00A;
-        ((sdfMatPacket_t *)packet)->vifcode3 = 0x0400000C;
-        ((sdfMatPacket_t *)packet)->vifcode4 = 0x14000000;
+        ((sdfMatPacket_t *)packet)->cmd_call_spec = 0x0400000C;
+        ((sdfMatPacket_t *)packet)->cmd_call_kind = 0x14000000;
     }
     mat->fdBias = 0;
     mat->fdSoften = 0;

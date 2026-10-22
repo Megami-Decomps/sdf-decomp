@@ -8,7 +8,7 @@ typedef struct
     u32 lsn;
     u32 unk4;
     s32 size;
-} sdfCdImageEntry_t;
+} sdfCdImageDirEntry_t;
 
 s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
 
@@ -18,13 +18,13 @@ s32 sceCdMmode(s32 aMode);
 
 s32 sceCdStStop(void);
 
-extern sdfCdImageEntry_t *sdfCdImageCurrFile;
+extern sdfCdImageDirEntry_t *sdfCdImageCurrFile;
 
 extern s32 sdfCdImageFd;
 
 extern s32 sdfCdTrayMode;
 
-sdfCdImageEntry_t *sdfCdImageSearchFile(const char *fname, s32 *lsn, s32 *modePtr);
+sdfCdImageDirEntry_t *sdfCdImageSearchFile(const char *fname, s32 *lsn, s32 *modePtr);
 
 extern s32 WaitSema(s32 aSemaId);
 
@@ -258,7 +258,7 @@ s32 sdfCdImageCheckExist(const char *fname)
 s32 sdfCdImageGetFileSize(const char *fname)
 {
     s32 lsn;
-    sdfCdImageEntry_t *entry = sdfCdImageSearchFile(fname, &lsn, NULL);
+    sdfCdImageDirEntry_t *entry = sdfCdImageSearchFile(fname, &lsn, NULL);
 
     if (entry == NULL) {
         return -1;
@@ -268,7 +268,7 @@ s32 sdfCdImageGetFileSize(const char *fname)
 
 s32 sdfCdImageGetCurrFileSize(void)
 {
-    sdfCdImageEntry_t *file = sdfCdImageCurrFile;
+    sdfCdImageDirEntry_t *file = sdfCdImageCurrFile;
 
     if (file == NULL) {
         FatalError("file didn't open.");

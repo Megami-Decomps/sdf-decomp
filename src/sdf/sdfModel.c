@@ -159,15 +159,15 @@ u8 *sdfModelAllocTmPacket(sdfModelNode_t *aNode)
 
 void sdfModelPacketFree(sdfModelNode_t *aNode)
 {
-    sdfModelPacketHeader_t **chain = aNode->drawPacket;
+    sdfModelPacketHeader_tag **chain = aNode->drawPacket;
     s32 i = 0;
     s32 count = 2;
 
     do {
-        sdfModelPacketHeader_t *packet = *chain;
+        sdfModelPacketHeader_tag *packet = *chain;
 
         while (packet != NULL) {
-            sdfModelPacketHeader_t *next = packet->next;
+            sdfModelPacketHeader_tag *next = packet->next;
 
             if (packet->memHandle != NULL) {
                 sdfMemFreeDirect(packet->memHandle);
@@ -592,13 +592,13 @@ void sdfModelLinkShapedDrawPacket(sdfModelNode_t *aNode, sdfShapeShapedPacket_t 
 INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelLinkShapedDrawPacket);
 #endif
 
-sdfModelPacketHeader_t *sdfModelNewPacketHeader(sdfModelNode_t *aNode, s32 aOtIndex, s32 aId)
+sdfModelPacketHeader_tag *sdfModelNewPacketHeader(sdfModelNode_t *aNode, s32 aOtIndex, s32 aId)
 {
-    sdfModelPacketHeader_t *packet = sdfChipAllocDirect(sizeof(*packet));
-    sdfModelPacketHeader_t **head =
-        (sdfModelPacketHeader_t **)((u32)aId * sizeof(*aNode->drawPacket) + (u32)aNode +
+    sdfModelPacketHeader_tag *packet = sdfChipAllocDirect(sizeof(*packet));
+    sdfModelPacketHeader_tag **head =
+        (sdfModelPacketHeader_tag **)((u32)aId * sizeof(*aNode->drawPacket) + (u32)aNode +
                                     (u32)&((sdfModelNode_t *)0)->drawPacket);
-    sdfModelPacketHeader_t *next = *head;
+    sdfModelPacketHeader_tag *next = *head;
 
     packet->otIndex = aOtIndex;
     *head = packet;
@@ -620,7 +620,7 @@ void sdfModelLinkDrawPacket(sdfModelNode_t *aNode, void *aShape, s32 aOtIndex, s
     s32 count;
     sdfDmaTag_t *tag = NULL;
     sdfShapePacket_t *packet;
-    sdfModelPacketHeader_t *header;
+    sdfModelPacketHeader_tag *header;
 
     bytes = sdfModelGetDrawPacketSize(aShape, &numOfSkin, &tempQwc);
     cursor = aShape;
@@ -635,9 +635,9 @@ void sdfModelLinkDrawPacket(sdfModelNode_t *aNode, void *aShape, s32 aOtIndex, s
     }
     if (bytes != 0) {
         sdfMemHandle_t *handle = sdfMemAllocDirect(bytes);
-        sdfModelPacketHeader_t *chunk = (sdfModelPacketHeader_t *)sdfMemLock(handle);
-        sdfModelPacketHeader_t **head =
-            (sdfModelPacketHeader_t **)((u32)aId * sizeof(*aNode->drawPacket) + (u32)aNode +
+        sdfModelPacketHeader_tag *chunk = (sdfModelPacketHeader_tag *)sdfMemLock(handle);
+        sdfModelPacketHeader_tag **head =
+            (sdfModelPacketHeader_tag **)((u32)aId * sizeof(*aNode->drawPacket) + (u32)aNode +
                                         (u32)&((sdfModelNode_t *)0)->drawPacket);
 
         tag = (sdfDmaTag_t *)(chunk + 1);
@@ -782,7 +782,7 @@ sdfModelRootNode_t *sdfModelMakeRoot(void *aTexList, sdfModelDef_t *aModelData) 
     sdfModelNode_t *parent;
 
     model->texList = aTexList;
-    model->matList = sdfMatListMake(aTexList, aModelData->matDef);
+    model->matList = sdfMatListMake(aTexList, aModelData->matDef_New);
     model->extraData = aModelData->extraData;
     sdfModelMakeMorphList(model, aModelData->morphCount);
     list = aModelData->modelDef;
@@ -1167,7 +1167,7 @@ void sdfModelLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
     drew = 0;
     for (i = 0; i < aRoot->nodeList->count; i++) {
         sdfModelNode_t *node = aRoot->nodeList->items[i];
-        sdfModelPacketHeader_t *header = node->drawPacket[frame];
+        sdfModelPacketHeader_tag *header = node->drawPacket[frame];
         sdfModelBounds_t *bounds;
         f32 zValue;
         s32 j;
