@@ -40,14 +40,14 @@ typedef struct
     u8 cardStat;
     s8 slotIndex;
     u32 slotFlags[5];
-} sdfMcControl_t;
+} sdfMcCb_tag;
 
-extern sdfMcControl_t sdfMcCb[];
+extern sdfMcCb_tag sdfMcCb[];
 extern s32 sdfMcInfo;
 
 void sdfMcFuncGetInfo(s32 port)
 {
-    sdfMcControl_t *cb = &sdfMcCb[port];
+    sdfMcCb_tag *cb = &sdfMcCb[port];
     s32 dummy;
     s32 *p = &dummy;
 
@@ -63,7 +63,7 @@ void sdfMcRegetInfo(s32 port)
 
 McPollResult sdfMcFuncGetInfo1(void)
 {
-    sdfMcControl_t *cb = &sdfMcCb[sdfMcInfo];
+    sdfMcCb_tag *cb = &sdfMcCb[sdfMcInfo];
     u32 commandId;
     s32 commandResult;
     s32 pollResult = sceMcSync(MC_SYNC_POLL_MODE, &commandId, &commandResult);
@@ -134,21 +134,21 @@ void sdfMcSetCardStat(s32 port)
 
 void sdfMcClearSlotFlags(s32 port, s32 slot)
 {
-    sdfMcControl_t *cb = &sdfMcCb[port];
+    sdfMcCb_tag *cb = &sdfMcCb[port];
 
     cb->slotFlags[slot] = 0;
 }
 
 void sdfMcSetSlotFlags(s32 port, s32 slot, u32 flags)
 {
-    sdfMcControl_t *cb = &sdfMcCb[port];
+    sdfMcCb_tag *cb = &sdfMcCb[port];
 
     cb->slotFlags[slot] |= flags;
 }
 
 u32 sdfMcGetSlotFlags(s32 port, s32 slot)
 {
-    sdfMcControl_t *cb = &sdfMcCb[port];
+    sdfMcCb_tag *cb = &sdfMcCb[port];
 
     return cb->slotFlags[slot];
 }
