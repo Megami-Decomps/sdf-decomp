@@ -11,7 +11,7 @@ struct effPCPWhirlwind3Poly_tag;
 struct PcpScatterParamsA;
 struct PcpScatterParamsB;
 struct PcpScatterParamsC;
-struct PcpScatterParticle;
+struct effPCPWhirlwindPolyPart_tag;
 struct effPCPWwSpherePoly_tag;
 struct PcpScatterPlainParams;
 struct PcpScatterPlainParticle;
@@ -38,7 +38,7 @@ typedef struct sdfMatPacket_t sdfMatPacket_t;
 typedef union sdfMatUvwParm_t sdfMatUvwParm_t;
 typedef struct dds3WhirlwindPolyList_tag dds3WhirlwindPolyList_tag;
 typedef struct PcpScatterParamsA PcpScatterParamsA;
-typedef struct PcpScatterParticle PcpScatterParticle;
+typedef struct effPCPWhirlwindPolyPart_tag effPCPWhirlwindPolyPart_tag;
 typedef struct effPCPWhirlwindPoly_tag effPCPWhirlwindPoly_tag;
 typedef struct PcpScatterParamsB PcpScatterParamsB;
 typedef struct effPCPWhirlwind2Poly_tag effPCPWhirlwind2Poly_tag;
@@ -267,12 +267,12 @@ struct PcpScatterParamsA {
 };
 
 /* Shared particle record used by B/C and the related copied-parameter ring. */
-struct PcpScatterParticle {
-    f32 orientationAngle;
-    f32 tiltAngle;
-    s32 age;
+struct effPCPWhirlwindPolyPart_tag {
+    f32 rot_x;
+    f32 rot_y;
+    s32 frame;
     f32 rise;
-    f32 angle;
+    f32 radian;
     f32 tiltSpeed;
     f32 angleStep;
     f32 radius;
@@ -283,7 +283,7 @@ struct PcpScatterParticle {
 struct effPCPWhirlwindPoly_tag {
     f32 matrix[16];
     PcpScatterParamsA param;
-    PcpScatterParticle *pPart;
+    effPCPWhirlwindPolyPart_tag *pPart;
     f32 scale;
     u32 color;
     dds3WhirlwindPolyList_tag *hPoly;
@@ -329,7 +329,7 @@ struct PcpScatterParamsB {
 struct effPCPWhirlwind2Poly_tag {
     f32 matrix[16];
     PcpScatterParamsB param;
-    PcpScatterParticle *pPart;
+    effPCPWhirlwindPolyPart_tag *pPart;
     f32 scale;
     u32 abgr;
     s32 age;
@@ -377,7 +377,7 @@ struct PcpScatterParamsC {
 struct effPCPWhirlwind3Poly_tag {
     f32 matrix[16];
     PcpScatterParamsC param;
-    PcpScatterParticle *pPart;
+    effPCPWhirlwindPolyPart_tag *pPart;
     f32 scale;
     u32 color;
     s32 age;
@@ -1875,16 +1875,16 @@ effPCPWhirlwindPoly_tag *effPCPWhirlwindPolyCreate(src, resource)
     PcpScatterParamsA *src;
     u32 resource;
 {
-    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(PcpScatterParticle) + sizeof(effPCPWhirlwindPoly_tag));
+    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(effPCPWhirlwindPolyPart_tag) + sizeof(effPCPWhirlwindPoly_tag));
     effPCPWhirlwindPoly_tag *inst = (effPCPWhirlwindPoly_tag *)sdfMemLock(allocation);
-    PcpScatterParticle *particle;
+    effPCPWhirlwindPolyPart_tag *particle;
     u32 delayModulus;
     u32 count;
     u32 i;
     dds3WhirlwindPolyList_tag *object;
     u32 drawWord;
 
-    particle = (PcpScatterParticle *)(inst + 1);
+    particle = (effPCPWhirlwindPolyPart_tag *)(inst + 1);
     /* Preserve the complete serialized parameter block, including padding. */
     memcpy(&inst->param, src, sizeof(inst->param));
     inst->color = EFF_SCATTER_NEUTRAL_COLOR;
@@ -1905,7 +1905,7 @@ effPCPWhirlwindPoly_tag *effPCPWhirlwindPolyCreate(src, resource)
         delayModulus = 1;
     }
     for (i = 0; i < count; i++) {
-        particle->age = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
+        particle->frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
         particle++;
     }
     return inst;
@@ -1934,7 +1934,7 @@ void effPCPWhirlwindPolyPartInit(effPCPWhirlwindPoly_tag *pWhirlwindPoly, s32 in
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(pWhirlwindPoly->hPoly, index);
     f32 *uv = dds3WhirlwindPolyListGetUV(pWhirlwindPoly->hPoly, index);
-    PcpScatterParticle *ring;
+    effPCPWhirlwindPolyPart_tag *ring;
     f32 angle;
     f32 angleStep;
     f32 radius;
@@ -1962,16 +1962,16 @@ void effPCPWhirlwindPolyPartInit(effPCPWhirlwindPoly_tag *pWhirlwindPoly, s32 in
     jitter = pWhirlwindPoly->param.targetRadiusJitter;
     rise = 0.0f;
     ring->radiusStep = (pWhirlwindPoly->param.targetRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) - radius) / (f32)pWhirlwindPoly->param.duration;
-    ring->orientationAngle = pWhirlwindPoly->param.tiltScale * dds3GetRandFloatA(dds3EffectBase);
-    ring->tiltAngle = rise;
-    ring->angle = angle;
+    ring->rot_x = pWhirlwindPoly->param.tiltScale * dds3GetRandFloatA(dds3EffectBase);
+    ring->rot_y = rise;
+    ring->radian = angle;
     ring->radius = radius;
     ring->heightOffset = height;
     ring->angleStep = angleStep;
     ring->tiltSpeed = pWhirlwindPoly->param.initialTiltSpeed;
     ring->rise = pWhirlwindPoly->param.initialRise;
-    SetRotateMatrixX(ring->orientationAngle);
-    SetRotateMatrixY_B(ring->tiltAngle);
+    SetRotateMatrixX(ring->rot_x);
+    SetRotateMatrixY_B(ring->rot_y);
     MultMatrixRevNoArg();
     v = (f32)pWhirlwindPoly->param.vSpan;
     u = 0.0f;
@@ -2004,7 +2004,7 @@ void effPCPWhirlwindPolyPartInit(effPCPWhirlwindPoly_tag *pWhirlwindPoly, s32 in
 void effPCPWhirlwindPolyPartMove(effPCPWhirlwindPoly_tag *pWhirlwindPoly, s32 index)
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(pWhirlwindPoly->hPoly, index);
-    PcpScatterParticle *ring;
+    effPCPWhirlwindPolyPart_tag *ring;
     f32 radius;
     f32 rise;
     f32 angle;
@@ -2017,12 +2017,12 @@ void effPCPWhirlwindPolyPartMove(effPCPWhirlwindPoly_tag *pWhirlwindPoly, s32 in
     radius = ring->radius + ring->radiusStep;
     count = pWhirlwindPoly->hPoly->vectorsPerParticle >> 1;
     rise = ring->rise;
-    angle = ring->angle;
+    angle = ring->radian;
     step = ring->angleStep;
-    SetRotateMatrixX(ring->orientationAngle);
-    SetRotateMatrixY_B(ring->tiltAngle);
+    SetRotateMatrixX(ring->rot_x);
+    SetRotateMatrixY_B(ring->rot_y);
     MultMatrixRevNoArg();
-    ring->tiltAngle += ring->tiltSpeed;
+    ring->rot_y += ring->tiltSpeed;
     ring->tiltSpeed *= pWhirlwindPoly->param.tiltDamping;
     ring->radius = radius;
     ring->rise = rise * pWhirlwindPoly->param.riseDecay;
@@ -2051,7 +2051,7 @@ void effPCPWhirlwindPolyDraw(effPCPWhirlwindPoly_tag *hData) {
     u32 i;
     u32 count = hData->param.particleCount;
     dds3WhirlwindPolyList_tag *draw = hData->hPoly;
-    PcpScatterParticle *particle = hData->pPart;
+    effPCPWhirlwindPolyPart_tag *particle = hData->pPart;
     s32 duration = hData->param.duration;
     s32 fadeIn;
     s32 fadeRange;
@@ -2062,7 +2062,7 @@ void effPCPWhirlwindPolyDraw(effPCPWhirlwindPoly_tag *hData) {
     color = effMagaCylinderCalcColor(hData->color, hData->param.baseColor);
 
     for (i = 0; i < count; i++) {
-        s32 age = particle->age;
+        s32 age = particle->frame;
         if (duration < age) {
             draw->colors[i] = 0;
         } else {
@@ -2082,9 +2082,9 @@ void effPCPWhirlwindPolyDraw(effPCPWhirlwindPoly_tag *hData) {
                 effPCPWhirlwindPolyPartMove(hData, i);
             }
             if (loop != 0 && age >= duration) {
-                particle->age = 0;
+                particle->frame = 0;
             } else {
-                particle->age++;
+                particle->frame++;
             }
         }
         particle++;
@@ -2122,9 +2122,9 @@ effPCPWhirlwind2Poly_tag *effPCPWhirlwind2PolyCreate(src, resource)
     PcpScatterParamsB *src;
     u32 resource;
 {
-    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(PcpScatterParticle) + sizeof(effPCPWhirlwind2Poly_tag));
+    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(effPCPWhirlwindPolyPart_tag) + sizeof(effPCPWhirlwind2Poly_tag));
     effPCPWhirlwind2Poly_tag *inst = (effPCPWhirlwind2Poly_tag *)sdfMemLock(allocation);
-    PcpScatterParticle *particle;
+    effPCPWhirlwindPolyPart_tag *particle;
     u32 delayModulus;
     u32 count;
     u32 i;
@@ -2132,7 +2132,7 @@ effPCPWhirlwind2Poly_tag *effPCPWhirlwind2PolyCreate(src, resource)
     u32 drawWord;
     s32 delayLimit;
 
-    particle = (PcpScatterParticle *)(inst + 1);
+    particle = (effPCPWhirlwindPolyPart_tag *)(inst + 1);
     /* Retain every byte of the serialized parameter block, including padding. */
     memcpy(&inst->param, src, sizeof(inst->param));
     inst->abgr = EFF_SCATTER_NEUTRAL_COLOR;
@@ -2156,7 +2156,7 @@ effPCPWhirlwind2Poly_tag *effPCPWhirlwind2PolyCreate(src, resource)
     delayModulus = delayLimit;
     count = inst->param.particleCount;
     for (i = 0; i < count; i++) {
-        particle->age = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
+        particle->frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
         particle++;
     }
     return inst;
@@ -2186,7 +2186,7 @@ void effPCPWhirlwind2PolyPartInit(effPCPWhirlwind2Poly_tag *pWhirlwind2Poly, s32
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(pWhirlwind2Poly->hPoly, index);
     f32 *uv = dds3WhirlwindPolyListGetUV(pWhirlwind2Poly->hPoly, index);
-    PcpScatterParticle *ring;
+    effPCPWhirlwindPolyPart_tag *ring;
     f32 angle;
     f32 angleStep;
     f32 radius;
@@ -2214,16 +2214,16 @@ void effPCPWhirlwind2PolyPartInit(effPCPWhirlwind2Poly_tag *pWhirlwind2Poly, s32
     jitter = pWhirlwind2Poly->param.radiusStepJitter;
     rise = 0.0f;
     ring->radiusStep = pWhirlwind2Poly->param.radiusStepBase * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
-    ring->orientationAngle = pWhirlwind2Poly->param.tiltScale * dds3GetRandFloatA(dds3EffectBase);
-    ring->tiltAngle = rise;
-    ring->angle = angle;
+    ring->rot_x = pWhirlwind2Poly->param.tiltScale * dds3GetRandFloatA(dds3EffectBase);
+    ring->rot_y = rise;
+    ring->radian = angle;
     ring->radius = radius;
     ring->heightOffset = height;
     ring->angleStep = angleStep;
     ring->tiltSpeed = pWhirlwind2Poly->param.initialTiltSpeed;
     ring->rise = pWhirlwind2Poly->param.initialRise;
-    SetRotateMatrixX(ring->orientationAngle);
-    SetRotateMatrixY_B(ring->tiltAngle);
+    SetRotateMatrixX(ring->rot_x);
+    SetRotateMatrixY_B(ring->rot_y);
     MultMatrixRevNoArg();
     v = (f32)pWhirlwind2Poly->param.vSpan;
     u = 0.0f;
@@ -2256,7 +2256,7 @@ void effPCPWhirlwind2PolyPartInit(effPCPWhirlwind2Poly_tag *pWhirlwind2Poly, s32
 void effPCPWhirlwind2PolyPartMove(effPCPWhirlwind2Poly_tag *pWhirlwind2Poly, s32 index)
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(pWhirlwind2Poly->hPoly, index);
-    PcpScatterParticle *ring;
+    effPCPWhirlwindPolyPart_tag *ring;
     f32 radius;
     f32 rise;
     f32 angle;
@@ -2269,12 +2269,12 @@ void effPCPWhirlwind2PolyPartMove(effPCPWhirlwind2Poly_tag *pWhirlwind2Poly, s32
     radius = ring->radius + ring->radiusStep;
     count = pWhirlwind2Poly->hPoly->vectorsPerParticle >> 1;
     rise = ring->rise;
-    angle = ring->angle;
+    angle = ring->radian;
     step = ring->angleStep;
-    SetRotateMatrixX(ring->orientationAngle);
-    SetRotateMatrixY_B(ring->tiltAngle);
+    SetRotateMatrixX(ring->rot_x);
+    SetRotateMatrixY_B(ring->rot_y);
     MultMatrixRevNoArg();
-    ring->tiltAngle += ring->tiltSpeed;
+    ring->rot_y += ring->tiltSpeed;
     ring->tiltSpeed *= pWhirlwind2Poly->param.tiltDamping;
     ring->radius = radius;
     ring->radiusStep *= pWhirlwind2Poly->param.radiusDamping;
@@ -2303,7 +2303,7 @@ void effPCPWhirlwind2PolyDraw(effPCPWhirlwind2Poly_tag *hData) {
     s32 loop;
     s32 duration = hData->param.duration;
     dds3WhirlwindPolyList_tag *draw = hData->hPoly;
-    PcpScatterParticle *particle = hData->pPart;
+    effPCPWhirlwindPolyPart_tag *particle = hData->pPart;
     u32 count = hData->param.particleCount;
     s32 fadeIn;
     s32 fadeRange;
@@ -2331,7 +2331,7 @@ void effPCPWhirlwind2PolyDraw(effPCPWhirlwind2Poly_tag *hData) {
         instanceFade = 1.0f;
     }
     for (i = 0; i < count; i++) {
-        s32 particleAge = particle->age;
+        s32 particleAge = particle->frame;
 
         if (duration < particleAge) {
             draw->colors[i] = 0;
@@ -2348,9 +2348,9 @@ void effPCPWhirlwind2PolyDraw(effPCPWhirlwind2Poly_tag *hData) {
                 effPCPWhirlwind2PolyPartMove(hData, i);
             }
             if (loop != 0 && !(instanceAge < duration)) {
-                particle->age = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
+                particle->frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
             } else {
-                particle->age++;
+                particle->frame++;
             }
         }
         particle++;
@@ -2393,9 +2393,9 @@ effPCPWhirlwind3Poly_tag *effPCPWhirlwind3PolyCreate(src, resource)
     PcpScatterParamsC *src;
     u32 resource;
 {
-    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(PcpScatterParticle) + sizeof(effPCPWhirlwind3Poly_tag));
+    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->particleCount * sizeof(effPCPWhirlwindPolyPart_tag) + sizeof(effPCPWhirlwind3Poly_tag));
     effPCPWhirlwind3Poly_tag *inst = (effPCPWhirlwind3Poly_tag *)sdfMemLock(allocation);
-    PcpScatterParticle *particle;
+    effPCPWhirlwindPolyPart_tag *particle;
     u32 delayModulus;
     u32 count;
     u32 i;
@@ -2403,7 +2403,7 @@ effPCPWhirlwind3Poly_tag *effPCPWhirlwind3PolyCreate(src, resource)
     u32 drawWord;
     s32 delayLimit;
 
-    particle = (PcpScatterParticle *)(inst + 1);
+    particle = (effPCPWhirlwindPolyPart_tag *)(inst + 1);
     /* Copy the complete serialized parameter block, including padding. */
     memcpy(&inst->param, src, sizeof(inst->param));
     inst->color = EFF_SCATTER_NEUTRAL_COLOR;
@@ -2427,7 +2427,7 @@ effPCPWhirlwind3Poly_tag *effPCPWhirlwind3PolyCreate(src, resource)
     delayModulus = delayLimit;
     count = inst->param.particleCount;
     for (i = 0; i < count; i++) {
-        particle->age = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
+        particle->frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
         particle++;
     }
     return inst;
@@ -2457,7 +2457,7 @@ void effPCPWhirlwind3PolyPartInit(effPCPWhirlwind3Poly_tag *pWhirlwind3Poly, s32
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(pWhirlwind3Poly->hPoly, index);
     f32 *uv = dds3WhirlwindPolyListGetUV(pWhirlwind3Poly->hPoly, index);
-    PcpScatterParticle *ring;
+    effPCPWhirlwindPolyPart_tag *ring;
     f32 angle;
     f32 angleStep;
     f32 radius;
@@ -2482,18 +2482,18 @@ void effPCPWhirlwind3PolyPartInit(effPCPWhirlwind3Poly_tag *pWhirlwind3Poly, s32
     height = pWhirlwind3Poly->param.heightOffsetBase * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     jitter = pWhirlwind3Poly->param.radiusStepJitter;
     ring->radiusStep = pWhirlwind3Poly->param.radiusStepBase * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
-    ring->orientationAngle = pWhirlwind3Poly->param.tiltScale * dds3GetRandFloatA(dds3EffectBase);
-    ring->tiltAngle = 0;
+    ring->rot_x = pWhirlwind3Poly->param.tiltScale * dds3GetRandFloatA(dds3EffectBase);
+    ring->rot_y = 0;
     rise = pWhirlwind3Poly->param.riseRange / (f32)pWhirlwind3Poly->param.particleCount * (f32)index;
     radius = radius + pWhirlwind3Poly->param.radiusRamp * (f32)(pWhirlwind3Poly->param.particleCount - index);
-    ring->angle = angle;
+    ring->radian = angle;
     ring->heightOffset = height;
     ring->angleStep = angleStep;
     ring->radius = radius;
     ring->tiltSpeed = pWhirlwind3Poly->param.initialTiltSpeed;
     ring->rise = pWhirlwind3Poly->param.initialRise;
-    SetRotateMatrixX(ring->orientationAngle);
-    SetRotateMatrixY_B(ring->tiltAngle);
+    SetRotateMatrixX(ring->rot_x);
+    SetRotateMatrixY_B(ring->rot_y);
     MultMatrixRevNoArg();
     v = (f32)pWhirlwind3Poly->param.vSpan;
     u = 0.0f;
@@ -2525,7 +2525,7 @@ void effPCPWhirlwind3PolyPartInit(effPCPWhirlwind3Poly_tag *pWhirlwind3Poly, s32
 void effPCPWhirlwind3PolyPartMove(effPCPWhirlwind3Poly_tag *pWhirlwind3Poly, s32 index)
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(pWhirlwind3Poly->hPoly, index);
-    PcpScatterParticle *ring;
+    effPCPWhirlwindPolyPart_tag *ring;
     f32 radius;
     f32 rise;
     f32 angle;
@@ -2538,12 +2538,12 @@ void effPCPWhirlwind3PolyPartMove(effPCPWhirlwind3Poly_tag *pWhirlwind3Poly, s32
     radius = ring->radius + ring->radiusStep;
     count = pWhirlwind3Poly->hPoly->vectorsPerParticle >> 1;
     rise = ring->rise;
-    angle = ring->angle;
+    angle = ring->radian;
     step = ring->angleStep;
-    SetRotateMatrixX(ring->orientationAngle);
-    SetRotateMatrixY_B(ring->tiltAngle);
+    SetRotateMatrixX(ring->rot_x);
+    SetRotateMatrixY_B(ring->rot_y);
     MultMatrixRevNoArg();
-    ring->tiltAngle += ring->tiltSpeed;
+    ring->rot_y += ring->tiltSpeed;
     ring->tiltSpeed *= pWhirlwind3Poly->param.tiltDamping;
     ring->radius = radius;
     ring->radiusStep *= pWhirlwind3Poly->param.radiusDamping;
@@ -2572,7 +2572,7 @@ void effPCPWhirlwind3PolyDraw(effPCPWhirlwind3Poly_tag *hData) {
     s32 loop;
     s32 duration = hData->param.duration;
     dds3WhirlwindPolyList_tag *draw = hData->hPoly;
-    PcpScatterParticle *particle = hData->pPart;
+    effPCPWhirlwindPolyPart_tag *particle = hData->pPart;
     u32 count = hData->param.particleCount;
     s32 fadeIn;
     s32 fadeRange;
@@ -2606,7 +2606,7 @@ void effPCPWhirlwind3PolyDraw(effPCPWhirlwind3Poly_tag *hData) {
         instanceFade = 1.0f;
     }
     for (i = 0; i < count; i++) {
-        s32 particleAge = particle->age;
+        s32 particleAge = particle->frame;
 
         if (duration < particleAge) {
             draw->colors[i] = 0;
@@ -2626,9 +2626,9 @@ void effPCPWhirlwind3PolyDraw(effPCPWhirlwind3Poly_tag *hData) {
                 effPCPWhirlwind3PolyPartMove(hData, i);
             }
             if (loop != 0 && !(instanceAge < duration)) {
-                particle->age = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
+                particle->frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
             } else {
-                particle->age++;
+                particle->frame++;
             }
         }
         particle++;
