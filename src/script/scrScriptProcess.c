@@ -77,9 +77,9 @@ scrProcessWork_s *scr_109D80(char *name)
     return scrLoadScriptFile(name, 0);
 }
 
-void scrStartScript2(s32 a, void *b, s32 c)
+void scrStartScript2(s32 priority, void *scrdata, s32 startproc)
 {
-    scrStartScriptProcess(a, fldFlowParse(b, c));
+    scrStartScriptProcess(priority, fldFlowParse(scrdata, startproc));
 }
 
 scrProcessWork_s *scr_109DD0(void *data)

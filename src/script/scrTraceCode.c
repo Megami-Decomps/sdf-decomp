@@ -24,7 +24,7 @@ extern const scrCommandTable_t scrCommandTable[];
 extern s32 (*codefunc[])(scrProcessWork_s *pw);
 
 extern s32 PopInt(scrProcessWork_s *pwork);
-extern f32 PopFloat(scrProcessWork_s *pw);
+extern f32 PopFloat(scrProcessWork_s *pwork);
 extern void CodeFunc_2Operation(scrProcessWork_s *pwork, s32 type);
 
 void PushInt(scrProcessWork_s *pwork, s32 data)
@@ -76,22 +76,22 @@ s32 PopInt(scrProcessWork_s *pwork)
     return 0;
 }
 
-f32 PopFloat(scrProcessWork_s *pw)
+f32 PopFloat(scrProcessWork_s *pwork)
 {
-    s32 stackIndex = pw->SP;
+    s32 stackIndex = pwork->SP;
 
-    pw->SP = stackIndex - 1;
-    switch ((s8)pw->StackType[stackIndex - 1]) {
+    pwork->SP = stackIndex - 1;
+    switch ((s8)pwork->StackType[stackIndex - 1]) {
     case SCR_STACK_TYPE_INT:
-        return (f32)pw->StackData[pw->SP].i;
+        return (f32)pwork->StackData[pwork->SP].i;
     case SCR_STACK_TYPE_RET:
         return 0.0f;
     case SCR_STACK_TYPE_FLOAT:
-        return pw->StackData[pw->SP].f;
+        return pwork->StackData[pwork->SP].f;
     case SCR_STACK_TYPE_INTVAR:
-        return (f32)DDS3_GBWK->integers[pw->StackData[pw->SP].i];
+        return (f32)DDS3_GBWK->integers[pwork->StackData[pwork->SP].i];
     case SCR_STACK_TYPE_FLOATVAR:
-        return DDS3_GBWK->floats[pw->StackData[pw->SP].i];
+        return DDS3_GBWK->floats[pwork->StackData[pwork->SP].i];
     }
     return 0.0f;
 }
