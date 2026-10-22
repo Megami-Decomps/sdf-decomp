@@ -63,7 +63,7 @@ typedef struct sdfFileCmdHandle_t {
     s32 length;
     void *buffer;
     s32 options;
-    s32 resourceId;
+    s32 fd;
     s32 result;
     s32 currentOffset;
     u8 pad34[4];
@@ -78,7 +78,7 @@ typedef struct sdfDevicePrefix_t {
 
 typedef struct sdfFileDeviceCB_t {
     s32 thId;
-    s32 semaphore;
+    s32 semaId;
     struct sdfFileCmdHandle_t *first;
     struct sdfFileCmdHandle_t *last;
     u8 opaque10[8];
@@ -391,6 +391,6 @@ void sdfFileCmdAllocHandle(sdfFileCmdHandle_t *state) {
         EIntr();
     }
     if (wake != 0) {
-        SignalSema(worker->semaphore);
+        SignalSema(worker->semaId);
     }
 }

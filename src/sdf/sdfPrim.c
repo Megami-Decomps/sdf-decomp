@@ -174,7 +174,7 @@ typedef struct sdfPrimF4Elem_t {
 typedef struct sdfPrimBoxLineElem_t {
     u64 gifTag;
     u64 gifRegisterList;
-    u64 primitive;
+    u64 prim;
     u64 rgbaq;
     u64 xyz2[5];
 } sdfPrimBoxLineElem_t;
@@ -218,7 +218,7 @@ typedef struct SdfPacketPatchLink {
 typedef struct sdfPrimGt3Elem_t {
     u64 gifTag;
     u64 gifRegisters;
-    u64 primitive;
+    u64 prim;
     SdfGsGouraudTexturedVertex vertices[3];
 } sdfPrimGt3Elem_t;
 
@@ -226,7 +226,7 @@ typedef struct sdfPrimGt3Elem_t {
 typedef struct sdfPrimGt4Elem_t {
     u64 gifTag;
     u64 gifRegisters;
-    u64 primitive;
+    u64 prim;
     SdfGsGouraudTexturedVertex vertices[4];
 } sdfPrimGt4Elem_t;
 
@@ -249,7 +249,7 @@ typedef struct sdfPrimSpriteElem_t {
 typedef struct sdfPrimFt3Elem_t {
     u64 gifTag;
     u64 gifRegisters;
-    u64 primitive;
+    u64 prim;
     u64 rgbaq;
     SdfGsTexturedVertex vertices[3];
 } sdfPrimFt3Elem_t;
@@ -258,7 +258,7 @@ typedef struct sdfPrimFt3Elem_t {
 typedef struct sdfPrimFt4Elem_t {
     u64 gifTag;
     u64 gifRegisters;
-    u64 primitive;
+    u64 prim;
     u64 rgbaq;
     SdfGsTexturedVertex vertices[4];
 } sdfPrimFt4Elem_t;
@@ -275,7 +275,7 @@ typedef struct sdfPrimG3Elem_t {
 typedef struct sdfPrimG4Elem_t {
     u64 gifTag;
     u64 gifRegisters;
-    u64 primitive;
+    u64 prim;
     SdfGsGouraudVertex vertices[4];
 } sdfPrimG4Elem_t;
 
@@ -915,7 +915,7 @@ void sdfPrimSetG4Elem(sdfPrimG4Elem_t *aElem, s32 aPrim, s32 aX0, s32 aY0, s32 a
 
     aElem->gifTag = 0xA400000000008001ULL;
     aElem->gifRegisters = 0xF515151510ULL;
-    aElem->primitive = (u32)(aPrim | 0x10C);
+    aElem->prim = (u32)(aPrim | 0x10C);
     aElem->vertices[0].rgbaq = (u32)aColor0 | ((u64)0xFE00 << 46);
     aElem->vertices[0].xyz2 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
     aElem->vertices[1].rgbaq = (u32)aColor1 | ((u64)0xFE00 << 46);
@@ -945,7 +945,7 @@ void sdfPrimSetFt3Elem(sdfPrimFt3Elem_t *aElem, s32 aColor, s32 aPrim, s32 aX0, 
 
     aElem->gifTag = 0x8400000000008001ULL;
     aElem->gifRegisters = 0x53535310;
-    aElem->primitive = (u32)(aPrim | 0x114);
+    aElem->prim = (u32)(aPrim | 0x114);
     aElem->rgbaq = (u32)aColor | ((u64)0xFE00 << 46);
     aElem->vertices[0].uv = (aU0 & 0xFFFF) | (aV0 << 16);
     aElem->vertices[0].xyz2 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
@@ -976,7 +976,7 @@ void sdfPrimSetFt4Elem(sdfPrimFt4Elem_t *aElem, s32 aColor, s32 aPrim, s32 aX0, 
 
     aElem->gifTag = 0xA400000000008001ULL;
     aElem->gifRegisters = 0x5353535310ULL;
-    aElem->primitive = (u32)(aPrim | 0x114);
+    aElem->prim = (u32)(aPrim | 0x114);
     aElem->rgbaq = (u32)aColor | ((u64)0xFE00 << 46);
     aElem->vertices[0].uv = (aU0 & 0xFFFF) | (aV0 << 16);
     aElem->vertices[0].xyz2 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
@@ -1010,7 +1010,7 @@ void sdfPrimSetGt3Elem(sdfPrimGt3Elem_t *aElem, s32 aPrim, s32 aX0, s32 aY0, s32
 
     aElem->gifTag = 0xA400000000008001ULL;
     aElem->gifRegisters = 0x5135135130ULL;
-    aElem->primitive = (u32)(aPrim | 0x11C);
+    aElem->prim = (u32)(aPrim | 0x11C);
     aElem->vertices[0].uv = (aU0 & 0xFFFF) | (aV0 << 16);
     aElem->vertices[0].rgbaq = (u32)aColor0 | ((u64)0xFE00 << 46);
     aElem->vertices[0].xyz2 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
@@ -1044,7 +1044,7 @@ void sdfPrimSetGt4Elem(sdfPrimGt4Elem_t *aElem, s32 aPrim, s32 aX0, s32 aY0, s32
 
     aElem->gifTag = 0xE400000000008001ULL;
     aElem->gifRegisters = 0xF5135135135130ULL;
-    aElem->primitive = (u32)(aPrim | 0x11C);
+    aElem->prim = (u32)(aPrim | 0x11C);
     aElem->vertices[0].uv = (aU0 & 0xFFFF) | (aV0 << 16);
     aElem->vertices[0].rgbaq = (u32)aColor0 | ((u64)0xFE00 << 46);
     aElem->vertices[0].xyz2 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
@@ -1135,7 +1135,7 @@ void sdfPrimSetBoxLineElem(sdfPrimBoxLineElem_t *aElem, s32 aColor, s32 aPrim, s
 
     aElem->gifTag = 0x8400000000008001ULL;
     aElem->gifRegisterList = (s32)0xF5555510;
-    aElem->primitive = (u32)aPrim | 0x102;
+    aElem->prim = (u32)aPrim | 0x102;
     aElem->rgbaq = (u32)aColor | 0x3F80000000000000ULL;
     aElem->xyz2[0] = (x0 | y0) | depthHigh;
     aElem->xyz2[1] = (x1 | y0) | depthHigh;

@@ -66,8 +66,8 @@ typedef struct
 
 typedef struct
 {
-    sdfMotNodeMatBase_t matBase;
-    u32 blendFrom;
+    sdfMotNodeMatBase_t base;
+    u32 blendSrc;
 } sdfMotNodeMatColor_t;
 
 typedef struct
@@ -699,8 +699,8 @@ sdfMotionNode_t *sdfMotGenMatDiffuse(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 
     sdfMotNodeMatColor_t *node;
 
     node = sdfChipAllocDirect(sizeof(sdfMotNodeMatColor_t));
-    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatDiffuseTable, aNodeId);
-    return &node->matBase.nodeBase;
+    sdfMotGenMatInit(&node->base, aCtrlr, &sdfMotMatDiffuseTable, aNodeId);
+    return &node->base.nodeBase;
 }
 
 void sdfMotCLBK_matDiffuseSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
@@ -717,15 +717,15 @@ void sdfMotCLBK_matDiffuseBlendSeek(sdfMotNodeMatColor_t *aThis, f32 aFrame, f32
     u32 to;
     u32 color;
 
-    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    sdfMotGetKey(&aThis->base.nodeBase, aFrame, &itf);
     to = sdfMotInterpolateKeyColor(&itf);
-    VU0_RGBA_LERP(color, aThis->blendFrom, to, aBlendRate, 0.5f);
-    sdfMatSetDiffuse(aThis->matBase.mat, color);
+    VU0_RGBA_LERP(color, aThis->blendSrc, to, aBlendRate, 0.5f);
+    sdfMatSetDiffuse(aThis->base.mat, color);
 }
 
 void sdfMotCLBK_matDiffuseInitBlend(sdfMotNodeMatColor_t *aThis)
 {
-    aThis->blendFrom = aThis->matBase.mat->diffuse;
+    aThis->blendSrc = aThis->base.mat->diffuse;
 }
 
 sdfMotionNode_t *sdfMotGenMatAmbient(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
@@ -733,8 +733,8 @@ sdfMotionNode_t *sdfMotGenMatAmbient(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 
     sdfMotNodeMatColor_t *node;
 
     node = sdfChipAllocDirect(sizeof(sdfMotNodeMatColor_t));
-    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatAmbientTable, aNodeId);
-    return &node->matBase.nodeBase;
+    sdfMotGenMatInit(&node->base, aCtrlr, &sdfMotMatAmbientTable, aNodeId);
+    return &node->base.nodeBase;
 }
 
 void sdfMotCLBK_matAmbientSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
@@ -751,15 +751,15 @@ void sdfMotCLBK_matAmbientBlendSeek(sdfMotNodeMatColor_t *aThis, f32 aFrame, f32
     u32 to;
     u32 color;
 
-    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    sdfMotGetKey(&aThis->base.nodeBase, aFrame, &itf);
     to = sdfMotInterpolateKeyColor(&itf);
-    VU0_RGBA_LERP(color, aThis->blendFrom, to, aBlendRate, 0.5f);
-    sdfMatSetAmbient(aThis->matBase.mat, color);
+    VU0_RGBA_LERP(color, aThis->blendSrc, to, aBlendRate, 0.5f);
+    sdfMatSetAmbient(aThis->base.mat, color);
 }
 
 void sdfMotCLBK_matAmbientInitBlend(sdfMotNodeMatColor_t *aThis)
 {
-    aThis->blendFrom = aThis->matBase.mat->ambient;
+    aThis->blendSrc = aThis->base.mat->ambient;
 }
 
 sdfMotionNode_t *sdfMotGenMatSpecular(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
@@ -767,8 +767,8 @@ sdfMotionNode_t *sdfMotGenMatSpecular(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32
     sdfMotNodeMatColor_t *node;
 
     node = sdfChipAllocDirect(sizeof(sdfMotNodeMatColor_t));
-    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatSpecularTable, aNodeId);
-    return &node->matBase.nodeBase;
+    sdfMotGenMatInit(&node->base, aCtrlr, &sdfMotMatSpecularTable, aNodeId);
+    return &node->base.nodeBase;
 }
 
 void sdfMotCLBK_matSpecularSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
@@ -785,15 +785,15 @@ void sdfMotCLBK_matSpecularBlendSeek(sdfMotNodeMatColor_t *aThis, f32 aFrame, f3
     u32 to;
     u32 color;
 
-    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    sdfMotGetKey(&aThis->base.nodeBase, aFrame, &itf);
     to = sdfMotInterpolateKeyColor(&itf);
-    VU0_RGBA_LERP(color, aThis->blendFrom, to, aBlendRate, 0.5f);
-    sdfMatSetSpecular(aThis->matBase.mat, color);
+    VU0_RGBA_LERP(color, aThis->blendSrc, to, aBlendRate, 0.5f);
+    sdfMatSetSpecular(aThis->base.mat, color);
 }
 
 void sdfMotCLBK_matSpecularInitBlend(sdfMotNodeMatColor_t *aThis)
 {
-    aThis->blendFrom = aThis->matBase.mat->specular;
+    aThis->blendSrc = aThis->base.mat->specular;
 }
 
 sdfMotionNode_t *sdfMotGenMatRefMap(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
@@ -801,8 +801,8 @@ sdfMotionNode_t *sdfMotGenMatRefMap(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 a
     sdfMotNodeMatColor_t *node;
 
     node = sdfChipAllocDirect(sizeof(sdfMotNodeMatColor_t));
-    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatRefMapTable, aNodeId);
-    return &node->matBase.nodeBase;
+    sdfMotGenMatInit(&node->base, aCtrlr, &sdfMotMatRefMapTable, aNodeId);
+    return &node->base.nodeBase;
 }
 
 void sdfMotCLBK_matRefMapSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
@@ -819,15 +819,15 @@ void sdfMotCLBK_matRefMapBlendSeek(sdfMotNodeMatColor_t *aThis, f32 aFrame, f32 
     u32 to;
     u32 color;
 
-    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    sdfMotGetKey(&aThis->base.nodeBase, aFrame, &itf);
     to = sdfMotInterpolateKeyColor(&itf);
-    VU0_RGBA_LERP(color, aThis->blendFrom, to, aBlendRate, 0.5f);
-    sdfMatSetRefMap(aThis->matBase.mat, color);
+    VU0_RGBA_LERP(color, aThis->blendSrc, to, aBlendRate, 0.5f);
+    sdfMatSetRefMap(aThis->base.mat, color);
 }
 
 void sdfMotCLBK_matRefMapInitBlend(sdfMotNodeMatColor_t *aThis)
 {
-    aThis->blendFrom = aThis->matBase.mat->refmap;
+    aThis->blendSrc = aThis->base.mat->refmap;
 }
 
 sdfMotionNode_t *sdfMotGenMatConstant(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
@@ -941,8 +941,8 @@ sdfMotionNode_t *sdfMotGenMatMultiDiffuse(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId,
     sdfMotNodeMatColor_t *node;
 
     node = sdfChipAllocDirect(sizeof(sdfMotNodeMatColor_t));
-    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatMultiDiffuseTable, aNodeId);
-    return &node->matBase.nodeBase;
+    sdfMotGenMatInit(&node->base, aCtrlr, &sdfMotMatMultiDiffuseTable, aNodeId);
+    return &node->base.nodeBase;
 }
 
 void sdfMotCLBK_matMultiDiffuseSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
@@ -959,15 +959,15 @@ void sdfMotCLBK_matMultiDiffuseBlendSeek(sdfMotNodeMatColor_t *aThis, f32 aFrame
     u32 to;
     u32 color;
 
-    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    sdfMotGetKey(&aThis->base.nodeBase, aFrame, &itf);
     to = sdfMotInterpolateKeyColor(&itf);
-    VU0_RGBA_LERP(color, aThis->blendFrom, to, aBlendRate, 0.5f);
-    sdfMatSetMultiDiffuse(aThis->matBase.mat, color);
+    VU0_RGBA_LERP(color, aThis->blendSrc, to, aBlendRate, 0.5f);
+    sdfMatSetMultiDiffuse(aThis->base.mat, color);
 }
 
 void sdfMotCLBK_matMultiDiffuseInitBlend(sdfMotNodeMatColor_t *aThis)
 {
-    aThis->blendFrom = aThis->matBase.mat->multiTexDiffuse;
+    aThis->blendSrc = aThis->base.mat->multiTexDiffuse;
 }
 
 sdfMotionNode_t *sdfMotGenMatUvw2(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)

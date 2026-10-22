@@ -7,7 +7,7 @@ typedef struct
 {
     u32 lsn;
     u32 unk4;
-    s32 size;
+    s32 size_;
 } sdfCdImageDirEntry_t;
 
 s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
@@ -263,7 +263,7 @@ s32 sdfCdImageGetFileSize(const char *fname)
     if (entry == NULL) {
         return -1;
     }
-    return entry->size;
+    return entry->size_;
 }
 
 s32 sdfCdImageGetCurrFileSize(void)
@@ -273,7 +273,7 @@ s32 sdfCdImageGetCurrFileSize(void)
     if (file == NULL) {
         FatalError("file didn't open.");
     }
-    return file->size;
+    return file->size_;
 }
 
 /* Read a whole named file into the loader's allocated EE buffer, then close it. */

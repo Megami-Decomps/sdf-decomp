@@ -30,7 +30,7 @@ typedef struct sdfDelayedResrcCB_t {
 /* A queued batch links its next chunk before 63 deferred owner addresses. */
 typedef struct sdfDelayedResrcItems_t {
     struct sdfDelayedResrcItems_t *next;
-    void *entry[SDF_PENDING_BUFFER_CAPACITY];
+    void *items[SDF_PENDING_BUFFER_CAPACITY];
 } sdfDelayedResrcItems_t;
 
 extern sdfDelayedResrcChunk_t *sdfDelayedResrcLink;
@@ -66,8 +66,8 @@ typedef struct effDebugPolyParams_t {
 struct sdfDelayedResrcChunk_t {
     sdfDelayedResrcChunk_t *next;
     sdfDelayedResrcCB_t *owner;
-    sdfDelayedResrcItems_t *buffer;
-    s32 remaining;
+    sdfDelayedResrcItems_t *items;
+    s32 itemsFreeCount;
 };
 
 void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, SdfPendingCallback aFreeFunc);
@@ -100,24 +100,24 @@ void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aItem) {
         pendingNode = aCB->chunk;
         if (pendingNode == NULL) {
             pendingNode = (sdfDelayedResrcChunk_t *)sdfChipAllocDirect(sizeof(sdfDelayedResrcChunk_t));
-            pendingNode->remaining = 0;
+            pendingNode->itemsFreeCount = 0;
             pendingNode->next = sdfDelayedResrcLink;
-            pendingNode->buffer = NULL;
+            pendingNode->items = NULL;
             pendingNode->owner = aCB;
             aCB->chunk = pendingNode;
             sdfDelayedResrcLink = pendingNode;
         }
-        freeEntries = pendingNode->remaining;
-        entryBuffer = pendingNode->buffer;
+        freeEntries = pendingNode->itemsFreeCount;
+        entryBuffer = pendingNode->items;
         if (freeEntries == 0) {
             sdfDelayedResrcItems_t *newBuffer = (sdfDelayedResrcItems_t *)sdfChipAllocDirect(sizeof(sdfDelayedResrcItems_t));
             newBuffer->next = entryBuffer;
-            pendingNode->buffer = newBuffer;
+            pendingNode->items = newBuffer;
             entryBuffer = newBuffer;
             freeEntries = SDF_PENDING_BUFFER_CAPACITY;
         }
-        entryBuffer->entry[SDF_PENDING_BUFFER_CAPACITY - freeEntries] = aItem;
-        pendingNode->remaining = freeEntries - 1;
+        entryBuffer->items[SDF_PENDING_BUFFER_CAPACITY - freeEntries] = aItem;
+        pendingNode->itemsFreeCount = freeEntries - 1;
         SignalSema(sdfDelayedResrcSemaId);
     }
 }
@@ -143,14 +143,14 @@ void sdfDelayedResrcRelease(sdfDelayedResrcChunk_t *aChunk) {
 
     if (aChunk != NULL) {
         do {
-            entryCount = SDF_PENDING_BUFFER_CAPACITY - aChunk->remaining;
+            entryCount = SDF_PENDING_BUFFER_CAPACITY - aChunk->itemsFreeCount;
             entryHandler = aChunk->owner->freeFuncPtr;
-            entryBuffer = aChunk->buffer;
+            entryBuffer = aChunk->items;
             if (entryBuffer != NULL) {
                 do {
                     entryIndex = 0;
                     do {
-                        entryHandler(entryBuffer->entry[entryIndex]);
+                        entryHandler(entryBuffer->items[entryIndex]);
                         entryIndex++;
                     } while (entryIndex < entryCount);
                     nextEntryBuffer = entryBuffer->next;

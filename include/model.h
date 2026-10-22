@@ -341,9 +341,9 @@ struct mdlTrackWork_t;
 typedef struct
 {
     s32 flags;
-    s16 motionSlotIndex;
-    s16 motionIndex;
-    struct sdfMotionPlayBook_t *motionTable;
+    s16 playGroup;
+    s16 firstMotion;
+    struct sdfMotionPlayBook_t *ptr;
     sdfMemHandle_t *resourceHandle;
 } dds3ModelResrcPlayBook_t;
 
@@ -358,7 +358,7 @@ typedef struct mdlIpuAttachment_t {
 typedef struct dds3ModelEffectCtrlr_t {
     struct dds3ModelEffectCtrlr_t *next;
     u16 type; /* dds3ModelEffectType value, with native halfword storage. */
-    s16 motionSlotIndex; /* Owning Motion.slotIndex; -1 tags context-wide entries. */
+    s16 playGroup; /* Owning Motion.slotIndex; -1 tags context-wide entries. */
     union {
         struct {
             /* Type 2 stores a track; other part kinds store their created instance. */
@@ -381,39 +381,39 @@ struct dds3ModelResrc_t
 {
     dds3ModelResrc_t *next;
     dds3ModelResrc_t *prev;
-    u16 group;
-    u16 type;
+    u16 major;
+    u16 minor;
     u8 ownsResources;
     u8 pad0D[3];
-    mdlObj_t *modelContext;
-    sdfModelTexList_t *resourceList;
-    sdfModelDef_t *itemList;
-    sdfMemHandle_t *requestAllocation;
+    mdlObj_t *models;
+    sdfModelTexList_t *texList;
+    sdfModelDef_t *modelDefPtr;
+    sdfMemHandle_t *modelDefHandle;
     dds3ModelResrcPlayBook_t slots[MDL_SLOT_COUNT];
     sdfMemHandle_t *resourceHandle;
     void *partInfo;
-    sdfItemArray_t *partList;
+    sdfItemArray_t *effectResrcList;
     f32 scale;                  /* 0xAC: uniform scale of a new model */
-    f32 objectRadius;
+    f32 radius;
 };
 
 typedef struct dds3ModelBlurInstance_t
 {
     struct dds3ModelBlurInstance_t *next;
-    sdfModelRootNode_t *model;
+    sdfModelRootNode_t *modelobj;
     s32 remaining;
 } dds3ModelBlurInstance_t;
 
 typedef struct
 {
-    dds3ModelBlurInstance_t *first;
+    dds3ModelBlurInstance_t *instants;
     s16 usedCount;
     u16 capacity;
-    s16 stride;
+    s16 interval;
     s16 growStep;
-    s32 byteCount;
+    s32 keepCount;
     f32 color[4];
-    f32 colorStep[4];
+    f32 colorDelta[4];
 } dds3ModelBlurCb_t;
 
 struct mdlObj_t

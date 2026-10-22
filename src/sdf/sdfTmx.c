@@ -87,7 +87,7 @@ typedef struct sdfFileCmdHandle_t {
     s32 length; /* 0x1C */
     void *buffer; /* 0x20 */
     s32 options; /* 0x24 */
-    s32 resourceId; /* 0x28 */
+    s32 fd; /* 0x28 */
     s32 result; /* 0x2C */
     s32 currentOffset; /* 0x30 */
     u8 pad34[4]; /* 0x34 */

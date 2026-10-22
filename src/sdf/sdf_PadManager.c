@@ -17,11 +17,11 @@ typedef u8 SdfTextureClampMode;
 typedef struct sdfPadCb_t {
     u8 port;                 /* 0x00 */
     u8 slot;                 /* 0x01 */
-    u8 state;                /* 0x02 */
+    u8 stat;                /* 0x02 */
     u8 opaque03;
     u8 mode;                 /* 0x04 */
     u8 reqMode;        /* 0x05 */
-    u16 buttons;             /* 0x06 */
+    u16 padData;             /* 0x06 */
     u16 lastPadData;         /* 0x08 */
     u8 opaque0A[2];
     u32 repeatDeadline;      /* 0x0C */
@@ -142,7 +142,7 @@ void sdfPadControl(sdfPadCb_t *entry) {
     s32 largeMotor;
     reply[0] = -1;
     padState = scePadGetState(port, slot);
-    switch (entry->state) {
+    switch (entry->stat) {
     case 0:
         if (padState == 2 || padState == 6) {
             entry->lastSmallMotor = -1;
@@ -150,33 +150,33 @@ void sdfPadControl(sdfPadCb_t *entry) {
             requestedMode = entry->mode = entry->reqMode;
             switch (requestedMode) {
             case 0:
-                entry->state = 3;
+                entry->stat = 3;
                 break;
             case 1:
                 if (padState == 6) {
                     if (scePadSetMainMode(port, slot, 0, 0) == 1) {
-                        entry->state = 1;
+                        entry->stat = 1;
                     }
                 } else {
-                    entry->state = 3;
+                    entry->stat = 3;
                 }
                 break;
             case 2:
                 if (padState == 6) {
                     if (scePadSetMainMode(port, slot, 0, 3) == 1) {
-                        entry->state = 1;
+                        entry->stat = 1;
                     }
                 } else {
-                    entry->state = 3;
+                    entry->stat = 3;
                 }
                 break;
             case 3:
                 if (padState == 6) {
                     if (scePadSetMainMode(port, slot, 1, 3) == 1) {
-                        entry->state = 1;
+                        entry->stat = 1;
                     }
                 } else {
-                    entry->state = 3;
+                    entry->stat = 3;
                 }
                 break;
             }
@@ -184,9 +184,9 @@ void sdfPadControl(sdfPadCb_t *entry) {
         break;
     case 1:
         if (padState == 6) {
-            entry->state = 3;
+            entry->stat = 3;
         } else if (padState != 5) {
-            entry->state = 0;
+            entry->stat = 0;
         }
         break;
     case 2:
@@ -194,27 +194,27 @@ void sdfPadControl(sdfPadCb_t *entry) {
     case 3:
         if (scePadInfoAct(port, slot, -1, 0) != 0) {
             if (scePadSetActAlign(port, slot, sdfPadCb_0) != 0) {
-                entry->state = 4;
+                entry->stat = 4;
             }
         } else {
-            entry->state = 5;
+            entry->stat = 5;
         }
         break;
     case 4:
         alignmentStatus = scePadGetReqState(port, slot);
         if (alignmentStatus != 0) {
             if (alignmentStatus == 1) {
-                entry->state = 3;
+                entry->stat = 3;
             }
         } else {
-            entry->state = 5;
+            entry->stat = 5;
         }
         break;
     case 5:
         if (padState != 2 && padState != 6) {
-            entry->state = 0;
+            entry->stat = 0;
         } else if (entry->mode != entry->reqMode) {
-            entry->state = 0;
+            entry->stat = 0;
         } else {
             scePadRead(port, slot, reply);
             smallMotor = entry->actData;
@@ -252,9 +252,9 @@ void sdfPadControl(sdfPadCb_t *entry) {
     }
     if (hasButtons) {
         memset(entry->pressure, 0, SDF_PAD_PRESSURE_COUNT);
-        entry->buttons = ~(reply[3] | (reply[2] << 8));
+        entry->padData = ~(reply[3] | (reply[2] << 8));
     } else {
-        entry->buttons = 0;
+        entry->padData = 0;
     }
     if (hasAnalog) {
         entry->stick[0] = reply[4];
@@ -314,10 +314,10 @@ void sdfPadInitManager(void) {
         entry = &sdfPadCb[padIndex];
         entry->port = port;
         entry->slot = slot;
-        entry->state = 0;
+        entry->stat = 0;
         entry->mode = 0;
         entry->reqMode = 0;
-        entry->buttons = 0;
+        entry->padData = 0;
         entry->lastPadData = 0;
         entry->actData = 0;
         entry->actDataBack = 0;

@@ -266,7 +266,7 @@ typedef struct sdfGrFramePacket_t {
     sdfGrTagStdReg_t zbuf;
     sdfGrFrameSet_t *source;
     u32 frameMask;
-    s32 region;
+    s32 zbuffMask;
     s32 mode;
 } sdfGrFramePacket_t;
 
@@ -286,7 +286,7 @@ void sdfDrawTagLinkRef(struct sdfDrawTag_t *aTag, u32 aPacket);
 
 /* One 0x10-byte entry in the three-slot frame packet submission ring. */
 typedef struct sdfDrawReqRec_t {
-    struct sdfDrawTag_t *packetList;
+    struct sdfDrawTag_t *drawTag;
     SdfPacketPatchLink *preDraw;
     u8 slotUpdatePhase;
     u8 queuedBufferIndex;
@@ -892,7 +892,7 @@ void sdfGrSetFramePacket(sdfGrFramePacket_t *aFrame, sdfGrFrameSet_t *aFrameSet,
     aFrame->mode = aContext;
     aFrame->source = aFrameSet;
     aFrame->frameMask = aFrameMask;
-    aFrame->region = aZBuffMask;
+    aFrame->zbuffMask = aZBuffMask;
     aFrame->prepare = sdfGrFramePacketPredraw;
 }
 
@@ -911,11 +911,11 @@ void sdfGrReqDraw(sdfDrawTag_t *aTag, sdfPreDrawChain_t *aPreDraw) {
         index = 0;
     }
     slot = &sdfGrDrawState[index];
-    slot->packetList = NULL;
+    slot->drawTag = NULL;
     slot->preDraw = NULL;
     slot->slotUpdatePhase = 0;
     if (aTag != NULL && aTag->tail != 0) {
-        slot->packetList = aTag;
+        slot->drawTag = aTag;
         if (aPreDraw != NULL) {
             slot->preDraw = aPreDraw->head->head;
             if (slot->preDraw != NULL) {
@@ -938,7 +938,7 @@ void sdfGrReqDrawDelay(s32 count) {
 
 void sdfGrInitDraw(void) {
     sdfReqDrawDelayCount = 0;
-    sdfGrDrawState[0].packetList = NULL;
+    sdfGrDrawState[0].drawTag = NULL;
     sdfDrawReqQueueIndex = 0;
 }
 
@@ -950,7 +950,7 @@ void sdfDrawSync(void) {
     for (;;) {
         while (sdfDrawSyncFlag != 0) {
         }
-        if (table[sdfDrawReqQueueIndex].packetList == NULL) {
+        if (table[sdfDrawReqQueueIndex].drawTag == NULL) {
             break;
         }
         if (table[sdfDrawReqQueueIndex].slotUpdatePhase >= 2) {

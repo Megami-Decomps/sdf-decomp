@@ -45,7 +45,7 @@ typedef struct sdfIpuDecodeCb_t
     u8 imageTrans;
     u8 rgbMode;
     u8 loopMode;
-    u8 playbackCadenceStep;
+    u8 fps;
     u8 playbackCadenceRemainder;
     u8 bufferIndex;
     u8 getBuffId;
@@ -59,7 +59,7 @@ typedef struct sdfIpuDecodeCb_t
     struct sdfGsMemSlice_t *textureHead;
     u16 width;
     u16 height;
-    u32 cycleLength;
+    u32 frameCount;
     u32 tickCount;
     s32 frame;
     struct SdfStreamInputDmaTag *inputDmaChain;
@@ -149,7 +149,7 @@ typedef struct sdfFileCmdHandle_t {
     s32 length;
     void *buffer;
     s32 options;
-    s32 resourceId;
+    s32 fd;
     s32 result;
     s32 currentOffset;
     u8 pad34[4];
@@ -495,7 +495,7 @@ void sdfIpuInitCb(sdfIpuDecodeCb_t *cb, struct sdfIpuInitParm_t *parm) {
         cb->rgbMode = SDF_STREAM_OUTPUT_RGBA16_DITHERED;
     }
     cb->loopMode = parm->loopMode;
-    cb->playbackCadenceStep = parm->fps;
+    cb->fps = parm->fps;
 }
 
 /* Decode the frame header, allocate its buffers, then queue the bytes after that header. */
@@ -505,7 +505,7 @@ void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *cb, struct sdfIpuInitParm_t *parm, 
     u8 *frameBytes = (u8 *)hdr;
     sdfIpuInitCb(cb, parm);
     cb->width = ((sdfStreamFrameHeader_t *)frameBytes)->width;
-    cb->cycleLength = ((sdfStreamFrameHeader_t *)frameBytes)->cycleLength;
+    cb->frameCount = ((sdfStreamFrameHeader_t *)frameBytes)->cycleLength;
     cb->height = ((sdfStreamFrameHeader_t *)frameBytes)->height;
     sdfIpuAllocBuff(cb);
     sdfIpuMakeToIpuDmaTag(cb, frameBytes + 0x10, sourceSize - 0x10);
@@ -543,7 +543,7 @@ void sdfIpuAllocGsRect(sdfIpuDecodeCb_t *node) {
     node->read(node, node->strmCallbackParm, SDF_STREAM_READ_COPY, &header, sizeof(header));
     node->width = header.width;
     node->height = header.height;
-    node->cycleLength = header.cycleLength;
+    node->frameCount = header.cycleLength;
     if (node->resourceWord == 0) {
         s32 textureWidth = node->width;
         s32 textureHeight = node->height;
@@ -756,7 +756,7 @@ void sdfIpuDecodeThread(void) {
         work->activeBuffCount++;
         sdfCurrIpuDecodeCb = NULL;
         work->tickCount++;
-        if (work->tickCount == work->cycleLength) {
+        if (work->tickCount == work->frameCount) {
             if (work->loopMode != 0) {
                 work->ipuCycleInitialized = 0;
                 work->tickCount = 0;
@@ -835,7 +835,7 @@ void sdfIpuFinishActiveFrame(sdfIpuDecodeCb_t *cb) {
         cb->imageTrans++;
     }
     cb->frame++;
-    if (cb->frame == cb->cycleLength && cb->loopMode != 0) {
+    if (cb->frame == cb->frameCount && cb->loopMode != 0) {
         cb->frame = 0;
     }
     if (interruptsEnabled != 0) {

@@ -34,7 +34,7 @@ typedef struct sdfIpuDecodeCb_t
     u8 imageTrans;
     u8 rgbMode;
     u8 loopMode;
-    u8 playbackCadenceStep;
+    u8 fps;
     u8 playbackCadenceRemainder;
     u8 bufferIndex;
     u8 getBuffId;
@@ -48,7 +48,7 @@ typedef struct sdfIpuDecodeCb_t
     struct sdfGsMemSlice_t *textureHead;
     u16 width;
     u16 height;
-    u32 cycleLength;
+    u32 frameCount;
     u32 tickCount;
     s32 frame;
     struct SdfStreamInputDmaTag *inputDmaChain;

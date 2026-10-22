@@ -289,7 +289,7 @@ typedef struct
     u8 flags;
     u16 kind;
     s32 size;
-    u32 tag;
+    u32 magicCode;
     s32 decodedSize;
 } sdfPacStdBlockHeader_t;
 
@@ -343,10 +343,10 @@ typedef struct
  * bytes of it are still to come. */
 typedef struct
 {
-    sdfTexHandle_t *tex;
+    sdfTexHandle_t *texHandle;
     sdfMemHandle_t *memHandle;
-    u8 *cursor;
-    s32 remain;
+    u8 *workPtr;
+    s32 rest;
 } sdfPacTmxDecodeCb_t;
 
 /* A texture list packet in progress: the entry count, the entry being decoded,
@@ -366,13 +366,13 @@ typedef void (*sdfPacDecodeFunc)(sdfPacDecodeCb_t *aState);
 
 struct sdfPacDecodeCb_t
 {
-    u8 phase;
+    u8 stat;
     u8 flags;
     s16 currBlockNum;
     sdfPacCallbackFunc callback;
     sdfPacDecodeFunc decoder;
     sdfPacDecodeFunc onEnd;
-    const u8 *src;
+    const u8 *srcData;
     s32 srcLength;
     s32 srcTotal;
     u8 *dst;
@@ -382,10 +382,10 @@ struct sdfPacDecodeCb_t
         struct sdfDecomp_t *decomp;
         u8 *decompBuffer;
     };
-    sdfPacTmxDecodeCb_t *buf;
+    sdfPacTmxDecodeCb_t *decodeCb;
     union
     {
-        sdfPacTmxDecodeCb_t *buf;
+        sdfPacTmxDecodeCb_t *decodeCb;
         sdfPacList_t *list;
     } slot;
     sdfPacWork_t *head;

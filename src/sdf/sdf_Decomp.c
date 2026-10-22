@@ -57,7 +57,7 @@ extern u8 sdf3DScreenTm[];
  * decoder block is allocated as 0x20 bytes; only this 0x14-byte prefix is
  * described here, and its trailing allocation bytes remain unknown. */
 typedef struct sdfDecompCb_t {
-    u8 state;             /* 0x00 */
+    u8 stat;             /* 0x00 */
     u8 command;           /* 0x01 */
     u16 direcLeng;     /* 0x02 */
     u8 *dstPtr;           /* 0x04 */
@@ -101,7 +101,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
     u8 *output;
     u32 sourceAddress;
 
-    if (cb->state == 0) {
+    if (cb->stat == 0) {
         return 1;
     }
 
@@ -109,7 +109,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
     output = cb->dstPtr;
     if (length > 0) {
         do {
-            switch (cb->state) {
+            switch (cb->stat) {
                 case SDF_DECOMP_STAT_IDLE: {
                     u8 command;
                     s32 commandBytes;
@@ -124,17 +124,17 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                             cb->dstPtr = output;
                             cb->srcPtr = src;
                             cb->srcRemain = length;
-                            cb->state = 0;
+                            cb->stat = 0;
                             return 1;
                         }
                     } else {
                         cb->command = command & SDF_DECOMP_DIRECTIVE_MASK;
                         commandBytes = command & SDF_DECOMP_LENGTH_MASK;
                         if (commandBytes == 0) {
-                            cb->state = SDF_DECOMP_STAT_DIREC_LENG0;
+                            cb->stat = SDF_DECOMP_STAT_DIREC_LENG0;
                         } else {
                             cb->direcLeng = commandBytes;
-                            cb->state = SDF_DECOMP_STAT_DIREC;
+                            cb->stat = SDF_DECOMP_STAT_DIREC;
                         }
                     }
                     break;
@@ -142,35 +142,35 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                 case SDF_DECOMP_STAT_DIREC_LENG0:
                     cb->direcLeng = *src++;
                     length--;
-                    cb->state = SDF_DECOMP_STAT_DIREC_LENG1;
+                    cb->stat = SDF_DECOMP_STAT_DIREC_LENG1;
                     break;
                 case SDF_DECOMP_STAT_DIREC_LENG1:
                     cb->direcLeng |= *src++ << 8;
                     length--;
-                    cb->state = SDF_DECOMP_STAT_DIREC;
+                    cb->stat = SDF_DECOMP_STAT_DIREC;
                     break;
                 case SDF_DECOMP_STAT_DIREC:
                     switch (cb->command) {
                     case SDF_DECOMP_DIRECTIVE_NORMAL:
-                        cb->state = SDF_DECOMP_STAT_DEC_NORMAL;
+                        cb->stat = SDF_DECOMP_STAT_DEC_NORMAL;
                         break;
                     case SDF_DECOMP_DIRECTIVE_ZERO:
                         count = cb->direcLeng;
                         memset(output, 0, count);
                         output += count;
-                        cb->state = SDF_DECOMP_STAT_IDLE;
+                        cb->stat = SDF_DECOMP_STAT_IDLE;
                         break;
                     case SDF_DECOMP_DIRECTIVE_RLE:
-                        cb->state = SDF_DECOMP_STAT_DEC_RLE;
+                        cb->stat = SDF_DECOMP_STAT_DEC_RLE;
                         break;
                     case SDF_DECOMP_DIRECTIVE_SD:
-                        cb->state = SDF_DECOMP_STAT_DEC_SD_STEP0;
+                        cb->stat = SDF_DECOMP_STAT_DEC_SD_STEP0;
                         break;
                     case SDF_DECOMP_DIRECTIVE_SD2:
-                        cb->state = SDF_DECOMP_STAT_DEC_SD_STEP1;
+                        cb->stat = SDF_DECOMP_STAT_DEC_SD_STEP1;
                         break;
                     case SDF_DECOMP_DIRECTIVE_WORD:
-                        cb->state = SDF_DECOMP_STAT_DEC_WORD;
+                        cb->stat = SDF_DECOMP_STAT_DEC_WORD;
                         break;
                     }
                     break;
@@ -185,7 +185,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                     length -= count;
                     cb->direcLeng -= count;
                     if (cb->direcLeng == 0) {
-                        cb->state = SDF_DECOMP_STAT_IDLE;
+                        cb->stat = SDF_DECOMP_STAT_IDLE;
                     }
                     break;
                 case SDF_DECOMP_STAT_DEC_RLE:
@@ -193,7 +193,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                     memset(output, *src++, count);
                     output += count;
                     length--;
-                    cb->state = SDF_DECOMP_STAT_IDLE;
+                    cb->stat = SDF_DECOMP_STAT_IDLE;
                     break;
                 case SDF_DECOMP_STAT_DEC_SD_STEP0:
                     sourceAddress = (u32)(output - *src++);
@@ -202,13 +202,13 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                     do {
                         *output++ = *(u8 *)sourceAddress++;
                     } while (--count != 0);
-                    cb->state = SDF_DECOMP_STAT_IDLE;
+                    cb->stat = SDF_DECOMP_STAT_IDLE;
                     break;
                 case SDF_DECOMP_STAT_DEC_SD_STEP1:
                     cb->sdOfs = *src++;
                     length--;
                     if (length == 0) {
-                        cb->state = SDF_DECOMP_STAT_DEC_SD_STEP2;
+                        cb->stat = SDF_DECOMP_STAT_DEC_SD_STEP2;
                         break;
                     }
                     /* fallthrough */
@@ -224,7 +224,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                     do {
                         *output++ = *(u8 *)sourceAddress++;
                     } while (--count != 0);
-                    cb->state = SDF_DECOMP_STAT_IDLE;
+                    cb->stat = SDF_DECOMP_STAT_IDLE;
                     break;
                 }
                 case SDF_DECOMP_STAT_DEC_WORD:
@@ -235,7 +235,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
                         cb->direcLeng -= count;
                     } else {
                         cb->direcLeng = 0;
-                        cb->state = SDF_DECOMP_STAT_IDLE;
+                        cb->stat = SDF_DECOMP_STAT_IDLE;
                         length -= count;
                     }
                     do {
@@ -254,7 +254,7 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
 
 void sdfDecompInit(sdfDecompCb_t *cb, u8 *dst) {
     cb->dstPtr = dst;
-    cb->state = 1;
+    cb->stat = 1;
 }
 
 SdfPacket *sdfDrawModelWithMatrix(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags) {

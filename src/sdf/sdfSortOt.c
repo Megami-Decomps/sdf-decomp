@@ -59,7 +59,7 @@ typedef struct SdfKeyPoolNode {
 typedef struct sdfSortOtNode_tag {
     struct sdfSortOtNode_tag *right; /* 0x00 */
     struct sdfSortOtNode_tag *left;  /* 0x04 */
-    struct SdfKeyTreeItem *item;  /* 0x08 */
+    struct SdfKeyTreeItem *tag;  /* 0x08 */
     s32 balance;                  /* 0x0C */
 } sdfSortOtNode_tag;
 
@@ -495,14 +495,14 @@ void sdfSortOtAvlRegist(sdfSortOtNode_tag **root_p, SdfKeyTreeItem *tag) {
     f32 key = tag->key;
 
     while (cur != NULL) {
-        if (key == cur->item->key) {
-            tag->replaced = cur->item;
-            cur->item = tag;
+        if (key == cur->tag->key) {
+            tag->replaced = cur->tag;
+            cur->tag = tag;
             return;
         }
         path[depth] = cur;
         depth++;
-        if (cur->item->key < key) {
+        if (cur->tag->key < key) {
             link = &cur->right;
         } else {
             link = &cur->left;
@@ -513,7 +513,7 @@ void sdfSortOtAvlRegist(sdfSortOtNode_tag **root_p, SdfKeyTreeItem *tag) {
     node = sdfGrAllocPacketBuff(0x10);
     node->right = NULL;
     node->left = NULL;
-    node->item = tag;
+    node->tag = tag;
     *link = node;
     node->balance = 0;
     if (depth != 0) {
@@ -559,7 +559,7 @@ void sdfGrSortOtTraverse(sdfSortOtNode_tag *node, SdfKeyPoolNode **head_p, SdfKe
         if (node->right != NULL) {
             sdfGrSortOtTraverse(node->right, head_p, tail_p);
         }
-        sdfGrSortOtFixup(node->item, head_p, tail_p);
+        sdfGrSortOtFixup(node->tag, head_p, tail_p);
         next = node->left;
         node = next;
     } while (next != NULL);
