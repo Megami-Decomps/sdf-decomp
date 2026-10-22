@@ -14,7 +14,7 @@ typedef struct dds3NeedleModel_tag
 {
     f32 matrix[16];
     dds3NeedleModelPart_tag *pPart;
-    u32 entryCount;
+    u32 number;
     u32 blend;
     f32 scale[3];
     u32 point;
@@ -68,25 +68,25 @@ extern void dds3NeedleModelVNCListDelete(dds3NeedleModel_tag *hNModel);
 /* The copied 0x5C-byte needle parameters precede runtime ownership state. */
 typedef struct effPCPNeedleSpiralParam_t {
     f32 position[4];
-    u32 count;
+    u32 number;
     s32 life;
     u32 mode;
     s32 fade_in;
     s32 fade_out;
-    u32 randomDelayRange;
+    u32 timing;
     f32 speed;
     f32 accele;
-    f32 radiusBase;
+    f32 radius;
     f32 radius_r;
-    f32 angleStep;
-    u32 fanSegments;
+    f32 roll_s;
+    u32 n_split;
     f32 radiusScale;
     f32 viewOffset;
     u32 centerColor;
     u32 outerColor;
     f32 width;
-    s32 historyLength;
-    u32 trailColor;
+    s32 t_length;
+    u32 t_abgr;
 } effPCPNeedleSpiralParam_t;
 
 typedef struct effPCPNeedleSpiralPart_tag {
@@ -105,13 +105,13 @@ struct BtlUnit;
 
 typedef struct effPCPNeedleSpiral_tag {
     effPCPNeedleSpiralParam_t param;
-    effPCPNeedleSpiralPart_tag *slots;
+    effPCPNeedleSpiralPart_tag *pPart;
     u32 abgr;
     u32 number;
     trackPolySystem_t *hTrackPoly;
     dds3NeedleModel_tag *hNModel;
-    effAllocation_t *allocationHandle;
-} effPCPNeedleSpiral_tag; /* 0x74, followed by number slots */
+    effAllocation_t *hMem;
+} effPCPNeedleSpiral_tag; /* 0x74, followed by number pPart */
 
 #define PAR_CELL_TOPOLOGY_PAIR 0
 #define EFFECT_RING_FULL_TURN 6.2831853f
@@ -155,7 +155,7 @@ void dds3NeedleModelSetMatrix(dds3NeedleModel_tag *hNModel, const f32 *pMatrix);
 
 
 effPCPNeedleSpiral_tag *effPCPNeedleSpiralCreate(effPCPNeedleSpiralParam_t *pParam) {
-    effAllocation_t *allocation = sdfMemAllocDirect(pParam->count * sizeof(effPCPNeedleSpiralPart_tag) + sizeof(effPCPNeedleSpiral_tag));
+    effAllocation_t *allocation = sdfMemAllocDirect(pParam->number * sizeof(effPCPNeedleSpiralPart_tag) + sizeof(effPCPNeedleSpiral_tag));
     effPCPNeedleSpiral_tag *work = (effPCPNeedleSpiral_tag *)sdfMemLock(allocation);
     u32 slotIndex;
     dds3NeedleModel_tag *resource;
@@ -163,25 +163,25 @@ effPCPNeedleSpiral_tag *effPCPNeedleSpiralCreate(effPCPNeedleSpiralParam_t *pPar
     effPCPNeedleSpiralPart_tag *slot;
     f32 radiusBase, radiusJitter;
 
-    work->slots = (effPCPNeedleSpiralPart_tag *)(work + 1);
+    work->pPart = (effPCPNeedleSpiralPart_tag *)(work + 1);
     work->param = *pParam;
-    work->allocationHandle = allocation;
-    work->number = pParam->count;
+    work->hMem = allocation;
+    work->number = pParam->number;
     work->abgr = 0x80808080;
     work->hTrackPoly = 0;
-    resource = dds3NeedleModelCreate(pParam->count);
+    resource = dds3NeedleModelCreate(pParam->number);
     resource->blend = pParam->mode;
     work->hNModel = resource;
-    dds3NeedleModelVNCListCreate(resource, pParam->fanSegments, pParam->centerColor,
+    dds3NeedleModelVNCListCreate(resource, pParam->n_split, pParam->centerColor,
                             pParam->outerColor, pParam->radiusScale, pParam->viewOffset);
-    work->hTrackPoly = dds3TrackPolyCreate(work->number, work->param.historyLength, 0, PAR_CELL_TOPOLOGY_PAIR);
-    dds3TrackPolyVCSet((u32)work->hTrackPoly, 1, work->param.trailColor, work->param.trailColor);
+    work->hTrackPoly = dds3TrackPolyCreate(work->number, work->param.t_length, 0, PAR_CELL_TOPOLOGY_PAIR);
+    dds3TrackPolyVCSet((u32)work->hTrackPoly, 1, work->param.t_abgr, work->param.t_abgr);
     dds3TrackPolySetMode(work->hTrackPoly, (u16)work->param.mode);
     count = work->number;
-    delayRange = pParam->randomDelayRange;
-    slot = work->slots;
+    delayRange = pParam->timing;
+    slot = work->pPart;
     if (delayRange == 0) delayRange = 1;
-    radiusBase = work->param.radiusBase;
+    radiusBase = work->param.radius;
     radiusJitter = work->param.radius_r;
     for (slotIndex = 0; slotIndex < count; slotIndex++, slot++) {
         slot->radian = dds3GetRandFloatA(dds3EffectBase) * EFFECT_RING_FULL_TURN;
@@ -195,7 +195,7 @@ effPCPNeedleSpiral_tag *effPCPNeedleSpiralCreate(effPCPNeedleSpiralParam_t *pPar
 void effPCPNeedleSpiralDelete(effPCPNeedleSpiral_tag *hData) {
     dds3TrackPolyDelete(hData->hTrackPoly);
     dds3NeedleModelDelete(hData->hNModel);
-    sdfMemFreeDirect(hData->allocationHandle);
+    sdfMemFreeDirect(hData->hMem);
 }
 
 void effPCPNeedleSpiralCreatePCF(void *data) {
@@ -268,13 +268,13 @@ void effPCPNeedleSpiralDraw(effPCPNeedleSpiral_tag *hData) {
 
     count = hData->number;
     i = 0;
-    slot = hData->slots;
+    slot = hData->pPart;
     speed = hData->param.speed;
     acceleration = hData->param.accele;
     duration = hData->param.life;
     fadeIn = hData->param.fade_in;
     fadeOut = hData->param.fade_out;
-    angleStep = hData->param.angleStep;
+    angleStep = hData->param.roll_s;
     baseColor = hData->abgr;
     if (count != 0) {
         do {
@@ -398,7 +398,7 @@ dds3NeedleModel_tag *dds3NeedleModelCreate(u32 number)
     work->blend = 2;
     work->pPart = (dds3NeedleModelPart_tag *)(work + 1);
     work->hMem = allocation;
-    work->entryCount = number;
+    work->number = number;
     work->scale[0] = 1.0f;
     work->scale[1] = 1.0f;
     work->scale[2] = 1.0f;
@@ -444,7 +444,7 @@ void dds3NeedleModelDraw(dds3NeedleModel_tag *hNModel)
     SDF_VU0_STOREMATRIX(matrix);
     D_0056AD88.parameters = NULL;
     entry = hNModel->pPart;
-    for (entryIndex = 0; entryIndex < hNModel->entryCount; entryIndex++, entry++) {
+    for (entryIndex = 0; entryIndex < hNModel->number; entryIndex++, entry++) {
         perPrim = 3;
         matrix[12] = entry->position[0];
         matrix[13] = entry->position[1];
