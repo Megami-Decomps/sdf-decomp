@@ -271,13 +271,13 @@ struct effPCPWhirlwindPolyPart_tag {
     f32 rot_x;
     f32 rot_y;
     s32 frame;
-    f32 rise;
+    f32 up_s;
     f32 radian;
-    f32 tiltSpeed;
-    f32 angleStep;
+    f32 radian_s;
+    f32 radian_add;
     f32 radius;
-    f32 radiusStep;
-    f32 heightOffset;
+    f32 radius_s;
+    f32 width;
 };
 
 struct effPCPWhirlwindPoly_tag {
@@ -1961,15 +1961,15 @@ void effPCPWhirlwindPolyPartInit(effPCPWhirlwindPoly_tag *pWhirlwindPoly, s32 in
     height = pWhirlwindPoly->param.heightOffsetBase * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     jitter = pWhirlwindPoly->param.targetRadiusJitter;
     rise = 0.0f;
-    ring->radiusStep = (pWhirlwindPoly->param.targetRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) - radius) / (f32)pWhirlwindPoly->param.duration;
+    ring->radius_s = (pWhirlwindPoly->param.targetRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) - radius) / (f32)pWhirlwindPoly->param.duration;
     ring->rot_x = pWhirlwindPoly->param.tiltScale * dds3GetRandFloatA(dds3EffectBase);
     ring->rot_y = rise;
     ring->radian = angle;
     ring->radius = radius;
-    ring->heightOffset = height;
-    ring->angleStep = angleStep;
-    ring->tiltSpeed = pWhirlwindPoly->param.initialTiltSpeed;
-    ring->rise = pWhirlwindPoly->param.initialRise;
+    ring->width = height;
+    ring->radian_add = angleStep;
+    ring->radian_s = pWhirlwindPoly->param.initialTiltSpeed;
+    ring->up_s = pWhirlwindPoly->param.initialRise;
     SetRotateMatrixX(ring->rot_x);
     SetRotateMatrixY_B(ring->rot_y);
     MultMatrixRevNoArg();
@@ -2014,18 +2014,18 @@ void effPCPWhirlwindPolyPartMove(effPCPWhirlwindPoly_tag *pWhirlwindPoly, s32 in
 
     dds3WhirlwindPolyListGetUV(pWhirlwindPoly->hPoly, index);
     ring = &pWhirlwindPoly->pPart[index];
-    radius = ring->radius + ring->radiusStep;
+    radius = ring->radius + ring->radius_s;
     count = pWhirlwindPoly->hPoly->vectorsPerParticle >> 1;
-    rise = ring->rise;
+    rise = ring->up_s;
     angle = ring->radian;
-    step = ring->angleStep;
+    step = ring->radian_add;
     SetRotateMatrixX(ring->rot_x);
     SetRotateMatrixY_B(ring->rot_y);
     MultMatrixRevNoArg();
-    ring->rot_y += ring->tiltSpeed;
-    ring->tiltSpeed *= pWhirlwindPoly->param.tiltDamping;
+    ring->rot_y += ring->radian_s;
+    ring->radian_s *= pWhirlwindPoly->param.tiltDamping;
     ring->radius = radius;
-    ring->rise = rise * pWhirlwindPoly->param.riseDecay;
+    ring->up_s = rise * pWhirlwindPoly->param.riseDecay;
     for (i = 0; i < count; i++) {
         f32 s;
 
@@ -2213,15 +2213,15 @@ void effPCPWhirlwind2PolyPartInit(effPCPWhirlwind2Poly_tag *pWhirlwind2Poly, s32
     height = pWhirlwind2Poly->param.heightOffsetBase * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     jitter = pWhirlwind2Poly->param.radiusStepJitter;
     rise = 0.0f;
-    ring->radiusStep = pWhirlwind2Poly->param.radiusStepBase * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
+    ring->radius_s = pWhirlwind2Poly->param.radiusStepBase * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     ring->rot_x = pWhirlwind2Poly->param.tiltScale * dds3GetRandFloatA(dds3EffectBase);
     ring->rot_y = rise;
     ring->radian = angle;
     ring->radius = radius;
-    ring->heightOffset = height;
-    ring->angleStep = angleStep;
-    ring->tiltSpeed = pWhirlwind2Poly->param.initialTiltSpeed;
-    ring->rise = pWhirlwind2Poly->param.initialRise;
+    ring->width = height;
+    ring->radian_add = angleStep;
+    ring->radian_s = pWhirlwind2Poly->param.initialTiltSpeed;
+    ring->up_s = pWhirlwind2Poly->param.initialRise;
     SetRotateMatrixX(ring->rot_x);
     SetRotateMatrixY_B(ring->rot_y);
     MultMatrixRevNoArg();
@@ -2266,19 +2266,19 @@ void effPCPWhirlwind2PolyPartMove(effPCPWhirlwind2Poly_tag *pWhirlwind2Poly, s32
 
     dds3WhirlwindPolyListGetUV(pWhirlwind2Poly->hPoly, index);
     ring = &pWhirlwind2Poly->pPart[index];
-    radius = ring->radius + ring->radiusStep;
+    radius = ring->radius + ring->radius_s;
     count = pWhirlwind2Poly->hPoly->vectorsPerParticle >> 1;
-    rise = ring->rise;
+    rise = ring->up_s;
     angle = ring->radian;
-    step = ring->angleStep;
+    step = ring->radian_add;
     SetRotateMatrixX(ring->rot_x);
     SetRotateMatrixY_B(ring->rot_y);
     MultMatrixRevNoArg();
-    ring->rot_y += ring->tiltSpeed;
-    ring->tiltSpeed *= pWhirlwind2Poly->param.tiltDamping;
+    ring->rot_y += ring->radian_s;
+    ring->radian_s *= pWhirlwind2Poly->param.tiltDamping;
     ring->radius = radius;
-    ring->radiusStep *= pWhirlwind2Poly->param.radiusDamping;
-    ring->rise = rise * pWhirlwind2Poly->param.riseDecay;
+    ring->radius_s *= pWhirlwind2Poly->param.radiusDamping;
+    ring->up_s = rise * pWhirlwind2Poly->param.riseDecay;
     for (i = 0; i < count; i++) {
         f32 s;
 
@@ -2481,17 +2481,17 @@ void effPCPWhirlwind3PolyPartInit(effPCPWhirlwind3Poly_tag *pWhirlwind3Poly, s32
     jitter = pWhirlwind3Poly->param.heightOffsetJitter;
     height = pWhirlwind3Poly->param.heightOffsetBase * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     jitter = pWhirlwind3Poly->param.radiusStepJitter;
-    ring->radiusStep = pWhirlwind3Poly->param.radiusStepBase * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
+    ring->radius_s = pWhirlwind3Poly->param.radiusStepBase * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     ring->rot_x = pWhirlwind3Poly->param.tiltScale * dds3GetRandFloatA(dds3EffectBase);
     ring->rot_y = 0;
     rise = pWhirlwind3Poly->param.riseRange / (f32)pWhirlwind3Poly->param.particleCount * (f32)index;
     radius = radius + pWhirlwind3Poly->param.radiusRamp * (f32)(pWhirlwind3Poly->param.particleCount - index);
     ring->radian = angle;
-    ring->heightOffset = height;
-    ring->angleStep = angleStep;
+    ring->width = height;
+    ring->radian_add = angleStep;
     ring->radius = radius;
-    ring->tiltSpeed = pWhirlwind3Poly->param.initialTiltSpeed;
-    ring->rise = pWhirlwind3Poly->param.initialRise;
+    ring->radian_s = pWhirlwind3Poly->param.initialTiltSpeed;
+    ring->up_s = pWhirlwind3Poly->param.initialRise;
     SetRotateMatrixX(ring->rot_x);
     SetRotateMatrixY_B(ring->rot_y);
     MultMatrixRevNoArg();
@@ -2535,19 +2535,19 @@ void effPCPWhirlwind3PolyPartMove(effPCPWhirlwind3Poly_tag *pWhirlwind3Poly, s32
 
     dds3WhirlwindPolyListGetUV(pWhirlwind3Poly->hPoly, index);
     ring = &pWhirlwind3Poly->pPart[index];
-    radius = ring->radius + ring->radiusStep;
+    radius = ring->radius + ring->radius_s;
     count = pWhirlwind3Poly->hPoly->vectorsPerParticle >> 1;
-    rise = ring->rise;
+    rise = ring->up_s;
     angle = ring->radian;
-    step = ring->angleStep;
+    step = ring->radian_add;
     SetRotateMatrixX(ring->rot_x);
     SetRotateMatrixY_B(ring->rot_y);
     MultMatrixRevNoArg();
-    ring->rot_y += ring->tiltSpeed;
-    ring->tiltSpeed *= pWhirlwind3Poly->param.tiltDamping;
+    ring->rot_y += ring->radian_s;
+    ring->radian_s *= pWhirlwind3Poly->param.tiltDamping;
     ring->radius = radius;
-    ring->radiusStep *= pWhirlwind3Poly->param.radiusDamping;
-    ring->rise = rise * pWhirlwind3Poly->param.riseDecay;
+    ring->radius_s *= pWhirlwind3Poly->param.radiusDamping;
+    ring->up_s = rise * pWhirlwind3Poly->param.riseDecay;
     for (i = 0; i < count; i++) {
         f32 s;
 
