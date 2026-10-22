@@ -67,7 +67,7 @@ typedef struct dds3Particle_BlurBuff_t {
     u16 number;
     u16 point;
     dds3Particle_BlurBuffList_t *blurList;
-    billObj_t **pBill_Handle;
+    billHandle_t **pBill_Handle;
     sdfMemHandle_t *allocation;
 } dds3Particle_BlurBuff_t;
 
@@ -177,7 +177,7 @@ typedef struct effEmitterHead_t {
     u8 padA8[8];
     f32 matrix[16];        /* 0xB0 */
     u32 colorMask;         /* 0xF0 */
-    billObj_t *billboard; /* 0xF4: owned billboard shared with the particle view */
+    billHandle_t *billboard; /* 0xF4: owned billboard shared with the particle view */
     dds3Particle_Physics_t *buffer; /* 0xF8 */
     u32 pendingRestartSteps;
     f32 backupMatrix[16];
@@ -236,7 +236,7 @@ typedef struct dds3Particle_Basic_t {
     u8 padA8[8];
     f32 rot[16];               /* 0xB0 */
     u32 abgr;           /* 0xF0: set through dds3ParticleSetRGBA. */
-    billObj_t *hBillboard;           /* 0xF4 */
+    billHandle_t *hBillboard;           /* 0xF4 */
     dds3Particle_Physics_t *buffer;     /* 0xF8 */
     u32 pendingRestartSteps;      /* 0xFC: count, not a pointer */
     f32 rot_b[16];         /* 0x100 */
@@ -698,7 +698,7 @@ void dds3Particle_SphereSpiral2Delete(dds3Particle_SphereSpiral2_t3 *hData);
 void dds3Particle_SphereSpiral2BuffInit(dds3Particle_SphereSpiral2_t3 *pSphereSpiral2, u32 number);
 void dds3Particle_SphereSpiral2Draw(dds3Particle_SphereSpiral2_t3 *hData);
 void dds3ParticleSetColorTable(dds3ParticleColorAnim_t *pColAnim, s32 frame);
-dds3Particle_BlurBuff_t *dds3Particle_BlurCreate(u32 number, u16 length, billObj_t **pBill_Handle);
+dds3Particle_BlurBuff_t *dds3Particle_BlurCreate(u32 number, u16 length, billHandle_t **pBill_Handle);
 void dds3Particle_BlurDelete(dds3Particle_BlurBuff_t *hBlur);
 void dds3Particle_BlurSet(dds3Particle_BlurBuff_t *table, s32 slotIndex, u32 color, f32 billboardScale);
 void dds3Particle_BlurSetExp(dds3Particle_BlurBuff_t *hBlur, s32 index, const f32 *pPosBase, u32 abgr,
@@ -743,16 +743,16 @@ void sdfRandomizeByTime(effRandState_t *aCB);
 sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
 void *sdfMemLock(sdfMemHandle_t *aHandle);
 void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
-billObj_t *dds3BillboardGeneral(s32 number);
-void dds3BillboardSetScale(billObj_t *hBillboard, float x, float y);
-void dds3BillboardSetMode(billObj_t *hBillboard, s32 mode);
+billHandle_t *dds3BillboardGeneral(s32 number);
+void dds3BillboardSetScale(billHandle_t *hBillboard, float x, float y);
+void dds3BillboardSetMode(billHandle_t *hBillboard, s32 mode);
 parSystem_t *dds3TrackPolyCreate(s32 number, s32 face, s32 rec, u32 type);
 void dds3TrackPolyVCSet(void *hTrackPoly, s32 type, void *abgr_in, void *abgr_out);
 void dds3TrackPolySetMode(parSystem_t *hTrackPoly, u16 mode);
 effTrackPolyList_t *Eff_ModelTrackPolyListCreate(effTrackPolyParams_t *pParam, u32 number);
 void dds3TrackPolyDelete(parSystem_t *hTrackPoly);
 void Eff_ModelTrackPolyListDelete(effTrackPolyList_t *list);
-void dds3BillboardDelete(struct billObj_t *hData);
+void dds3BillboardDelete(struct billHandle_t *hData);
 void *sdfChipAllocDirect(s32 aSize);
 void sdfChipFreeDirect(void *aPtr);
 f32 dds3GetRandFloatA(effRandState_t *name);
@@ -763,17 +763,17 @@ u32 dds3GetRandA(effRandState_t *name);
 void LookAtMatrix(const void *aTarget, const void *aEye, const void *aDown);
 void ReverseMatrix(void);
 void SetRotateMatrixAxis(f32 aAngle, const sdfVector3_t *aAxis);
-extern void dds3BillboardDraw(billObj_t *hData);
+extern void dds3BillboardDraw(billHandle_t *hData);
 void dds3TrackPolyVCRefresh_ParType1(parSystem_t *hTrackPoly, s32 index);
 extern void dds3TrackPolyColorSet(parSystem_t *hTrackPoly, s32 number, u32 color);
 void dds3TrackPolyVCRefresh_ParType2(parSystem_t *hTrackPoly, s32 index);
 void dds3TrackPolyDraw(parSystem_t *node);
 void Eff_ModelTrackPolyListDrawOnly(effTrackPolyList_t *hMTPolyList);
 void MultMatrixNoArg(void);
-struct billObj_t *dds3BillboardCreate(s32 kind, u32 data);
-void dds3BillboardSetAnimColorAdvMode(billObj_t *hBillboard);
-struct billObj_t *dds3BillboardCopy(const struct billObj_t *hBillboard);
-void dds3BillboardSetAnimKey(billObj_t *hBillboard, u32 frame);
+struct billHandle_t *dds3BillboardCreate(s32 kind, u32 data);
+void dds3BillboardSetAnimColorAdvMode(billHandle_t *hBillboard);
+struct billHandle_t *dds3BillboardCopy(const struct billHandle_t *hBillboard);
+void dds3BillboardSetAnimKey(billHandle_t *hBillboard, u32 frame);
 void dds3TrackPolyListInit(parSystem_t *hTrackPoly, s32 number);
 void Eff_ModelTrackPolyListReset(effTrackPolyList_t *hMTPolyList, s32 index);
 void dds3TrackPolySet(parSystem_t *hTrackPoly, s32 number, const u128 *pV);
@@ -3477,7 +3477,7 @@ INCLUDE_ASM(const s32, "effect/parManager", dds3ParticleColorAnim);
 #endif
 
 /* Allocate contiguous point slabs, slot records and the trailing table header. */
-dds3Particle_BlurBuff_t *dds3Particle_BlurCreate(u32 number, u16 length, billObj_t **pBill_Handle) {
+dds3Particle_BlurBuff_t *dds3Particle_BlurCreate(u32 number, u16 length, billHandle_t **pBill_Handle) {
     u32 pointBytes = length * sizeof(u128);
     u32 slabBytes = pointBytes + sizeof(dds3Particle_BlurBuffList_t);
     u32 totalBytes = slabBytes * number;
@@ -3567,7 +3567,7 @@ void dds3Particle_BlurSetExp(dds3Particle_BlurBuff_t *hBlur, s32 index, const f3
 }
 
 void dds3Particle_BlurDraw(dds3Particle_BlurBuff_t *hBlur) {
-    billObj_t *billboard;
+    billHandle_t *billboard;
     dds3Particle_BlurBuffList_t *slot;
     s32 remainingSlots;
     s32 pointCount;
@@ -3598,7 +3598,7 @@ void dds3Particle_BlurDraw(dds3Particle_BlurBuff_t *hBlur) {
                     SDF_VU0_COPYVECTOR(billboard, point);
                     alpha -= alphaStep;
                     --remainingPoints;
-                    billboard->childParam = color | (alpha & 0xFF000000);
+                    billboard->abgr = color | (alpha & 0xFF000000);
                     ++point;
                     dds3BillboardDraw(billboard);
                 } while (remainingPoints != 0);
@@ -3761,7 +3761,7 @@ void dds3ParticleDelete(dds3Particle_Basic_t *hData) {
 /* Draw live particles after applying the requested number of emitter updates. */
 void dds3ParticleDraw(dds3Particle_Basic_t *hData) {
     effectBufferRecord_t *record;
-    billObj_t *billboard;
+    billHandle_t *billboard;
     u32 step;
     s32 particleCount;
     s32 lifetime;
@@ -3789,7 +3789,7 @@ void dds3ParticleDraw(dds3Particle_Basic_t *hData) {
 
             if (age < lifetime && age >= 0) {
                 SDF_VU0_COPYVECTOR(billboard, record->position);
-                billboard->childParam = record->color;
+                billboard->abgr = record->color;
                 dds3BillboardDraw(billboard);
             }
             step--;
@@ -3902,7 +3902,7 @@ u8 dds3ParticleGetLoop(dds3Particle_Basic_t *hData) {
 
 dds3Particle_Basic_t *dds3ParticleExpCreate(s32 kind, parKindResource_t *resource) {
     dds3Particle_Basic_t *object = (dds3Particle_Basic_t *)((u8 *)resource + resource->offset + 0x10);
-    billObj_t *billboard;
+    billHandle_t *billboard;
 
     if (resource->type != 3 || resource->offset != 0) {
         object->numberO = PAR_BILLBOARD_CLONE_FROM_RESOURCE;
@@ -3923,7 +3923,7 @@ dds3Particle_Basic_t *dds3ParticleExpCopy(dds3Particle_Basic_t *source) {
     dds3Particle_Basic_t *particle = dds3ParticleFuncTable[source->type].func(source);
     particle->type = source->type;
     if (source->numberO == PAR_BILLBOARD_CLONE_FROM_RESOURCE) {
-        billObj_t *billboard = dds3BillboardCopy(source->hBillboard);
+        billHandle_t *billboard = dds3BillboardCopy(source->hBillboard);
         dds3BillboardSetScale(billboard, particle->billboardScale, particle->billboardScaleY);
         dds3BillboardSetMode(billboard, particle->billboardMode);
         dds3BillboardSetAnimColorAdvMode(billboard);
@@ -3939,7 +3939,7 @@ void dds3ParticleExpDelete(dds3Particle_Basic_t *hData) {
 /* Apply queued updates, then draw live records and submit the kind's resource. */
 void dds3ParticleExpDraw(dds3Particle_Basic_t *hData) {
     effectBufferRecord_t *record;
-    billObj_t *billboard;
+    billHandle_t *billboard;
     u32 step;
     s32 particleCount;
     s32 lifetime;
@@ -3992,8 +3992,8 @@ void dds3ParticleExpDraw(dds3Particle_Basic_t *hData) {
 
             if (age < lifetime && age >= 0) {
                 SDF_VU0_COPYVECTOR(billboard, record->position);
-                billboard->rotationAngle = record->spin;
-                billboard->childParam = record->color;
+                billboard->rot = record->spin;
+                billboard->abgr = record->color;
                 billboard->childScaleX = billboard->childScaleY = record->scale;
                 record->scale += scaleStep;
                 if (record->scale < 0) {
