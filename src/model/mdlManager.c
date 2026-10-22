@@ -27,9 +27,9 @@ typedef struct
     sdfMemHandle_t *modelDefHandle;
     sdfMotionPlayBook_t *playbookPtr;
     sdfMemHandle_t *playbookHandle;
-    void *partInfo;
-    sdfMemHandle_t *resourceHandle;
-    sdfItemArray_t *partList;
+    void *effectData;
+    sdfMemHandle_t *effectMemHandle;
+    sdfItemArray_t *effectResrcList;
 } mdlSetDef_t;
 
 typedef struct
@@ -163,8 +163,8 @@ typedef struct
 {
     u16 major;
     u16 minor;
-    u16 unk4;
-    u16 unk6;
+    u16 scale;
+    u16 radius;
 } dds3ModelFileIndex_t;
 
 typedef struct
@@ -604,12 +604,12 @@ void mdlRegistModelSet(s32 aMajor, s32 aMinor, s32 aFlag, mdlSetDef_t *aSet)
     {
         mdlRegistMotion(aMajor, aMinor, aFlag, 0, 0, 0, aSet->playbookPtr, aSet->playbookHandle);
     }
-    if (aSet->partInfo != NULL)
+    if (aSet->effectData != NULL)
     {
         entity = mdlSearchResrc(aMajor, aMinor);
-        entity->partInfo = aSet->partInfo;
-        entity->resourceHandle = aSet->resourceHandle;
-        entity->effectResrcList = aSet->partList;
+        entity->partInfo = aSet->effectData;
+        entity->resourceHandle = aSet->effectMemHandle;
+        entity->effectResrcList = aSet->effectResrcList;
     }
 }
 
@@ -1379,12 +1379,12 @@ sdfPacWork_t *mdlPackSetOld(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFl
         case DDS3_FT_EFFECT:
             switch (((sdfPacStdBlockHeader_t *)resrc->header)->magicCode) {
             case PIB_TAG_PIB0:
-                setup.partInfo = resrc->data;
-                setup.resourceHandle = (sdfMemHandle_t *)resrc->resrc;
+                setup.effectData = resrc->data;
+                setup.effectMemHandle = (sdfMemHandle_t *)resrc->resrc;
                 count = mdlPibGetEffectCount((mdlPibRecord_t *)resrc->data);
                 if (count > 0) {
                     parts = mdlEffectResrcListNew(count);
-                    setup.partList = parts;
+                    setup.effectResrcList = parts;
                 }
                 break;
             case PIB_TAG_P2A:
@@ -1442,14 +1442,14 @@ sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags
     }
 
     memset(&groupSetup, 0, sizeof(groupSetup));
-    groupSetup.partInfo = record;
-    groupSetup.resourceHandle = (sdfMemHandle_t *)resrc->resrc;
+    groupSetup.effectData = record;
+    groupSetup.effectMemHandle = (sdfMemHandle_t *)resrc->resrc;
     resrc = sdfPacFreeResrc(resrc);
     partCount = mdlPibGetEffectCount(record);
     remainingParts = partCount;
     if (partCount > 0) {
         partList = mdlEffectResrcListNew(partCount);
-        groupSetup.partList = partList;
+        groupSetup.effectResrcList = partList;
     }
     if (remainingParts > 0) {
         do {
@@ -1606,8 +1606,8 @@ void mdlMakeHddFileListDummy(void)
     D_00551F04 = sdfMemLock(D_0054F634);
     D_00551F04->major = 5;
     D_00551F04->minor = 0;
-    D_00551F04->unk4 = 0x1000;
-    D_00551F04->unk6 = 1000;
+    D_00551F04->scale = 0x1000;
+    D_00551F04->radius = 1000;
     D_0054F638 = sdfMemAllocDirect(sizeof(mdlHddFile_t));
     mdlHddFileList = sdfMemLock(D_0054F638);
     for (i = 0; i != 3; i++)
@@ -1738,8 +1738,8 @@ void mdlMakeHddFileList(void) {
 
                 D_00551F04[index].major = 5;
                 D_00551F04[index].minor = index;
-                D_00551F04[index].unk4 = 0x1000;
-                D_00551F04[index].unk6 = 1000;
+                D_00551F04[index].scale = 0x1000;
+                D_00551F04[index].radius = 1000;
                 length = strlen(name);
                 end = length + 5;
                 for (kind = 0; kind != 3; kind++) {
