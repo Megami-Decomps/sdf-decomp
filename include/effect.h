@@ -61,14 +61,14 @@ typedef struct effBezierCurve_t {
 } effBezierCurve_t;
 
 /* Shared rectangle and sampling payload, copied as 0x28 bytes. */
-typedef struct effBlurQuad_t {
+typedef struct dds3Effect_Blur_t {
     u32 color;
     s32 blendControl;
     f32 angle;
-    f32 displacement;
+    f32 scale;
     s32 position[2];
     s32 corners[2][2];
-} effBlurQuad_t;
+} dds3Effect_Blur_t;
 
 /* Phase-driven blur parameters and the scale-slot allocation they own. */
 typedef struct effBlurScaleParams_t {
@@ -87,7 +87,7 @@ typedef struct effBlurScaleParams_t {
 typedef struct effBlurScaleSlot_t {
     f32 phase;
     f32 angle;
-    effBlurQuad_t quad;
+    dds3Effect_Blur_t quad;
 } effBlurScaleSlot_t;
 
 typedef struct effBlurScaleWork_t {
@@ -114,7 +114,7 @@ typedef struct effBlurScatterParams_t {
 typedef struct effBlurScatterSlot_t {
     s32 delay;
     f32 angle;
-    effBlurQuad_t quad;
+    dds3Effect_Blur_t quad;
 } effBlurScatterSlot_t;
 
 typedef struct effBlurScatterWork_t {
@@ -125,13 +125,13 @@ typedef struct effBlurScatterWork_t {
 } effBlurScatterWork_t;
 
 /* A copied 0x2C-byte body followed by its separately acquired texture. */
-typedef struct effBlurTemplateBody_t {
+typedef struct dds3Effect_PartialMultiBlurParam_t {
     s32 extent;
-    effBlurQuad_t source;
-} effBlurTemplateBody_t;
+    dds3Effect_Blur_t source;
+} dds3Effect_PartialMultiBlurParam_t;
 
 typedef struct effBlurTemplate_t {
-    effBlurTemplateBody_t body;
+    dds3Effect_PartialMultiBlurParam_t body;
     sdfTexHandle_t *texture;
 } effBlurTemplate_t;
 
@@ -154,17 +154,17 @@ typedef struct {
     s32 extent;
     s32 center[2];
     effResourceRectDrawParams_t draw;
-} effResourceRectParams_t;
+} dds3Effect_PartialMultiFilterParam_t;
 
 typedef struct {
-    effResourceRectParams_t params;
+    dds3Effect_PartialMultiFilterParam_t params;
     sdfTexHandle_t *texture;
-} effResourceRectWork_t;
+} dds3Effect_PartialMultiFilter_t;
 
-typedef struct effSolidRectParams_t {
+typedef struct dds3Effect_Filter_t {
     u32 color;
     s32 blendControl;
     s32 corners[2][2];
-} effSolidRectParams_t;
+} dds3Effect_Filter_t;
 
 #endif /* EFFECT_H */
