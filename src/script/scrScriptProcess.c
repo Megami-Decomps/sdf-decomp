@@ -7,10 +7,10 @@ extern scrProcessWork_s *scrHandleFirst;
 
 extern s32 strcmp(const char *s1, const char *s2);
 
-extern dds3ProcessID_t *dds3StartProcess(char *name, s32 priority, s32 flag, s32 runtime,
-                                         s32 (*processfunc)(dds3ProcessID_t *id),
-                                         void (*shutdownfunc)(dds3ProcessID_t *id),
-                                         void *workdata);
+extern dds3ProcessID_t *dds3StartProcess(char *v1, s32 dDS3_PRIORITY_DRAW_PB, s32 v2, s32 v3,
+                                         s32 (*drawExit)(dds3ProcessID_t *id),
+                                         void (*deleteExit)(dds3ProcessID_t *id),
+                                         void *p);
 extern void *dds3GetProcessData(dds3ProcessID_t *id);
 extern void dds3SetProcessData(dds3ProcessID_t *id, void *data);
 
@@ -22,13 +22,13 @@ extern scrProcessWork_s *scrPrintProcedureStart(scrHeader_t *header, scrTypeTabl
                                                 scrLabelTable_t *labelTable, scrCode_u *code,
                                                 u8 *messageData, u8 *stringData, s32 procNo);
 extern void scrUnlinkHandle(scrProcessWork_s *pw);
-extern void sdfChipFreeDirect(void *ptr);
-extern void sdfMemFreeDirect(sdfMemHandle_t *handle);
+extern void sdfChipFreeDirect(void *aPtr);
+extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
 extern void itfMesMngRelease(s32 id);
 extern s32 dds3KillProcess(dds3ProcessID_t *id, s32 shutdowntimer);
 extern s32 printf(const char *fmt, ...);
 extern void datDebugPrintf(const char *fmt, ...);
-extern s32 scrTraceCode(scrProcessWork_s *pw);
+extern s32 scrTraceCode(scrProcessWork_s *pwork);
 
 extern s32 scrScriptProcess(dds3ProcessID_t *id);
 void scrScriptShutdown(dds3ProcessID_t *id);
@@ -77,9 +77,9 @@ scrProcessWork_s *scr_109D80(char *name)
     return scrLoadScriptFile(name, 0);
 }
 
-void scrStartScript2(s32 priority, void *data, s32 messageHandle)
+void scrStartScript2(s32 a, void *b, s32 c)
 {
-    scrStartScriptProcess(priority, fldFlowParse(data, messageHandle));
+    scrStartScriptProcess(a, fldFlowParse(b, c));
 }
 
 scrProcessWork_s *scr_109DD0(void *data)
@@ -176,19 +176,19 @@ s32 func_00109FD0(scrProcessWork_s *pw, s32 procNo)
     return 1;
 }
 
-scrProcessWork_s *scrSearchScriptName(char *name)
+scrProcessWork_s *scrSearchScriptName(char *scriptname)
 {
     scrProcessWork_s *pw;
 
     for (pw = scrHandleFirst; pw != NULL; pw = pw->next) {
-        if (strcmp(name, (char *)pw->Name) == 0) {
+        if (strcmp(scriptname, (char *)pw->Name) == 0) {
             return pw;
         }
     }
     return NULL;
 }
 
-s32 scrSearchProcedureName(void *scrdata, char *procName)
+s32 scrSearchProcedureName(void *scrdata, char *procname)
 {
     scrHeader_t *header = scrdata;
     scrTypeTable_t *typeTable;
@@ -213,18 +213,18 @@ s32 scrSearchProcedureName(void *scrdata, char *procName)
     }
 
     for (no = 0; no < typeTable[i].ItemCount; no++) {
-        if (strcmp((char *)procTable[no].Name, procName) == 0) {
+        if (strcmp((char *)procTable[no].Name, procname) == 0) {
             return no;
         }
     }
     return -1;
 }
 
-void scrSetUserData(dds3ProcessID_t *id, void *data)
+void scrSetUserData(dds3ProcessID_t *id, void *p)
 {
     scrProcessWork_s *pw = dds3GetProcessData(id);
 
-    pw->data = data;
+    pw->data = p;
 }
 
 void *scrGetUserData(dds3ProcessID_t *id)
@@ -244,9 +244,9 @@ void scrScriptShutdown(dds3ProcessID_t *id)
     dds3SetProcessData(id, NULL);
 }
 
-s32 scrRunScript(scrProcessWork_s *pw)
+s32 scrRunScript(scrProcessWork_s *h)
 {
-    return scrTraceCode(pw);
+    return scrTraceCode(h);
 }
 
 s32 scrScriptProcess(dds3ProcessID_t *id)
