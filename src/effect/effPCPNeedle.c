@@ -3,17 +3,17 @@
 
 
 /* One needle instance: position plus the colour the draw loop stamps. */
-typedef struct effNeedleEntry_t
+typedef struct dds3NeedleModelPart_tag
 {
     f32 position[3];
     u8 unk0C[4];
     u32 color;
-} effNeedleEntry_t;
+} dds3NeedleModelPart_tag;
 
-typedef struct effNeedleWork_t
+typedef struct dds3NeedleModel_tag
 {
     f32 matrix[16];
-    effNeedleEntry_t *entries;
+    dds3NeedleModelPart_tag *entries;
     u32 entryCount;
     u32 mode;
     f32 scale[3];
@@ -21,10 +21,10 @@ typedef struct effNeedleWork_t
     f32 (*positions)[4];
     f32 (*normals)[4];
     u32 *colors;
-    void *streamAllocation;
+    void *hVNMem;
     void *drawAsset;
     void *backingAllocation;
-} effNeedleWork_t;
+} dds3NeedleModel_tag;
 
 /* Argument block effPkt3DPrimMakePoly reads. */
 typedef struct effPrimParam_t
@@ -62,7 +62,7 @@ extern void *effPkt3DPrimMakePoly(effPrimParam_t *aParm);
 extern void MultMatrixNoArg(void);
 extern void sdfMatFreeDelayed(void *aMat);
 extern void sdfMemFreeDirect(void *aHandle);
-extern void dds3NeedleModelVNCListDelete(effNeedleWork_t *hNModel);
+extern void dds3NeedleModelVNCListDelete(dds3NeedleModel_tag *hNModel);
 
 
 /* The copied 0x5C-byte needle parameters precede runtime ownership state. */
@@ -89,13 +89,13 @@ typedef struct effNeedleSpiralParams_t {
     u32 trailColor;
 } effNeedleSpiralParams_t;
 
-typedef struct effNeedleSpiralSlot_t {
+typedef struct effPCPNeedleSpiralPart_tag {
     f32 direction[4];
     u8 unk10[0x10];
     s32 age;
     f32 radius;
     f32 angle;
-} effNeedleSpiralSlot_t; /* 0x2C */
+} effPCPNeedleSpiralPart_tag; /* 0x2C */
 
 typedef struct effAllocation_t effAllocation_t;
 typedef struct trackPolySystem_t trackPolySystem_t;
@@ -103,15 +103,15 @@ typedef struct effRandState_t { u32 words[4]; } effRandState_t;
 typedef struct effAxis_t { f32 x, y, z; } effAxis_t;
 struct BtlUnit;
 
-typedef struct effNeedleSpiralWork_t {
+typedef struct effPCPNeedleSpiral_tag {
     effNeedleSpiralParams_t params;
-    effNeedleSpiralSlot_t *slots;
+    effPCPNeedleSpiralPart_tag *slots;
     u32 color;
     u32 count;
     trackPolySystem_t *system;
-    effNeedleWork_t *resource;
+    dds3NeedleModel_tag *resource;
     effAllocation_t *allocationHandle;
-} effNeedleSpiralWork_t; /* 0x74, followed by count slots */
+} effPCPNeedleSpiral_tag; /* 0x74, followed by count slots */
 
 #define PAR_CELL_TOPOLOGY_PAIR 0
 #define EFFECT_RING_FULL_TURN 6.2831853f
@@ -143,27 +143,27 @@ extern void dds3TrackPolyVCRefresh_ParType1(trackPolySystem_t *hTrackPoly, s32 i
 extern void dds3TrackPolyColorSet(u32 hTrackPoly, s32 number, u32 color);
 extern void dds3TrackPolyListInit(trackPolySystem_t *hTrackPoly, s32 number);
 extern void dds3TrackPolyDraw(trackPolySystem_t *system);
-effNeedleSpiralWork_t *effPCPNeedleSpiralCreate(effNeedleSpiralParams_t *pParam);
-effNeedleWork_t *dds3NeedleModelCreate(u32 number);
-void dds3NeedleModelDelete(effNeedleWork_t *hNModel);
-void dds3NeedleModelDraw(effNeedleWork_t *hNModel);
-void dds3NeedleModelVNCListCreate(effNeedleWork_t *hNModel, u32 split, u32 radius, u32 length, f32 abgr_in, f32 abgr_out);
-void dds3NeedleModelSetPosition(effNeedleWork_t *hNModel, s32 index, f32 *pPos);
-void dds3NeedleModelGetPosition(effNeedleWork_t *hNModel, s32 index, f32 *pPos);
-void dds3NeedleModelSetColor(effNeedleWork_t *hNModel, s32 index, u32 abgr);
-void dds3NeedleModelSetMatrix(effNeedleWork_t *hNModel, const f32 *pMatrix);
+effPCPNeedleSpiral_tag *effPCPNeedleSpiralCreate(effNeedleSpiralParams_t *pParam);
+dds3NeedleModel_tag *dds3NeedleModelCreate(u32 number);
+void dds3NeedleModelDelete(dds3NeedleModel_tag *hNModel);
+void dds3NeedleModelDraw(dds3NeedleModel_tag *hNModel);
+void dds3NeedleModelVNCListCreate(dds3NeedleModel_tag *hNModel, u32 split, u32 radius, u32 length, f32 abgr_in, f32 abgr_out);
+void dds3NeedleModelSetPosition(dds3NeedleModel_tag *hNModel, s32 index, f32 *pPos);
+void dds3NeedleModelGetPosition(dds3NeedleModel_tag *hNModel, s32 index, f32 *pPos);
+void dds3NeedleModelSetColor(dds3NeedleModel_tag *hNModel, s32 index, u32 abgr);
+void dds3NeedleModelSetMatrix(dds3NeedleModel_tag *hNModel, const f32 *pMatrix);
 
 
-effNeedleSpiralWork_t *effPCPNeedleSpiralCreate(effNeedleSpiralParams_t *pParam) {
-    effAllocation_t *allocation = sdfMemAllocDirect(pParam->count * sizeof(effNeedleSpiralSlot_t) + sizeof(effNeedleSpiralWork_t));
-    effNeedleSpiralWork_t *work = (effNeedleSpiralWork_t *)sdfMemLock(allocation);
+effPCPNeedleSpiral_tag *effPCPNeedleSpiralCreate(effNeedleSpiralParams_t *pParam) {
+    effAllocation_t *allocation = sdfMemAllocDirect(pParam->count * sizeof(effPCPNeedleSpiralPart_tag) + sizeof(effPCPNeedleSpiral_tag));
+    effPCPNeedleSpiral_tag *work = (effPCPNeedleSpiral_tag *)sdfMemLock(allocation);
     u32 slotIndex;
-    effNeedleWork_t *resource;
+    dds3NeedleModel_tag *resource;
     u32 count, delayRange;
-    effNeedleSpiralSlot_t *slot;
+    effPCPNeedleSpiralPart_tag *slot;
     f32 radiusBase, radiusJitter;
 
-    work->slots = (effNeedleSpiralSlot_t *)(work + 1);
+    work->slots = (effPCPNeedleSpiralPart_tag *)(work + 1);
     work->params = *pParam;
     work->allocationHandle = allocation;
     work->count = pParam->count;
@@ -192,7 +192,7 @@ effNeedleSpiralWork_t *effPCPNeedleSpiralCreate(effNeedleSpiralParams_t *pParam)
     return work;
 }
 
-void effPCPNeedleSpiralDelete(effNeedleSpiralWork_t *hData) {
+void effPCPNeedleSpiralDelete(effPCPNeedleSpiral_tag *hData) {
     dds3TrackPolyDelete(hData->system);
     dds3NeedleModelDelete(hData->resource);
     sdfMemFreeDirect(hData->allocationHandle);
@@ -209,7 +209,7 @@ void effPCPNeedleSpiralCopy(effNeedleSpiralParams_t *work) {
     effPCPNeedleSpiralCreate(work);
 }
 
-void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *hData) {
+void effPCPNeedleSpiralDraw(effPCPNeedleSpiral_tag *hData) {
     f32 position[4];
     f32 axis[4];
     f32 vertices[2][4];
@@ -217,7 +217,7 @@ void effPCPNeedleSpiralDraw(effNeedleSpiralWork_t *hData) {
     f32 viewDirection[4];
     f32 width[4];
     f32 viewOffset[4];
-    effNeedleSpiralSlot_t *slot;
+    effPCPNeedleSpiralPart_tag *slot;
     s32 fadeIn;
     u32 count;
     u32 i;
@@ -380,29 +380,29 @@ void effPCPNeedleSpiralSetPosition(void *hData, void *pPos) {
     SDF_VU0_COPYVECTOR(hData, pPos);
 }
 
-void effPCPNeedleSpiralSetRotateMatrix(effNeedleSpiralWork_t *hData, void *pMatrix) {
+void effPCPNeedleSpiralSetRotateMatrix(effPCPNeedleSpiral_tag *hData, void *pMatrix) {
     dds3NeedleModelSetMatrix(hData->resource, pMatrix);
 }
 
-void effPCPNeedleSpiralSetColor(effNeedleSpiralWork_t *hData, u32 abgr) {
+void effPCPNeedleSpiralSetColor(effPCPNeedleSpiral_tag *hData, u32 abgr) {
     hData->color = abgr;
 }
 
-effNeedleWork_t *dds3NeedleModelCreate(u32 number)
+dds3NeedleModel_tag *dds3NeedleModelCreate(u32 number)
 {
-    struct effAllocation_t *allocation = sdfMemAllocDirect(number * sizeof(effNeedleEntry_t) + sizeof(effNeedleWork_t));
-    effNeedleWork_t *work = (void *)sdfMemLock(allocation);
-    effNeedleEntry_t *entry;
+    struct effAllocation_t *allocation = sdfMemAllocDirect(number * sizeof(dds3NeedleModelPart_tag) + sizeof(dds3NeedleModel_tag));
+    dds3NeedleModel_tag *work = (void *)sdfMemLock(allocation);
+    dds3NeedleModelPart_tag *entry;
     u32 entryIndex;
 
     work->mode = 2;
-    work->entries = (effNeedleEntry_t *)(work + 1);
+    work->entries = (dds3NeedleModelPart_tag *)(work + 1);
     work->backingAllocation = allocation;
     work->entryCount = number;
     work->scale[0] = 1.0f;
     work->scale[1] = 1.0f;
     work->scale[2] = 1.0f;
-    work->streamAllocation = NULL;
+    work->hVNMem = NULL;
     SDF_VU0_STOREIDENTITY(work->matrix);
     work->drawAsset = sdfMatNew();
     sdfMatSetConstant(work->drawAsset, 1.0f);
@@ -415,18 +415,18 @@ effNeedleWork_t *dds3NeedleModelCreate(u32 number)
     return work;
 }
 
-void dds3NeedleModelDelete(effNeedleWork_t *hNModel)
+void dds3NeedleModelDelete(dds3NeedleModel_tag *hNModel)
 {
     sdfMatFreeDelayed(hNModel->drawAsset);
     dds3NeedleModelVNCListDelete(hNModel);
     sdfMemFreeDirect(hNModel->backingAllocation);
 }
 
-void dds3NeedleModelDraw(effNeedleWork_t *hNModel)
+void dds3NeedleModelDraw(dds3NeedleModel_tag *hNModel)
 {
     f32 matrix[16] __attribute__((aligned(16)));
     void *packet;
-    effNeedleEntry_t *entry;
+    dds3NeedleModelPart_tag *entry;
     u32 entryIndex;
     u32 remaining;
     u32 perPrim;
@@ -451,7 +451,7 @@ void dds3NeedleModelDraw(effNeedleWork_t *hNModel)
         matrix[14] = entry->position[2];
         SDF_VU0_LOADMATRIX(matrix);
         sdf3DPrimLinkTm(packet, 0);
-        if (hNModel->streamAllocation == NULL) {
+        if (hNModel->hVNMem == NULL) {
             remaining = 12;
             D_0056AD88.colors = D_0031F520;
             D_0056AD88.positions = D_0031F460;
@@ -467,7 +467,7 @@ void dds3NeedleModelDraw(effNeedleWork_t *hNModel)
         D_0056AD88.vertexCount = 48;
         while (remaining >= 48) {
             sdfDrawTagLink(packet, (u32)effPkt3DPrimMakePoly(&D_0056AD88));
-            if (hNModel->streamAllocation == NULL) {
+            if (hNModel->hVNMem == NULL) {
                 D_0056AD88.colors += 48;
                 D_0056AD88.positions += 48;
             } else {
@@ -490,7 +490,7 @@ extern s32 printf(const char *format, ...);
 
 /* Build a closed triangle fan: one outer vertex, the axis centre and the next
  * outer vertex per segment. */
-void dds3NeedleModelVNCListCreate(effNeedleWork_t *hNModel, u32 split, u32 radius, u32 length, f32 abgr_in, f32 abgr_out)
+void dds3NeedleModelVNCListCreate(dds3NeedleModel_tag *hNModel, u32 split, u32 radius, u32 length, f32 abgr_in, f32 abgr_out)
 {
     void *allocation;
     f32 (*position)[4];
@@ -505,13 +505,13 @@ void dds3NeedleModelVNCListCreate(effNeedleWork_t *hNModel, u32 split, u32 radiu
     if (split < 3) {
         split = 3;
     }
-    if (hNModel->streamAllocation != NULL) {
+    if (hNModel->hVNMem != NULL) {
         dds3NeedleModelVNCListDelete(hNModel);
     }
     angle = 0.0f;
     vertexCount = split * 3;
     allocation = sdfMemAllocDirect(vertexCount * 36);
-    hNModel->streamAllocation = allocation;
+    hNModel->hVNMem = allocation;
     position = (f32 (*)[4])sdfMemLock(allocation);
     normal = position + vertexCount;
     color = (u32 *)(normal + vertexCount);
@@ -553,42 +553,42 @@ void dds3NeedleModelVNCListCreate(effNeedleWork_t *hNModel, u32 split, u32 radiu
         normal++;
         position++;
     }
-    printf("dds3NeedleModelVNCListCreate[%p] ****\n", hNModel->streamAllocation);
+    printf("dds3NeedleModelVNCListCreate[%p] ****\n", hNModel->hVNMem);
 }
 
-void dds3NeedleModelVNCListDelete(effNeedleWork_t *hNModel)
+void dds3NeedleModelVNCListDelete(dds3NeedleModel_tag *hNModel)
 {
-    if (hNModel->streamAllocation != NULL) {
-        printf("dds3NeedleModelVNCListDelete[%p] ****\n", hNModel->streamAllocation);
-        sdfMemFreeDirect(hNModel->streamAllocation);
+    if (hNModel->hVNMem != NULL) {
+        printf("dds3NeedleModelVNCListDelete[%p] ****\n", hNModel->hVNMem);
+        sdfMemFreeDirect(hNModel->hVNMem);
     }
 }
 
-void dds3NeedleModelSetPosition(effNeedleWork_t *hNModel, s32 index, f32 *pPos)
+void dds3NeedleModelSetPosition(dds3NeedleModel_tag *hNModel, s32 index, f32 *pPos)
 {
-    f32 *dst = (f32 *)(index * sizeof(effNeedleEntry_t) + (s32)hNModel->entries);
+    f32 *dst = (f32 *)(index * sizeof(dds3NeedleModelPart_tag) + (s32)hNModel->entries);
 
     dst[0] = pPos[0];
     dst[1] = pPos[1];
     dst[2] = pPos[2];
 }
 
-void dds3NeedleModelGetPosition(effNeedleWork_t *hNModel, s32 index, f32 *pPos)
+void dds3NeedleModelGetPosition(dds3NeedleModel_tag *hNModel, s32 index, f32 *pPos)
 {
-    f32 *src = (f32 *)(index * sizeof(effNeedleEntry_t) + (s32)hNModel->entries);
+    f32 *src = (f32 *)(index * sizeof(dds3NeedleModelPart_tag) + (s32)hNModel->entries);
 
     pPos[0] = src[0];
     pPos[1] = src[1];
     pPos[2] = src[2];
 }
 
-void dds3NeedleModelSetColor(effNeedleWork_t *hNModel, s32 index, u32 abgr)
+void dds3NeedleModelSetColor(dds3NeedleModel_tag *hNModel, s32 index, u32 abgr)
 {
     hNModel->entries[index].color = abgr;
 }
 
 /* vu0 routine: copy the resource transform through the matrix bank. */
-void dds3NeedleModelSetMatrix(effNeedleWork_t *hNModel, const f32 *pMatrix) {
+void dds3NeedleModelSetMatrix(dds3NeedleModel_tag *hNModel, const f32 *pMatrix) {
     VU0_COPY_MATRIX(hNModel->matrix, pMatrix);
 }
 
