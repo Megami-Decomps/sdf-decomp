@@ -217,16 +217,16 @@ typedef struct billRenderPair_t {
     struct billRenderPair_t *next;  
 } billRenderPair_t;
 
-typedef struct billObj_t {
-    f32 position[4];  
+typedef struct billHandle_t {
+    f32 pos[4];  
     f32 childScaleX;   
     f32 childScaleY;   
     f32 unk18;
     f32 unk1C;
-    f32 rotationAngle;   
-    u32 childParam;    
+    f32 rot;   
+    u32 abgr;    
     void (*callback)();  
-    u16 kind;          
+    u16 type;          
     u16 requestedPacketListIndex;  
     union {
         void *payload;  
@@ -240,5 +240,5 @@ typedef struct billObj_t {
     u32 animationEntryIndex;  
     s32 entryCount;
     struct billOut_t *resolvedEntries;  
-} billObj_t;
+} billHandle_t;
 #endif /* BILLBOARD_H */

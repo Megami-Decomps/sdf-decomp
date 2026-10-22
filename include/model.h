@@ -334,7 +334,7 @@ enum PACKET_TYPE_e
  * controllers and interprets their type-dependent payload. */
 typedef struct mdlObj_t mdlObj_t;
 typedef struct dds3ModelResrc_t dds3ModelResrc_t;
-struct mdlPartSlot_t;
+struct mdlEffectResrcItem_t;
 struct mdlMarkPos_t;
 struct mdlEffectResrc_IPU_t;
 struct mdlTrackWork_t;
@@ -366,7 +366,7 @@ typedef struct dds3ModelEffectCtrlr_t {
                 void *instance;
                 struct mdlTrackWork_t *track;
             };
-            struct mdlPartSlot_t *slot;
+            struct mdlEffectResrcItem_t *slot;
             struct mdlMarkPos_t *mapPositionRecord;
             f32 anchorScale;
             u8 pad18[8];

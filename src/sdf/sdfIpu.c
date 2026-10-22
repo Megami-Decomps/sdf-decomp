@@ -142,8 +142,8 @@ typedef struct sdfFileCmdHandle_t {
     struct sdfFileCmdHandle_t *workerPrev;
     char *filename;
     u8 device;
-    sdfDevOperationCode_t operation;
-    sdfDevStateCode_t state;
+    sdfDevOperationCode_t cmd;
+    sdfDevStateCode_t stat;
     u8 pad17;
     s32 offset;
     s32 length;
@@ -154,7 +154,7 @@ typedef struct sdfFileCmdHandle_t {
     s32 currentOffset;
     u8 pad34[4];
     void (*callback)(struct sdfFileCmdHandle_t *, s32, s32, s32, s32);
-    s32 callbackContext;
+    s32 userData;
 } sdfFileCmdHandle_t;
 
 enum SdfFileIOCmdStat {

@@ -172,7 +172,7 @@ typedef struct sdfPrimF4Elem_t {
 
 /* GIF stream for a closed rectangle: its first XYZ2 value is repeated last. */
 typedef struct sdfPrimBoxLineElem_t {
-    u64 gifTag;
+    u64 giftag;
     u64 gifRegisterList;
     u64 prim;
     u64 rgbaq;
@@ -320,13 +320,13 @@ typedef struct sdfPrimTransPacket_t {
 } sdfPrimTransPacket_t;
 
 typedef struct sdfPrimGt3Packet_t {
-    u64 dmaTag;
+    u64 dmatag;
     u64 vifCommands;
     sdfPrimGt3Elem_t drawing;
 } sdfPrimGt3Packet_t;
 
 typedef struct sdfPrimGt4Packet_t {
-    u64 dmaTag;
+    u64 dmatag;
     u64 vifCommands;
     sdfPrimGt4Elem_t drawing;
     u64 unwrittenTail; /* Final allocated word is not written by the builder. */
@@ -339,13 +339,13 @@ typedef struct sdfPrimSpritePacket_t {
 } sdfPrimSpritePacket_t;
 
 typedef struct sdfPrimFt3Packet_t {
-    u64 dmaTag;
+    u64 dmatag;
     u64 vifCommands;
     sdfPrimFt3Elem_t drawing;
 } sdfPrimFt3Packet_t;
 
 typedef struct sdfPrimFt4Packet_t {
-    u64 dmaTag;
+    u64 dmatag;
     u64 vifCommands;
     sdfPrimFt4Elem_t drawing;
 } sdfPrimFt4Packet_t;
@@ -358,7 +358,7 @@ typedef struct sdfPrimG3Packet_t {
 } sdfPrimG3Packet_t;
 
 typedef struct sdfPrimG4Packet_t {
-    u64 dmaTag;
+    u64 dmatag;
     u64 vifCommands;
     sdfPrimG4Elem_t drawing;
     u64 unwrittenTail; /* Allocation rounds the REGLIST payload up to a qword. */
@@ -934,7 +934,7 @@ void sdfPrimLinkG4(s32 aTag, s32 aPrim, s32 aX0, s32 aY0, s32 aColor0, s32 aX1,
         aAllocator = sdfGrAllocPacketBuff;
     }
     packet = (sdfPrimG4Packet_t *)aAllocator(0x70);
-    packet->dmaTag = 0x20000006;
+    packet->dmatag = 0x20000006;
     packet->vifCommands = (((u64)0x50000006 << 16) | 0x1000) << 16;
     sdfPrimSetG4Elem(&packet->drawing, aPrim, aX0, aY0, aColor0, aX1, aY1, aColor1, aX2, aY2, aColor2, aX3, aY3, aColor3, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
@@ -963,7 +963,7 @@ void sdfPrimLinkFt3(s32 aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aU0,
         aAllocator = sdfGrAllocPacketBuff;
     }
     packet = (sdfPrimFt3Packet_t *)aAllocator(0x60);
-    packet->dmaTag = 0x20000005;
+    packet->dmatag = 0x20000005;
     packet->vifCommands = (((u64)0x50000005 << 16) | 0x1000) << 16;
     sdfPrimSetFt3Elem(&packet->drawing, aColor, aPrim, aX0, aY0, aU0, aV0, aX1, aY1, aU1, aV1, aX2, aY2, aU2, aV2, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
@@ -997,7 +997,7 @@ void sdfPrimLinkFt4(sdfDrawTag_t *aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0,
         aAllocator = sdfGrAllocPacketBuff;
     }
     packet = (sdfPrimFt4Packet_t *)aAllocator(0x70);
-    packet->dmaTag = 0x20000006;
+    packet->dmatag = 0x20000006;
     packet->vifCommands = (((u64)0x50000006 << 16) | 0x1000) << 16;
     sdfPrimSetFt4Elem(&packet->drawing, aColor, aPrim, aX0, aY0, aU0, aV0, aX1, aY1, aU1, aV1, aX2, aY2, aU2, aV2, aX3, aY3, aU3, aV3, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
@@ -1031,7 +1031,7 @@ void sdfPrimLinkGt3(s32 aTag, s32 aPrim, s32 aX0, s32 aY0, s32 aU0, s32 aV0,
         aAllocator = sdfGrAllocPacketBuff;
     }
     packet = (sdfPrimGt3Packet_t *)aAllocator(0x70);
-    packet->dmaTag = 0x20000006;
+    packet->dmatag = 0x20000006;
     packet->vifCommands = (((u64)0x50000006 << 16) | 0x1000) << 16;
     sdfPrimSetGt3Elem(&packet->drawing, aPrim, aX0, aY0, aU0, aV0, aColor0, aX1, aY1, aU1, aV1, aColor1, aX2, aY2, aU2, aV2, aColor2, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
@@ -1068,7 +1068,7 @@ void sdfPrimLinkGt4(sdfDrawTag_t *aTag, s32 aPrim, s32 aX0, s32 aY0, s32 aU0, s3
         aAllocator = sdfGrAllocPacketBuff;
     }
     packet = (sdfPrimGt4Packet_t *)aAllocator(0x90);
-    packet->dmaTag = 0x20000008;
+    packet->dmatag = 0x20000008;
     packet->vifCommands = (((u64)0x50000008 << 16) | 0x1000) << 16;
     sdfPrimSetGt4Elem(&packet->drawing, aPrim, aX0, aY0, aU0, aV0, aColor0, aX1, aY1, aU1, aV1, aColor1, aX2, aY2, aU2, aV2, aColor2, aX3, aY3, aU3, aV3, aColor3, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
@@ -1133,7 +1133,7 @@ void sdfPrimSetBoxLineElem(sdfPrimBoxLineElem_t *aElem, s32 aColor, s32 aPrim, s
     u32 y0 = (u32)aY0 << 16;
     u32 y1 = (u32)aY1 << 16;
 
-    aElem->gifTag = 0x8400000000008001ULL;
+    aElem->giftag = 0x8400000000008001ULL;
     aElem->gifRegisterList = (s32)0xF5555510;
     aElem->prim = (u32)aPrim | 0x102;
     aElem->rgbaq = (u32)aColor | 0x3F80000000000000ULL;

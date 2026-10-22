@@ -80,8 +80,8 @@ typedef struct sdfFileCmdHandle_t {
     struct sdfFileCmdHandle_t *workerPrev; /* 0x0C */
     char *filename; /* 0x10 */
     u8 device; /* 0x14 */
-    SdfDevOperationCode operation; /* 0x15 */
-    SdfDevStateCode state; /* 0x16 */
+    SdfDevOperationCode cmd; /* 0x15 */
+    SdfDevStateCode stat; /* 0x16 */
     u8 pad17; /* 0x17 */
     s32 offset; /* 0x18 */
     s32 length; /* 0x1C */
@@ -92,7 +92,7 @@ typedef struct sdfFileCmdHandle_t {
     s32 currentOffset; /* 0x30 */
     u8 pad34[4]; /* 0x34 */
     void (*callback)(struct sdfFileCmdHandle_t *, s32, s32, s32, s32); /* 0x38 */
-    s32 callbackContext; /* 0x3C: opaque callback-context word */
+    s32 userData; /* 0x3C: opaque callback-context word */
 } sdfFileCmdHandle_t;
 
 s32 sdfFileCmdRead(sdfFileCmdHandle_t *aHandle, void *aBuffer, s32 aLength);

@@ -21,7 +21,7 @@ extern void sdfAddressResolver(s32 *aDataBody, s32 aOffset, u8 *aAddrInfoPtr, s3
 s32 sdfPacStdCallback(sdfPacDecodeCb_t *cb, s32 cause, sdfPacStdBlockHeader_t *hdr);
 void sdfPacNewBlock(sdfPacDecodeCb_t *cb);
 void sdfPacEndBlock(sdfPacDecodeCb_t *cb);
-sdfPacWork_t *sdfPacNewResrc(sdfPacDecodeCb_t *cb, const sdfPacStdBlockHeader_t *hdr);
+sdfPacDecodeResrc_t *sdfPacNewResrc(sdfPacDecodeCb_t *cb, const sdfPacStdBlockHeader_t *hdr);
 void sdfPacMemDecoderFunc(sdfPacDecodeCb_t *cb);
 void sdfPacMemDecompDecoderFunc(sdfPacDecodeCb_t *cb);
 void sdfPacMemStayDecoderFunc(sdfPacDecodeCb_t *cb);
@@ -71,8 +71,8 @@ void sdfPacSetFromTail(sdfPacDecodeCb_t *cb)
 
 void sdfPacFree(sdfPacDecodeCb_t *cb)
 {
-    sdfPacWork_t *cursor = cb->resrcHead;
-    sdfPacWork_t *current = cursor;
+    sdfPacDecodeResrc_t *cursor = cb->resrcHead;
+    sdfPacDecodeResrc_t *current = cursor;
 
     while (cursor != NULL) {
         cursor = cursor->next;
@@ -133,9 +133,9 @@ void sdfPacNewBlock(sdfPacDecodeCb_t *cb)
 void sdfPacEndBlock(sdfPacDecodeCb_t *cb)
 {
     s32 result;
-    sdfPacWork_t *tail;
-    sdfPacWork_t *scan;
-    sdfPacWork_t *next;
+    sdfPacDecodeResrc_t *tail;
+    sdfPacDecodeResrc_t *scan;
+    sdfPacDecodeResrc_t *next;
 
     result = cb->callback(cb, 1, (sdfPacStdBlockHeader_t *)cb->resrcTail->header);
     if (result == 1) {
@@ -192,12 +192,12 @@ s32 sdfPacDecode(sdfPacDecodeCb_t *cb, const u8 *data, s32 length)
     return (s8)cb->stat;
 }
 
-sdfPacWork_t *sdfPacNewResrc(sdfPacDecodeCb_t *cb, const sdfPacStdBlockHeader_t *hdr)
+sdfPacDecodeResrc_t *sdfPacNewResrc(sdfPacDecodeCb_t *cb, const sdfPacStdBlockHeader_t *hdr)
 {
     s32 extra = hdr->flags & SDF_PAC_EXTRA_MASK;
-    sdfPacWork_t *aWork = sdfChipAllocZeroDirect(extra + sizeof(sdfPacWork_t));
+    sdfPacDecodeResrc_t *aWork = sdfChipAllocZeroDirect(extra + sizeof(sdfPacDecodeResrc_t));
 
-    aWork->state = cb;
+    aWork->cb = cb;
     memcpy(aWork->header, hdr, extra + sizeof(*hdr));
     if (cb->resrcTail == NULL) {
         cb->resrcHead = aWork;
@@ -208,13 +208,13 @@ sdfPacWork_t *sdfPacNewResrc(sdfPacDecodeCb_t *cb, const sdfPacStdBlockHeader_t 
     return aWork;
 }
 
-sdfPacWork_t *sdfPacFreeResrc(sdfPacWork_t *resrc)
+sdfPacDecodeResrc_t *sdfPacFreeResrc(sdfPacDecodeResrc_t *resrc)
 {
-    sdfPacDecodeCb_t *aState = resrc->state;
-    sdfPacWork_t **link = &aState->resrcHead;
-    sdfPacWork_t *current = aState->resrcHead;
-    sdfPacWork_t *previous = NULL;
-    sdfPacWork_t *next;
+    sdfPacDecodeCb_t *aState = resrc->cb;
+    sdfPacDecodeResrc_t **link = &aState->resrcHead;
+    sdfPacDecodeResrc_t *current = aState->resrcHead;
+    sdfPacDecodeResrc_t *previous = NULL;
+    sdfPacDecodeResrc_t *next;
 
     if (current != resrc) {
         do {
@@ -260,7 +260,7 @@ s32 sdfPacStdCallback(sdfPacDecodeCb_t *cb, s32 cause, sdfPacStdBlockHeader_t *h
     return 0;
 }
 
-char *sdfPacGetResrcFileName(sdfPacWork_t *resrc)
+char *sdfPacGetResrcFileName(sdfPacDecodeResrc_t *resrc)
 {
     sdfPacStdBlockHeader_t *packet = (sdfPacStdBlockHeader_t *)resrc->header;
     s32 extra = packet->flags & SDF_PAC_EXTRA_MASK;
@@ -320,7 +320,7 @@ void sdfPacMemStayDecoderFunc(sdfPacDecodeCb_t *cb)
 void sdfPacMemDecoderFuncInit(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr)
 {
     s32 size = hdr->decodedSize;
-    sdfPacWork_t *aWork;
+    sdfPacDecodeResrc_t *aWork;
 
     if (size == 0) {
         size = hdr->size + (hdr->flags & SDF_PAC_EXTRA_MASK) - sizeof(*hdr);
@@ -363,7 +363,7 @@ void sdfPacMemDecoderInit(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr)
 
 void sdfPacModelDecoderEndFunc(sdfPacDecodeCb_t *cb)
 {
-    sdfPacWork_t *aWork = cb->resrcTail;
+    sdfPacDecodeResrc_t *aWork = cb->resrcTail;
     sdfPacReloc_t *reloc = (sdfPacReloc_t *)aWork->data;
     u8 *payload = reloc->payload;
     s32 bytes = reloc->tableBytes;
@@ -384,7 +384,7 @@ void sdfPacModelDecoderInit(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr)
 
 void sdfPacMotionDecoderEndFunc(sdfPacDecodeCb_t *cb)
 {
-    sdfPacWork_t *aWork = cb->resrcTail;
+    sdfPacDecodeResrc_t *aWork = cb->resrcTail;
     sdfPacReloc_t *reloc = (sdfPacReloc_t *)aWork->data;
     u8 *payload = reloc->payload;
     s32 bytes = reloc->tableBytes;
@@ -525,13 +525,13 @@ void func_002C6D58(sdfPacDecodeCb_t *aState)
 
 void sdfPacTexListDecoderTmxBodyEndFunc(sdfPacDecodeCb_t *cb)
 {
-    sdfPacList_t *list = cb->slot.list;
+    sdfPacTexListDecodeCb_t *list = cb->slot.list;
 
     sdfTexListAdd(cb->resrcTail->resrc, list->buf.texHandle);
     {
-        s32 nextIndex = list->index + 1;
+        s32 nextIndex = list->currNum + 1;
 
-        list->index = nextIndex;
+        list->currNum = nextIndex;
         if (nextIndex == list->count) {
             sdfChipFreeDirect(list);
             sdfPacEndBlock(cb);
@@ -563,8 +563,8 @@ void sdfPacTexListDecoder1(sdfPacDecodeCb_t *cb)
 void sdfPacTexListDecoder0(sdfPacDecodeCb_t *cb)
 {
     u32 count;
-    sdfPacList_t *list;
-    sdfPacWork_t *aWork;
+    sdfPacTexListDecodeCb_t *list;
+    sdfPacDecodeResrc_t *aWork;
 
     if (cb->srcLength != 0) {
         count = *(const u32 *)cb->srcData;
@@ -572,7 +572,7 @@ void sdfPacTexListDecoder0(sdfPacDecodeCb_t *cb)
         list = cb->slot.list;
         aWork = cb->resrcTail;
         list->count = count;
-        list->index = 0;
+        list->currNum = 0;
         aWork->resrc = sdfTexListNew(count);
         cb->rest = ((count * 4 + 0x53) & -0x40) - 0x14;
         cb->decoder = sdfPacTexListDecoder1;
@@ -582,6 +582,6 @@ void sdfPacTexListDecoder0(sdfPacDecodeCb_t *cb)
 void sdfPacTexListDecoderInit(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr)
 {
     sdfPacNewResrc(cb, hdr);
-    cb->slot.list = sdfChipAllocDirect(sizeof(sdfPacList_t));
+    cb->slot.list = sdfChipAllocDirect(sizeof(sdfPacTexListDecodeCb_t));
     cb->decoder = sdfPacTexListDecoder0;
 }

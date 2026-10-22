@@ -320,14 +320,14 @@ enum sdf_pac_state_flag
 
 /* One queued resource: the decoded block plus the packet header it came from.
  * sdfPacNewResrc allocates 32 bytes plus the header's extra bytes. */
-typedef struct sdfPacWork_t
+typedef struct sdfPacDecodeResrc_t
 {
-    struct sdfPacWork_t *next;
-    sdfPacDecodeCb_t *state;
+    struct sdfPacDecodeResrc_t *next;
+    sdfPacDecodeCb_t *cb;
     void *resrc;
     u8 *data;
     u8 header[16];
-} sdfPacWork_t;
+} sdfPacDecodeResrc_t;
 
 /* The relocation record a model or motion payload starts with; its own data
  * follows at 16 and the pointer table sits tableOffset bytes into it. */
@@ -354,11 +354,11 @@ typedef struct
 typedef struct
 {
     u32 count;
-    s32 index;
+    s32 currNum;
     u32 pad[2];
     sdfPacStdBlockHeader_t header;
     sdfPacTmxDecodeCb_t buf;
-} sdfPacList_t;
+} sdfPacTexListDecodeCb_t;
 
 typedef s32 (*sdfPacCallbackFunc)(sdfPacDecodeCb_t *aState, s32 aStat,
                                   sdfPacStdBlockHeader_t *aPacket);
@@ -386,10 +386,10 @@ struct sdfPacDecodeCb_t
     union
     {
         sdfPacTmxDecodeCb_t *decodeCb;
-        sdfPacList_t *list;
+        sdfPacTexListDecodeCb_t *list;
     } slot;
-    sdfPacWork_t *resrcHead;
-    sdfPacWork_t *resrcTail;
+    sdfPacDecodeResrc_t *resrcHead;
+    sdfPacDecodeResrc_t *resrcTail;
 };
 
 /* The LZ decoder sdfDecompInit sets up in 32 chip bytes; sdfDecomp returns
