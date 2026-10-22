@@ -38,11 +38,11 @@ struct nbParty_t {
     u8 unk04[0x7C];
 };
 
-extern void sdfMemFreeDirect(sdfMemHandle_t *handle);
+extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
 
-extern sdfMemHandle_t *sdfMemAllocDirect(s32 size);
+extern sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
 
-extern void *sdfMemLock(sdfMemHandle_t *handle);
+extern void *sdfMemLock(sdfMemHandle_t *aHandle);
 
 void dds3AllocSplinePoints(dds3Spline_t *spline, s32 flattenEqualComponents);
 
