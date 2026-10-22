@@ -90,8 +90,8 @@ typedef struct effNeedleSpiralParams_t {
 } effNeedleSpiralParams_t;
 
 typedef struct effPCPNeedleSpiralPart_tag {
-    f32 direction[4];
-    u8 unk10[0x10];
+    f32 pos[4];
+    u8 old_pos[0x10];
     s32 frame;
     f32 radius;
     f32 radian;
@@ -288,9 +288,9 @@ void effPCPNeedleSpiralDraw(effPCPNeedleSpiral_tag *hData) {
                 SDF_VU0_LOADVECTOR(position);
                 SDF_VU0_APPLYMATRIX_XYZ();
                 SDF_VU0_STOREVECTOR_NOMEM(position);
-                slot->direction[0] = position[0];
-                slot->direction[1] = position[1];
-                slot->direction[2] = position[2];
+                slot->pos[0] = position[0];
+                slot->pos[1] = position[1];
+                slot->pos[2] = position[2];
                 dds3NeedleModelSetPosition(hData->hNModel, i, position);
             }
 
@@ -301,9 +301,9 @@ void effPCPNeedleSpiralDraw(effPCPNeedleSpiral_tag *hData) {
                 SDF_VU0_ADDVECTOR();
                 SDF_VU0_STOREVECTOR_NOMEM(resourcePosition);
 
-                position[0] = slot->direction[0];
-                position[1] = slot->direction[1];
-                position[2] = slot->direction[2];
+                position[0] = slot->pos[0];
+                position[1] = slot->pos[1];
+                position[2] = slot->pos[2];
                 SetRotateMatrixAxis(slot->radian, (const effAxis_t *)axis);
                 slot->radian += angleStep;
                 SDF_VU0_LOADVECTOR(position);
