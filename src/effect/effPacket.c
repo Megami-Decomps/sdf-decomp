@@ -7,58 +7,58 @@ extern s8 dds3CrossfadeRunFlag;
 extern u32 dds3CrossfadeFrame;
 extern u32 dds3CrossfadeFrameMax;
 extern sdfGrOt_t sdfGrOtTable[];
-extern void sdfDrawTagInit(sdfDrawTag_t *list);
-extern void sdfDrawTagLink(sdfDrawTag_t *list, u32 packetAddress);
-extern void sdfGrLinkDispFrameTex(sdfDrawTag_t *list, u32 source, void *node);
-extern void sdf2DLinkTexPacket(sdfDrawTag_t *list, sdfTexHandle_t *texture, s32 gsContext);
-extern void *sdf2DAllocSprite(s32 loopCount);
-extern void *sdf2DGetPrimPtr(void *packet);
+extern void sdfDrawTagInit(sdfDrawTag_t *a);
+extern void sdfDrawTagLink(sdfDrawTag_t *aTag, u32 aPacket);
+extern void sdfGrLinkDispFrameTex(sdfDrawTag_t *aTag, u32 aEnv, void *aPkt);
+extern void sdf2DLinkTexPacket(sdfDrawTag_t *aTag, sdfTexHandle_t *aTexHndl, s32 aCtx);
+extern void *sdf2DAllocSprite(s32 aNumOfSpr);
+extern void *sdf2DGetPrimPtr(void *aPacketPtr);
 extern u32 dds3GetFrameID(void);
 extern sdfTexHandle_t *dds3GetRenderTexture(void);
 extern u32 dds3RenderDrawEnv;
 extern f32 D_002F5C20[];
 extern f32 D_002F5C30[];
 extern void dds3CrossfadeEnd(void);
-extern s32 dds3AllocRenderTexture(u16 width, u16 height, f32 aspect);
+extern s32 dds3AllocRenderTexture(u16 sx, u16 sy, f32 aspect);
 extern s32 dds3RenderTextureON(void);
 extern u32 D_003176C0[];
-extern s32 sdf2DGetPrimPacketSize(s32 registerCount, s32 loopCount);
-extern void *sdfGrAllocPacketBuff(s32 size);
-extern sdfGrPacketHeader_t *sdf2DMakePrimPacketHeader(sdfGrPacketHeader_t *packet, s32 flags, s32 registerCount, s64 registers, s32 loopCount);
+extern s32 sdf2DGetPrimPacketSize(s32 aNumOfRegs, s32 aNumOfPrim);
+extern void *sdfGrAllocPacketBuff(s32 aSize);
+extern sdfGrPacketHeader_t *sdf2DMakePrimPacketHeader(sdfGrPacketHeader_t *aPacketPtr, s32 aPrimReg, s32 aNumOfRegs, s64 aGifRegs, s32 aNumOfPrim);
 extern void dds3RenderTextureOFF(void);
 extern void dds3FreeRenderTexture(void);
-extern void *memcpy(void *dst, const void *src, u32 size);
+extern void *memcpy(void *a, const void *b, u32 c);
 extern s32 printf(const char *fmt, ...);
 
-void *effPkt2DGetPrimPtr(void *packet) {
-    return (void *)((u8 *)packet + 0x20);
+void *effPkt2DGetPrimPtr(void *pPkt) {
+    return (void *)((u8 *)pPkt + 0x20);
 }
 
-sdfGrPacketHeader_t *effPkt2DAllocTriStrip(s32 pointCount, s32 flags) {
-    sdfGrPacketHeader_t *packet = (sdfGrPacketHeader_t *)sdfGrAllocPacketBuff(sdf2DGetPrimPacketSize(9, pointCount));
+sdfGrPacketHeader_t *effPkt2DAllocTriStrip(s32 num, s32 prim) {
+    sdfGrPacketHeader_t *packet = (sdfGrPacketHeader_t *)sdfGrAllocPacketBuff(sdf2DGetPrimPacketSize(9, num));
 
-    sdf2DMakePrimPacketHeader(packet, flags | 0x54, 9, 0x525252521, pointCount);
+    sdf2DMakePrimPacketHeader(packet, prim | 0x54, 9, 0x525252521, num);
     return packet;
 }
 
-u64 *effPkt2DAllocF4(u32 flags) {
+u64 *effPkt2DAllocF4(u32 prim) {
     u64 *packet = (u64 *)sdfGrAllocPacketBuff(0x80);
 
     packet[0] = 7;
     packet[1] = 0x5000000700000000ULL;
     packet[2] = 0xB400000000008001ULL;
     packet[3] = 0xFF515151510ULL;
-    packet[4] = flags | 0x14C;
+    packet[4] = prim | 0x14C;
     packet[15] = 0;
     packet[14] = 0;
     packet[13] = 0;
     return packet;
 }
 
-void *effPkt3DPrimMakePoly(sdf3DPrimPolyParm_t *params) {
-    s32 parameterCount = params->faceCount;
-    s32 vertexCount = params->pointCount;
-    u32 primitive = params->attr | 0x48;
+void *effPkt3DPrimMakePoly(sdf3DPrimPolyParm_t *aParm) {
+    s32 parameterCount = aParm->faceCount;
+    s32 vertexCount = aParm->pointCount;
+    u32 primitive = aParm->attr | 0x48;
     u32 mode = 0x60;
     s32 stride = 3;
     s32 overhead = 16;
@@ -73,22 +73,22 @@ void *effPkt3DPrimMakePoly(sdf3DPrimPolyParm_t *params) {
     u32 countCode;
     u32 *stream2;
 
-    if (params->normal != NULL) {
+    if (aParm->normal != NULL) {
         mode = 0xE0;
         overhead = 17;
         stride = 6;
     }
-    if (params->uv != NULL) {
+    if (aParm->uv != NULL) {
         mode |= 0x100;
         primitive |= 0x10;
         overhead++;
         stride += 2;
-        if (params->multiUv != NULL) {
+        if (aParm->multiUv != NULL) {
             primitive |= 0x1000;
             stride += 2;
         }
     }
-    if (params->vertexColor != NULL) {
+    if (aParm->vertexColor != NULL) {
         mode |= 0x200;
         primitive |= 0x800;
         overhead++;
@@ -96,7 +96,7 @@ void *effPkt3DPrimMakePoly(sdf3DPrimPolyParm_t *params) {
     }
     allocationSize = (overhead + parameterCount + stride * vertexCount) * 4;
     allocationSize = (allocationSize + 15) & ~15;
-    allocate = (void *(*)(s32))params->allocator;
+    allocate = (void *(*)(s32))aParm->allocator;
     if (allocate == NULL) {
         allocate = sdfGrAllocPacketBuff;
     }
@@ -104,12 +104,12 @@ void *effPkt3DPrimMakePoly(sdf3DPrimPolyParm_t *params) {
 
     *(u64 *)packet = (u64)(u16)((allocationSize >> 4) - 1) | 0x20000000ULL;
     ((u32 *)packet)[2] = 0x6102C000;
-    ((u32 *)packet)[3] = (~params->attrInhibit) & 0xFFFF;
+    ((u32 *)packet)[3] = (~aParm->attrInhibit) & 0xFFFF;
     ((u32 *)packet)[4] = 0x6E01C002;
-    ((u32 *)packet)[5] = params->color;
+    ((u32 *)packet)[5] = aParm->color;
     ((u32 *)packet)[6] = 0x6001C003;
     cursor = (u32 *)packet + 7;
-    *cursor++ = (u32)params->zBias;
+    *cursor++ = (u32)aParm->zBias;
     *cursor++ = 0x04000004;
     *cursor++ = 0x14000000;
     *cursor++ = 0x6D01C000;
@@ -117,16 +117,16 @@ void *effPkt3DPrimMakePoly(sdf3DPrimPolyParm_t *params) {
     *cursor++ = (primitive & 0xFFFF) | (mode << 16);
     *cursor++ = 0x6E00C001 | ((u32)parameterCount << 16);
 
-    if (params->faceIndex == NULL) {
+    if (aParm->faceIndex == NULL) {
         memcpy(cursor, D_003176C0, parameterCount * 4);
     } else {
-        memcpy(cursor, params->faceIndex, parameterCount * 4);
+        memcpy(cursor, aParm->faceIndex, parameterCount * 4);
     }
     cursor += parameterCount;
     offset = parameterCount + 1;
     countCode = vertexCount << 16;
     *cursor++ = countCode | offset | 0x6800C000;
-    vector = (u128 *)params->vertex;
+    vector = (u128 *)aParm->vertex;
     i = 0;
     do {
         MMI_STORE_VEC3_VALUE(cursor, *vector);
@@ -136,7 +136,7 @@ void *effPkt3DPrimMakePoly(sdf3DPrimPolyParm_t *params) {
     } while (i != vertexCount);
     offset += vertexCount;
 
-    vector = (u128 *)params->normal;
+    vector = (u128 *)aParm->normal;
     if (vector != NULL) {
         *cursor++ = countCode | offset | 0x6800C000;
         i = 0;
@@ -148,9 +148,9 @@ void *effPkt3DPrimMakePoly(sdf3DPrimPolyParm_t *params) {
         } while (i != vertexCount);
         offset += vertexCount;
     }
-    stream = (u32 *)params->uv;
+    stream = (u32 *)aParm->uv;
     if (stream != NULL) {
-        stream2 = (u32 *)params->multiUv;
+        stream2 = (u32 *)aParm->multiUv;
         if (stream2 == NULL) {
             *cursor++ = countCode | offset | 0x6400C000;
             memcpy(cursor, stream, vertexCount * 8);
@@ -168,7 +168,7 @@ void *effPkt3DPrimMakePoly(sdf3DPrimPolyParm_t *params) {
         }
         offset += vertexCount;
     }
-    stream = params->vertexColor;
+    stream = aParm->vertexColor;
     if (stream != NULL) {
         *cursor++ = countCode | offset | 0x6E00C000;
         memcpy(cursor, stream, vertexCount * 4);
@@ -218,14 +218,14 @@ typedef struct
 
 extern effPacketDrawBank_t dds3DrawEnv[];
 
-void dds3CrossfadeStart(s32 frames)
+void dds3CrossfadeStart(s32 frame)
 {
     s32 i;
 
     if (dds3CrossfadeRunFlag != 0) {
         dds3CrossfadeEnd();
     }
-    if (frames == 0) {
+    if (frame == 0) {
         return;
     }
     D_002F5C20[0] = 0.0f;
@@ -241,7 +241,7 @@ void dds3CrossfadeStart(s32 frames)
         dds3DrawEnv[i].clearXyzA = 0x80008000;
         dds3DrawEnv[i].clearXyzB = 0x80008000;
     }
-    dds3CrossfadeFrameMax = frames;
+    dds3CrossfadeFrameMax = frame;
     dds3CrossfadeRunFlag = 1;
     dds3CrossfadeFrame = 0;
     printf("dds3CrossfadeStart\n");
