@@ -84,11 +84,11 @@ typedef struct
 
 void *dds3BillboardCreate(s32 kind, u32 data);
 
-void mdlPackDecode(s32 group, s32 id, s32 mode, const u8 *data, s32 size);
+void mdlPackDecode(s32 major, s32 minor, s32 regFlags, const u8 *buff, s32 leng);
 
-void mdlLink(mdlObj_t *hModel, void **surfaces);
+void mdlLink(mdlObj_t *aHandle, void **aModelOt);
 
-void mdlFree(mdlObj_t *hModel);
+void mdlFree(mdlObj_t *aHandle);
 
 extern dds3EffectFunc_t EffectPCPFuncTable[];
 
@@ -146,15 +146,15 @@ u32 dds3EffectPCPDataGetSize(dds3EffectPCPData_t *hPCPData, u32 number);
 
 void dds3EffectPartDelete(effPartHandle_t *hEffPart);
 
-effPartHandle_t *dds3EffectPartCopy(effPartHandle_t *hEffPart);
+effPartHandle_t *dds3EffectPartCopy(effPartHandle_t *hEffPartSrc);
 
 void dds3EffectPartDraw(effPartHandle_t *hEffPart);
 
-void dds3EffectPartSetPosition(effPartHandle_t *hEffPart, sdfVector4_t *pPosition);
+void dds3EffectPartSetPosition(effPartHandle_t *hEffPart, sdfVector4_t *pPos);
 
 void dds3EffectPartSetScale(effPartHandle_t *hEffPart, f32 scale);
 
-void dds3EffectPartSetColor(effPartHandle_t *hEffPart, u32 color);
+void dds3EffectPartSetColor(effPartHandle_t *hEffPart, u32 abgr);
 
 void *dds3EffectPartGetHandle(effPartHandle_t *hEffPart)
 {
@@ -197,10 +197,10 @@ effPartHandle_t *dds3EffectPartCopy(effPartHandle_t *hEffPartSrc)
     return hEffPart;
 }
 
-void dds3EffectPartSetPosition(effPartHandle_t *hEffPart, sdfVector4_t *pPosition)
+void dds3EffectPartSetPosition(effPartHandle_t *hEffPart, sdfVector4_t *pPos)
 {
     if (dds3EffectFuncTable[hEffPart->type].setPosition != NULL) {
-        dds3EffectFuncTable[hEffPart->type].setPosition(hEffPart->pHandle, pPosition);
+        dds3EffectFuncTable[hEffPart->type].setPosition(hEffPart->pHandle, pPos);
     }
 }
 
@@ -218,10 +218,10 @@ void dds3EffectPartSetRotateMatrix(effPartHandle_t *hEffPart, void *pMatrix)
     }
 }
 
-void dds3EffectPartSetColor(effPartHandle_t *hEffPart, u32 color)
+void dds3EffectPartSetColor(effPartHandle_t *hEffPart, u32 abgr)
 {
     if (dds3EffectFuncTable[hEffPart->type].setColor != NULL) {
-        dds3EffectFuncTable[hEffPart->type].setColor(hEffPart->pHandle, color);
+        dds3EffectFuncTable[hEffPart->type].setColor(hEffPart->pHandle, abgr);
     }
 }
 
@@ -281,14 +281,14 @@ mdlObj_t *dds3EffectPartModelCreate(dds3EffectPartModelData_t *pData)
     return hModel;
 }
 
-void dds3EffectPartModelDraw(mdlObj_t *hModel)
+void dds3EffectPartModelDraw(mdlObj_t *hData)
 {
-    mdlLink(hModel, D_002F69B8);
+    mdlLink(hData, D_002F69B8);
 }
 
-void dds3EffectPartModelDelete(mdlObj_t *hModel)
+void dds3EffectPartModelDelete(mdlObj_t *hData)
 {
-    mdlFree(hModel);
+    mdlFree(hData);
 }
 
 mdlObj_t *dds3EffectPartModelCopy(void *hData)
@@ -304,10 +304,10 @@ mdlObj_t *dds3EffectPartModelCopy(void *hData)
     return hModel;
 }
 
-void dds3EffectPartModelSetPosition(mdlObj_t *hModel, sdfVector4_t *pPosition)
+void dds3EffectPartModelSetPosition(mdlObj_t *hData, sdfVector4_t *pPos)
 {
-    SDF_VU0_LOADVECTOR(pPosition);
-    mdlSetPosition(hModel);
+    SDF_VU0_LOADVECTOR(pPos);
+    mdlSetPosition(hData);
 }
 
 void dds3EffectPartModelSetScale(void *hData, f32 scale)
@@ -319,17 +319,17 @@ void dds3EffectPartModelSetScale(void *hData, f32 scale)
     mdlSetScale(hData);
 }
 
-void dds3EffectPartModelSetRotateMatrix(mdlObj_t *hModel, sdfMatrix4_t *pMatrix)
+void dds3EffectPartModelSetRotateMatrix(mdlObj_t *hData, sdfMatrix4_t *pMatrix)
 {
     SDF_VU0_LOADMATRIX(pMatrix);
-    SDF_VU0_STORE_ROW0(&hModel->inner->tm.m[0]);
-    SDF_VU0_STORE_ROW1(&hModel->inner->tm.m[4]);
-    SDF_VU0_STORE_ROW2(&hModel->inner->tm.m[8]);
+    SDF_VU0_STORE_ROW0(&hData->inner->tm.m[0]);
+    SDF_VU0_STORE_ROW1(&hData->inner->tm.m[4]);
+    SDF_VU0_STORE_ROW2(&hData->inner->tm.m[8]);
 }
 
-void dds3EffectPartModelSetColor(mdlObj_t *hModel, u32 color)
+void dds3EffectPartModelSetColor(mdlObj_t *hData, u32 abgr)
 {
-    mdlSetColor(hModel, color);
+    mdlSetColor(hData, abgr);
 }
 
 dds3EffectPCP_t *dds3EffectPCPCreate(dds3EffectPCPData_t *hPCPData)
@@ -347,15 +347,15 @@ dds3EffectPCP_t *dds3EffectPCPCreate(dds3EffectPCPData_t *hPCPData)
     return hPCP;
 }
 
-void dds3EffectPCPDelete(dds3EffectPCP_t *hPCP)
+void dds3EffectPCPDelete(dds3EffectPCP_t *hData)
 {
-    EffectPCPFuncTable[hPCP->kateg].destroy(hPCP->pHandle);
-    sdfChipFreeDirect(hPCP);
+    EffectPCPFuncTable[hData->kateg].destroy(hData->pHandle);
+    sdfChipFreeDirect(hData);
 }
 
-void dds3EffectPCPDraw(dds3EffectPCP_t *hPCP)
+void dds3EffectPCPDraw(dds3EffectPCP_t *hData)
 {
-    EffectPCPFuncTable[hPCP->kateg].draw(hPCP->pHandle);
+    EffectPCPFuncTable[hData->kateg].draw(hData->pHandle);
 }
 
 dds3EffectPCP_t *dds3EffectPCPCopy(dds3EffectPCP_t *hPCPSrc)
@@ -373,45 +373,45 @@ dds3EffectPCP_t *dds3EffectPCPCopy(dds3EffectPCP_t *hPCPSrc)
     return hPCP;
 }
 
-void dds3EffectPCPSetPosition(dds3EffectPCP_t *hPCP, void *pPos)
+void dds3EffectPCPSetPosition(dds3EffectPCP_t *hData, void *pPos)
 {
-    if (EffectPCPFuncTable[hPCP->kateg].setPosition != NULL) {
-        EffectPCPFuncTable[hPCP->kateg].setPosition(hPCP->pHandle, pPos);
+    if (EffectPCPFuncTable[hData->kateg].setPosition != NULL) {
+        EffectPCPFuncTable[hData->kateg].setPosition(hData->pHandle, pPos);
     }
 }
 
-void dds3EffectPCPSetScale(dds3EffectPCP_t *hPCP, f32 scale)
+void dds3EffectPCPSetScale(dds3EffectPCP_t *hData, f32 scale)
 {
-    if (EffectPCPFuncTable[hPCP->kateg].setScale != NULL) {
-        EffectPCPFuncTable[hPCP->kateg].setScale(hPCP->pHandle, scale);
+    if (EffectPCPFuncTable[hData->kateg].setScale != NULL) {
+        EffectPCPFuncTable[hData->kateg].setScale(hData->pHandle, scale);
     }
 }
 
-void dds3EffectPCPSetRotateMatrix(dds3EffectPCP_t *hPCP, void *pMatrix)
+void dds3EffectPCPSetRotateMatrix(dds3EffectPCP_t *hData, void *pMatrix)
 {
-    if (EffectPCPFuncTable[hPCP->kateg].setRotateMatrix != NULL) {
-        EffectPCPFuncTable[hPCP->kateg].setRotateMatrix(hPCP->pHandle, pMatrix);
+    if (EffectPCPFuncTable[hData->kateg].setRotateMatrix != NULL) {
+        EffectPCPFuncTable[hData->kateg].setRotateMatrix(hData->pHandle, pMatrix);
     }
 }
 
-void dds3EffectPCPSetDirection(dds3EffectPCP_t *hPCP, void *pMatrix)
+void dds3EffectPCPSetDirection(dds3EffectPCP_t *hData, void *pMatrix)
 {
-    if (EffectPCPFuncTable[hPCP->kateg].setDirection != NULL) {
-        EffectPCPFuncTable[hPCP->kateg].setDirection(hPCP->pHandle, pMatrix);
+    if (EffectPCPFuncTable[hData->kateg].setDirection != NULL) {
+        EffectPCPFuncTable[hData->kateg].setDirection(hData->pHandle, pMatrix);
     }
 }
 
-void dds3EffectPCPSetColor(dds3EffectPCP_t *hPCP, u32 abgr)
+void dds3EffectPCPSetColor(dds3EffectPCP_t *hData, u32 abgr)
 {
-    if (EffectPCPFuncTable[hPCP->kateg].setColor != NULL) {
-        EffectPCPFuncTable[hPCP->kateg].setColor(hPCP->pHandle, abgr);
+    if (EffectPCPFuncTable[hData->kateg].setColor != NULL) {
+        EffectPCPFuncTable[hData->kateg].setColor(hData->pHandle, abgr);
     }
 }
 
-void dds3EffectPCPSetArea(dds3EffectPCP_t *hPCP, f32 area)
+void dds3EffectPCPSetArea(dds3EffectPCP_t *hData, f32 area)
 {
-    if (EffectPCPFuncTable[hPCP->kateg].setArea != NULL) {
-        EffectPCPFuncTable[hPCP->kateg].setArea(hPCP->pHandle, area);
+    if (EffectPCPFuncTable[hData->kateg].setArea != NULL) {
+        EffectPCPFuncTable[hData->kateg].setArea(hData->pHandle, area);
     }
 }
 
