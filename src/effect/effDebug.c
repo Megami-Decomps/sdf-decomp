@@ -13,17 +13,17 @@ typedef struct
 
 extern sdfGrOt_t sdfGrOtTable[85];
 
-extern void *sdfGrAllocPacketBuff(s32 size);
-extern void sdfDrawTagInit(void *tag);
-extern void sdfDrawTagLink(void *tag, void *prim);
+extern void *sdfGrAllocPacketBuff(s32 aSize);
+extern void sdfDrawTagInit(void *a);
+extern void sdfDrawTagLink(void *aTag, void *aPacket);
 extern void effScreenOffset(void);
-extern void *dds3PrimFrameRect(s32 x, s32 y, s32 color, s32 width, s32 height, u32 mode0, u32 mode1);
-extern void *dds3PrimLine(s32 x0, s32 y0, s32 color0, u32 mode0, s32 x1, s32 y1, s32 color1, u32 mode1, s32 z);
+extern void *dds3PrimFrameRect(s32 aX, s32 aY, s32 aZ, s32 aW, s32 aH, u32 aBgCol, u32 aFrameCol);
+extern void *dds3PrimLine(s32 aX0, s32 aY0, s32 aZ0, u32 aColor0, s32 aX1, s32 aY1, s32 aZ1, u32 aColor1, s32 aMode);
 
 
-sdfMemHandle_t *sdfMemAllocDirect(s32 size);
-void *sdfMemLock(sdfMemHandle_t *allocation);
-void sdfMemFreeDirect(sdfMemHandle_t *allocation);
+sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
+void *sdfMemLock(sdfMemHandle_t *aHandle);
+void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
 void *sdfDevPrintf(s32 x, s32 y, s32 z, s32 color, const char *format);
 /* SDK matrix-bank helpers used by the wire sphere's second pass. */
 typedef struct
@@ -52,18 +52,18 @@ extern sdfMat_t *D_0054F270;
 extern f32 D_0054F274;
 extern f32 D_0056B050[4][4];
 extern u32 D_003201C0[4];
-f32 sdfCos(f32 angle);
-f32 sdfSin(f32 angle);
-void SetRotateMatrixX(f32 angle);
-void SetRotateMatrixY(f32 angle);
+f32 sdfCos(f32 aRadius);
+f32 sdfSin(f32 aRadius);
+void SetRotateMatrixX(f32 aAngle);
+void SetRotateMatrixY(f32 aAngle);
 void MultMatrixNoArg(void);
 void *effDebugDrawWireModel(f32 (*positions)[4], u32 *colors, u32 count, u32 mode);
 sdfMat_t *sdfMatNew(void);
-void sdfMatSetConstant(sdfMat_t *material, f32 value);
-void sdf3DPrimLinkTm(void *tag, void *matrix);
-void sdf3DPrimLinkMat(void *tag, sdfMat_t *material, void *data);
-void *memset(void *destination, s32 value, u32 size);
-void *effPkt3DPrimMakePoly(effDebugPolyParams_t *params);
+void sdfMatSetConstant(sdfMat_t *aMat, f32 aRatio);
+void sdf3DPrimLinkTm(void *aTag, void *aAllocator);
+void sdf3DPrimLinkMat(void *aTag, sdfMat_t *aMat, void *aAllocator);
+void *memset(void *a, s32 b, u32 c);
+void *effPkt3DPrimMakePoly(effDebugPolyParams_t *aParm);
 
 /* Allocate contiguous slots followed by their count and allocation handle. */
 effArrHdr_t *dds3_1AC0A8(u32 count) {
@@ -186,7 +186,7 @@ effBezierCurve_t *func_001AC4F0(effArrHdr_t *table, s32 index) {
 }
 
 /* vu0 routine: project a world point and frame it */
-void effDebugPointDraw(QuadF32 *pos)
+void effDebugPointDraw(QuadF32 *pPos)
 {
     QuadF32 screen;
     effDebugPoint_t point;
@@ -195,7 +195,7 @@ void effDebugPointDraw(QuadF32 *pos)
 
     tag = sdfGrAllocPacketBuff(0x20);
     sdfDrawTagInit(tag);
-    SDF_VU0_LOADVECTOR(pos);
+    SDF_VU0_LOADVECTOR(pPos);
     effScreenOffset();
     SDF_VU0_STOREVECTOR_MEMOPS(screen);
     point.x = (s32)screen.components[0] - 0x700;
@@ -207,7 +207,7 @@ void effDebugPointDraw(QuadF32 *pos)
 }
 
 /* vu0 routine: project a world point and frame it in a given mode */
-void effDebugPointDraw2(QuadF32 *pos, u32 mode)
+void effDebugPointDraw2(QuadF32 *pPos, u32 color)
 {
     QuadF32 screen;
     effDebugPoint_t point;
@@ -216,19 +216,19 @@ void effDebugPointDraw2(QuadF32 *pos, u32 mode)
 
     tag = sdfGrAllocPacketBuff(0x20);
     sdfDrawTagInit(tag);
-    SDF_VU0_LOADVECTOR(pos);
+    SDF_VU0_LOADVECTOR(pPos);
     effScreenOffset();
     SDF_VU0_STOREVECTOR_MEMOPS(screen);
     point.x = (s32)screen.components[0] - 0x700;
     point.y = ((s32)screen.components[1] << 1) - 0xF20;
     sdfDrawTagLink(tag, dds3PrimFrameRect(point.x * 16 + 0x7000, point.y * 8 + 0x7900,
-                                          0xFF0000, 0x20, 0x10, mode, mode));
+                                          0xFF0000, 0x20, 0x10, color, color));
     ot = &sdfGrOtTable[83];
     ((void (*)(sdfGrOt_t *, void *))ot->regFunc)(ot, tag);
 }
 
 /* vu0 routine: project two world points and draw the line */
-void effDebugLineDraw(QuadF32 *from, QuadF32 *to)
+void effDebugLineDraw(QuadF32 *pPos0, QuadF32 *pPos1)
 {
     QuadF32 screen[2];
     effDebugPoint_t point[2];
@@ -237,10 +237,10 @@ void effDebugLineDraw(QuadF32 *from, QuadF32 *to)
 
     tag = sdfGrAllocPacketBuff(0x20);
     sdfDrawTagInit(tag);
-    SDF_VU0_LOADVECTOR(from);
+    SDF_VU0_LOADVECTOR(pPos0);
     effScreenOffset();
     SDF_VU0_STOREVECTOR(&screen[0]);
-    SDF_VU0_LOADVECTOR(to);
+    SDF_VU0_LOADVECTOR(pPos1);
     effScreenOffset();
     SDF_VU0_STOREVECTOR(&screen[1]);
     point[0].x = (s32)screen[0].components[0] - 0x700;
