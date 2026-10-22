@@ -16,7 +16,7 @@ typedef struct dds3TrackPoly_t
     u16 type;
     u16 bucket;
     s32 number;
-    s32 face;
+    s32 point;
     s32 rec;
     sdfMemHandle_t *hMem;
     dds3TrackPolyList_t *list;
@@ -42,17 +42,17 @@ typedef struct dds3Polygon_t
     u128 *pVertex;
     u32 (*texcoords)[2];
     u128 *pNormal;
-    u32 *colors;
+    u32 *pVertexColor;
     struct dds3Polygon_t *next;
     s32 d_next;
 } dds3Polygon_t;
 
 typedef struct
 {
-    s32 count;
-    u32 color;
+    s32 number;
+    u32 abgr;
     u128 *pVertex;
-    u32 *colors;
+    u32 *pVC;
     sdfMat_t *pMat;
     sdfMemHandle_t *hMem;
 } dds3TrianglePoly_t;
@@ -110,7 +110,7 @@ typedef struct dds3SpPoly_Basic_t {
     u32 templateSize; /* Byte length copied from the source template. */
     u8 pad1C[4];
     f32 matrix[16];
-    u32 color;
+    u32 abgr;
     u8 loop;
     u8 pad65;
     u16 drawBucket; /* 0x66: selected particle draw bucket. */
@@ -118,7 +118,7 @@ typedef struct dds3SpPoly_Basic_t {
     u32 endColorRampFrames;
     f32 matrixCopy[16]; /* Initialized from matrix when the owner is created. */
     u16 type;
-    u16 active; /* Cleared when every entry finishes. */
+    u16 state; /* Cleared when every entry finishes. */
     u8 padB4[0xC];
 } dds3SpPoly_Basic_t;
 
@@ -397,7 +397,7 @@ dds3Polygon_t *dds3PolygonCreate(s32 face, s16 type, s16 attr) {
         buffer += vertexCount * sizeof(record->texcoords[0]);
     }
     if (type & 2) record->pNormal = (u128 *)buffer;
-    if (type & 4) record->colors = (u32 *)buffer;
+    if (type & 4) record->pVertexColor = (u32 *)buffer;
     record->flags = type;
     record->capacity = vertexCount;
     record->hMem = allocation;
@@ -485,7 +485,7 @@ dds3TrackPoly_t *dds3TrackPolyCreate(s32 number, s32 face, s32 rec, u32 type) {
     system->type = type;
     system->number = number;
     system->bucket = 2;
-    system->face = face;
+    system->point = face;
     system->rec = rec;
     system->hMem = allocation;
     system->next = 0;
@@ -519,7 +519,7 @@ void dds3TrackPolySet(dds3TrackPoly_t *hTrackPoly, s32 number, const u128 *pV) {
     s32 i;
 
     if (cell->rec == 0) {
-        shiftCount = hTrackPoly->face - 2;
+        shiftCount = hTrackPoly->point - 2;
         vertex = cell->pVertex + shiftCount;
         for (i = 0; i < shiftCount; i++) {
             vertex--;
@@ -539,7 +539,7 @@ void dds3TrackPolySet(dds3TrackPoly_t *hTrackPoly, s32 number, const u128 *pV) {
 
 void dds3TrackPolyMove(dds3TrackPoly_t *hTrackPoly, s32 number, const u128 *pMove) {
     dds3TrackPolyList_t *cell = hTrackPoly->list + number;
-    s32 count = hTrackPoly->face;
+    s32 count = hTrackPoly->point;
     u128 *vertex = cell->pVertex;
     s32 i;
     SDF_VU0_LOADVECTOR_B_BARRIER(pMove);
@@ -562,7 +562,7 @@ void dds3TrackPolySet2(dds3TrackPoly_t *hTrackPoly, s32 number, const u128 *pV) 
     s32 i;
 
     if (cell->rec == 0) {
-        shiftCount = hTrackPoly->face - 3;
+        shiftCount = hTrackPoly->point - 3;
         vertex = cell->pVertex + shiftCount;
         for (i = 0; i < shiftCount; i++) {
             vertex--;
@@ -649,7 +649,7 @@ INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCRefresh_ParType2);
 
 void dds3TrackPolyVCSet_Normal(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 abgr_out)
 {
-    s32 perCell = hTrackPoly->face >> 1;
+    s32 perCell = hTrackPoly->point >> 1;
     s32 count = hTrackPoly->number;
     s32 i;
 
@@ -669,7 +669,7 @@ void dds3TrackPolyVCSet_Acute(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 abgr
     u32 startCarrier[4];
     u32 cellCarrier[4];
     u32 packed[4];
-    u32 perCell = hTrackPoly->face >> 1;
+    u32 perCell = hTrackPoly->point >> 1;
     u32 cellCount = hTrackPoly->number;
     s32 i;
 
@@ -705,7 +705,7 @@ INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCSet_AcuteW);
 
 void dds3TrackPolyVCSet2_Normal(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 abgr_out) {
     s32 cellCount = hTrackPoly->number;
-    s32 perCell = hTrackPoly->face / 3;
+    s32 perCell = hTrackPoly->point / 3;
     s32 i;
 
     for (i = 0; i < cellCount; i++) {
@@ -726,7 +726,7 @@ INCLUDE_ASM(const s32, "effect/polyManager", dds3TrackPolyVCSet2_Acute);
 
 void dds3TrackPolyVCSet2_AcuteW(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 abgr_out) {
     s32 cellCount = hTrackPoly->number;
-    s32 perCell = (hTrackPoly->face / 3) >> 1;
+    s32 perCell = (hTrackPoly->point / 3) >> 1;
     u32 firstAlpha = abgr_in & 0xFF000000;
     u32 secondAlpha = abgr_out & 0xFF000000;
     u32 firstStep = firstAlpha / perCell;
@@ -766,7 +766,7 @@ void dds3TrackPolyVCSet2_AcuteW(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 ab
 
 void dds3TrackPolyVC3Set_Normal(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abgr_1, u32 abgr_2) {
     s32 cellCount = hTrackPoly->number;
-    s32 perCell = hTrackPoly->face / 6;
+    s32 perCell = hTrackPoly->point / 6;
     s32 i;
 
     for (i = 0; i < cellCount; i++) {
@@ -788,7 +788,7 @@ void dds3TrackPolyVC3Set_Normal(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abg
 
 void dds3TrackPolyVC3Set_Acute(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abgr_1, u32 abgr_2) {
     s32 cellCount = hTrackPoly->number;
-    s32 perCell = hTrackPoly->face / 6;
+    s32 perCell = hTrackPoly->point / 6;
     u32 firstAlpha = abgr_0 & 0xFF000000;
     u32 secondAlpha = abgr_1 & 0xFF000000;
     u32 thirdAlpha = abgr_2 & 0xFF000000;
@@ -826,7 +826,7 @@ void dds3TrackPolyVC3Set_Acute(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abgr
 
 void dds3TrackPolyVC3Set_AcuteW(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abgr_1, u32 abgr_2) {
     s32 cellCount = hTrackPoly->number;
-    s32 perCell = (hTrackPoly->face / 6) >> 1;
+    s32 perCell = (hTrackPoly->point / 6) >> 1;
     u32 firstAlpha = abgr_0 & 0xFF000000;
     u32 secondAlpha = abgr_1 & 0xFF000000;
     u32 thirdAlpha = abgr_2 & 0xFF000000;
@@ -878,7 +878,7 @@ void dds3TrackPolyVC3Set_AcuteW(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abg
 
 
 void dds3TrackPolyVCSet4_Normal(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 abgr_out) {
-    s32 perCell = hTrackPoly->face >> 2;
+    s32 perCell = hTrackPoly->point >> 2;
     s32 cellCount = hTrackPoly->number;
 
     s32 cellIndex;
@@ -898,7 +898,7 @@ void dds3TrackPolyVCSet4_Normal(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 ab
 }
 
 void dds3TrackPolyVCSet4_Acute(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 abgr_out) {
-    s32 perCell = hTrackPoly->face >> 2;
+    s32 perCell = hTrackPoly->point >> 2;
     u32 firstAlpha = abgr_in & 0xFF000000;
     u32 secondAlpha = abgr_out & 0xFF000000;
     s32 cellCount = hTrackPoly->number;
@@ -928,7 +928,7 @@ void dds3TrackPolyVCSet4_Acute(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 abg
 
 
 void dds3TrackPolyVCSet4_AcuteW(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 abgr_out) {
-    s32 perCell = hTrackPoly->face >> 3;
+    s32 perCell = hTrackPoly->point >> 3;
     u32 firstAlpha = abgr_in & 0xFF000000;
     u32 secondAlpha = abgr_out & 0xFF000000;
     s32 cellCount = hTrackPoly->number;
@@ -970,7 +970,7 @@ void dds3TrackPolyVCSet4_AcuteW(dds3TrackPoly_t *hTrackPoly, u32 abgr_in, u32 ab
 
 void dds3TrackPolyVC5Set_Normal(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abgr_1, u32 abgr_2) {
     s32 cellCount = hTrackPoly->number;
-    s32 perCell = hTrackPoly->face / 5;
+    s32 perCell = hTrackPoly->point / 5;
     s32 i;
 
     for (i = 0; i < cellCount; i++) {
@@ -991,7 +991,7 @@ void dds3TrackPolyVC5Set_Normal(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abg
 
 void dds3TrackPolyVC5Set_Acute(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abgr_1, u32 abgr_2) {
     s32 cellCount = hTrackPoly->number;
-    s32 perCell = hTrackPoly->face / 5;
+    s32 perCell = hTrackPoly->point / 5;
     u32 firstAlpha = abgr_0 & 0xFF000000;
     u32 secondAlpha = abgr_1 & 0xFF000000;
     u32 thirdAlpha = abgr_2 & 0xFF000000;
@@ -1028,7 +1028,7 @@ void dds3TrackPolyVC5Set_Acute(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abgr
 
 void dds3TrackPolyVC5Set_AcuteR(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abgr_1, u32 abgr_2) {
     s32 cellCount = hTrackPoly->number;
-    s32 perCell = hTrackPoly->face / 5;
+    s32 perCell = hTrackPoly->point / 5;
     u32 firstAlpha = abgr_0 & 0xFF000000;
     u32 secondAlpha = abgr_1 & 0xFF000000;
     u32 thirdAlpha = abgr_2 & 0xFF000000;
@@ -1065,7 +1065,7 @@ void dds3TrackPolyVC5Set_AcuteR(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abg
 
 void dds3TrackPolyVC5Set_AcuteW(dds3TrackPoly_t *hTrackPoly, u32 abgr_0, u32 abgr_1, u32 abgr_2) {
     s32 cellCount = hTrackPoly->number;
-    s32 perCell = (hTrackPoly->face / 5) >> 1;
+    s32 perCell = (hTrackPoly->point / 5) >> 1;
     u32 firstAlpha = abgr_0 & 0xFF000000;
     u32 secondAlpha = abgr_1 & 0xFF000000;
     u32 thirdAlpha = abgr_2 & 0xFF000000;
@@ -1285,9 +1285,9 @@ dds3TrianglePoly_t *dds3TrianglePolyCreate(s32 number) {
     s32 base = sdfMemLock(allocation);
     u8 *vertices = (u8 *)base + points * 16;
     dds3TrianglePoly_t *block = (dds3TrianglePoly_t *)(vertices + colorBytes);
-    block->color = 0x80808080;
-    block->count = number;
-    block->colors = (u32 *)vertices;
+    block->abgr = 0x80808080;
+    block->number = number;
+    block->pVC = (u32 *)vertices;
     block->hMem = allocation;
     block->pVertex = (u128 *)base;
     block->pMat = sdfMatNew();
@@ -1306,14 +1306,14 @@ void dds3TrianglePolyLinkOt(sdfGrOt_t *pOt, dds3TrianglePoly_t *hTriPoly) {
     s32 remaining;
     sdfDrawTagInit(list);
     sdf3DPrimLinkResetTm(list, 0);
-    remaining = hTriPoly->count * 3;
+    remaining = hTriPoly->number * 3;
     memset(&state, 0, sizeof(state));
     state.faceCount = 0x10;
     state.pointCount = 0x30;
     state.attr = 0x4000;
     state.vertex = (sdfVector4_t *)hTriPoly->pVertex;
-    state.vertexColor = hTriPoly->colors;
-    state.color = hTriPoly->color;
+    state.vertexColor = hTriPoly->pVC;
+    state.color = hTriPoly->abgr;
     while (remaining >= 0x30) {
         remaining -= 0x30;
         sdfDrawTagLink(list, (u32)effPkt3DPrimMakePoly(&state));
@@ -1447,7 +1447,7 @@ void dds3SpPoly_Ring_Old_Move(dds3SpPoly_Ring_Old_t3 *pRing, s32 number) {
     s32 i;
 
     p = (f32 *)entry->pVertex;
-    pairs = strip->face / 2;
+    pairs = strip->point / 2;
     scale[0] = scale[1] = scale[2] = pRing->pairDisplacement;
     SDF_VU0_LOADVECTOR_C(scale);
     for (i = 0; i < pairs; i++) {
@@ -1554,9 +1554,9 @@ void dds3SpPoly_RingMove(dds3SpPoly_Ring_t3 *pRing, s32 number) {
     s32 pairs;
     s32 i;
 
-    entry->count = strip->face;
+    entry->count = strip->point;
     pointCursor = (f32 *)entry->pVertex;
-    pairs = strip->face >> 1;
+    pairs = strip->point >> 1;
     radiusStepVector[2] = radiusStepVector[1] = radiusStepVector[0] = rec->radiusStep;
     liftVector[1] = pRing->liftStep;
     liftVector[2] = liftVector[0] = 0;
@@ -1613,7 +1613,7 @@ void dds3SpPoly_RingDraw(dds3SpPoly_Ring_t3 *hData) {
     record = hData->pPhysics;
     duration = hData->head.frame;
     loop = hData->head.loop;
-    color = hData->head.color;
+    color = hData->head.abgr;
     entry = strip->list;
 
     if (count > 0) {
@@ -1649,7 +1649,7 @@ void dds3SpPoly_RingDraw(dds3SpPoly_Ring_t3 *hData) {
                 } else {
                     completed++;
                     if (completed >= (u32)count) {
-                        hData->head.active = 0;
+                        hData->head.state = 0;
                     }
                 }
                 entry->count = 0;
@@ -1737,9 +1737,9 @@ void dds3SpPoly_SphereRingMove(dds3SpPoly_SphereRing_t3 *pSphereRing, s32 number
     s32 pairs;
     s32 i;
 
-    stripEntry->count = strip->face;
+    stripEntry->count = strip->point;
     pointCursor = (f32 *)stripEntry->pVertex;
-    pairs = strip->face >> 1;
+    pairs = strip->point >> 1;
     recordRadius = record->radius;
     angle = (f32)record->frame / (f32)pSphereRing->head.frame * 3.14159265f;
     projectedInnerRadius = recordRadius * sdfSin(angle);
@@ -1796,7 +1796,7 @@ void dds3SpPoly_SphereRingDraw(dds3SpPoly_SphereRing_t3 *hData) {
     record = hData->records;
     duration = hData->head.frame;
     loop = hData->head.loop;
-    color = hData->head.color;
+    color = hData->head.abgr;
     entry = strip->list;
 
     if (count > 0) {
@@ -1832,7 +1832,7 @@ void dds3SpPoly_SphereRingDraw(dds3SpPoly_SphereRing_t3 *hData) {
                 } else {
                     completed++;
                     if (completed >= (u32)count) {
-                        hData->head.active = 0;
+                        hData->head.state = 0;
                     }
                 }
                 entry->count = 0;
@@ -1926,9 +1926,9 @@ void dds3SpPoly_RollRingMove(dds3SpPolyRollRing_t *pRollRing, s32 number)
     s32 pairs;
     s32 i;
 
-    entry->count = strip->face;
+    entry->count = strip->point;
     out = (f32 *)entry->pVertex;
-    pairs = strip->face >> 1;
+    pairs = strip->point >> 1;
     SetRotateMatrixX(rec->rot_x);
     SetRotateMatrixY_B(rec->rot_y);
     MultMatrixRevNoArg();
@@ -1991,7 +1991,7 @@ void dds3SpPoly_RollRingDraw(dds3SpPolyRollRing_t *hData) {
     record = hData->records;
     duration = hData->head.frame;
     loop = hData->head.loop;
-    color = hData->head.color;
+    color = hData->head.abgr;
     entry = strip->list;
 
     if (count > 0) {
@@ -2029,7 +2029,7 @@ void dds3SpPoly_RollRingDraw(dds3SpPolyRollRing_t *hData) {
                 } else {
                     completed++;
                     if (completed >= (u32)count) {
-                        hData->head.active = 0;
+                        hData->head.state = 0;
                     }
                 }
                 entry->count = 0;
@@ -2071,7 +2071,7 @@ void *dds3SpPolyCreate(s32 index, void *arg) {
     dds3SpPoly_Basic_t *effect = dds3SpPolyTable[index].func(arg);
 
     effect->type = index;
-    effect->active = 1;
+    effect->state = 1;
     return effect;
 }
 
@@ -2079,7 +2079,7 @@ void *dds3SpPolyCopy(dds3SpPoly_Basic_t *effect) {
     dds3SpPoly_Basic_t *result = dds3SpPolyTable[effect->type].func(effect);
 
     result->type = effect->type;
-    result->active = 1;
+    result->state = 1;
     return result;
 }
 
@@ -2093,7 +2093,7 @@ void dds3SpPolyDraw(dds3SpPoly_Basic_t *hData) {
 
 void dds3SpPolyReset(dds3SpPoly_Basic_t *hData) {
     D_003176A0[hData->type](hData);
-    hData->active = 1;
+    hData->state = 1;
 }
 
 void dds3SpPolySetScale(dds3SpPoly_Basic_t *hData, f32 scale) {
@@ -2102,7 +2102,7 @@ void dds3SpPolySetScale(dds3SpPoly_Basic_t *hData, f32 scale) {
 }
 
 u16 dds3SpPolyGetState(dds3SpPoly_Basic_t *hData) {
-    return hData->active;
+    return hData->state;
 }
 
 void dds3SpPolySetPosition(void *hData, void *pPos) {
@@ -2118,7 +2118,7 @@ void dds3SpPolySetRotateMatrix(dds3SpPoly_Basic_t *hData, void *pMatrix) {
 }
 
 void dds3SpPolySetRGBA(dds3SpPoly_Basic_t *hData, u32 abgr) {
-    hData->color = abgr;
+    hData->abgr = abgr;
 }
 
 void dds3SpPolySetLoop(dds3SpPolyLoopWork_t *hData, u8 loop) {
@@ -2157,7 +2157,7 @@ void dds3PolygonTriangleSet(dds3Polygon_t *hPolygon, const f32 *center) {
         SDF_VU0_COPYVECTOR(normals[2], dds3PolygonTriangleParam);
     }
     if (flags & 4) {
-        u32 *colors = (u32 *)(((u32)count << 2) + (u32)hPolygon->colors);
+        u32 *colors = (u32 *)(((u32)count << 2) + (u32)hPolygon->pVertexColor);
         colors[0] = 0x80000080;
         colors[1] = 0x80000080;
         colors[2] = 0x80000080;
