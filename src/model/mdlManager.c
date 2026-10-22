@@ -135,7 +135,7 @@ extern void sdfPacFree(sdfPacState_t *cb);
 sdfPacWork_t *mdlPackSet(sdfPacWork_t *resrc, s32 major, s32 minor, s32 regFlags);
 
 extern filePacRequest_t *pacLoadEx(const char *filename, s32 headOrTail, s32 callback, void *pendCallback, void *callbackParm);
-extern void pacSync(filePacRequest_t *request);
+extern void pacSync(filePacRequest_t *pacFileHandle);
 
 void mdlFileCbFree(mdlDoneJob_t *cb);
 
