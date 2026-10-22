@@ -290,7 +290,7 @@ typedef struct
     u16 kind;
     s32 size;
     u32 magicCode;
-    s32 decodedSize;
+    s32 realSize;
 } sdfPacStdBlockHeader_t;
 
 /* sdfPacStdBlockHeader_t.flags. */
@@ -357,7 +357,7 @@ typedef struct
     s32 currNum;
     u32 pad[2];
     sdfPacStdBlockHeader_t header;
-    sdfPacTmxDecodeCb_t buf;
+    sdfPacTmxDecodeCb_t tmxCb;
 } sdfPacTexListDecodeCb_t;
 
 typedef s32 (*sdfPacCallbackFunc)(sdfPacDecodeCb_t *aState, s32 aStat,

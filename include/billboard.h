@@ -227,7 +227,7 @@ typedef struct billHandle_t {
     u32 abgr;    
     void (*callback)();  
     u16 type;          
-    u16 requestedPacketListIndex;  
+    u16 mode;  
     union {
         void *payload;  
         struct billChildPayload_t *child;  

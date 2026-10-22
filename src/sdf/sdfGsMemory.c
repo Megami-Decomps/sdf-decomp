@@ -40,7 +40,7 @@ extern sdfDelayedResrcCB_t gsMemDelayedResrcCB;
 
 extern void (*sdfGsErrorHandler)(s32 size, s32 type);
 
-/* sdfImageSetRelease_t.freeMode: which heap owns the uploaded pixels. */
+/* sdfImageSetPacket_tag.freeMode: which heap owns the uploaded pixels. */
 enum SdfImageSetMem
 {
     SDF_IMAGESET_MEM_IGNORE = 0,

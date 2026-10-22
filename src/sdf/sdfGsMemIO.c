@@ -52,7 +52,7 @@ typedef struct sdfPrimBitBltElem_t {
 /* Host-to-local image transfer packet followed by its flush terminal tag (0xB0). */
 typedef struct sdfLoadImagePacket_t {
     u64 header[4];
-    sdfPrimBitBltElem_t transfer;
+    sdfPrimBitBltElem_t bitblt;
     u64 imageReferenceTag;
     u64 imageReferencePad;
     u64 imageGifTag0;
@@ -83,8 +83,8 @@ void sdfDrawTagLink2(struct sdfDrawTag_t *aTag, u32 aHeadPacket,
 /* Resource upload payload and its terminal primitive-reset tag (0xF0). */
 typedef struct sdfStoreImagePacket_t {
     u64 header[14];
-    sdfPrimBitBltElem_t transfer;
-    s32 quadwordCount;
+    sdfPrimBitBltElem_t bitblt;
+    s32 leng;
     u32 addr;
     u32 callback;
     u32 callbackParam;
@@ -175,11 +175,11 @@ void sdfSetStoreImage(sdfStoreImagePacket_t *aPacket, sdfGsMemSlice_t *aGsHandle
     aPacket->header[11] = 0x5000000500000000ULL;
     aPacket->header[12] = 0x1000000000000004ULL;
     aPacket->header[13] = 0xE;
-    sdfPrimSetBitBltElem(&aPacket->transfer, 0, 0, 0, 0, 0,
+    sdfPrimSetBitBltElem(&aPacket->bitblt, 0, 0, 0, 0, 0,
         aGsHandle->addr, aGsHandle->w, aGsHandle->pixelFormat,
         aSrcX, aSrcY, aWidth, aHeight, 1);
     quadwordCount = (sdfGetTexelBitCount(aGsHandle->pixelFormat) * aWidth * aHeight) >> 7;
-    aPacket->quadwordCount = quadwordCount;
+    aPacket->leng = quadwordCount;
     aPacket->addr = aBuffer;
     aPacket->callback = aCallback;
     aPacket->callbackParam = aCallbackParam;
@@ -206,8 +206,8 @@ void sdfLinkStoreImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle, s32 a
 }
 
 void sdfLinkStoreFrameImagePredraw(SdfPatchableResourcePacket *aPre, s32 aEvenOdd) {
-    aPre->resourcePacket.transfer.bitbltbuf.data =
-        (aPre->resourcePacket.transfer.bitbltbuf.data & ~0x3FFF) |
+    aPre->resourcePacket.bitblt.bitbltbuf.data =
+        (aPre->resourcePacket.bitblt.bitbltbuf.data & ~0x3FFF) |
         (u64)(u32)(D_00529388.buffers[aEvenOdd]->addr >> 6);
 }
 
@@ -238,7 +238,7 @@ void sdfSetLoadImage(sdfLoadImagePacket_t *aPacket, sdfGsMemSlice_t *aGsHandle,
     aPacket->header[1] = 0x5000000611000000;
     aPacket->header[2] = 0x1000000000000004;
     aPacket->header[3] = 0xE;
-    sdfPrimSetBitBltElem(&aPacket->transfer, aGsHandle->addr, aGsHandle->w,
+    sdfPrimSetBitBltElem(&aPacket->bitblt, aGsHandle->addr, aGsHandle->w,
                   aGsHandle->pixelFormat, aDstX, aDstY, 0, 0, 0, 0, 0,
                   aWidth, aHeight, 0);
 

@@ -27,9 +27,9 @@ typedef struct sdfDevConsDrawCB_t
     u8 *tag;
     u32 *dmaCh;
     u8 *buf[2];
-    s32 bufSize;
-    u16 bufIdx;
-    u16 rowStep;
+    s32 buffSize;
+    u16 dblBuffId;
+    u16 stepY;
 } sdfDevConsDrawCB_t;
 
 /* SMT3 DrawAll and the DDS1 twin reserve this same 0x1040-byte stack
@@ -342,8 +342,8 @@ void sdfDevConsDrawFlush(sdfDevConsDrawCB_t *aCB) {
         *(volatile u32 *)channelRegisters = *(volatile u32 *)channelRegisters | 0x40; /* CHCR bit 6: tag-transfer enable */
         EE_SYNC_BARRIER();
         sceDmaSendN(channelRegisters, (void *)((u32)aCB->start & 0x0FFFFFFF), packetBytes >> 4);
-        nextBufferIndex = aCB->bufIdx ^ 1;
-        aCB->bufIdx = nextBufferIndex;
+        nextBufferIndex = aCB->dblBuffId ^ 1;
+        aCB->dblBuffId = nextBufferIndex;
         aCB->tag = (u8 *)aCB->buf[nextBufferIndex];
         aCB->cur = aCB->tag + 0x10;
         aCB->start = aCB->tag;
@@ -357,12 +357,12 @@ void sdfDevConsDrawBG(sdfDevConsCB_tag *aHndl, sdfDevConsDrawCB_t *aCB) {
     u32 extent;
 
     sdfDevConsTagClose(aCB);
-    if (aCB->bufSize < aCB->tag - aCB->start + 0x80) {
+    if (aCB->buffSize < aCB->tag - aCB->start + 0x80) {
         sdfDevConsDrawFlush(aCB);
     }
     packet = (vu64 *)aCB->tag;
     origin = (u16)(aHndl->x - 0x30) | ((u32)aHndl->y << 16);
-    extent = (u16)(aHndl->w * 3 * 0x40 + 0x70) | ((u32)(aHndl->h * aCB->rowStep) << 16);
+    extent = (u16)(aHndl->w * 3 * 0x40 + 0x70) | ((u32)(aHndl->h * aCB->stepY) << 16);
     if (aHndl->mode & 4) {
         origin += 0xFFD00000;
         extent += 0x700000;
@@ -398,11 +398,11 @@ void sdfDevConsDraw(sdfDevConsCB_tag *console, sdfDevConsDrawCB_t *buffers) {
     if ((u8)(console->mode & 1)) {
         return;
     }
-    buffers->rowStep = (console->mode & 4) ? 0xC0 : 0x60;
+    buffers->stepY = (console->mode & 4) ? 0xC0 : 0x60;
     if (console->mode & 2) {
         sdfDevConsDrawBG(console, buffers);
     }
-    cellStep = ((u32)buffers->rowStep << 16) | 0xC0;
+    cellStep = ((u32)buffers->stepY << 16) | 0xC0;
     row = 0;
     writeCursor = (vu64 *)buffers->cur;
     packetStart = buffers->start;
@@ -416,7 +416,7 @@ void sdfDevConsDraw(sdfDevConsCB_tag *console, sdfDevConsDrawCB_t *buffers) {
             attribute = cells[1];
             cells += 2;
             if (character >= 0x20) {
-                if (buffers->bufSize < (u8 *)writeCursor - packetStart + 0x50) {
+                if (buffers->buffSize < (u8 *)writeCursor - packetStart + 0x50) {
                     buffers->cur = (u8 *)writeCursor;
                     sdfDevConsDrawFlush(buffers);
                     writeCursor = (vu64 *)buffers->cur;
@@ -435,7 +435,7 @@ void sdfDevConsDraw(sdfDevConsCB_tag *console, sdfDevConsDrawCB_t *buffers) {
             top += 0xC0;
         } while (column != console->w);
         row++;
-        y += buffers->rowStep;
+        y += buffers->stepY;
     } while (row != console->h);
     buffers->cur = (u8 *)writeCursor;
 }
@@ -449,11 +449,11 @@ void sdfDevConsDrawInit(sdfDevConsDrawCB_t *aCB, void *aPacketBuffer, s32 aBuffe
 
     ringAddress = ((u32)aPacketBuffer & 0x0FFFFFFF) | 0x30000000;
     ring = (u8 *)ringAddress;
-    aCB->bufSize = halfBufferBytes;
+    aCB->buffSize = halfBufferBytes;
     aCB->buf[0] = ring;
     aCB->buf[1] = ring + halfBufferBytes;
     aCB->start = ring;
-    aCB->bufIdx = 0;
+    aCB->dblBuffId = 0;
     textureState = sdfTexGetTex0Reg(sdfDebugFontHandle);
     packet = (vu64 *)ring;
     packet[0] = 0x10AB400000008005ULL;

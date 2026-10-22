@@ -319,7 +319,7 @@ void sdfPacMemStayDecoderFunc(sdfPacDecodeCb_t *cb)
 
 void sdfPacMemDecoderFuncInit(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr)
 {
-    s32 size = hdr->decodedSize;
+    s32 size = hdr->realSize;
     sdfPacDecodeResrc_t *aWork;
 
     if (size == 0) {
@@ -511,7 +511,7 @@ void sdfPacTmxDecoderInit(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr)
 
 void sdfPacTexListDecoderTmxHeaderEndFunc(sdfPacDecodeCb_t *cb)
 {
-    sdfPacTmxDecoderInitFunc(cb, &cb->slot.list->header, &cb->slot.list->buf);
+    sdfPacTmxDecoderInitFunc(cb, &cb->slot.list->header, &cb->slot.list->tmxCb);
     cb->onEnd = sdfPacTexListDecoderTmxBodyEndFunc;
 }
 
@@ -527,7 +527,7 @@ void sdfPacTexListDecoderTmxBodyEndFunc(sdfPacDecodeCb_t *cb)
 {
     sdfPacTexListDecodeCb_t *list = cb->slot.list;
 
-    sdfTexListAdd(cb->resrcTail->resrc, list->buf.texHandle);
+    sdfTexListAdd(cb->resrcTail->resrc, list->tmxCb.texHandle);
     {
         s32 nextIndex = list->currNum + 1;
 

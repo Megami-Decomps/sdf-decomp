@@ -331,7 +331,40 @@ s32 sdfSndSendSyncCmd(s32 aCmd, s32 aParam, void *aExDataPtr, s32 aExDataSize)
     return handle;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndTransToIOP);
+/* The SIF DMA request block, reused for every transfer. */
+extern struct
+{
+    u32 source;
+    s32 destination;
+    s32 size;
+    s32 attributes;
+} sdfSndTransBuf;
+
+extern s32 sceSifSetDma(void *aRequest, s32 aCount);
+
+extern s32 sceSifDmaStat(s32 aId);
+
+void sdfSndTransToIOP(s32 aIOPAddr, void *aEEAddr, s32 aSize)
+{
+    s32 dmaId;
+    s32 delay;
+
+    sdfSndTransBuf.source = (u32)aEEAddr;
+    sdfSndTransBuf.destination = aIOPAddr;
+    sdfSndTransBuf.size = aSize;
+    sdfSndTransBuf.attributes = 0;
+    FlushCache(0);
+    while ((dmaId = sceSifSetDma(&sdfSndTransBuf, 1)) == 0) {
+        /* Spin before retrying a full SIF queue. */
+        delay = 0x186A0;
+        while (delay != 0) {
+            delay -= 0x271;
+            __asm__ volatile("nop");
+        }
+    }
+    while (sceSifDmaStat(dmaId) >= 0) {
+    }
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndLoadIRXModules);
 
@@ -506,9 +539,15 @@ u64 p2sd_2C1E10(s32 aCh)
     return sdfSndSendSyncCmd((aCh & 0xF) | 0x1C0, 0, NULL, 0);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", p2sd_2C1E40);
+u64 p2sd_2C1E40(u8 aCh)
+{
+    return sdfSndSendSyncCmd(((aCh >> 3) & 0xF) | 0x140, 0, NULL, 0);
+}
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", func_002C1E70);
+u64 func_002C1E70(u8 aCh)
+{
+    return sdfSndSendSyncCmd(((aCh >> 3) & 0xF) | 0x150, 0, NULL, 0);
+}
 
 void p2sd_2C1EA0(s32 id) {
     u32 packet[4];

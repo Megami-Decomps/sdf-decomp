@@ -8,8 +8,8 @@
 typedef struct
 {
     sdfMotionNode_t nodeBase;
-    sdfModelMorph_t *current;
-    sdfModelMorph_t previous;
+    sdfModelMorph_t *morphNode;
+    sdfModelMorph_t blendSrc;
 } sdfMotNodeMorph_t;
 
 extern void FromEuler(f32 aRotateX, f32 aRotateY, f32 aRotateZ);
@@ -85,7 +85,7 @@ typedef struct
 
 typedef struct
 {
-    sdfMotNodeMatBase_t matBase;
+    sdfMotNodeMatBase_t base;
     sdfMotUvwKey_t blendFrom;
 } sdfMotNodeMatUvw_t;
 
@@ -869,8 +869,8 @@ sdfMotionNode_t *sdfMotGenMatUvw(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNod
     sdfMotNodeMatUvw_t *node;
 
     node = sdfChipAllocDirect(sizeof(sdfMotNodeMatUvw_t));
-    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatUvwTable, aNodeId);
-    return &node->matBase.nodeBase;
+    sdfMotGenMatInit(&node->base, aCtrlr, &sdfMotMatUvwTable, aNodeId);
+    return &node->base.nodeBase;
 }
 
 void sdfMotCLBK_matUvwSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
@@ -889,15 +889,15 @@ void sdfMotCLBK_matUvwBlendSeek(sdfMotNodeMatUvw_t *aThis, f32 aFrame, f32 aBlen
     sdfMotUvwKey_t dst;
     sdfMotUvwKey_t key;
 
-    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    sdfMotGetKey(&aThis->base.nodeBase, aFrame, &itf);
     sdfMotInterpolateKeyUvw(&itf, &key);
     sdfMotInterpolateKeyUvwSub(dst.parm, aThis->blendFrom.parm, key.parm, aBlendRate);
-    sdfMatSetTexUvwByPtr(aThis->matBase.mat, &dst);
+    sdfMatSetTexUvwByPtr(aThis->base.mat, &dst);
 }
 
 void sdfMotCLBK_matUvwInitBlend(sdfMotNodeMatUvw_t *aThis)
 {
-    aThis->blendFrom = *(sdfMotUvwKey_t *)sdfMatGetTexUvwParm(aThis->matBase.mat);
+    aThis->blendFrom = *(sdfMotUvwKey_t *)sdfMatGetTexUvwParm(aThis->base.mat);
 }
 
 sdfMotionNode_t *sdfMotGenMatMultiUvw(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
@@ -905,8 +905,8 @@ sdfMotionNode_t *sdfMotGenMatMultiUvw(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32
     sdfMotNodeMatUvw_t *node;
 
     node = sdfChipAllocDirect(sizeof(sdfMotNodeMatUvw_t));
-    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatMultiUvwTable, aNodeId);
-    return &node->matBase.nodeBase;
+    sdfMotGenMatInit(&node->base, aCtrlr, &sdfMotMatMultiUvwTable, aNodeId);
+    return &node->base.nodeBase;
 }
 
 void sdfMotCLBK_matMultiUvwSeek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
@@ -925,15 +925,15 @@ void sdfMotCLBK_matMultiUvwBlendSeek(sdfMotNodeMatUvw_t *aThis, f32 aFrame, f32 
     sdfMotUvwKey_t key;
     sdfMotUvwKey_t dst;
 
-    sdfMotGetKey(&aThis->matBase.nodeBase, aFrame, &itf);
+    sdfMotGetKey(&aThis->base.nodeBase, aFrame, &itf);
     sdfMotInterpolateKeyUvw(&itf, &key);
     sdfMotInterpolateKeyUvwSub(dst.parm, aThis->blendFrom.parm, key.parm, aBlendRate);
-    sdfMatSetMultiTexUvwByPtr(aThis->matBase.mat, &dst);
+    sdfMatSetMultiTexUvwByPtr(aThis->base.mat, &dst);
 }
 
 void sdfMotCLBK_matMultiUvwInitBlend(sdfMotNodeMatUvw_t *aThis)
 {
-    aThis->blendFrom = *(sdfMotUvwKey_t *)sdfMatGetMultiTexUvwParm(aThis->matBase.mat);
+    aThis->blendFrom = *(sdfMotUvwKey_t *)sdfMatGetMultiTexUvwParm(aThis->base.mat);
 }
 
 sdfMotionNode_t *sdfMotGenMatMultiDiffuse(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNodeId)
@@ -975,8 +975,8 @@ sdfMotionNode_t *sdfMotGenMatUvw2(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u32 aNo
     sdfMotNodeMatUvw_t *node;
 
     node = sdfChipAllocDirect(sizeof(sdfMotNodeMatUvw_t));
-    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatUvw2Table, aNodeId);
-    return &node->matBase.nodeBase;
+    sdfMotGenMatInit(&node->base, aCtrlr, &sdfMotMatUvw2Table, aNodeId);
+    return &node->base.nodeBase;
 }
 
 void sdfMotCLBK_matUvw2Seek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
@@ -1003,8 +1003,8 @@ sdfMotionNode_t *sdfMotGenMatMultiUvw2(sdfMotionCtrlr_t *aCtrlr, u32 aTypeId, u3
     sdfMotNodeMatUvw_t *node;
 
     node = sdfChipAllocDirect(sizeof(sdfMotNodeMatUvw_t));
-    sdfMotGenMatInit(&node->matBase, aCtrlr, &sdfMotMatMultiUvw2Table, aNodeId);
-    return &node->matBase.nodeBase;
+    sdfMotGenMatInit(&node->base, aCtrlr, &sdfMotMatMultiUvw2Table, aNodeId);
+    return &node->base.nodeBase;
 }
 
 void sdfMotCLBK_matMultiUvw2Seek(sdfMotNodeMatBase_t *aThis, f32 aFrame)
@@ -1035,7 +1035,7 @@ void sdfMotGenMorphInit(sdfMotNodeMorph_t *aBase,
                                  sdfMotionCtrlr_t *aCtrlr, sdfMotionNodeVTBL_t *aVTBL, s32 aNodeId) {
     sdfMotionNodeBaseInit((sdfMotionNode_t *)&aBase->nodeBase,
                             aCtrlr, aVTBL);
-    aBase->current = &((sdfModelMorph_t *)aCtrlr->rootNode->morphList->items)[aNodeId];
+    aBase->morphNode = &((sdfModelMorph_t *)aCtrlr->rootNode->morphList->items)[aNodeId];
 }
 
 sdfMotionNode_t *sdfMotGenMorph(sdfMotionCtrlr_t *aCtrlr,
@@ -1063,7 +1063,7 @@ void sdfMotCLBK_morphSeek(sdfMotNodeMorph_t *aThis, f32 aFrame) {
     secondValue = ((sdfModelMorphParm_t *)sample.key1)->blend;
     weight = sample.rate;
     inverse = 1.0f - weight;
-    out = aThis->current->target;
+    out = aThis->morphNode->target;
     if (firstId == secondId) {
         out[0].targetId = firstId;
         out[0].blend = firstValue * inverse + secondValue * weight;
@@ -1101,7 +1101,7 @@ void sdfMotCLBK_morphBlendSeek(sdfMotNodeMorph_t *aThis, f32 aFrame, f32 aBlendR
         contributionWeight = sampleComplement * aBlendRate;
     }
     secondWeight *= aBlendRate;
-    current = aThis->current;
+    current = aThis->morphNode;
 
     if (firstId == secondId) {
         current->target[0].targetId = secondId;
@@ -1116,7 +1116,7 @@ void sdfMotCLBK_morphBlendSeek(sdfMotNodeMorph_t *aThis, f32 aFrame, f32 aBlendR
     }
 
     contributionWeight = 1.0f - aBlendRate;
-    for (previous = aThis->previous.target, previousPairIndex = 0;
+    for (previous = aThis->blendSrc.target, previousPairIndex = 0;
          previousPairIndex < 2; previousPairIndex++, previous++) {
         f32 previousContributionWeight = previous->blend * contributionWeight;
 
@@ -1158,5 +1158,5 @@ void sdfMotCLBK_morphBlendSeek(sdfMotNodeMorph_t *aThis, f32 aFrame, f32 aBlendR
 }
 
 void sdfMotCLBK_morphInitBlend(sdfMotNodeMorph_t *aThis) {
-    aThis->previous = *aThis->current;
+    aThis->blendSrc = *aThis->morphNode;
 }

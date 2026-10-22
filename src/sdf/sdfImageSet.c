@@ -28,7 +28,7 @@ extern s32 iWakeupThread(s32 threadId);
 
 extern void (*sdfGsErrorHandler)(s32 size, s32 type);
 
-/* sdfImageSetRelease_t.freeMode: which heap owns the uploaded pixels. */
+/* sdfImageSetPacket_tag.freeMode: which heap owns the uploaded pixels. */
 enum SdfImageSetMem
 {
     SDF_IMAGESET_MEM_IGNORE = 0,
@@ -42,7 +42,7 @@ typedef struct sdfImageSetRelease
     void *chip;
     sdfMemHandle_t *memHandle;
     u8 freeMode;
-} sdfImageSetRelease_t;
+} sdfImageSetPacket_tag;
 
 /* Terminal DMA tag of a queued upload packet. Linking the next packet writes
  * its address into tag and clears the two VIF codes behind it. */
@@ -55,8 +55,8 @@ typedef struct sdfImageSetTag
 typedef struct sdfImageSetCB
 {
     s32 semaId;
-    sdfImageSetRelease_t *packetHead;
-    sdfImageSetRelease_t *packetTail;
+    sdfImageSetPacket_tag *packetHead;
+    sdfImageSetPacket_tag *packetTail;
     u32 tagHead;
     sdfImageSetTag_t *tagTail;
 } sdfImageSetCb_t;
@@ -147,7 +147,7 @@ s32 sdfImageDataSize(u32 format, s32 width, s32 height)
 void sdfImageSetReq(sdfImageSetReqParam_t *parm)
 {
     sdfImageSetCb_t *cb = &sdfImageSetCb;
-    sdfImageSetRelease_t *release;
+    sdfImageSetPacket_tag *release;
     sdfImageSetTag_t *tagTail;
     u64 *setup;
     u64 *packet;
@@ -178,7 +178,7 @@ void sdfImageSetReq(sdfImageSetReqParam_t *parm)
     qwc = sdfImageDataSize(pixelFormat, w, h);
     blocks = (qwc + 0x7FEF) / 0x7FF0;
     buf = sdfChipAllocDirect(blocks * 0x30 + 0x80);
-    release = (sdfImageSetRelease_t *)buf;
+    release = (sdfImageSetPacket_tag *)buf;
     release->next = NULL;
     release->chip = parm->data;
     release->memHandle = parm->memHandle;
@@ -266,7 +266,7 @@ void sdfImageSetChainTag(u32 head, sdfImageSetTag_t *tail)
 void sdfImageSetChainReleaseMem(s32 p)
 {
     sdfImageSetCb_t *cb = &sdfImageSetCb;
-    sdfImageSetRelease_t *release;
+    sdfImageSetPacket_tag *release;
 
     if (p != 0) {
         release = sdfChipAllocZeroDirect(0xA0);
@@ -306,7 +306,7 @@ s32 sdfImageSetDmacHandler(s32 channel, s32 threadId)
 void sdfImageSetTrans(void)
 {
     sdfImageSetCb_t *cb = &sdfImageSetCb;
-    sdfImageSetRelease_t *release;
+    sdfImageSetPacket_tag *release;
     sdfImageSetTag_t *tagTail;
     u32 dmaAddr;
 
@@ -334,7 +334,7 @@ void sdfImageSetTrans(void)
     }
 
     while (release != NULL) {
-        sdfImageSetRelease_t *next = release->next;
+        sdfImageSetPacket_tag *next = release->next;
 
         switch (release->freeMode) {
         case SDF_IMAGESET_MEM_HANDLE:

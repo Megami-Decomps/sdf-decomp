@@ -263,7 +263,7 @@ typedef struct sdfGrFramePacket_t {
     u8 pad08[8];
     sdfGrPacketHeader_t packetHeader;
     sdfGrTagStdReg_t frame;
-    sdfGrTagStdReg_t zbuf;
+    sdfGrTagStdReg_t zbuff;
     sdfGrFrameSet_t *frameSet;
     u32 frameMask;
     s32 zbuffMask;
@@ -288,7 +288,7 @@ void sdfDrawTagLinkRef(struct sdfDrawTag_t *aTag, u32 aPacket);
 typedef struct sdfDrawReqRec_t {
     struct sdfDrawTag_t *drawTag;
     SdfPacketPatchLink *preDraw;
-    u8 slotUpdatePhase;
+    u8 drawCount;
     u8 queuedBufferIndex;
     u8 bufferIndex;
     u8 bufferSlotIndex;
@@ -310,7 +310,7 @@ typedef struct sdfPreDrawChain_t {
 } sdfPreDrawChain_t;
 
 /* Linked draw environment, including its two frame-mask writes and textures. */
-typedef struct sdfSceneNode_t {
+typedef struct sdfGrStdDrawEnv_t {
     SdfPacketPatchLink link;
     sdfGrFrameSet_t *view;
     u8 unk0C[4];
@@ -318,14 +318,14 @@ typedef struct sdfSceneNode_t {
     sdfGrRefGifPacketHeader_t drawDefaults;
     sdfGrDrawFramePacket_t contextOne;
     sdfGrDrawFramePacket_t contextTwo;
-    sdfGrClearPacket_t centeredBounds;
-    SdfGsSceneBlendRegisters blendState;
+    sdfGrClearPacket_t clear;
+    SdfGsSceneBlendRegisters test1;
     sdfGrTagStdReg_t frameContextOne;
     sdfGrTagStdReg_t frameContextTwo;
     u8 texturePackets[0x80];
-} sdfSceneNode_t;
+} sdfGrStdDrawEnv_t;
 
-void sdfGrStdDrawEnvPredraw(sdfSceneNode_t *aPre, s32 aEvenOdd);
+void sdfGrStdDrawEnvPredraw(sdfGrStdDrawEnv_t *aPre, s32 aEvenOdd);
 
 void sdfGrSetRefGifPacket(SdfDmaReferenceChainPacket *aPacket, u32 aRegs, s32 aNumRegs);
 
@@ -813,19 +813,19 @@ void sdfGrSetDrawEnv(SdfSceneDrawPacket *aEnv, sdfGrFrameSet_t *aFrameSet, s32 a
 
 INCLUDE_ASM(const s32, "sdf/sdfDraw", sdfGrStdDrawEnvPredraw);
 
-void sdfGrSetStdDrawEnv(sdfSceneNode_t *aEnv, sdfGrFrameSet_t *aFrameSet) {
+void sdfGrSetStdDrawEnv(sdfGrStdDrawEnv_t *aEnv, sdfGrFrameSet_t *aFrameSet) {
     sdfGrSetRegsPacketHeader(&aEnv->header, SDF_TEXTURE_SCENE_PAYLOAD_QWORDS);
     aEnv->view = aFrameSet;
     aEnv->link.patch = sdfGrStdDrawEnvPredraw;
-    sdfGrSetClearPacket(&aEnv->centeredBounds, aFrameSet->width, aFrameSet->height, aFrameSet->bufferFormat, aFrameSet->auxiliaryFormat);
-    aEnv->blendState.contextOne.test.data = SDF_GS_SCENE_TEST;
-    aEnv->blendState.contextOne.test.reg = SDF_GS_TEST_1;
-    aEnv->blendState.contextOne.alpha.data = SDF_GS_DEFAULT_ALPHA;
-    aEnv->blendState.contextOne.alpha.reg = SDF_GS_ALPHA_1;
-    aEnv->blendState.contextTwo.test.data = SDF_GS_SCENE_TEST;
-    aEnv->blendState.contextTwo.test.reg = SDF_GS_TEST_2;
-    aEnv->blendState.contextTwo.alpha.data = SDF_GS_DEFAULT_ALPHA;
-    aEnv->blendState.contextTwo.alpha.reg = SDF_GS_ALPHA_2;
+    sdfGrSetClearPacket(&aEnv->clear, aFrameSet->width, aFrameSet->height, aFrameSet->bufferFormat, aFrameSet->auxiliaryFormat);
+    aEnv->test1.contextOne.test.data = SDF_GS_SCENE_TEST;
+    aEnv->test1.contextOne.test.reg = SDF_GS_TEST_1;
+    aEnv->test1.contextOne.alpha.data = SDF_GS_DEFAULT_ALPHA;
+    aEnv->test1.contextOne.alpha.reg = SDF_GS_ALPHA_1;
+    aEnv->test1.contextTwo.test.data = SDF_GS_SCENE_TEST;
+    aEnv->test1.contextTwo.test.reg = SDF_GS_TEST_2;
+    aEnv->test1.contextTwo.alpha.data = SDF_GS_DEFAULT_ALPHA;
+    aEnv->test1.contextTwo.alpha.reg = SDF_GS_ALPHA_2;
     sdfGrSetDrawDefParmPacket(&aEnv->drawDefaults);
 }
 
@@ -882,9 +882,9 @@ void sdfGrFramePacketPredraw(sdfGrFramePacket_t *aPre, s32 aEvenOdd) {
         (u64)(view->buffers[aEvenOdd]->addr >> 11) |
         ((s64)(view->bufferFormat << 24) | ((s64)widthPages << 16));
     aPre->frame.reg = frameRegister;
-    aPre->zbuf.data = (s64)(view->auxiliaryFormat << 24) |
+    aPre->zbuff.data = (s64)(view->auxiliaryFormat << 24) |
         (u64)(view->buffers[2]->addr >> 11);
-    aPre->zbuf.reg = depthRegister;
+    aPre->zbuff.reg = depthRegister;
 }
 
 void sdfGrSetFramePacket(sdfGrFramePacket_t *aFrame, sdfGrFrameSet_t *aFrameSet, u32 aFrameMask, s32 aZBuffMask, s32 aContext) {
@@ -913,7 +913,7 @@ void sdfGrReqDraw(sdfDrawTag_t *aTag, sdfPreDrawChain_t *aPreDraw) {
     slot = &sdfGrDrawState[index];
     slot->drawTag = NULL;
     slot->preDraw = NULL;
-    slot->slotUpdatePhase = 0;
+    slot->drawCount = 0;
     if (aTag != NULL && aTag->tail != 0) {
         slot->drawTag = aTag;
         if (aPreDraw != NULL) {
@@ -953,7 +953,7 @@ void sdfDrawSync(void) {
         if (table[sdfDrawReqQueueIndex].drawTag == NULL) {
             break;
         }
-        if (table[sdfDrawReqQueueIndex].slotUpdatePhase >= 2) {
+        if (table[sdfDrawReqQueueIndex].drawCount >= 2) {
             break;
         }
         sdfWaitVblank(0);

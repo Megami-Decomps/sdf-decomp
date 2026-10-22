@@ -216,7 +216,7 @@ typedef struct SdfPacketPatchLink {
 
 /* PRIM followed by 3 individually textured and colored vertices. */
 typedef struct sdfPrimGt3Elem_t {
-    u64 gifTag;
+    u64 giftag;
     u64 gifRegisters;
     u64 prim;
     SdfGsGouraudTexturedVertex vertices[3];
@@ -224,7 +224,7 @@ typedef struct sdfPrimGt3Elem_t {
 
 /* PRIM followed by 4 individually textured and colored vertices. */
 typedef struct sdfPrimGt4Elem_t {
-    u64 gifTag;
+    u64 giftag;
     u64 gifRegisters;
     u64 prim;
     SdfGsGouraudTexturedVertex vertices[4];
@@ -247,7 +247,7 @@ typedef struct sdfPrimSpriteElem_t {
 
 /* GIF REGLIST stream: PRIM, one RGBAQ, then UV/XYZ2 for each vertex. */
 typedef struct sdfPrimFt3Elem_t {
-    u64 gifTag;
+    u64 giftag;
     u64 gifRegisters;
     u64 prim;
     u64 rgbaq;
@@ -256,7 +256,7 @@ typedef struct sdfPrimFt3Elem_t {
 
 /* GIF REGLIST stream: PRIM, one RGBAQ, then UV/XYZ2 for each vertex. */
 typedef struct sdfPrimFt4Elem_t {
-    u64 gifTag;
+    u64 giftag;
     u64 gifRegisters;
     u64 prim;
     u64 rgbaq;
@@ -273,7 +273,7 @@ typedef struct sdfPrimG3Elem_t {
 
 /* PRIM followed by four independently colored vertices. */
 typedef struct sdfPrimG4Elem_t {
-    u64 gifTag;
+    u64 giftag;
     u64 gifRegisters;
     u64 prim;
     SdfGsGouraudVertex vertices[4];
@@ -292,7 +292,7 @@ typedef struct sdfPrimBitBltElem_t {
 typedef struct sdfPrimF3Packet_t {
     u64 dmaTag;
     u64 vifCommands;
-    sdfPrimF3Elem_t drawing;
+    sdfPrimF3Elem_t elem;
     u64 unwrittenAllocationWord;
 } sdfPrimF3Packet_t;
 
@@ -300,14 +300,14 @@ typedef struct sdfPrimF3Packet_t {
 typedef struct sdfPrimF4Packet_t {
     u64 dmaTag;
     u64 vifCommands;
-    sdfPrimF4Elem_t drawing;
+    sdfPrimF4Elem_t elem;
 } sdfPrimF4Packet_t;
 
 /* The caller prepends DMA/VIF words. The final allocated qword is not written. */
 typedef struct sdfPrimBoxLinePacket_t {
     u64 dmaTag;
     u64 vifCommands;
-    sdfPrimBoxLineElem_t drawing;
+    sdfPrimBoxLineElem_t line;
     u64 unwrittenAllocationWord;
 } sdfPrimBoxLinePacket_t;
 
@@ -322,45 +322,45 @@ typedef struct sdfPrimTransPacket_t {
 typedef struct sdfPrimGt3Packet_t {
     u64 dmatag;
     u64 vifCommands;
-    sdfPrimGt3Elem_t drawing;
+    sdfPrimGt3Elem_t elem;
 } sdfPrimGt3Packet_t;
 
 typedef struct sdfPrimGt4Packet_t {
     u64 dmatag;
     u64 vifCommands;
-    sdfPrimGt4Elem_t drawing;
+    sdfPrimGt4Elem_t elem;
     u64 unwrittenTail; /* Final allocated word is not written by the builder. */
 } sdfPrimGt4Packet_t;
 
 typedef struct sdfPrimSpritePacket_t {
     u64 dmaTag;
     u64 vifCommands;
-    sdfPrimSpriteElem_t drawing;
+    sdfPrimSpriteElem_t spr;
 } sdfPrimSpritePacket_t;
 
 typedef struct sdfPrimFt3Packet_t {
     u64 dmatag;
     u64 vifCommands;
-    sdfPrimFt3Elem_t drawing;
+    sdfPrimFt3Elem_t elem;
 } sdfPrimFt3Packet_t;
 
 typedef struct sdfPrimFt4Packet_t {
     u64 dmatag;
     u64 vifCommands;
-    sdfPrimFt4Elem_t drawing;
+    sdfPrimFt4Elem_t elem;
 } sdfPrimFt4Packet_t;
 
 typedef struct sdfPrimG3Packet_t {
     u64 dmaTag;
     u64 vifCommands;
-    sdfPrimG3Elem_t drawing;
+    sdfPrimG3Elem_t elem;
     u64 unwrittenTail; /* Allocation rounds the REGLIST payload up to a qword. */
 } sdfPrimG3Packet_t;
 
 typedef struct sdfPrimG4Packet_t {
     u64 dmatag;
     u64 vifCommands;
-    sdfPrimG4Elem_t drawing;
+    sdfPrimG4Elem_t elem;
     u64 unwrittenTail; /* Allocation rounds the REGLIST payload up to a qword. */
 } sdfPrimG4Packet_t;
 
@@ -825,7 +825,7 @@ void sdfPrimLinkSprite(sdfDrawTag_t *aTag, s32 aColor, s32 aPrim, s32 aX0, s32 a
     packet = (sdfPrimSpritePacket_t *)aAllocator(0x50);
     packet->dmaTag = 0x20000004;
     packet->vifCommands = (((u64)0x50000004 << 16) | 0x1000) << 16;
-    sdfPrimSetSpriteElem(&packet->drawing, aColor, aPrim, aX0, aY0, aU0, aV0, aX1, aY1, aU1, aV1, aZ);
+    sdfPrimSetSpriteElem(&packet->spr, aColor, aPrim, aX0, aY0, aU0, aV0, aX1, aY1, aU1, aV1, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
 }
 
@@ -853,7 +853,7 @@ void sdfPrimLinkF3(sdfDrawTag_t *aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, 
     packet = (sdfPrimF3Packet_t *)aAllocator(0x50);
     packet->dmaTag = 0x20000004;
     packet->vifCommands = (((u64)0x50000004 << 16) | 0x1000) << 16;
-    sdfPrimSetF3Elem(&packet->drawing, aColor, aPrim, aX0, aY0, aX1, aY1, aX2, aY2, aZ);
+    sdfPrimSetF3Elem(&packet->elem, aColor, aPrim, aX0, aY0, aX1, aY1, aX2, aY2, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
 }
 
@@ -879,7 +879,7 @@ void sdfPrimLinkF4(sdfDrawTag_t *aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, 
     packet = (sdfPrimF4Packet_t *)aAllocator(0x50);
     packet->dmaTag = 0x20000004ULL;
     packet->vifCommands = 0x5000000410000000ULL;
-    sdfPrimSetF4Elem(&packet->drawing, aColor, aPrim, aX0, aY0, aX1, aY1, aX2, aY2, aX3, aY3, aZ);
+    sdfPrimSetF4Elem(&packet->elem, aColor, aPrim, aX0, aY0, aX1, aY1, aX2, aY2, aX3, aY3, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
 }
 
@@ -906,14 +906,14 @@ void sdfPrimLinkG3(sdfDrawTag_t *aTag, s32 aPrim, s32 aX0, s32 aY0, s32 aColor0,
     packet = (sdfPrimG3Packet_t *)aAllocator(0x60);
     packet->dmaTag = 0x20000005ULL;
     packet->vifCommands = 0x5000000510000000ULL;
-    sdfPrimSetG3Elem(&packet->drawing, aPrim, aX0, aY0, aColor0, aX1, aY1, aColor1, aX2, aY2, aColor2, aZ);
+    sdfPrimSetG3Elem(&packet->elem, aPrim, aX0, aY0, aColor0, aX1, aY1, aColor1, aX2, aY2, aColor2, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
 }
 
 void sdfPrimSetG4Elem(sdfPrimG4Elem_t *aElem, s32 aPrim, s32 aX0, s32 aY0, s32 aColor0, s32 aX1, s32 aY1, s32 aColor1, s32 aX2, s32 aY2, s32 aColor2, s32 aX3, s32 aY3, s32 aColor3, s32 aZ) {
     u64 depthHigh = (u64)aZ << 32;
 
-    aElem->gifTag = 0xA400000000008001ULL;
+    aElem->giftag = 0xA400000000008001ULL;
     aElem->gifRegisters = 0xF515151510ULL;
     aElem->prim = (u32)(aPrim | 0x10C);
     aElem->vertices[0].rgbaq = (u32)aColor0 | ((u64)0xFE00 << 46);
@@ -936,14 +936,14 @@ void sdfPrimLinkG4(s32 aTag, s32 aPrim, s32 aX0, s32 aY0, s32 aColor0, s32 aX1,
     packet = (sdfPrimG4Packet_t *)aAllocator(0x70);
     packet->dmatag = 0x20000006;
     packet->vifCommands = (((u64)0x50000006 << 16) | 0x1000) << 16;
-    sdfPrimSetG4Elem(&packet->drawing, aPrim, aX0, aY0, aColor0, aX1, aY1, aColor1, aX2, aY2, aColor2, aX3, aY3, aColor3, aZ);
+    sdfPrimSetG4Elem(&packet->elem, aPrim, aX0, aY0, aColor0, aX1, aY1, aColor1, aX2, aY2, aColor2, aX3, aY3, aColor3, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
 }
 
 void sdfPrimSetFt3Elem(sdfPrimFt3Elem_t *aElem, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aU0, s32 aV0, s32 aX1, s32 aY1, s32 aU1, s32 aV1, s32 aX2, s32 aY2, s32 aU2, s32 aV2, s32 aZ) {
     u64 depthHigh = (u64)aZ << 32;
 
-    aElem->gifTag = 0x8400000000008001ULL;
+    aElem->giftag = 0x8400000000008001ULL;
     aElem->gifRegisters = 0x53535310;
     aElem->prim = (u32)(aPrim | 0x114);
     aElem->rgbaq = (u32)aColor | ((u64)0xFE00 << 46);
@@ -965,7 +965,7 @@ void sdfPrimLinkFt3(s32 aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aU0,
     packet = (sdfPrimFt3Packet_t *)aAllocator(0x60);
     packet->dmatag = 0x20000005;
     packet->vifCommands = (((u64)0x50000005 << 16) | 0x1000) << 16;
-    sdfPrimSetFt3Elem(&packet->drawing, aColor, aPrim, aX0, aY0, aU0, aV0, aX1, aY1, aU1, aV1, aX2, aY2, aU2, aV2, aZ);
+    sdfPrimSetFt3Elem(&packet->elem, aColor, aPrim, aX0, aY0, aU0, aV0, aX1, aY1, aU1, aV1, aX2, aY2, aU2, aV2, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
 }
 
@@ -974,7 +974,7 @@ void sdfPrimSetFt4Elem(sdfPrimFt4Elem_t *aElem, s32 aColor, s32 aPrim, s32 aX0, 
                    s32 aX3, s32 aY3, s32 aU3, s32 aV3, s32 aZ) {
     u64 depthHigh = (u64)aZ << 32;
 
-    aElem->gifTag = 0xA400000000008001ULL;
+    aElem->giftag = 0xA400000000008001ULL;
     aElem->gifRegisters = 0x5353535310ULL;
     aElem->prim = (u32)(aPrim | 0x114);
     aElem->rgbaq = (u32)aColor | ((u64)0xFE00 << 46);
@@ -999,7 +999,7 @@ void sdfPrimLinkFt4(sdfDrawTag_t *aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0,
     packet = (sdfPrimFt4Packet_t *)aAllocator(0x70);
     packet->dmatag = 0x20000006;
     packet->vifCommands = (((u64)0x50000006 << 16) | 0x1000) << 16;
-    sdfPrimSetFt4Elem(&packet->drawing, aColor, aPrim, aX0, aY0, aU0, aV0, aX1, aY1, aU1, aV1, aX2, aY2, aU2, aV2, aX3, aY3, aU3, aV3, aZ);
+    sdfPrimSetFt4Elem(&packet->elem, aColor, aPrim, aX0, aY0, aU0, aV0, aX1, aY1, aU1, aV1, aX2, aY2, aU2, aV2, aX3, aY3, aU3, aV3, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
 }
 
@@ -1008,7 +1008,7 @@ void sdfPrimSetGt3Elem(sdfPrimGt3Elem_t *aElem, s32 aPrim, s32 aX0, s32 aY0, s32
                    s32 aU2, s32 aV2, s32 aColor2, s32 aZ) {
     u64 depthHigh = (u64)aZ << 32;
 
-    aElem->gifTag = 0xA400000000008001ULL;
+    aElem->giftag = 0xA400000000008001ULL;
     aElem->gifRegisters = 0x5135135130ULL;
     aElem->prim = (u32)(aPrim | 0x11C);
     aElem->vertices[0].uv = (aU0 & 0xFFFF) | (aV0 << 16);
@@ -1033,7 +1033,7 @@ void sdfPrimLinkGt3(s32 aTag, s32 aPrim, s32 aX0, s32 aY0, s32 aU0, s32 aV0,
     packet = (sdfPrimGt3Packet_t *)aAllocator(0x70);
     packet->dmatag = 0x20000006;
     packet->vifCommands = (((u64)0x50000006 << 16) | 0x1000) << 16;
-    sdfPrimSetGt3Elem(&packet->drawing, aPrim, aX0, aY0, aU0, aV0, aColor0, aX1, aY1, aU1, aV1, aColor1, aX2, aY2, aU2, aV2, aColor2, aZ);
+    sdfPrimSetGt3Elem(&packet->elem, aPrim, aX0, aY0, aU0, aV0, aColor0, aX1, aY1, aU1, aV1, aColor1, aX2, aY2, aU2, aV2, aColor2, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
 }
 
@@ -1042,7 +1042,7 @@ void sdfPrimSetGt4Elem(sdfPrimGt4Elem_t *aElem, s32 aPrim, s32 aX0, s32 aY0, s32
                    s32 aV2, s32 aColor2, s32 aX3, s32 aY3, s32 aU3, s32 aV3, s32 aColor3, s32 aZ) {
     u64 depthHigh = (u64)aZ << 32;
 
-    aElem->gifTag = 0xE400000000008001ULL;
+    aElem->giftag = 0xE400000000008001ULL;
     aElem->gifRegisters = 0xF5135135135130ULL;
     aElem->prim = (u32)(aPrim | 0x11C);
     aElem->vertices[0].uv = (aU0 & 0xFFFF) | (aV0 << 16);
@@ -1070,7 +1070,7 @@ void sdfPrimLinkGt4(sdfDrawTag_t *aTag, s32 aPrim, s32 aX0, s32 aY0, s32 aU0, s3
     packet = (sdfPrimGt4Packet_t *)aAllocator(0x90);
     packet->dmatag = 0x20000008;
     packet->vifCommands = (((u64)0x50000008 << 16) | 0x1000) << 16;
-    sdfPrimSetGt4Elem(&packet->drawing, aPrim, aX0, aY0, aU0, aV0, aColor0, aX1, aY1, aU1, aV1, aColor1, aX2, aY2, aU2, aV2, aColor2, aX3, aY3, aU3, aV3, aColor3, aZ);
+    sdfPrimSetGt4Elem(&packet->elem, aPrim, aX0, aY0, aU0, aV0, aColor0, aX1, aY1, aU1, aV1, aColor1, aX2, aY2, aU2, aV2, aColor2, aX3, aY3, aU3, aV3, aColor3, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
 }
 
@@ -1153,7 +1153,7 @@ void sdfPrimLinkBoxLine(sdfDrawTag_t *aTag, s32 aColor, s32 aPrim, s32 aX0, s32 
     packet = (sdfPrimBoxLinePacket_t *)aAllocator(0x60);
     packet->dmaTag = 0x20000005ULL;
     packet->vifCommands = 0x5000000510000000ULL;
-    sdfPrimSetBoxLineElem(&packet->drawing, aColor, aPrim, aX0, aY0, aX1, aY1, aZ);
+    sdfPrimSetBoxLineElem(&packet->line, aColor, aPrim, aX0, aY0, aX1, aY1, aZ);
     sdfDrawTagLink(aTag, (s32)packet);
 }
 

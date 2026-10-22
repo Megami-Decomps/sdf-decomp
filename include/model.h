@@ -383,15 +383,15 @@ struct dds3ModelResrc_t
     dds3ModelResrc_t *prev;
     u16 major;
     u16 minor;
-    u8 ownsResources;
+    u8 autoFreeFlag;
     u8 pad0D[3];
     mdlObj_t *models;
     sdfModelTexList_t *texList;
     sdfModelDef_t *modelDefPtr;
     sdfMemHandle_t *modelDefHandle;
-    dds3ModelResrcPlayBook_t slots[MDL_SLOT_COUNT];
-    sdfMemHandle_t *resourceHandle;
-    void *partInfo;
+    dds3ModelResrcPlayBook_t playbooks[MDL_SLOT_COUNT];
+    sdfMemHandle_t *effectMemHandle;
+    void *effectData;
     sdfItemArray_t *effectResrcList;
     f32 scale;                  /* 0xAC: uniform scale of a new model */
     f32 radius;
@@ -401,13 +401,13 @@ typedef struct dds3ModelBlurInstance_t
 {
     struct dds3ModelBlurInstance_t *next;
     sdfModelRootNode_t *modelobj;
-    s32 remaining;
+    s32 keepCount;
 } dds3ModelBlurInstance_t;
 
 typedef struct
 {
     dds3ModelBlurInstance_t *instants;
-    s16 usedCount;
+    s16 spawnCount;
     u16 capacity;
     s16 interval;
     s16 growStep;
