@@ -5,8 +5,8 @@
 
 typedef struct
 {
-    u32 lsn;
-    u32 unk4;
+    u32 nameOffset_;
+    u32 offset_;
     s32 size_;
 } sdfCdImageDirEntry_t;
 

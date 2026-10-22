@@ -55,9 +55,9 @@ typedef struct sdfImageSetTag
 typedef struct sdfImageSetCB
 {
     s32 semaId;
-    sdfImageSetRelease_t *releaseHead;
-    sdfImageSetRelease_t *releaseTail;
-    u32 dmaAddr;
+    sdfImageSetRelease_t *packetHead;
+    sdfImageSetRelease_t *packetTail;
+    u32 tagHead;
     sdfImageSetTag_t *tagTail;
 } sdfImageSetCb_t;
 
@@ -227,12 +227,12 @@ void sdfImageSetReq(sdfImageSetReqParam_t *parm)
 
     WaitSema(cb->semaId);
 
-    if (cb->releaseTail != NULL) {
-        cb->releaseTail->next = release;
+    if (cb->packetTail != NULL) {
+        cb->packetTail->next = release;
     } else {
-        cb->releaseHead = release;
+        cb->packetHead = release;
     }
-    cb->releaseTail = release;
+    cb->packetTail = release;
 
     setup = (u64 *)((u32)setup & 0x0FFFFFFF);
     tagTail = cb->tagTail;
@@ -240,7 +240,7 @@ void sdfImageSetReq(sdfImageSetReqParam_t *parm)
         tagTail->vifCodes = 0;
         tagTail->tag = ((u64)(u32)setup << 32) | 0x20000000ULL;
     } else {
-        cb->dmaAddr = (u32)setup;
+        cb->tagHead = (u32)setup;
     }
     cb->tagTail = (sdfImageSetTag_t *)packet;
     SignalSema(cb->semaId);
@@ -257,7 +257,7 @@ void sdfImageSetChainTag(u32 head, sdfImageSetTag_t *tail)
         last->vifCodes = 0;
         last->tag = ((u64)(head & 0x0FFFFFFF) << 32) | 0x20000000;
     } else {
-        cb->dmaAddr = head;
+        cb->tagHead = head;
     }
     cb->tagTail = tail;
     SignalSema(cb->semaId);
@@ -278,21 +278,21 @@ void sdfImageSetChainReleaseMem(s32 p)
             release->memHandle = sdfMemGetHandleByPtr((void *)p);
         }
         WaitSema(cb->semaId);
-        if (cb->releaseTail != NULL) {
-            cb->releaseTail->next = release;
+        if (cb->packetTail != NULL) {
+            cb->packetTail->next = release;
         } else {
-            cb->releaseHead = release;
+            cb->packetHead = release;
         }
-        cb->releaseTail = release;
+        cb->packetTail = release;
         SignalSema(cb->semaId);
     }
 }
 
 void sdfImageSetClearCb(sdfImageSetCb_t *cb)
 {
-    cb->releaseHead = NULL;
-    cb->releaseTail = NULL;
-    cb->dmaAddr = 0;
+    cb->packetHead = NULL;
+    cb->packetTail = NULL;
+    cb->tagHead = 0;
     cb->tagTail = NULL;
 }
 
@@ -311,8 +311,8 @@ void sdfImageSetTrans(void)
     u32 dmaAddr;
 
     WaitSema(cb->semaId);
-    release = cb->releaseHead;
-    dmaAddr = cb->dmaAddr;
+    release = cb->packetHead;
+    dmaAddr = cb->tagHead;
     tagTail = cb->tagTail;
     sdfImageSetClearCb(cb);
     SignalSema(cb->semaId);
