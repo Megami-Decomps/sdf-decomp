@@ -79,7 +79,7 @@ s32 fileSaveCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileTr
 void fileRead(fileTransferJob_t *fileHandle);
 void fileExecQueue(void);
 s32 fileManager(void);
-s32 fileManagerProc(dds3ProcessID_t *id);
+s32 fileManagerProc(dds3ProcessID_t *procId);
 
 dds3ProcessID_t *dds3StartProcess(char *v1, s32 dDS3_PRIORITY_DRAW_PB, s32 v2, s32 v3,
                                 s32 (*drawExit)(dds3ProcessID_t *),
@@ -230,8 +230,8 @@ fileRequest_t *pacLoadEx(const char *filename, u32 headOrTail, u32 callback, u32
     return req;
 }
 
-fileRequest_t *pacLoad(const char *name) {
-    return pacLoadEx(name, 0, 0, 0, 0);
+fileRequest_t *pacLoad(const char *filename) {
+    return pacLoadEx(filename, 0, 0, 0, 0);
 }
 
 fileRequest_t *pacLoadUseTail(const char *filename) {
@@ -299,8 +299,8 @@ void fileSync(fileRequest_t *fileHandle) {
     }
 }
 
-void pacSync(fileRequest_t *req) {
-    fileSync(req);
+void pacSync(fileRequest_t *pacFileHandle) {
+    fileSync(pacFileHandle);
 }
 
 void fileSyncAll(void) {
@@ -722,7 +722,7 @@ s32 fileManager(void) {
     return work->head != NULL;
 }
 
-s32 fileManagerProc(dds3ProcessID_t *id) {
+s32 fileManagerProc(dds3ProcessID_t *procId) {
     fileManager();
     return 0;
 }
