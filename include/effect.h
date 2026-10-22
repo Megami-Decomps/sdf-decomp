@@ -62,11 +62,11 @@ typedef struct effBezierCurve_t {
 
 /* Shared rectangle and sampling payload, copied as 0x28 bytes. */
 typedef struct dds3Effect_Blur_t {
-    u32 color;
+    u32 abgr;
     s32 blend;
-    f32 angle;
+    f32 rotate;
     f32 scale;
-    s32 position[2];
+    s32 center[2];
     s32 xy[2][2];
 } dds3Effect_Blur_t;
 
@@ -127,7 +127,7 @@ typedef struct effBlurScatterWork_t {
 /* A copied 0x2C-byte body followed by its separately acquired texture. */
 typedef struct dds3Effect_PartialMultiBlurParam_t {
     s32 area;
-    dds3Effect_Blur_t source;
+    dds3Effect_Blur_t Blur;
 } dds3Effect_PartialMultiBlurParam_t;
 
 typedef struct effBlurTemplate_t {
@@ -153,7 +153,7 @@ typedef struct {
 typedef struct {
     s32 area;
     s32 center[2];
-    effResourceRectDrawParams_t draw;
+    effResourceRectDrawParams_t Filter;
 } dds3Effect_PartialMultiFilterParam_t;
 
 typedef struct {
@@ -162,7 +162,7 @@ typedef struct {
 } dds3Effect_PartialMultiFilter_t;
 
 typedef struct dds3Effect_Filter_t {
-    u32 color;
+    u32 abgr;
     s32 blend;
     s32 xy[2][2];
 } dds3Effect_Filter_t;
