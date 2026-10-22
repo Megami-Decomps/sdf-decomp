@@ -15,7 +15,7 @@ typedef struct
     void *slots;
     u32 count;
     void *allocation;
-} dds3Bezier4P_t;
+} effBezier4P_t;
 
 extern void *sdfMemAllocDirect(u32 aSize);
 extern void *sdfMemLock(void *aHandle);
@@ -166,16 +166,16 @@ f32 effLinePointLength(QuadF32 *pDir, QuadF32 *pLinePos, QuadF32 *pPos)
     return length;
 }
 
-dds3Bezier4P_t *dds3Bezier4PCreate(s32 number) {
-    void *allocation = sdfMemAllocDirect(number * sizeof(dds3Bezier4PPart_t) + sizeof(dds3Bezier4P_t));
+effBezier4P_t *dds3Bezier4PCreate(s32 number) {
+    void *allocation = sdfMemAllocDirect(number * sizeof(dds3Bezier4PPart_t) + sizeof(effBezier4P_t));
     void *retainedAddress = (void *)sdfMemLock(allocation);
     u32 slotIndex = 0;
     dds3Bezier4PPart_t *slot = retainedAddress;
     u8 *headerAddress = (u8 *)slot + number * sizeof(dds3Bezier4PPart_t);
 
-    ((dds3Bezier4P_t *)headerAddress)->allocation = allocation;
-    ((dds3Bezier4P_t *)headerAddress)->slots = retainedAddress;
-    ((dds3Bezier4P_t *)headerAddress)->count = number;
+    ((effBezier4P_t *)headerAddress)->allocation = allocation;
+    ((effBezier4P_t *)headerAddress)->slots = retainedAddress;
+    ((effBezier4P_t *)headerAddress)->count = number;
     if (number != 0) {
         do {
             slotIndex++;
@@ -184,14 +184,14 @@ dds3Bezier4P_t *dds3Bezier4PCreate(s32 number) {
             slot = (dds3Bezier4PPart_t *)((u8 *)slot + sizeof(dds3Bezier4PPart_t));
         } while (slotIndex < number);
     }
-    return (dds3Bezier4P_t *)headerAddress;
+    return (effBezier4P_t *)headerAddress;
 }
 
-void dds3Bezier4PDelete(dds3Bezier4P_t *pEffBezier4P) {
+void dds3Bezier4PDelete(effBezier4P_t *pEffBezier4P) {
     sdfMemFreeDirect(pEffBezier4P->allocation);
 }
 
-s32 dds3Bezier4PPartRun(dds3Bezier4P_t *table, s32 slotIndex, f32 *out) {
+s32 dds3Bezier4PPartRun(effBezier4P_t *table, s32 slotIndex, f32 *out) {
     dds3Bezier4PPart_t *slot = &((dds3Bezier4PPart_t *)table->slots)[slotIndex];
     f32 w[4];
     f32 t = slot->t;
@@ -235,13 +235,13 @@ s32 nbCameraLerpVec(dds3Bezier4PPart_t *slot, f32 *out) {
     return 1;
 }
 
-void func_001AC068(dds3Bezier4P_t *table, s32 slotIndex) {
+void func_001AC068(effBezier4P_t *table, s32 slotIndex) {
     dds3Bezier4PPart_t *slot = &((dds3Bezier4PPart_t *)table->slots)[slotIndex];
 
     slot->step = 0.05f;
     slot->t = 0;
 }
 
-dds3Bezier4PPart_t *dds3Bezier4PGetPart(dds3Bezier4P_t *pEffBezier4P, s32 index) {
+dds3Bezier4PPart_t *dds3Bezier4PGetPart(effBezier4P_t *pEffBezier4P, s32 index) {
     return &((dds3Bezier4PPart_t *)pEffBezier4P->slots)[index];
 }
