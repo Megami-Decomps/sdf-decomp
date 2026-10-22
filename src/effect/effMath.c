@@ -17,9 +17,9 @@ typedef struct
     void *allocation;
 } dds3Bezier4P_t;
 
-extern void *sdfMemAllocDirect(u32 size);
-extern void *sdfMemLock(void *handle);
-extern void sdfMemFreeDirect(void *handle);
+extern void *sdfMemAllocDirect(u32 aSize);
+extern void *sdfMemLock(void *aHandle);
+extern void sdfMemFreeDirect(void *aHandle);
 
 
 /* 1/128 as binary32: the colour unpack scales 0..255 integer lanes to 0..2. */
@@ -47,7 +47,7 @@ extern dds3ScreenParam_t dds3ScreenParam;
 extern f32 D_002FA240[16];
 extern QuadF32 aViewEye;
 extern QuadF32 aViewDown;
-extern void MultMatrixRev(f32 *matrix);
+extern void MultMatrixRev(f32 *aMatrix);
 
 /* vu0 routine: project the world point in vf10 to screen space */
 void effScreenOffset(void)
@@ -102,23 +102,23 @@ s32 effPCPBlurScreenOffset(f32 scale) {
 }
 
 /* vu0 routine: blend two colours, `amount` of `from` */
-u32 effColorBlend(u32 to, u32 from, f32 amount)
+u32 effColorBlend(u32 abgr0, u32 abgr1, f32 rate)
 {
     effColorWork_t work[3];
     u32 blended;
     u32 unit;
 
-    if (amount >= 1.0f) {
-        return from;
+    if (rate >= 1.0f) {
+        return abgr1;
     }
     unit = EFF_RGBA_UNIT;
-    work[0].word = from;
+    work[0].word = abgr1;
     MMI_RGBA_UNPACK(&work[0], unit);
     SDF_VU0_COPYVECTOR_A_TO_B();
-    work[1].word = to;
+    work[1].word = abgr0;
     MMI_RGBA_UNPACK(&work[1], unit);
-    SDF_VU0_SCALEVECTOR(1.0f - amount);
-    SDF_VU0_SCALEVECTOR_B(amount);
+    SDF_VU0_SCALEVECTOR(1.0f - rate);
+    SDF_VU0_SCALEVECTOR_B(rate);
     SDF_VU0_ADDVECTOR();
     SDF_VU0_dds3ColorFtoI(blended, 128.0f);
     work[2].word = blended;
@@ -143,22 +143,22 @@ u32 effMagaCylinderCalcColor(u32 color, u32 scale)
 }
 
 /* vu0 routine: distance from `to` to the line through `from` along `dir` */
-f32 effLinePointLength(QuadF32 *dir, QuadF32 *from, QuadF32 *to)
+f32 effLinePointLength(QuadF32 *pDir, QuadF32 *pLinePos, QuadF32 *pPos)
 {
     QuadF32 along;
     QuadF32 delta;
     f32 projection;
     f32 length;
 
-    SDF_VU0_LOADVECTOR(to);
-    SDF_VU0_LOADVECTOR_B(from);
+    SDF_VU0_LOADVECTOR(pPos);
+    SDF_VU0_LOADVECTOR_B(pLinePos);
     SDF_VU0_SUBVECTOR();
     SDF_VU0_STOREVECTOR(&delta);
-    SDF_VU0_LOADVECTOR_B(dir);
+    SDF_VU0_LOADVECTOR_B(pDir);
     SDF_VU0_INNERPRODUCT(projection);
-    along.components[0] = dir->components[0] * projection;
-    along.components[1] = dir->components[1] * projection;
-    along.components[2] = dir->components[2] * projection;
+    along.components[0] = pDir->components[0] * projection;
+    along.components[1] = pDir->components[1] * projection;
+    along.components[2] = pDir->components[2] * projection;
     SDF_VU0_LOADVECTOR(&delta);
     SDF_VU0_LOADVECTOR_B(&along);
     SDF_VU0_SUBVECTOR();
@@ -166,29 +166,29 @@ f32 effLinePointLength(QuadF32 *dir, QuadF32 *from, QuadF32 *to)
     return length;
 }
 
-dds3Bezier4P_t *dds3Bezier4PCreate(s32 count) {
-    void *allocation = sdfMemAllocDirect(count * sizeof(dds3Bezier4PPart_t) + sizeof(dds3Bezier4P_t));
+dds3Bezier4P_t *dds3Bezier4PCreate(s32 number) {
+    void *allocation = sdfMemAllocDirect(number * sizeof(dds3Bezier4PPart_t) + sizeof(dds3Bezier4P_t));
     void *retainedAddress = (void *)sdfMemLock(allocation);
     u32 slotIndex = 0;
     dds3Bezier4PPart_t *slot = retainedAddress;
-    u8 *headerAddress = (u8 *)slot + count * sizeof(dds3Bezier4PPart_t);
+    u8 *headerAddress = (u8 *)slot + number * sizeof(dds3Bezier4PPart_t);
 
     ((dds3Bezier4P_t *)headerAddress)->allocation = allocation;
     ((dds3Bezier4P_t *)headerAddress)->slots = retainedAddress;
-    ((dds3Bezier4P_t *)headerAddress)->count = count;
-    if (count != 0) {
+    ((dds3Bezier4P_t *)headerAddress)->count = number;
+    if (number != 0) {
         do {
             slotIndex++;
             slot->t = 0;
             slot->step = 0.05f;
             slot = (dds3Bezier4PPart_t *)((u8 *)slot + sizeof(dds3Bezier4PPart_t));
-        } while (slotIndex < count);
+        } while (slotIndex < number);
     }
     return (dds3Bezier4P_t *)headerAddress;
 }
 
-void dds3Bezier4PDelete(dds3Bezier4P_t *work) {
-    sdfMemFreeDirect(work->allocation);
+void dds3Bezier4PDelete(dds3Bezier4P_t *pEffBezier4P) {
+    sdfMemFreeDirect(pEffBezier4P->allocation);
 }
 
 s32 dds3Bezier4PPartRun(dds3Bezier4P_t *table, s32 slotIndex, f32 *out) {
@@ -242,6 +242,6 @@ void func_001AC068(dds3Bezier4P_t *table, s32 slotIndex) {
     slot->t = 0;
 }
 
-dds3Bezier4PPart_t *dds3Bezier4PGetPart(dds3Bezier4P_t *table, s32 slotIndex) {
-    return &((dds3Bezier4PPart_t *)table->slots)[slotIndex];
+dds3Bezier4PPart_t *dds3Bezier4PGetPart(dds3Bezier4P_t *pEffBezier4P, s32 index) {
+    return &((dds3Bezier4PPart_t *)pEffBezier4P->slots)[index];
 }
