@@ -1,4 +1,5 @@
 #include "common.h"
+#include "sdf_types.h"
 #include "ps2asm.h"
 #include "fpu.h"
 
@@ -38,15 +39,15 @@ typedef struct
 {
     u8 pad00[0x30];
     f32 matrix[16];
-    QuadF32 scale;
-    QuadF32 offset;
+    sdfVector4_t scale;
+    sdfVector4_t offset;
     u8 pad90[0x10];
 } dds3ScreenParam_t;
 
 extern dds3ScreenParam_t dds3ScreenParam;
 extern f32 D_002FA240[16];
-extern QuadF32 aViewEye;
-extern QuadF32 aViewDown;
+extern sdfVector4_t aViewEye;
+extern sdfVector4_t aViewDown;
 extern void MultMatrixRev(f32 *aMatrix);
 
 /* vu0 routine: project the world point in vf10 to screen space */
@@ -143,10 +144,10 @@ u32 effMagaCylinderCalcColor(u32 color, u32 scale)
 }
 
 /* vu0 routine: distance from `to` to the line through `from` along `dir` */
-f32 effLinePointLength(QuadF32 *pDir, QuadF32 *pLinePos, QuadF32 *pPos)
+f32 effLinePointLength(sdfVector4_t *pDir, sdfVector4_t *pLinePos, sdfVector4_t *pPos)
 {
-    QuadF32 along;
-    QuadF32 delta;
+    sdfVector4_t along;
+    sdfVector4_t delta;
     f32 projection;
     f32 length;
 
@@ -156,9 +157,9 @@ f32 effLinePointLength(QuadF32 *pDir, QuadF32 *pLinePos, QuadF32 *pPos)
     SDF_VU0_STOREVECTOR(&delta);
     SDF_VU0_LOADVECTOR_B(pDir);
     SDF_VU0_INNERPRODUCT(projection);
-    along.components[0] = pDir->components[0] * projection;
-    along.components[1] = pDir->components[1] * projection;
-    along.components[2] = pDir->components[2] * projection;
+    along.x = pDir->x * projection;
+    along.y = pDir->y * projection;
+    along.z = pDir->z * projection;
     SDF_VU0_LOADVECTOR(&delta);
     SDF_VU0_LOADVECTOR_B(&along);
     SDF_VU0_SUBVECTOR();
