@@ -186,9 +186,9 @@ effBezierCurve_t *func_001AC4F0(effArrHdr_t *table, s32 index) {
 }
 
 /* vu0 routine: project a world point and frame it */
-void effDebugPointDraw(QuadF32 *pPos)
+void effDebugPointDraw(sdfVector4_t *pPos)
 {
-    QuadF32 screen;
+    sdfVector4_t screen;
     effDebugPoint_t point;
     void *tag;
     sdfGrOt_t *ot;
@@ -198,8 +198,8 @@ void effDebugPointDraw(QuadF32 *pPos)
     SDF_VU0_LOADVECTOR(pPos);
     effScreenOffset();
     SDF_VU0_STOREVECTOR_MEMOPS(screen);
-    point.x = (s32)screen.components[0] - 0x700;
-    point.y = ((s32)screen.components[1] << 1) - 0xF20;
+    point.x = (s32)screen.x - 0x700;
+    point.y = ((s32)screen.y << 1) - 0xF20;
     sdfDrawTagLink(tag, dds3PrimFrameRect(point.x * 16 + 0x7000, point.y * 8 + 0x7900,
                                           0xFF0000, 0x20, 0x10, 0x60008080, 0x60008080));
     ot = &sdfGrOtTable[83];
@@ -207,9 +207,9 @@ void effDebugPointDraw(QuadF32 *pPos)
 }
 
 /* vu0 routine: project a world point and frame it in a given mode */
-void effDebugPointDraw2(QuadF32 *pPos, u32 color)
+void effDebugPointDraw2(sdfVector4_t *pPos, u32 color)
 {
-    QuadF32 screen;
+    sdfVector4_t screen;
     effDebugPoint_t point;
     void *tag;
     sdfGrOt_t *ot;
@@ -219,8 +219,8 @@ void effDebugPointDraw2(QuadF32 *pPos, u32 color)
     SDF_VU0_LOADVECTOR(pPos);
     effScreenOffset();
     SDF_VU0_STOREVECTOR_MEMOPS(screen);
-    point.x = (s32)screen.components[0] - 0x700;
-    point.y = ((s32)screen.components[1] << 1) - 0xF20;
+    point.x = (s32)screen.x - 0x700;
+    point.y = ((s32)screen.y << 1) - 0xF20;
     sdfDrawTagLink(tag, dds3PrimFrameRect(point.x * 16 + 0x7000, point.y * 8 + 0x7900,
                                           0xFF0000, 0x20, 0x10, color, color));
     ot = &sdfGrOtTable[83];
@@ -228,9 +228,9 @@ void effDebugPointDraw2(QuadF32 *pPos, u32 color)
 }
 
 /* vu0 routine: project two world points and draw the line */
-void effDebugLineDraw(QuadF32 *pPos0, QuadF32 *pPos1)
+void effDebugLineDraw(sdfVector4_t *pPos0, sdfVector4_t *pPos1)
 {
-    QuadF32 screen[2];
+    sdfVector4_t screen[2];
     effDebugPoint_t point[2];
     void *tag;
     sdfGrOt_t *ot;
@@ -243,10 +243,10 @@ void effDebugLineDraw(QuadF32 *pPos0, QuadF32 *pPos1)
     SDF_VU0_LOADVECTOR(pPos1);
     effScreenOffset();
     SDF_VU0_STOREVECTOR(&screen[1]);
-    point[0].x = (s32)screen[0].components[0] - 0x700;
-    point[0].y = ((s32)screen[0].components[1] << 1) - 0xF20;
-    point[1].x = (s32)screen[1].components[0] - 0x700;
-    point[1].y = ((s32)screen[1].components[1] << 1) - 0xF20;
+    point[0].x = (s32)screen[0].x - 0x700;
+    point[0].y = ((s32)screen[0].y << 1) - 0xF20;
+    point[1].x = (s32)screen[1].x - 0x700;
+    point[1].y = ((s32)screen[1].y << 1) - 0xF20;
     sdfDrawTagLink(tag, dds3PrimLine(point[0].x * 16 + 0x7000, point[0].y * 8 + 0x7900,
                                      0xFF0000, 0x60008080,
                                      point[1].x * 16 + 0x7000, point[1].y * 8 + 0x7900,
@@ -256,9 +256,9 @@ void effDebugLineDraw(QuadF32 *pPos0, QuadF32 *pPos1)
 }
 
 /* vu0 routine: project two world points and draw the line in a given mode */
-void effDebugLineDraw2(QuadF32 *from, QuadF32 *to, u32 mode)
+void effDebugLineDraw2(sdfVector4_t *from, sdfVector4_t *to, u32 mode)
 {
-    QuadF32 screen[2];
+    sdfVector4_t screen[2];
     effDebugPoint_t point[2];
     void *tag;
     sdfGrOt_t *ot;
@@ -271,10 +271,10 @@ void effDebugLineDraw2(QuadF32 *from, QuadF32 *to, u32 mode)
     SDF_VU0_LOADVECTOR(to);
     effScreenOffset();
     SDF_VU0_STOREVECTOR(&screen[1]);
-    point[0].x = (s32)screen[0].components[0] - 0x700;
-    point[0].y = ((s32)screen[0].components[1] << 1) - 0xF20;
-    point[1].x = (s32)screen[1].components[0] - 0x700;
-    point[1].y = ((s32)screen[1].components[1] << 1) - 0xF20;
+    point[0].x = (s32)screen[0].x - 0x700;
+    point[0].y = ((s32)screen[0].y << 1) - 0xF20;
+    point[1].x = (s32)screen[1].x - 0x700;
+    point[1].y = ((s32)screen[1].y << 1) - 0xF20;
     sdfDrawTagLink(tag, dds3PrimLine(point[0].x * 16 + 0x7000, point[0].y * 8 + 0x7900,
                                      0xFF0000, mode,
                                      point[1].x * 16 + 0x7000, point[1].y * 8 + 0x7900,
