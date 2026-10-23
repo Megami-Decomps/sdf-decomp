@@ -63,7 +63,7 @@ struct sdfPrimTransElem_t;
 
 struct sdfPrimTexflushPacket_t;
 
-struct SdfPacketPatchLink;
+struct sdfPreDrawHook_t;
 
 struct sdfPrimGt3Elem_t;
 
@@ -209,10 +209,12 @@ typedef struct sdfPrimTexflushPacket_t {
     sdfGrTagStdReg_t texflush;
 } sdfPrimTexflushPacket_t;
 
-typedef struct SdfPacketPatchLink {
-    struct SdfPacketPatchLink *next;
-    SdfPacketPatchCallback patch;
-} SdfPacketPatchLink;
+/* Pre-draw hook: the engine's record continues with two option words, which
+ * each owner reads under its own name. */
+typedef struct sdfPreDrawHook_t {
+    struct sdfPreDrawHook_t *next;
+    SdfPacketPatchCallback predrawFunc;
+} sdfPreDrawHook_t;
 
 /* PRIM followed by 3 individually textured and colored vertices. */
 typedef struct sdfPrimGt3Elem_t {
@@ -385,7 +387,7 @@ typedef struct sdfGrFrameSet_t {
 
 /* Metadata node plus the extended local-to-local image-copy payload (0x70). */
 typedef struct SdfGraphCopyPacket {
-    SdfPacketPatchLink link;
+    sdfPreDrawHook_t link;
     u32 resourceIndexXor; /* Selects the source resource for the queued buffer. */
     u32 unk0C;
     sdfPrimBitBltPacket_t draw;
@@ -394,8 +396,8 @@ typedef struct SdfGraphCopyPacket {
 /* Complete linked-packet list, distinct from the 0x20-byte DMA list head. */
 typedef struct sdfPreDrawTag_t {
     u32 next;
-    SdfPacketPatchLink *head;
-    SdfPacketPatchLink *tail;
+    sdfPreDrawHook_t *head;
+    sdfPreDrawHook_t *tail;
     u32 pad;
 } sdfPreDrawTag_t;
 
@@ -435,7 +437,7 @@ void sdfDrawTagInit(sdfDrawTag_t *a);
 
 void sdfDrawTagLink(sdfDrawTag_t *aTag, u32 aPacket);
 
-void sdfPreDrawTagLink(sdfPreDrawTag_t *aTag, SdfPacketPatchLink *aHook);
+void sdfPreDrawTagLink(sdfPreDrawTag_t *aTag, sdfPreDrawHook_t *aHook);
 
 sdfDrawTag_t *sdfPrimAllocDrawTag(s32 (*aAllocator)(s32));
 
@@ -791,7 +793,7 @@ void sdfPrimLinkFrameMovePacket(sdfDrawTag_t *aDrawTag, sdfPreDrawTag_t *aPreDra
     }
     packet = (SdfGraphCopyPacket *)aAllocator(0x70);
     packet->resourceIndexXor = aFrameSw;
-    packet->link.patch = sdfPrimFrameMovePredraw;
+    packet->link.predrawFunc = sdfPrimFrameMovePredraw;
     drawPacket = &packet->draw;
 
     sdfPrimSetBitBltPacket(

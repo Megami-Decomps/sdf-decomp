@@ -2,7 +2,7 @@
 #include "sdf_types.h"
 #include "sdf_resource.h"
 
-struct SdfPacketPatchLink;
+struct sdfPreDrawHook_t;
 
 struct sdfPrimBitBltElem_t;
 
@@ -36,10 +36,12 @@ typedef void (*SdfPacketPatchCallback)();
 
 #define SDF_DESCRIPTOR_PACKET_TAIL_OFFSET 0x80
 
-typedef struct SdfPacketPatchLink {
-    struct SdfPacketPatchLink *next;
-    SdfPacketPatchCallback patch;
-} SdfPacketPatchLink;
+/* Pre-draw hook: the engine's record continues with two option words, which
+ * each owner reads under its own name. */
+typedef struct sdfPreDrawHook_t {
+    struct sdfPreDrawHook_t *next;
+    SdfPacketPatchCallback predrawFunc;
+} sdfPreDrawHook_t;
 
 /* The four A+D writes controlling a GS image transfer. */
 typedef struct sdfPrimBitBltElem_t {
@@ -93,7 +95,7 @@ typedef struct sdfStoreImagePacket_t {
 
 /* Metadata node followed by the resource-transfer payload (0x100). */
 typedef struct SdfPatchableResourcePacket {
-    SdfPacketPatchLink link;
+    sdfPreDrawHook_t link;
     u32 unk08;
     u32 unk0C;
     sdfStoreImagePacket_t resourcePacket;
@@ -102,8 +104,8 @@ typedef struct SdfPatchableResourcePacket {
 /* Complete linked-packet list, distinct from the 0x20-byte DMA list head. */
 typedef struct sdfPreDrawTag_t {
     u32 next;
-    SdfPacketPatchLink *head;
-    SdfPacketPatchLink *tail;
+    sdfPreDrawHook_t *head;
+    sdfPreDrawHook_t *tail;
     u32 pad;
 } sdfPreDrawTag_t;
 
@@ -150,7 +152,7 @@ void sdfLinkLoadImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle,
 
 s32 sdfGrAllocPacketBuff(s32 aSize);
 
-void sdfPreDrawTagLink(sdfPreDrawTag_t *aTag, SdfPacketPatchLink *aHook);
+void sdfPreDrawTagLink(sdfPreDrawTag_t *aTag, sdfPreDrawHook_t *aHook);
 
 void sdfPrimSetBitBltElem(sdfPrimBitBltElem_t *aElem, u32 aDstGsAddr, s32 aDstBuffWidth,
                   s64 aDstPixelFormat, s64 aDstX, s64 aDstY,
@@ -220,7 +222,7 @@ void sdfLinkStoreFrameImage(sdfDrawTag_t *aDrawTag, sdfPreDrawTag_t *aPreDrawTag
         aAllocator = sdfGrAllocPacketBuff;
     }
     packet = (SdfPatchableResourcePacket *)aAllocator(SDF_PATCHABLE_PACKET_BYTES);
-    packet->link.patch = sdfLinkStoreFrameImagePredraw;
+    packet->link.predrawFunc = sdfLinkStoreFrameImagePredraw;
     sdfSetStoreImage(&packet->resourcePacket,
         D_00529388.buffers[0], aSrcX, aSrcY, aWidth, aHeight,
         aBuffer, aCallback, aCallbackParam);

@@ -82,7 +82,7 @@ struct sdfPrimTransElem_t;
 
 struct sdfGrRefPacketHeader_t;
 
-struct SdfPacketPatchLink;
+struct sdfPreDrawHook_t;
 
 struct sdfGrDrawFramePacket_t;
 
@@ -171,10 +171,12 @@ typedef struct sdfGrRefPacketHeader_t {
     s128 nextTag;
 } sdfGrRefPacketHeader_t;
 
-typedef struct SdfPacketPatchLink {
-    struct SdfPacketPatchLink *next;
-    SdfPacketPatchCallback patch;
-} SdfPacketPatchLink;
+/* Pre-draw hook: the engine's record continues with two option words, which
+ * each owner reads under its own name. */
+typedef struct sdfPreDrawHook_t {
+    struct sdfPreDrawHook_t *next;
+    SdfPacketPatchCallback predrawFunc;
+} sdfPreDrawHook_t;
 
 /* Four A+D writes define one GS drawing context, without a DMA/GIF header. */
 typedef struct sdfGrDrawFramePacket_t {
@@ -283,7 +285,7 @@ void sdfDrawTagLinkRef(struct sdfDrawTag_t *aTag, u32 aPacket);
 /* One 0x10-byte entry in the three-slot frame packet submission ring. */
 typedef struct sdfDrawReqRec_t {
     struct sdfDrawTag_t *drawTag;
-    SdfPacketPatchLink *preDraw;
+    sdfPreDrawHook_t *preDraw;
     u8 drawCount;
     u8 queuedBufferIndex;
     u8 bufferIndex;
@@ -294,8 +296,8 @@ typedef struct sdfDrawReqRec_t {
 /* Complete linked-packet list, distinct from the 0x20-byte DMA list head. */
 typedef struct sdfPreDrawTag_t {
     u32 next;
-    SdfPacketPatchLink *head;
-    SdfPacketPatchLink *tail;
+    sdfPreDrawHook_t *head;
+    sdfPreDrawHook_t *tail;
     u32 pad;
 } sdfPreDrawTag_t;
 
@@ -307,7 +309,7 @@ typedef struct sdfPreDrawChain_t {
 
 /* Linked draw environment, including its two frame-mask writes and textures. */
 typedef struct sdfGrStdDrawEnv_t {
-    SdfPacketPatchLink link;
+    sdfPreDrawHook_t link;
     sdfGrFrameSet_t *view;
     u8 unk0C[4];
     sdfGrPacketHeader_t header;
@@ -382,7 +384,7 @@ void sdfGrInitExPacket(sdfDrawTag_t *p);
 
 sdfDrawTag_t *sdfGrOtClose(sdfGrOt_t *aOt);
 
-void sdfPreDrawTagLink(sdfPreDrawTag_t *aTag, SdfPacketPatchLink *aHook);
+void sdfPreDrawTagLink(sdfPreDrawTag_t *aTag, sdfPreDrawHook_t *aHook);
 
 void sdfPreDrawChainLink(sdfPreDrawChain_t *aChain, sdfPreDrawTag_t *aTag);
 
@@ -397,7 +399,7 @@ void sdfGrSetClearPacket(sdfGrClearPacket_t *aClear, s32 aW, s32 aH, s32 aPixelF
 void sdfGrSetDrawFrame(sdfGrDrawFrame_t *aFrame, s32 aFrameAddr, s32 aW, s32 aH,
                            s32 aPixelFormat, s32 aZBuffAddr, s32 aZBuffFormat, s32 aContext);
 
-void sdfGrLinkStdDrawEnv(sdfDrawTag_t *aTag, sdfPreDrawTag_t *aPreDrawTag, SdfPacketPatchLink *aEnv);
+void sdfGrLinkStdDrawEnv(sdfDrawTag_t *aTag, sdfPreDrawTag_t *aPreDrawTag, sdfPreDrawHook_t *aEnv);
 
 void sdfGrLinkDispFrameTex(sdfDrawTag_t *aTag, u32 aEnv, sdfGrRefPacketHeader_t *aPkt);
 
@@ -665,7 +667,7 @@ void sdfPreDrawTagInit(sdfPreDrawTag_t *aTag) {
     aTag->pad = 0;
 }
 
-void sdfPreDrawTagLink(sdfPreDrawTag_t *aTag, SdfPacketPatchLink *aHook) {
+void sdfPreDrawTagLink(sdfPreDrawTag_t *aTag, sdfPreDrawHook_t *aHook) {
     if (aTag->tail == 0) {
         aTag->head = aHook;
     }
@@ -815,7 +817,7 @@ INCLUDE_ASM(const s32, "sdf/sdfDraw", sdfGrStdDrawEnvPredraw);
 void sdfGrSetStdDrawEnv(sdfGrStdDrawEnv_t *aEnv, sdfGrFrameSet_t *aFrameSet) {
     sdfGrSetRegsPacketHeader(&aEnv->header, SDF_TEXTURE_SCENE_PAYLOAD_QWORDS);
     aEnv->view = aFrameSet;
-    aEnv->link.patch = sdfGrStdDrawEnvPredraw;
+    aEnv->link.predrawFunc = sdfGrStdDrawEnvPredraw;
     sdfGrSetClearPacket(&aEnv->clear, aFrameSet->width, aFrameSet->height, aFrameSet->bufferFormat, aFrameSet->auxiliaryFormat);
     aEnv->test1.data = SDF_GS_SCENE_TEST;
     aEnv->test1.reg = SDF_GS_TEST_1;
@@ -828,7 +830,7 @@ void sdfGrSetStdDrawEnv(sdfGrStdDrawEnv_t *aEnv, sdfGrFrameSet_t *aFrameSet) {
     sdfGrSetDrawDefParmPacket(&aEnv->defParm);
 }
 
-void sdfGrLinkStdDrawEnv(sdfDrawTag_t *aTag, sdfPreDrawTag_t *aPreDrawTag, SdfPacketPatchLink *aEnv) {
+void sdfGrLinkStdDrawEnv(sdfDrawTag_t *aTag, sdfPreDrawTag_t *aPreDrawTag, sdfPreDrawHook_t *aEnv) {
     sdfPreDrawTagLink(aPreDrawTag, aEnv);
     sdfDrawTagLink(aTag, (s32)aEnv + SDF_QWORD_BYTES);
 }

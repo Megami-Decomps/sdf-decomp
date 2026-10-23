@@ -121,11 +121,11 @@ typedef struct MovPacStream
     u8 *scratch;
 } MovPacStream;
 
-typedef union MovObjStream
+typedef union movieDecodeCtx_t
 {
     MovLinearStream *linear;
     MovPacStream *pac;
-} MovObjStream;
+} movieDecodeCtx_t;
 
 typedef struct movieStream_t
 {
@@ -141,7 +141,7 @@ typedef struct movieStream_t
     void *file;
     s32 totalBytes;
     s32 remainingBytes;
-    MovObjStream stream;
+    movieDecodeCtx_t stream;
     u8 pacEnabled;
     u8 pad21;
     u8 packetLimit;
