@@ -7,7 +7,7 @@ struct SdfDmaTagHeader;
 
 struct SdfObjectRefCommand;
 
-struct MotionEntry;
+struct sdfMotionCutDef_t;
 
 struct SdfChunkHeader;
 
@@ -21,9 +21,9 @@ struct sdfModelNode_t;
 
 struct sdfModelRootNode_t;
 
-struct SdfMotionCommand;
+struct sdfMotionNodeDef_t;
 
-struct MotionTable;
+struct sdfMotionPlayBook_t;
 
 struct sdfMotionCtrlr_t;
 
@@ -50,16 +50,16 @@ typedef struct SdfObjectRefCommand {
 
 /* Serialized clip duration/reserved remain halfwords (tools/fld.py).
  * The viewer MAXFRAME diagnostic reads their packed little-endian word. */
-typedef struct MotionEntry {
+typedef struct sdfMotionCutDef_t {
     union {
         struct {
-            u16 frameCount;
-            u16 unk02;
+            u16 frameLength;
+            u16 pad;
         };
         u32 packedHeader;
     };
-    u32 bindingData[1];
-} MotionEntry;
+    u32 chunk[1];
+} sdfMotionCutDef_t;
 
 #define HW_READ(reg) (*(reg))
 
@@ -164,31 +164,31 @@ typedef struct sdfModelRootNode_t {
     u8 pad99[3];
 } sdfModelRootNode_t;
 
-typedef struct SdfMotionCommand {
+typedef struct sdfMotionNodeDef_t {
     union {
-        u32 packedCommand;
+        u32 typeId;
         struct {
             /* Runtime dispatch shifts the command word right by 16. */
             u16 selector;
             u16 family;
         } binding;
     };
-    u32 targetIndex;
-} SdfMotionCommand;
+    u32 nodeId;
+} sdfMotionNodeDef_t;
 
 /* Resource header followed by the binding commands used to construct a motion. */
-typedef struct MotionTable {
-    u16 entryCount; /* Motion-index upper bound returned by mdlGetNumOfCut. */
-    u16 commandCount;
-    MotionEntry **entries;
-    SdfMotionCommand commands[1];
-} MotionTable;
+typedef struct sdfMotionPlayBook_t {
+    u16 numOfCut; /* Motion-index upper bound returned by mdlGetNumOfCut. */
+    u16 numOfNode;
+    sdfMotionCutDef_t **cutList;
+    sdfMotionNodeDef_t nodeDefList[1];
+} sdfMotionPlayBook_t;
 
 /* SDK motions are allocated as 0x34-byte records; model slots retain these nodes. */
 typedef struct sdfMotionCtrlr_t {
     struct sdfMotionCtrlr_t *next;
     sdfModelRootNode_t *owner;
-    MotionTable *motionTable;
+    sdfMotionPlayBook_t *motionTable;
     s32 playbookMemHandle;
     DevRequest *request;
     f32 blendDurationFrames;
