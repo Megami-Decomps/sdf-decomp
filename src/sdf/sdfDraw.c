@@ -94,9 +94,8 @@ struct SdfDmaReferenceChainPacket;
 
 struct sdfGrDrawFrame_t;
 
-struct SdfGsSceneBlendRegisters;
 
-struct SdfSceneDrawPacket;
+struct sdfGrDrawEnv_t;
 
 struct sdfGsMemSlice_t;
 
@@ -216,21 +215,18 @@ typedef struct sdfGrDrawFrame_t {
     sdfGrDrawFramePacket_t packet;
 } sdfGrDrawFrame_t;
 
-/* TEST/ALPHA A+D state for the two independent GS drawing contexts. */
-typedef struct SdfGsSceneBlendRegisters {
-    sdfPrimTransElem_t contextOne;
-    sdfPrimTransElem_t contextTwo;
-} SdfGsSceneBlendRegisters;
-
 /* Complete DMA/GIF owner used by scene builders and held-texture draw banks. */
-typedef struct SdfSceneDrawPacket {
+typedef struct sdfGrDrawEnv_t {
     sdfGrPacketHeader_t header;
-    sdfGrRefGifPacketHeader_t drawDefaults;
-    sdfGrDrawFramePacket_t contextOne;
-    sdfGrDrawFramePacket_t contextTwo;
-    sdfGrClearPacket_t centeredBounds;
-    SdfGsSceneBlendRegisters blendState;
-} SdfSceneDrawPacket;
+    sdfGrRefGifPacketHeader_t defParm;
+    sdfGrDrawFramePacket_t frame1;
+    sdfGrDrawFramePacket_t frame2;
+    sdfGrClearPacket_t clear;
+    sdfGrTagStdReg_t test1;
+    sdfGrTagStdReg_t alpha1;
+    sdfGrTagStdReg_t test2;
+    sdfGrTagStdReg_t alpha2;
+} sdfGrDrawEnv_t;
 
 
 /* Graph target: two color buffers followed by the auxiliary/depth buffer (0x14). */
@@ -315,11 +311,14 @@ typedef struct sdfGrStdDrawEnv_t {
     sdfGrFrameSet_t *view;
     u8 unk0C[4];
     sdfGrPacketHeader_t header;
-    sdfGrRefGifPacketHeader_t drawDefaults;
-    sdfGrDrawFramePacket_t contextOne;
-    sdfGrDrawFramePacket_t contextTwo;
+    sdfGrRefGifPacketHeader_t defParm;
+    sdfGrDrawFramePacket_t frame1;
+    sdfGrDrawFramePacket_t frame2;
     sdfGrClearPacket_t clear;
-    SdfGsSceneBlendRegisters test1;
+    sdfGrTagStdReg_t test1;
+    sdfGrTagStdReg_t alpha1;
+    sdfGrTagStdReg_t test2;
+    sdfGrTagStdReg_t alpha2;
     sdfGrTagStdReg_t frameContextOne;
     sdfGrTagStdReg_t frameContextTwo;
     u8 texturePackets[0x80];
@@ -782,7 +781,7 @@ void sdfGrSetDrawFrame(sdfGrDrawFrame_t *aFrame, s32 aFrameAddr, s32 aW, s32 aH,
     sdfGrSetDrawFramePacket(&aFrame->packet, aFrameAddr, aW, aH, aPixelFormat, aZBuffAddr, aZBuffFormat, 0, aContext);
 }
 
-void sdfGrSetDrawEnv(SdfSceneDrawPacket *aEnv, sdfGrFrameSet_t *aFrameSet, s32 aEvenOdd) {
+void sdfGrSetDrawEnv(sdfGrDrawEnv_t *aEnv, sdfGrFrameSet_t *aFrameSet, s32 aEvenOdd) {
     s32 frameAddress;
     s32 depthAddress;
     s32 width;
@@ -797,18 +796,18 @@ void sdfGrSetDrawEnv(SdfSceneDrawPacket *aEnv, sdfGrFrameSet_t *aFrameSet, s32 a
     frameFormat = aFrameSet->bufferFormat;
     height = aFrameSet->height;
     depthFormat = aFrameSet->auxiliaryFormat;
-    sdfGrSetDrawFramePacket(&aEnv->contextOne, frameAddress, width, height, frameFormat, depthAddress, depthFormat, D_0055188A, 0);
-    sdfGrSetDrawFramePacket(&aEnv->contextTwo, frameAddress, width, height, frameFormat, depthAddress, depthFormat, D_0055188A, 1);
-    sdfGrSetClearPacket(&aEnv->centeredBounds, aFrameSet->width, aFrameSet->height, aFrameSet->bufferFormat, aFrameSet->auxiliaryFormat);
-    aEnv->blendState.contextOne.test.data = SDF_GS_SCENE_TEST;
-    aEnv->blendState.contextOne.test.reg = SDF_GS_TEST_1;
-    aEnv->blendState.contextOne.alpha.data = SDF_GS_DEFAULT_ALPHA;
-    aEnv->blendState.contextOne.alpha.reg = SDF_GS_ALPHA_1;
-    aEnv->blendState.contextTwo.test.data = SDF_GS_SCENE_TEST;
-    aEnv->blendState.contextTwo.test.reg = SDF_GS_TEST_2;
-    aEnv->blendState.contextTwo.alpha.data = SDF_GS_DEFAULT_ALPHA;
-    aEnv->blendState.contextTwo.alpha.reg = SDF_GS_ALPHA_2;
-    sdfGrSetDrawDefParmPacket(&aEnv->drawDefaults);
+    sdfGrSetDrawFramePacket(&aEnv->frame1, frameAddress, width, height, frameFormat, depthAddress, depthFormat, D_0055188A, 0);
+    sdfGrSetDrawFramePacket(&aEnv->frame2, frameAddress, width, height, frameFormat, depthAddress, depthFormat, D_0055188A, 1);
+    sdfGrSetClearPacket(&aEnv->clear, aFrameSet->width, aFrameSet->height, aFrameSet->bufferFormat, aFrameSet->auxiliaryFormat);
+    aEnv->test1.data = SDF_GS_SCENE_TEST;
+    aEnv->test1.reg = SDF_GS_TEST_1;
+    aEnv->alpha1.data = SDF_GS_DEFAULT_ALPHA;
+    aEnv->alpha1.reg = SDF_GS_ALPHA_1;
+    aEnv->test2.data = SDF_GS_SCENE_TEST;
+    aEnv->test2.reg = SDF_GS_TEST_2;
+    aEnv->alpha2.data = SDF_GS_DEFAULT_ALPHA;
+    aEnv->alpha2.reg = SDF_GS_ALPHA_2;
+    sdfGrSetDrawDefParmPacket(&aEnv->defParm);
 }
 
 INCLUDE_ASM(const s32, "sdf/sdfDraw", sdfGrStdDrawEnvPredraw);
@@ -818,15 +817,15 @@ void sdfGrSetStdDrawEnv(sdfGrStdDrawEnv_t *aEnv, sdfGrFrameSet_t *aFrameSet) {
     aEnv->view = aFrameSet;
     aEnv->link.patch = sdfGrStdDrawEnvPredraw;
     sdfGrSetClearPacket(&aEnv->clear, aFrameSet->width, aFrameSet->height, aFrameSet->bufferFormat, aFrameSet->auxiliaryFormat);
-    aEnv->test1.contextOne.test.data = SDF_GS_SCENE_TEST;
-    aEnv->test1.contextOne.test.reg = SDF_GS_TEST_1;
-    aEnv->test1.contextOne.alpha.data = SDF_GS_DEFAULT_ALPHA;
-    aEnv->test1.contextOne.alpha.reg = SDF_GS_ALPHA_1;
-    aEnv->test1.contextTwo.test.data = SDF_GS_SCENE_TEST;
-    aEnv->test1.contextTwo.test.reg = SDF_GS_TEST_2;
-    aEnv->test1.contextTwo.alpha.data = SDF_GS_DEFAULT_ALPHA;
-    aEnv->test1.contextTwo.alpha.reg = SDF_GS_ALPHA_2;
-    sdfGrSetDrawDefParmPacket(&aEnv->drawDefaults);
+    aEnv->test1.data = SDF_GS_SCENE_TEST;
+    aEnv->test1.reg = SDF_GS_TEST_1;
+    aEnv->alpha1.data = SDF_GS_DEFAULT_ALPHA;
+    aEnv->alpha1.reg = SDF_GS_ALPHA_1;
+    aEnv->test2.data = SDF_GS_SCENE_TEST;
+    aEnv->test2.reg = SDF_GS_TEST_2;
+    aEnv->alpha2.data = SDF_GS_DEFAULT_ALPHA;
+    aEnv->alpha2.reg = SDF_GS_ALPHA_2;
+    sdfGrSetDrawDefParmPacket(&aEnv->defParm);
 }
 
 void sdfGrLinkStdDrawEnv(sdfDrawTag_t *aTag, sdfPreDrawTag_t *aPreDrawTag, SdfPacketPatchLink *aEnv) {
