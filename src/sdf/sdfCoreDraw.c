@@ -17,7 +17,7 @@ struct DevRequest;
 
 struct SdfCommandNode;
 
-struct SdfDrawNode;
+struct sdfModelNode_t;
 
 struct sdfModelRootNode_t;
 
@@ -112,33 +112,35 @@ typedef struct SdfCommandNode {
 } SdfCommandNode;
 
 /* Allocated as 0x100-byte nodes; each owns a circular list of child draw nodes. */
-typedef struct SdfDrawNode {
-    struct SdfDrawNode *previous; /* 0x00 */
-    struct SdfDrawNode *next;     /* 0x04 */
-    struct SdfDrawNode *parent;   /* 0x08 */
-    struct SdfDrawNode *children; /* 0x0C */
+typedef struct sdfModelNode_t {
+    struct sdfModelNode_t *prev; /* 0x00 */
+    struct sdfModelNode_t *next;     /* 0x04 */
+    struct sdfModelNode_t *parent;   /* 0x08 */
+    struct sdfModelNode_t *children; /* 0x0C */
     struct sdfModelRootNode_t *root;        /* 0x10: backlink installed by sdfModelNodeAdd */
     u16 flags;                   /* 0x14 */
-    s16 unk16;                   /* 0x16: constructor sentinel is -1 */
-    s32 nodeId;                   /* 0x18: lookup key when model flags bit 0 is set */
+    s16 drawAttr;                   /* 0x16: constructor sentinel is -1 */
+    s32 id;                   /* 0x18: lookup key when model flags bit 0 is set */
     u32 color;                   /* 0x1C */
-    u8 pad20[8];
-    SdfCommandNode *lists[2];     /* 0x28: command lists for both buffered frames */
-    u8 *workspace; /* Two 0x80-byte frame packets, allocated on first use. */                  /* 0x30 */
-    const f32 *boundsCorners;     /* 0x34: optional two xyz corners used by clipping */
-    void *sourceItem;             /* 0x38: item this node was built from */
-    u8 pad3C[0x14];
-    f32 quaternion[4];           /* 0x50 */
-    f32 translation[4];          /* 0x60 */
+    u8 drawPacketMemHandle[8];
+    SdfCommandNode *drawPacket[2];     /* 0x28: command drawPacket for both buffered frames */
+    u8 *tmPacket; /* Two 0x80-byte frame packets, allocated on first use. */                  /* 0x30 */
+    const f32 *bounds;     /* 0x34: optional two xyz corners used by clipping */
+    void *shape;             /* 0x38: item this node was built from */
+    u32 pad0;
+    void *userData;
+    u32 pad1[3];
+    f32 rotate[4];           /* 0x50 */
+    f32 pos[4];          /* 0x60 */
     f32 scale[4];                /* 0x70 */
-    f32 localMatrix[4][4];       /* 0x80: all four local basis/translation rows */
-    f32 worldMatrix[4][4];       /* 0xC0: local transform composed with its parent */
-} SdfDrawNode;
+    f32 localNoScaledTm[4][4];       /* 0x80: all four local basis/pos rows */
+    f32 tm[4][4];       /* 0xC0: local transform composed with its parent */
+} sdfModelNode_t;
 
 /* The buffered-transform constructor allocates and clears all 0x9C bytes. */
 typedef struct sdfModelRootNode_t {
     DevRequest *list;
-    SdfDrawNode *rootNode;
+    sdfModelNode_t *rootNode;
     void *assetData;
     DevRequest *resources;
     DevRequest *slotPairs;
@@ -210,7 +212,7 @@ void sdfMemFreeHandleDirect(s32 *aHandlePtr);
 
 /* The draw node owns the lazily allocated workspace; callers receive a borrowed
  * pointer to it, and must not release it independently. */
-u8 *sdfModelAllocTmPacket(SdfDrawNode *aNode);
+u8 *sdfModelAllocTmPacket(sdfModelNode_t *aNode);
 
 extern s32 corePktPointBuff;
 
@@ -229,7 +231,7 @@ void sdfCoreDrawInit(s32 buffSize);
 INCLUDE_ASM(const s32, "sdf/sdfCoreDraw", sdfCorePacketGen);
 
 void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *root, SdfObjectRefCommand *p) {
-    SdfDrawNode **objects = root->list->buffer;
+    sdfModelNode_t **objects = root->list->buffer;
     u16 *indices = &p->count;
     if ((p->flags & 0x800) != 0) {
         s32 count = *indices;
