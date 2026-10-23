@@ -16,11 +16,11 @@ enum {
 
 struct SdfKeyTreeItem;
 
-struct SdfKeyPoolNode;
+struct sdfDrawTag_t;
 
 struct sdfSortOtNode_tag;
 
-struct SdfPool;
+struct sdfGrOt_t;
 
 #define SDF_POOL_FREE_KIND 0xFFFF
 
@@ -49,12 +49,12 @@ extern void sdfGrJoinDrawTag(void *aFore, void *aBack);
 /* Pool release logic tests the packet head address and kind at 0xC;
  * bytes at 0x8 remain opaque. The float-key tree insertion helper reads the
  * same +0xC word through SdfKeyTreeItem. DDS1/2 game/code_002EEA18/003478C0.c. */
-typedef struct SdfKeyPoolNode {
-    struct SdfKeyPoolNode *next; /* 0x00 */
-    s32 packetHeadAddress;       /* 0x04: first DMA packet address. */
-    u8 unk8[4];                  /* 0x08 */
-    s32 kind;                    /* 0x0C */
-} SdfKeyPoolNode;
+typedef struct sdfDrawTag_t {
+    struct sdfDrawTag_t *next; /* 0x00 */
+    s32 head;                  /* 0x04: first DMA packet address. */
+    u8 tail[4];                /* 0x08 */
+    s32 z;                     /* 0x0C: the sort key, compared here as the free marker */
+} sdfDrawTag_t;
 
 typedef struct sdfSortOtNode_tag {
     struct sdfSortOtNode_tag *right; /* 0x00 */
@@ -65,15 +65,15 @@ typedef struct sdfSortOtNode_tag {
 
 /* A key-sorted draw-surface pool: an SdfPoolNode whose append and prepend
  * callbacks release a node into the pool and update its free list. */
-typedef struct SdfPool {
-    void *link;                                                /* 0x00: the pool entry's link */
-    SdfKeyPoolNode *head;                                      /* 0x04: first node in the emitted chain */
-    SdfKeyPoolNode *tail;                                      /* 0x08: last node in the emitted chain */
-    SdfKeyPoolNode *freeHead;                                  /* 0x0C */
-    void (*release)(struct SdfPool *, SdfKeyPoolNode *);       /* 0x10: the entry's append */
-    void (*update)(struct SdfPool *, s32, SdfKeyPoolNode *);   /* 0x14: the entry's prepend */
-    sdfSortOtNode_tag *keyTree[1];                                /* 0x18: first root; allocation continues */
-} SdfPool;
+typedef struct sdfGrOt_t {
+    void *next;                                                /* 0x00: the pool entry's link */
+    sdfDrawTag_t *tagHead;                                     /* 0x04: first node in the emitted chain */
+    sdfDrawTag_t *tagTail;                                     /* 0x08: last node in the emitted chain */
+    sdfDrawTag_t *noSortTag;                                   /* 0x0C: the free list */
+    void (*regFunc)(struct sdfGrOt_t *, sdfDrawTag_t *);       /* 0x10 */
+    void (*callbackFunc)(struct sdfGrOt_t *, s32, sdfDrawTag_t *); /* 0x14 */
+    sdfSortOtNode_tag *data[1];                                /* 0x18: first key-tree root; the allocation continues */
+} sdfGrOt_t;
 
 /* Reserve size bytes from the active packet buffer, rounded up to 16 bytes.
  * Returns the prior cursor as a 32-bit address; the buffer owns this storage. */
@@ -111,15 +111,15 @@ void sdfSortOtAvlCheckBalance(sdfSortOtNode_tag **stack, s32 stack_depth, sdfSor
 
 void sdfSortOtAvlRegist(sdfSortOtNode_tag **root_p, SdfKeyTreeItem *tag);
 
-void sdfGrSortOtReg(SdfPool *aOt, SdfKeyPoolNode *aTag);
+void sdfGrSortOtReg(sdfGrOt_t *aOt, sdfDrawTag_t *aTag);
 
-void sdfGrSortOtFixup(void *tag, SdfKeyPoolNode **head_p, SdfKeyPoolNode **tail_p);
+void sdfGrSortOtFixup(void *tag, sdfDrawTag_t **head_p, sdfDrawTag_t **tail_p);
 
-void sdfGrSortOtTraverse(sdfSortOtNode_tag *node, SdfKeyPoolNode **head_p, SdfKeyPoolNode **tail_p);
+void sdfGrSortOtTraverse(sdfSortOtNode_tag *node, sdfDrawTag_t **head_p, sdfDrawTag_t **tail_p);
 
-void sdfGrSortOtSetup(SdfPool *aOt);
+void sdfGrSortOtSetup(sdfGrOt_t *aOt);
 
-void sdfGrSortOtCallback(SdfPool *aOt, s32 aFunc, SdfKeyPoolNode *aData);
+void sdfGrSortOtCallback(sdfGrOt_t *aOt, s32 aFunc, sdfDrawTag_t *aData);
 
 typedef struct _reent _reent;
 
@@ -521,21 +521,21 @@ void sdfSortOtAvlRegist(sdfSortOtNode_tag **root_p, SdfKeyTreeItem *tag) {
     }
 }
 
-void sdfGrSortOtReg(SdfPool *aOt, SdfKeyPoolNode *aTag) {
-    if (aTag->packetHeadAddress != 0) {
-        if (aTag->kind == SDF_POOL_FREE_KIND) {
-            aTag->next = aOt->freeHead;
-            aOt->freeHead = aTag;
+void sdfGrSortOtReg(sdfGrOt_t *aOt, sdfDrawTag_t *aTag) {
+    if (aTag->head != 0) {
+        if (aTag->z == SDF_POOL_FREE_KIND) {
+            aTag->next = aOt->noSortTag;
+            aOt->noSortTag = aTag;
         } else {
             /* The key tree views the pool node's +0xC word as its float key. */
-            sdfSortOtAvlRegist(aOt->keyTree, (SdfKeyTreeItem *)aTag);
+            sdfSortOtAvlRegist(aOt->data, (SdfKeyTreeItem *)aTag);
         }
     }
 }
 
-void sdfGrSortOtFixup(void *tag, SdfKeyPoolNode **head_p, SdfKeyPoolNode **tail_p) {
-    SdfKeyPoolNode *current;
-    SdfKeyPoolNode *next;
+void sdfGrSortOtFixup(void *tag, sdfDrawTag_t **head_p, sdfDrawTag_t **tail_p) {
+    sdfDrawTag_t *current;
+    sdfDrawTag_t *next;
 
     if (tag != NULL) {
         if (*tail_p == NULL) {
@@ -552,7 +552,7 @@ void sdfGrSortOtFixup(void *tag, SdfKeyPoolNode **head_p, SdfKeyPoolNode **tail_
     }
 }
 
-void sdfGrSortOtTraverse(sdfSortOtNode_tag *node, SdfKeyPoolNode **head_p, SdfKeyPoolNode **tail_p) {
+void sdfGrSortOtTraverse(sdfSortOtNode_tag *node, sdfDrawTag_t **head_p, sdfDrawTag_t **tail_p) {
     sdfSortOtNode_tag *next;
 
     do {
@@ -565,34 +565,34 @@ void sdfGrSortOtTraverse(sdfSortOtNode_tag *node, SdfKeyPoolNode **head_p, SdfKe
     } while (next != NULL);
 }
 
-void sdfGrSortOtSetup(SdfPool *aOt) {
-    SdfKeyPoolNode *head = NULL;
-    SdfKeyPoolNode *tail = NULL;
+void sdfGrSortOtSetup(sdfGrOt_t *aOt) {
+    sdfDrawTag_t *head = NULL;
+    sdfDrawTag_t *tail = NULL;
 
-    sdfGrSortOtFixup(aOt->freeHead, &head, &tail);
-    if (aOt->keyTree[0] != NULL) {
-        sdfGrSortOtTraverse(aOt->keyTree[0], &head, &tail);
+    sdfGrSortOtFixup(aOt->noSortTag, &head, &tail);
+    if (aOt->data[0] != NULL) {
+        sdfGrSortOtTraverse(aOt->data[0], &head, &tail);
     }
-    aOt->head = head;
-    aOt->tail = tail;
+    aOt->tagHead = head;
+    aOt->tagTail = tail;
 }
 
-void sdfGrSortOtCallback(SdfPool *aOt, s32 aFunc, SdfKeyPoolNode *aData) {
+void sdfGrSortOtCallback(sdfGrOt_t *aOt, s32 aFunc, sdfDrawTag_t *aData) {
     switch (aFunc) {
     case SDF_POOL_REBUILD_CHAIN:
         sdfGrSortOtSetup(aOt);
         break;
     case SDF_POOL_PUSH_FREE:
-        if (aData->packetHeadAddress != 0) {
-            aData->next = aOt->freeHead;
-            aOt->freeHead = aData;
+        if (aData->head != 0) {
+            aData->next = aOt->noSortTag;
+            aOt->noSortTag = aData;
         }
         break;
     }
 }
 
-void sdfModelSetOtCallbacks(SdfPool *aOt) {
-    aOt->release = sdfGrSortOtReg;
-    aOt->update = sdfGrSortOtCallback;
+void sdfModelSetOtCallbacks(sdfGrOt_t *aOt) {
+    aOt->regFunc = sdfGrSortOtReg;
+    aOt->callbackFunc = sdfGrSortOtCallback;
 }
 

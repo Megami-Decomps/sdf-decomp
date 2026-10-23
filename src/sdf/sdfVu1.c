@@ -152,49 +152,49 @@ typedef struct sdfMatPacket_t {
 } sdfMatPacket_t;
 
 typedef struct {
-    f32 matrix[4][4];      /* 0x00 */
-    u16 param0;            /* 0x40 */
-    s16 param1;            /* 0x42 */
-    u32 selectedFlags;     /* 0x44 */
-    u32 nextParam;         /* 0x48 */
-    u32 flags;             /* 0x4C */
-    s16 nodeCount;         /* 0x50 */
-    s16 selectedTriangleCount; /* 0x52: rejected-triangle index count */
-    sdfMatPacket_t *node;   /* 0x54 */
-    u32 packedColor;       /* 0x58: packed RGBA word */
-    f32 offsetX;           /* 0x5C */
-    f32 offsetY;           /* 0x60 */
-    u32 dmaBase;           /* 0x64 */
-    VuBlendNode *dmaAddrA; /* 0x68: next free ring node */
-    VuBlendNode *dmaAddrB; /* 0x6C: ring wrap node */
-    u32 dmaCountA;         /* 0x70 */
-    u32 dmaCountB;         /* 0x74 */
-    VuBlendNode *blendList; /* 0x78 */
-    VuBlendNode **dmaEnd;  /* 0x7C: list tail link */
-    u32 packetStart;       /* 0x80 */
-    u32 header;            /* 0x84: aligned packet cursor + 0x30 */
-    u32 *ringStart;        /* 0x88 */
-    u32 *cursor;           /* 0x8C */
-    u8 *payload;           /* 0x90 */
-    u8 *strip;             /* 0x94 */
-    u8 *positions;         /* 0x98 */
-    u8 *normals;           /* 0x9C */
-    u8 *coordinates;       /* 0xA0 */
-    u8 *secondCoordinates; /* 0xA4 */
-    u8 *vertexColors;      /* 0xA8 */
-    f32 depth;             /* 0xAC */
-} VuWork;
+    f32 tmSave[4][4];      /* 0x00 */
+    u16 faceCount;            /* 0x40 */
+    s16 pointCount;            /* 0x42 */
+    u32 attrBits;     /* 0x44 */
+    u32 packetBits;         /* 0x48 */
+    u32 orgAttrBits;             /* 0x4C */
+    s16 drawFaceCount;         /* 0x50 */
+    s16 backfaceCount; /* 0x52: rejected-triangle index count */
+    sdfMatPacket_t *matPacketPtr;   /* 0x54 */
+    u32 color;       /* 0x58: packed RGBA word */
+    f32 fdSoften;           /* 0x5C */
+    f32 fdBias;           /* 0x60 */
+    u32 pointBuff;           /* 0x64 */
+    VuBlendNode *freePointBuff; /* 0x68: next free ring matPacketPtr */
+    VuBlendNode *extPointBuff; /* 0x6C: ring wrap matPacketPtr */
+    u32 freePointCount;         /* 0x70 */
+    u32 extPointCount;         /* 0x74 */
+    VuBlendNode *extPointTop; /* 0x78 */
+    VuBlendNode **extPointLink;  /* 0x7C: list tail link */
+    u32 packetOpenPtr;       /* 0x80 */
+    u32 packetTopPtr;            /* 0x84: aligned packet packetPtr + 0x30 */
+    u32 *packetStartPtr;        /* 0x88 */
+    u32 *packetPtr;           /* 0x8C */
+    u8 *dataPtr;           /* 0x90 */
+    u8 *facePtr;             /* 0x94 */
+    u8 *vertexPtr;         /* 0x98 */
+    u8 *normalPtr;           /* 0x9C */
+    u8 *uvPtr;       /* 0xA0 */
+    u8 *uv2Ptr; /* 0xA4 */
+    u8 *vertColPtr;      /* 0xA8 */
+    f32 backfaceSign;             /* 0xAC */
+} corePktCb_t;
 
 extern void corePktXfmUV(void *vertices, s32 count, void *uv, void *transform);
 
-extern void corePktApplyFaceDivColor(VuWork *cb, void *parameters);
+extern void corePktApplyFaceDivColor(corePktCb_t *cb, void *parameters);
 
 extern void sdfGrClosePacketBuff(u32 aBuffPtr);
 
-void corePktEmitTexTrisCtx2(VuWork *cb, u64 samplingState, u64 textureState,
+void corePktEmitTexTrisCtx2(corePktCb_t *cb, u64 samplingState, u64 textureState,
                           u64 clampState, u64 alphaState, s32 clearPrimitiveFlags);
 
-/* Finish the selected node's transformed rows and emit its textured geometry. */ void corePktEmitMultiTexPass(VuWork *work);
+/* Finish the selected node's transformed rows and emit its textured geometry. */ void corePktEmitMultiTexPass(corePktCb_t *work);
 
 /* Per-texture reference count and non-owning clone source (0x8). */
 /* Texture buffer GPU command words (0x40); DDS1/2 game/code_002D10B0/00329F60.c. */
@@ -221,17 +221,17 @@ struct sdfTexHandle_t *sdfTexSetDirect(const TMX_HEADER_t *aTex);
 /* Read the active packet cursor or restore it at a quadword boundary. */
 s32 sdfGrOpenPacketBuff(void);
 
-static inline VuBlendNode *AllocNode(VuWork *work) {
-    VuBlendNode *node = work->dmaAddrA;
+static inline VuBlendNode *AllocNode(corePktCb_t *work) {
+    VuBlendNode *node = work->freePointBuff;
 
-    if (--work->dmaCountA == 0) {
-        work->dmaAddrA = work->dmaAddrB;
-        work->dmaCountA = work->dmaCountB;
+    if (--work->freePointCount == 0) {
+        work->freePointBuff = work->extPointBuff;
+        work->freePointCount = work->extPointCount;
     } else {
-        work->dmaAddrA = node + 1;
+        work->freePointBuff = node + 1;
     }
-    *work->dmaEnd = node;
-    work->dmaEnd = &node->next;
+    *work->extPointLink = node;
+    work->extPointLink = &node->next;
     return node;
 }
 
@@ -239,9 +239,9 @@ extern s32 corePktPointBuff;
 
 extern void corePktRelightBackFaces(u32 cb, s32 count);
 
-void corePktSetupPointBuff(VuWork *cb, s32 vertCount);
+void corePktSetupPointBuff(corePktCb_t *cb, s32 vertCount);
 
-void corePktInitCb(VuWork *cb, u16 *packetHdr, u32 attrMask);
+void corePktInitCb(corePktCb_t *cb, u16 *packetHdr, u32 attrMask);
 
 void corePktLoadWorldLightMtx(void *vectors);
 
@@ -253,67 +253,67 @@ void corePktSetFaceDivParm(SdfVuColorTransform *out, sdfMatPacket_t *work, u32 p
 
 void corePktLerpUVColorChain(VuBlendNode *node);
 
-void corePktSetConstColor(VuWork *cb, u32 color);
+void corePktSetConstColor(corePktCb_t *cb, u32 color);
 
 void corePktMakeEdgePoint(VuBlendNode *out, VuBlendNode *first, VuBlendNode *second);
 
-void corePktClipFace(VuWork *cb);
+void corePktClipFace(corePktCb_t *cb);
 
-void corePktBuildFaceList(VuWork *cb);
+void corePktBuildFaceList(corePktCb_t *cb);
 
-void corePktBuildBackFaceList(VuWork *cb);
+void corePktBuildBackFaceList(corePktCb_t *cb);
 
-void corePktEmitBase(VuWork *cb);
+void corePktEmitBase(corePktCb_t *cb);
 
-void corePktEmitAllPasses(VuWork *cb);
+void corePktEmitAllPasses(corePktCb_t *cb);
 
-void corePktOpenAndEmit(VuWork *cb);
+void corePktOpenAndEmit(corePktCb_t *cb);
 
 void sdfVu1Init(void) {
 }
 
-void corePktSetupPointBuff(VuWork *cb, s32 vertCount) {
+void corePktSetupPointBuff(corePktCb_t *cb, s32 vertCount) {
     void *ringEnd = (u8 *)cb + 0x78;
     if (vertCount < 0x80) {
-        cb->dmaCountA = 0x80 - vertCount;
-        cb->dmaAddrB = corePktPointBuff;
-        cb->dmaAddrA = vertCount * 96 + 0x70001000;
-        cb->dmaCountB = 0x2000;
-        cb->dmaBase = 0x70001000;
+        cb->freePointCount = 0x80 - vertCount;
+        cb->extPointBuff = corePktPointBuff;
+        cb->freePointBuff = vertCount * 96 + 0x70001000;
+        cb->extPointCount = 0x2000;
+        cb->pointBuff = 0x70001000;
     } else if (vertCount == 0x80) {
-        cb->dmaBase = 0x70001000;
-        cb->dmaAddrA = corePktPointBuff;
-        cb->dmaCountA = 0x2000;
-        cb->dmaAddrB = 0;
-        cb->dmaCountB = 0;
+        cb->pointBuff = 0x70001000;
+        cb->freePointBuff = corePktPointBuff;
+        cb->freePointCount = 0x2000;
+        cb->extPointBuff = 0;
+        cb->extPointCount = 0;
     } else {
-        cb->dmaCountA = 0x80;
-        cb->dmaBase = corePktPointBuff;
-        cb->dmaAddrA = 0x70001000;
-        cb->dmaAddrB = corePktPointBuff + vertCount * 96;
-        cb->dmaCountB = 0x2000 - vertCount;
+        cb->freePointCount = 0x80;
+        cb->pointBuff = corePktPointBuff;
+        cb->freePointBuff = 0x70001000;
+        cb->extPointBuff = corePktPointBuff + vertCount * 96;
+        cb->extPointCount = 0x2000 - vertCount;
     }
-    cb->dmaEnd = ringEnd;
+    cb->extPointLink = ringEnd;
 }
 
-void corePktInitCb(VuWork *cb, u16 *packetHdr, u32 attrMask) {
+void corePktInitCb(corePktCb_t *cb, u16 *packetHdr, u32 attrMask) {
     u8 *payload = (u8 *)(packetHdr + 4);
     u16 ringPosition;
     u16 parameterFlags;
     u16 nextParameter;
     u16 selectedFlags;
-    cb->param0 = packetHdr[0];
+    cb->faceCount = packetHdr[0];
     ringPosition = packetHdr[1];
-    cb->param1 = ringPosition;
+    cb->pointCount = ringPosition;
     parameterFlags = packetHdr[2];
     nextParameter = packetHdr[3];
     selectedFlags = parameterFlags & attrMask;
-    cb->flags = parameterFlags;
-    cb->nextParam = nextParameter;
-    cb->selectedFlags = selectedFlags;
+    cb->orgAttrBits = parameterFlags;
+    cb->packetBits = nextParameter;
+    cb->attrBits = selectedFlags;
     corePktPrimBase = selectedFlags & 0x78;
-    cb->payload = payload;
-    cb->packetStart = 0;
+    cb->dataPtr = payload;
+    cb->packetOpenPtr = 0;
     corePktSetupPointBuff(cb, ringPosition);
 }
 
@@ -399,16 +399,16 @@ void corePktLerpUVColorChain(VuBlendNode *node) {
 
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktApplyFaceDivColor);
 
-void corePktSetConstColor(VuWork *cb, u32 color) {
+void corePktSetConstColor(corePktCb_t *cb, u32 color) {
     f32 colorScale = 1.0f / 128.0f;
     VuBlendNode *node;
     s32 remaining;
     u128 scaledColor;
 
-    EE_MMI_RGBA_MULTIPLY_VECTOR(scaledColor, cb->packedColor, color, colorScale);
+    EE_MMI_RGBA_MULTIPLY_VECTOR(scaledColor, cb->color, color, colorScale);
 
-    remaining = cb->param1;
-    node = (VuBlendNode *)cb->dmaBase;
+    remaining = cb->pointCount;
+    node = (VuBlendNode *)cb->pointBuff;
     if (remaining != 0) {
         do {
             remaining--;
@@ -417,7 +417,7 @@ void corePktSetConstColor(VuWork *cb, u32 color) {
         } while (remaining != 0);
     }
 
-    node = cb->blendList;
+    node = cb->extPointTop;
     while (node != NULL) {
         VuBlendNode *source = (VuBlendNode *)node->sourceA;
         SDF_VU0_COPYVECTOR_MEMOPS(node->color, source->color);
@@ -433,7 +433,7 @@ void corePktMakeEdgePoint(VuBlendNode *out, VuBlendNode *first, VuBlendNode *sec
 }
 
 /* vu0 routine: native clip facing and ordinary triangle fans. */
-void corePktClipFace(VuWork *cb) {
+void corePktClipFace(corePktCb_t *cb) {
     s32 triangleCount;
     s32 i;
     u16 *triangles;
@@ -444,12 +444,12 @@ void corePktClipFace(VuWork *cb) {
     f32 scale;
 
     out = corePktFaceList;
-    triangleCount = (s16)cb->param0;
+    triangleCount = (s16)cb->faceCount;
     rejected = 0;
-    scale = cb->depth;
+    scale = cb->backfaceSign;
     acceptAll = corePktSoftenBias;
-    triangles = (u16 *)cb->strip;
-    nodes = (VuBlendNode *)cb->dmaBase;
+    triangles = (u16 *)cb->facePtr;
+    nodes = (VuBlendNode *)cb->pointBuff;
     for (i = 0; i != triangleCount; i++) {
         u16 *triangle = triangles;
         VuBlendNode *a = nodes + triangle[0];
@@ -580,32 +580,32 @@ void corePktClipFace(VuWork *cb) {
             cRegion = firstCode;
         }
     }
-    cb->selectedTriangleCount = rejected;
-    cb->nodeCount = out - corePktFaceList;
-    *cb->dmaEnd = NULL;
+    cb->backfaceCount = rejected;
+    cb->drawFaceCount = out - corePktFaceList;
+    *cb->extPointLink = NULL;
 }
 
 /* vu0 routine: native clip-plane setup and ordinary triangle fans. */
-void corePktBuildFaceList(VuWork *cb) {
+void corePktBuildFaceList(corePktCb_t *cb) {
     s32 triangleCount;
     u16 *triangles;
     VuBlendNode *nodes;
     s32 acceptAll;
     u128 *(*out)[3];
-    f32 scale = cb->depth;
+    f32 scale = cb->backfaceSign;
     f32 clipBias = corePktZBias;
     const f32 *clipPlane = sdf3DEyeOffset;
     const u8 *projection = sdf3DScreenParam;
 
     VU0_SET_CLIP_PLANES(clipBias, clipPlane, projection);
-    if (cb->selectedFlags & 0x4000) {
+    if (cb->attrBits & 0x4000) {
         corePktClipFace(cb);
     }
-    triangleCount = (s16)cb->param0;
+    triangleCount = (s16)cb->faceCount;
     acceptAll = corePktSoftenBias;
     out = corePktFaceList;
-    triangles = (u16 *)cb->strip;
-    nodes = (VuBlendNode *)cb->dmaBase;
+    triangles = (u16 *)cb->facePtr;
+    nodes = (VuBlendNode *)cb->pointBuff;
     for (; triangleCount != 0; triangleCount--) {
         u16 *triangle = triangles;
         VuBlendNode *a = nodes + triangle[0];
@@ -735,11 +735,11 @@ void corePktBuildFaceList(VuWork *cb) {
             cRegion = firstCode;
         }
     }
-    cb->nodeCount = out - corePktFaceList;
-    *cb->dmaEnd = NULL;
+    cb->drawFaceCount = out - corePktFaceList;
+    *cb->extPointLink = NULL;
 }
 
-void corePktBuildBackFaceList(VuWork *cb) {
+void corePktBuildBackFaceList(corePktCb_t *cb) {
     /* DDS1 node region uses the tail byte at +0x50. */
     f32 scale = corePktZBias;
     s32 remaining;
@@ -755,8 +755,8 @@ void corePktBuildBackFaceList(VuWork *cb) {
     acceptAll = corePktSoftenBias;
     remaining = ((VuIndexedTriangleCount *)cb)->indexedTriangleCount;
     indices = corePktBackFaceList;
-    triangles = (u16 *)cb->strip;
-    nodes = (VuBlendNode *)cb->dmaBase;
+    triangles = (u16 *)cb->facePtr;
+    nodes = (VuBlendNode *)cb->pointBuff;
     out = (u128 *(*)[3])corePktFaceList;
     if (remaining != 0) {
         do {
@@ -868,17 +868,17 @@ void corePktBuildBackFaceList(VuWork *cb) {
             ;
         } while (--remaining != 0);
     }
-    cb->nodeCount = out - (u128 *(*)[3])corePktFaceList;
-    *(VuBlendNode **)cb->dmaEnd = NULL;
+    cb->drawFaceCount = out - (u128 *(*)[3])corePktFaceList;
+    *(VuBlendNode **)cb->extPointLink = NULL;
 }
 
 void corePktEmitTexTris(work)
-    VuWork *work;
+    corePktCb_t *work;
 {
-    s32 remaining = work->nodeCount;
+    s32 remaining = work->drawFaceCount;
     if (remaining != 0) {
         u128 *(*nodes)[3] = corePktFaceList;
-        u32 *cursor = work->cursor;
+        u32 *cursor = work->packetPtr;
         s32 first = 1;
         do {
             s32 chunk = (remaining <= 0x10) ? remaining : 0x10;
@@ -891,7 +891,7 @@ void corePktEmitTexTris(work)
                 *cursor++ = 0x6501C000;
                 *cursor++ = 4;
                 *cursor++ = ((chunk * 9 + 5) << 16) | 0x6C00C001;
-                node = work->node;
+                node = work->matPacketPtr;
                 first = 0;
                 *(u64 *)cursor = 0x1000000000000003ULL;
                 cursor += 2;
@@ -936,15 +936,15 @@ void corePktEmitTexTris(work)
             } while (--chunk != 0);
             *cursor++ = 0x14000004;
         } while (remaining != 0);
-        work->cursor = cursor;
+        work->packetPtr = cursor;
     }
 }
 
-void corePktEmitTexTrisCtx2(VuWork *cb, u64 samplingState, u64 textureState, u64 clampState, u64 alphaState, s32 clearPrimitiveFlags) {
-    s32 remainingTriangles = cb->nodeCount;
+void corePktEmitTexTrisCtx2(corePktCb_t *cb, u64 samplingState, u64 textureState, u64 clampState, u64 alphaState, s32 clearPrimitiveFlags) {
+    s32 remainingTriangles = cb->drawFaceCount;
     if (remainingTriangles != 0) {
         u128 *(*triangleRefs)[3] = corePktFaceList;
-        u32 *packetCursor = cb->cursor;
+        u32 *packetCursor = cb->packetPtr;
         s32 firstBatch = 1;
         do {
             s32 batchTriangles = (remainingTriangles <= 0x10) ? remainingTriangles : 0x10;
@@ -1008,17 +1008,17 @@ void corePktEmitTexTrisCtx2(VuWork *cb, u64 samplingState, u64 textureState, u64
             } while (--batchTriangles != 0);
             *packetCursor++ = 0x14000004;
         } while (remainingTriangles != 0);
-        cb->cursor = packetCursor;
+        cb->packetPtr = packetCursor;
     }
 }
 
 void corePktEmitTris(work)
-    VuWork *work;
+    corePktCb_t *work;
 {
-    s32 remainingTriangles = work->nodeCount;
+    s32 remainingTriangles = work->drawFaceCount;
     if (remainingTriangles != 0) {
         u128 *(*triangleRefs)[3] = corePktFaceList;
-        u32 *packetCursor = work->cursor;
+        u32 *packetCursor = work->packetPtr;
         do {
             s32 batchTriangles = (remainingTriangles <= 0x18) ? remainingTriangles : 0x18;
             remainingTriangles -= batchTriangles;
@@ -1047,28 +1047,28 @@ void corePktEmitTris(work)
             } while (--batchTriangles != 0);
             *packetCursor++ = 0x14000004;
         } while (remainingTriangles != 0);
-        work->cursor = packetCursor;
+        work->packetPtr = packetCursor;
     }
 }
 
-void corePktEmitBase(VuWork *cb) {
-    if ((cb->selectedFlags & SDF_VU_TEXTURED_FLAG) != 0) {
+void corePktEmitBase(corePktCb_t *cb) {
+    if ((cb->attrBits & SDF_VU_TEXTURED_FLAG) != 0) {
         corePktEmitTexTris();
         return;
     }
     corePktEmitTris();
 }
 
-void corePktEmitMultiTexPass(VuWork *cb) {
+void corePktEmitMultiTexPass(corePktCb_t *cb) {
     sdfMatPacket_t *node;
     u32 mode;
     u32 secondaryColor;
     u32 primaryStateWordSecond;
 
-    corePktXfmUV((void *)cb->dmaBase, cb->param1, cb->secondCoordinates,
-                  (u8 *)cb->node + 0x80);
-    corePktLerpUVChain(cb->blendList);
-    node = cb->node;
+    corePktXfmUV((void *)cb->pointBuff, cb->pointCount, cb->uv2Ptr,
+                  (u8 *)cb->matPacketPtr + 0x80);
+    corePktLerpUVChain(cb->extPointTop);
+    node = cb->matPacketPtr;
     mode = node->secondaryMode;
     secondaryColor = node->secondaryColor;
     primaryStateWordSecond = node->diffuse;
@@ -1079,9 +1079,9 @@ void corePktEmitMultiTexPass(VuWork *cb) {
             if (primaryStateWordSecond != secondaryColor) {
                 u128 parameters[3];
 
-                corePktMakeFaceDivParm((SdfVuColorTransform *)parameters, corePktCurrLight, cb->packedColor,
+                corePktMakeFaceDivParm((SdfVuColorTransform *)parameters, corePktCurrLight, cb->color,
                               secondaryColor, node->ambient, node->constant,
-                              node->x + cb->offsetX, node->y + cb->offsetY);
+                              node->x + cb->fdSoften, node->y + cb->fdBias);
                 corePktApplyFaceDivColor(cb, parameters);
             }
             break;
@@ -1096,14 +1096,14 @@ void corePktEmitMultiTexPass(VuWork *cb) {
 
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktEmitRefMapPass);
 
-void corePktEmitAllPasses(VuWork *cb) {
+void corePktEmitAllPasses(corePktCb_t *cb) {
     u32 selectedFlags;
 
     corePktEmitBase(cb);
-    selectedFlags = cb->selectedFlags;
+    selectedFlags = cb->attrBits;
     if ((selectedFlags & 0x1000) != 0) {
         corePktEmitMultiTexPass(cb);
-        selectedFlags = cb->selectedFlags;
+        selectedFlags = cb->attrBits;
     }
     if ((selectedFlags & 1) != 0) {
         corePktEmitRefMapPass((u32)cb);
@@ -1111,22 +1111,22 @@ void corePktEmitAllPasses(VuWork *cb) {
     }
 }
 
-void corePktOpenAndEmit(VuWork *cb) {
+void corePktOpenAndEmit(corePktCb_t *cb) {
     u32 packetStart = sdfGrOpenPacketBuff();
     u32 alignedStart = (packetStart + 0x3F) & ~0x3F;
     u32 ringAddress = ((alignedStart + 0x40) & SDF_DMA_ADDRESS_MASK) | 0x30000000;
-    cb->packetStart = packetStart;
-    cb->header = alignedStart + 0x30;
-    cb->ringStart = (u32 *)ringAddress;
-    cb->cursor = (u32 *)ringAddress;
-    if ((cb->selectedFlags & 0x4000) != 0) {
+    cb->packetOpenPtr = packetStart;
+    cb->packetTopPtr = alignedStart + 0x30;
+    cb->packetStartPtr = (u32 *)ringAddress;
+    cb->packetPtr = (u32 *)ringAddress;
+    if ((cb->attrBits & 0x4000) != 0) {
         u8 savedVectors[0x30];
         VU0_STORE_VF24_VF25_VF26(savedVectors);
         corePktBuildFaceList(cb);
         corePktEmitAllPasses(cb);
-        corePktSetupPointBuff(cb, cb->param1);
+        corePktSetupPointBuff(cb, cb->pointCount);
         VU0_LOAD_VF24_VF25_VF26(savedVectors);
-        corePktRelightBackFaces(cb->dmaBase, cb->param1);
+        corePktRelightBackFaces(cb->pointBuff, cb->pointCount);
         corePktBuildBackFaceList(cb);
         corePktEmitAllPasses(cb);
     } else {
@@ -1135,7 +1135,7 @@ void corePktOpenAndEmit(VuWork *cb) {
     }
 }
 
-u64 *corePktClosePacket(VuWork *cb) {
+u64 *corePktClosePacket(corePktCb_t *cb) {
     u32 cursor;
     u32 start;
     s32 quadwords;
@@ -1143,14 +1143,14 @@ u64 *corePktClosePacket(VuWork *cb) {
     u64 gifTag;
     u64 *header;
 
-    if (cb->packetStart == 0) {
+    if (cb->packetOpenPtr == 0) {
         return NULL;
     }
 
-    cursor = (u32)cb->cursor;
-    start = (u32)cb->ringStart;
+    cursor = (u32)cb->packetPtr;
+    start = (u32)cb->packetStartPtr;
     if (cursor == start) {
-        sdfGrClosePacketBuff(cb->packetStart);
+        sdfGrClosePacketBuff(cb->packetOpenPtr);
         return NULL;
     }
 
@@ -1166,7 +1166,7 @@ u64 *corePktClosePacket(VuWork *cb) {
     }
 
     sdfGrClosePacketBuff(cursor & 0x0FFFFFFF);
-    header = (u64 *)cb->header;
+    header = (u64 *)cb->packetTopPtr;
     descriptor = 0x20000000 | (quadwords & 0xFFFF);
     gifTag = 0x1100000000000000ULL;
     header[0] = descriptor;
