@@ -17,7 +17,7 @@ struct PcpScatterPlainParams;
 struct PcpScatterPlainParticle;
 struct dds3ScatterPolyList_tag;
 struct PcpScatterRadialParams;
-struct PcpScatterRadialParticle;
+struct effPCPHamaCardSpiralPart_tag;
 struct effPCPHamaCardSpiral_tag;
 struct effPCPHamaCardScatterParam_t;
 struct effPCPHamaCardScatterPart_tag;
@@ -49,7 +49,7 @@ typedef struct PcpScatterPlainParticle PcpScatterPlainParticle;
 typedef struct effPCPWwSpherePoly_tag effPCPWwSpherePoly_tag;
 typedef struct effPartHandle_t effPartHandle_t;
 typedef struct PcpScatterRadialParams PcpScatterRadialParams;
-typedef struct PcpScatterRadialParticle PcpScatterRadialParticle;
+typedef struct effPCPHamaCardSpiralPart_tag effPCPHamaCardSpiralPart_tag;
 typedef struct effPCPHamaCardSpiral_tag effPCPHamaCardSpiral_tag;
 typedef struct effPCPHamaCardScatterPart_tag effPCPHamaCardScatterPart_tag;
 typedef struct effPCPHamaCardScatterParam_t effPCPHamaCardScatterParam_t;
@@ -443,7 +443,7 @@ typedef struct dds3ScatterPolyList_tag {
     u32 poolMode; /* 0x10: selects the surface node used when drawing the pool */
     u32 color;
     s32 secondWordCount;
-    f32 unk1C;
+    f32 scale;
     u8 *recordBase;
     u8 *auxRecordBase;
     sdfMat_t *drawAsset;
@@ -497,20 +497,20 @@ struct PcpScatterRadialParams {
 };
 
 /* Per-particle age and radial/vertical motion state. */
-struct PcpScatterRadialParticle {
-    s32 age;
-    f32 radiusStep;
-    f32 angleStep;
-    f32 heightStep;
+struct effPCPHamaCardSpiralPart_tag {
+    s32 frame;
+    f32 radius_s;
+    f32 roll_s;
+    f32 up_s;
     f32 radius;
-    f32 angle;
+    f32 radian;
     f32 height;
 };
 
 /* Runtime owner followed inline by its variable-length particle array. */
 struct effPCPHamaCardSpiral_tag {
     PcpScatterRadialParams param;
-    PcpScatterRadialParticle *pPart;
+    effPCPHamaCardSpiralPart_tag *pPart;
     f32 scale;
     u32 abgr;
     dds3ScatterPolyList_tag *hPoly;
@@ -797,7 +797,7 @@ effPCPHamaCardSpiral_tag *effPCPHamaCardSpiralCreate(params, resource, particleP
     void *particleParams;
 {
     effPCPHamaCardSpiral_tag *work;
-    PcpScatterRadialParticle *particle;
+    effPCPHamaCardSpiralPart_tag *particle;
     sdfMemHandle_t *handle;
     effPartHandle_t **handles;
     u32 count;
@@ -806,9 +806,9 @@ effPCPHamaCardSpiral_tag *effPCPHamaCardSpiralCreate(params, resource, particleP
     s32 ageOffset;
     u32 segments;
 
-    handle = sdfMemAllocDirect(sizeof(effPCPHamaCardSpiral_tag) + params->particleCount * sizeof(PcpScatterRadialParticle));
+    handle = sdfMemAllocDirect(sizeof(effPCPHamaCardSpiral_tag) + params->particleCount * sizeof(effPCPHamaCardSpiralPart_tag));
     work = (effPCPHamaCardSpiral_tag *)sdfMemLock(handle);
-    work->pPart = (PcpScatterRadialParticle *)(work + 1);
+    work->pPart = (effPCPHamaCardSpiralPart_tag *)(work + 1);
     work->param = *params;
     work->abgr = EFF_SCATTER_NEUTRAL_COLOR;
     work->hMem = handle;
@@ -847,7 +847,7 @@ effPCPHamaCardSpiral_tag *effPCPHamaCardSpiralCreate(params, resource, particleP
     }
     segments = work->param.radialSegments;
     for (i = 0; i < count; i++, particle++) {
-        particle->age = ageOffset - dds3GetRandA((EffRandState *)dds3EffectBase) % delaySpread;
+        particle->frame = ageOffset - dds3GetRandA((EffRandState *)dds3EffectBase) % delaySpread;
         if ((i + 1) % segments == 0) {
             ageOffset -= delaySpread;
         }
@@ -913,7 +913,7 @@ void effPCPHamaCardSpiralDelete(effPCPHamaCardSpiral_tag *hData)
 
 void effPCPHamaCardSpiralPartInit(effPCPHamaCardSpiral_tag *pHCardSpiral, u32 number) {
     u32 segments = pHCardSpiral->param.radialSegments;
-    PcpScatterRadialParticle *particle = &pHCardSpiral->pPart[number];
+    effPCPHamaCardSpiralPart_tag *particle = &pHCardSpiral->pPart[number];
     f32 angleStep;
     f32 jitter;
 
@@ -921,16 +921,16 @@ void effPCPHamaCardSpiralPartInit(effPCPHamaCardSpiral_tag *pHCardSpiral, u32 nu
         segments = 1;
     }
     angleStep = EFF_SCATTER_FULL_TURN / segments;
-    particle->angle = angleStep * (number % segments) + angleStep * EFF_SCATTER_HALF_SEGMENT * dds3GetRandFloatA(dds3EffectBase);
+    particle->radian = angleStep * (number % segments) + angleStep * EFF_SCATTER_HALF_SEGMENT * dds3GetRandFloatA(dds3EffectBase);
     jitter = pHCardSpiral->param.radiusJitter;
     particle->radius = pHCardSpiral->param.startRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     particle->height = 0.0f;
     jitter = pHCardSpiral->param.targetRadiusJitter;
-    particle->radiusStep = (pHCardSpiral->param.endRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) - particle->radius) / pHCardSpiral->param.duration;
+    particle->radius_s = (pHCardSpiral->param.endRadius * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) - particle->radius) / pHCardSpiral->param.duration;
     jitter = pHCardSpiral->param.speedJitter;
-    particle->heightStep = pHCardSpiral->param.initialHeightStep * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
-    particle->age = 0;
-    particle->angleStep = pHCardSpiral->param.initialAngleStep;
+    particle->up_s = pHCardSpiral->param.initialHeightStep * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
+    particle->frame = 0;
+    particle->roll_s = pHCardSpiral->param.initialAngleStep;
 }
 
 void effPCPHamaCardSpiralDraw(effPCPHamaCardSpiral_tag *hData) {
@@ -955,7 +955,7 @@ void effPCPHamaCardSpiralDraw(effPCPHamaCardSpiral_tag *hData) {
     s32 duration;
     s32 endAge;
     s32 duplicateStart;
-    PcpScatterRadialParticle *particle;
+    effPCPHamaCardSpiralPart_tag *particle;
     f32 pulseAngle;
     f32 heightDamping;
     f32 angleDamping;
@@ -980,7 +980,7 @@ void effPCPHamaCardSpiralDraw(effPCPHamaCardSpiral_tag *hData) {
     baseColor = hData->abgr;
 
     for (; i < count; i++, particle++) {
-        s32 age = particle->age;
+        s32 age = particle->frame;
         u128 *vertices = dds3ScatterPolyListGetVertex(hData->hPoly, i);
         u32 *colors = dds3ScatterPolyListGetVC(hData->hPoly, i);
         if (age == 0) {
@@ -1006,11 +1006,11 @@ void effPCPHamaCardSpiralDraw(effPCPHamaCardSpiral_tag *hData) {
             }
             moving = age < duration;
             color = effColorBlend(baseColor & 0xFFFFFF, baseColor, factor);
-            angle = particle->angle;
+            angle = particle->radian;
             radius = particle->radius;
             height = particle->height;
-            angleStep = particle->angleStep;
-            heightStep = particle->heightStep;
+            angleStep = particle->roll_s;
+            heightStep = particle->up_s;
             if (!moving && pulse) {
                 if (age == duration) {
                     angle += pulseAngle;
@@ -1064,11 +1064,11 @@ void effPCPHamaCardSpiralDraw(effPCPHamaCardSpiral_tag *hData) {
                 SDF_VU0_COPYVECTOR(position, next);
             }
             if (moving) {
-                particle->radius += particle->radiusStep;
-                particle->angle += angleStep;
+                particle->radius += particle->radius_s;
+                particle->radian += angleStep;
                 particle->height += heightStep;
-                particle->angleStep = angleStep * angleDamping;
-                particle->heightStep = heightStep * heightDamping;
+                particle->roll_s = angleStep * angleDamping;
+                particle->up_s = heightStep * heightDamping;
             }
         } else {
             colors[0] = 0;
@@ -1079,7 +1079,7 @@ void effPCPHamaCardSpiralDraw(effPCPHamaCardSpiral_tag *hData) {
             colors[5] = 0;
         }
         if (respawn && age >= endAge) {
-            particle->age = -1;
+            particle->frame = -1;
         }
         if (duplicates && age >= duplicateStart && age >= 0 && i % perGroup == 0) {
             u32 group = i / perGroup;
@@ -1091,7 +1091,7 @@ void effPCPHamaCardSpiralDraw(effPCPHamaCardSpiral_tag *hData) {
             dds3EffectPartSetPosition(hData->pAttach[group], duplicatePosition);
             dds3EffectPartDraw(hData->pAttach[group]);
         }
-        particle->age++;
+        particle->frame++;
     }
     hData->hPoly->origin[0] = hData->param.origin[0];
     hData->hPoly->origin[1] = hData->param.origin[1];
@@ -1760,7 +1760,7 @@ dds3ScatterPolyList_tag *dds3ScatterPolyListCreate(s32 face) {
     pool->auxRecordBase = (u8 *)(recordBlock + recordWords);
     pool->secondWordCount = auxWords;
     pool->allocation = allocation;
-    pool->unk1C = 1.0f;
+    pool->scale = 1.0f;
     pool->color = EFF_SCATTER_NEUTRAL_COLOR;
     pool->sharedResource = 0;
     pool->drawAsset = sdfMatNew();
