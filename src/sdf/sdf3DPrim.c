@@ -25,7 +25,7 @@ struct sdfTexHandle_t;
 
 struct sdfMat_t;
 
-struct SdfPrimitiveRequest;
+struct sdf3DPrimPolyParm_t;
 
 /* Serialized byte consumed by the GS texture-state packet builder. */
 typedef u8 SdfTextureClampMode;
@@ -151,21 +151,21 @@ void sdfMatUpdatePacket(struct sdfMat_t *aMat, s32 aId);
 /* Native 0x2C VIF primitive request, shared by its quad/triangle producers.
  * Attribute buffers carry serialized words; coordinate floats retain their bits.
  * Native callers supply a positive vertex count and aligned 16-byte position/normal rows. */
-typedef struct SdfPrimitiveRequest {
-    s16 stripWordCount;
-    s16 vertexCount;
-    u16 primitiveFlags;
-    u16 clipMask;
+typedef struct sdf3DPrimPolyParm_t {
+    s16 faceCount;
+    s16 pointCount;
+    u16 attr;
+    u16 attrInhibit;
     u32 color;
-    const void *strip;
-    const void *positions;
-    const void *normals;
-    const void *coordinates;
-    const void *secondCoordinates;
-    const void *vertexColors;
+    const void *faceIndex;
+    const void *vertex;
+    const void *normal;
+    const void *uv;
+    const void *multiUv;
+    const void *vertexColor;
     void *(*allocate)(s32);
-    f32 depth;
-} SdfPrimitiveRequest;
+    f32 allocator;
+} sdf3DPrimPolyParm_t;
 
 /* Reserve size bytes from the active packet buffer, rounded up to 16 bytes.
  * Returns the prior cursor as a 32-bit address; the buffer owns this storage. */
@@ -184,7 +184,7 @@ void sdf3DPrimLinkTm(sdfDrawTag_t *aTag,
 void sdf3DPrimLinkMat(sdfDrawTag_t *aTag, sdfMat_t *aMat,
                               s32 (*aAllocator)(s32));
 
-u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *aParm);
+u32 *sdf3DPrimMakePoly(sdf3DPrimPolyParm_t *aParm);
 
 void sdf3DPrimLinkResetTm(sdfDrawTag_t *aTag,
                              s32 (*aAllocator)(s32)) {
@@ -234,12 +234,12 @@ void sdf3DPrimLinkMat(sdfDrawTag_t *aTag, sdfMat_t *aMat,
     sdfDrawTagLinkRef(aTag, (u32)referencePacket);
 }
 
-u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *aParm) {
-    s32 stripWords = aParm->stripWordCount;
-    s32 count = aParm->vertexCount;
+u32 *sdf3DPrimMakePoly(sdf3DPrimPolyParm_t *aParm) {
+    s32 stripWords = aParm->faceCount;
+    s32 count = aParm->pointCount;
     s32 headerWords = 18;
     s32 wordsPerVertex = 3;
-    u32 primitive = aParm->primitiveFlags | 0x68;
+    u32 primitive = aParm->attr | 0x68;
     u32 format = 0x60;
     s32 bytes;
     void *(*allocate)(s32);
@@ -251,22 +251,22 @@ u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *aParm) {
     s32 i;
     u32 countCode;
 
-    if (aParm->normals != NULL) {
+    if (aParm->normal != NULL) {
         format = 0xE0;
         headerWords = 19;
         wordsPerVertex = 6;
     }
-    if (aParm->coordinates != NULL) {
+    if (aParm->uv != NULL) {
         format |= 0x100;
         primitive |= 0x10;
         headerWords++;
         wordsPerVertex += 2;
-        if (aParm->secondCoordinates != NULL) {
+        if (aParm->multiUv != NULL) {
             primitive |= 0x1000;
             wordsPerVertex += 2;
         }
     }
-    if (aParm->vertexColors != NULL) {
+    if (aParm->vertexColor != NULL) {
         format |= 0x200;
         primitive |= 0x800;
         headerWords++;
@@ -279,12 +279,12 @@ u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *aParm) {
     packet = allocate(bytes);
     *(u64 *)packet = (u64)(u16)((bytes >> 4) - 1) | 0x20000000ULL;
     packet[2] = 0x6102C000;
-    packet[3] = (~aParm->clipMask) & 0xFFFF;
+    packet[3] = (~aParm->attrInhibit) & 0xFFFF;
     packet[4] = 0x6E01C002;
     packet[5] = aParm->color;
     packet[6] = 0x6003C003;
     cursor = packet + 7;
-    *cursor++ = (u32)aParm->depth;
+    *cursor++ = (u32)aParm->allocator;
     *cursor++ = (u32)sdfFaceDivSoften;
     *cursor++ = (u32)sdfFaceDivBias;
     *cursor++ = 0x04000004;
@@ -293,16 +293,16 @@ u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *aParm) {
     *cursor++ = (u16)stripWords | ((u32)(u16)count << 16);
     *cursor++ = (primitive & 0xFFFF) | (format << 16);
     *cursor++ = (stripWords << 16) | 0x6E00C001;
-    if (aParm->strip == NULL) {
+    if (aParm->faceIndex == NULL) {
         memcpy(cursor, sdf3DPrimDefaultFaceIndex, stripWords * 4);
     } else {
-        memcpy(cursor, aParm->strip, stripWords * 4);
+        memcpy(cursor, aParm->faceIndex, stripWords * 4);
     }
     cursor += stripWords;
     stripWords++;
     countCode = count << 16;
     *cursor++ = countCode | stripWords | 0x6800C000;
-    vector = aParm->positions;
+    vector = aParm->vertex;
     i = 0;
     do {
         MMI_STORE_VEC3_VALUE(cursor, *vector);
@@ -311,7 +311,7 @@ u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *aParm) {
         i++;
     } while (i != count);
     stripWords += count;
-    vector = aParm->normals;
+    vector = aParm->normal;
     if (vector != NULL) {
         *cursor++ = countCode | stripWords | 0x6800C000;
         i = 0;
@@ -323,9 +323,9 @@ u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *aParm) {
         } while (i != count);
         stripWords += count;
     }
-    coordinates = aParm->coordinates;
+    coordinates = aParm->uv;
     if (coordinates != NULL) {
-        secondCoordinates = aParm->secondCoordinates;
+        secondCoordinates = aParm->multiUv;
         if (secondCoordinates == NULL) {
             *cursor++ = countCode | stripWords | 0x6400C000;
             memcpy(cursor, coordinates, count * 8);
@@ -343,9 +343,9 @@ u32 *sdf3DPrimMakePoly(SdfPrimitiveRequest *aParm) {
         }
         stripWords += count;
     }
-    if (aParm->vertexColors != NULL) {
+    if (aParm->vertexColor != NULL) {
         *cursor++ = countCode | stripWords | 0x6E00C000;
-        memcpy(cursor, aParm->vertexColors, count * 4);
+        memcpy(cursor, aParm->vertexColor, count * 4);
         cursor += count;
     }
     *cursor = 0x1400000C;
