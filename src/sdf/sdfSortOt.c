@@ -63,7 +63,7 @@ typedef struct sdfSortOtNode_tag {
     s32 balance;                  /* 0x0C */
 } sdfSortOtNode_tag;
 
-/* A key-sorted draw-surface pool: an SdfPoolNode whose append and prepend
+/* A key-sorted draw-surface pool: a draw tag whose append and prepend
  * callbacks release a node into the pool and update its free list. */
 typedef struct sdfGrOt_t {
     void *next;                                                /* 0x00: the pool entry's link */
