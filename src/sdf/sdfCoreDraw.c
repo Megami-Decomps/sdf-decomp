@@ -15,7 +15,7 @@ struct sdfMemHandle_t;
 
 struct DevRequest;
 
-struct SdfCommandNode;
+struct sdfModelPacketHeader_tag;
 
 struct sdfModelNode_t;
 
@@ -102,14 +102,14 @@ typedef struct DevRequest {
 
 /* Command-list node: allocation owns the node and trailing command data.
  * A null descriptor identifies a separately chip-allocated node. */
-typedef struct SdfCommandNode {
-    struct SdfCommandNode *next;
-    u8 kind;
-    s8 packetSelector;
-    s16 quadwordCount;
-    void *payload; /* Packet bytes for kind 1; serialized commands for kinds 2/3. */
-    struct sdfMemHandle_t *allocation;
-} SdfCommandNode;
+typedef struct sdfModelPacketHeader_tag {
+    struct sdfModelPacketHeader_tag *next;
+    u8 type;
+    s8 otIndex;
+    s16 size;
+    void *dataPtr; /* Packet bytes for type 1; serialized commands for kinds 2/3. */
+    struct sdfMemHandle_t *memHandle;
+} sdfModelPacketHeader_tag;
 
 /* Allocated as 0x100-byte nodes; each owns a circular list of child draw nodes. */
 typedef struct sdfModelNode_t {
@@ -123,7 +123,7 @@ typedef struct sdfModelNode_t {
     s32 id;                   /* 0x18: lookup key when model flags bit 0 is set */
     u32 color;                   /* 0x1C */
     u8 drawPacketMemHandle[8];
-    SdfCommandNode *drawPacket[2];     /* 0x28: command drawPacket for both buffered frames */
+    sdfModelPacketHeader_tag *drawPacket[2];     /* 0x28: command drawPacket for both buffered frames */
     u8 *tmPacket; /* Two 0x80-byte frame packets, allocated on first use. */                  /* 0x30 */
     const f32 *bounds;     /* 0x34: optional two xyz corners used by clipping */
     void *shape;             /* 0x38: item this node was built from */
