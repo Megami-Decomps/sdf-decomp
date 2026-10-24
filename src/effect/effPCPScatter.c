@@ -3,7 +3,7 @@
 #include "sdf_resource.h"
 
 struct effDebugPolyParams_t;
-struct EffRandState;
+struct effRandState_t;
 struct dds3WhirlwindPolyList_tag;
 struct effPCPWhirlwindPoly_tag;
 struct effPCPWhirlwind2Poly_tag;
@@ -58,7 +58,7 @@ typedef struct PcpScatterSpinParams PcpScatterSpinParams;
 typedef struct effPCPWwSpherePolyPart_tag effPCPWwSpherePolyPart_tag;
 typedef struct effPCPHamaCardSphere_tag effPCPHamaCardSphere_tag;
 typedef struct sdfGrOt_t sdfGrOt_t;
-typedef struct EffRandState EffRandState;
+typedef struct effRandState_t effRandState_t;
 
 #define EFF_SCATTER_NEUTRAL_COLOR 0x80808080
 
@@ -645,18 +645,18 @@ struct TMX_HEADER_t;
 extern void *effPkt3DPrimMakePoly(effDebugPolyParams_t *aParm);
 
 /* Four ordered 32-bit words in the shared effect random-number state. */
-struct EffRandState {
+struct effRandState_t {
     u32 words[4];
 };
 
-extern EffRandState dds3EffectBase[];
+extern effRandState_t dds3EffectBase[];
 
 void dds3EffectPartDelete(effPartHandle_t *hEffPart);
 
 extern u32 dds3WhirlwindPolyListGetABGR(dds3WhirlwindPolyList_tag *hPoly, s32 index);
 
 /* Returns 24 random bits scaled to [0, 1); NULL selects the shared state. */
-f32 dds3GetRandFloatA(EffRandState *name);
+f32 dds3GetRandFloatA(effRandState_t *name);
 
 /* Constructors copy one serialized parameter variant into its runtime owner. */
 effPCPWhirlwindPoly_tag *effPCPWhirlwindPolyCreate(
@@ -755,7 +755,7 @@ extern effPartHandle_t *dds3EffectPartCopy(effPartHandle_t *hEffPartSrc);
 extern void dds3EffectPartDraw(effPartHandle_t *hEffPart);
 extern void dds3EffectPartSetPosition(effPartHandle_t *hEffPart, f32 *pPos);
 extern void dds3EffectPartSetColor(effPartHandle_t *hEffPart, u32 abgr);
-extern u32 dds3GetRandA(EffRandState *name);
+extern u32 dds3GetRandA(effRandState_t *name);
 extern u32 effColorBlend(u32 abgr0, u32 abgr1, f32 rate);
 extern s32 effMagaCylinderCalcColor(s32 color, s32 tint);
 extern f32 sdfAtan(f32 aX);
@@ -847,7 +847,7 @@ effPCPHamaCardSpiral_tag *effPCPHamaCardSpiralCreate(params, resource, particleP
     }
     segments = work->param.radialSegments;
     for (i = 0; i < count; i++, particle++) {
-        particle->frame = ageOffset - dds3GetRandA((EffRandState *)dds3EffectBase) % delaySpread;
+        particle->frame = ageOffset - dds3GetRandA((effRandState_t *)dds3EffectBase) % delaySpread;
         if ((i + 1) % segments == 0) {
             ageOffset -= delaySpread;
         }
@@ -1168,7 +1168,7 @@ effPCPHamaCardSphere_tag *effPCPHamaCardSphereCreate(params, resource, particleP
         delaySpread = 1;
     }
     for (i = 0; i < count; i++, particle++) {
-        particle->rot = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delaySpread);
+        particle->rot = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % delaySpread);
     }
     return work;
 }
@@ -1485,7 +1485,7 @@ effPCPHamaCardScatter_tag *effPCPHamaCardScatterCreate(params, resource, particl
         delaySpread = 1;
     }
     for (i = 0; i < count; i++, particle++) {
-        particle->frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delaySpread);
+        particle->frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % delaySpread);
     }
     return work;
 }
@@ -1905,7 +1905,7 @@ effPCPWhirlwindPoly_tag *effPCPWhirlwindPolyCreate(src, resource)
         delayModulus = 1;
     }
     for (i = 0; i < count; i++) {
-        particle->frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
+        particle->frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % delayModulus);
         particle++;
     }
     return inst;
@@ -2156,7 +2156,7 @@ effPCPWhirlwind2Poly_tag *effPCPWhirlwind2PolyCreate(src, resource)
     delayModulus = delayLimit;
     count = inst->param.particleCount;
     for (i = 0; i < count; i++) {
-        particle->frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
+        particle->frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % delayModulus);
         particle++;
     }
     return inst;
@@ -2348,7 +2348,7 @@ void effPCPWhirlwind2PolyDraw(effPCPWhirlwind2Poly_tag *hData) {
                 effPCPWhirlwind2PolyPartMove(hData, i);
             }
             if (loop != 0 && !(instanceAge < duration)) {
-                particle->frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
+                particle->frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % delayModulus);
             } else {
                 particle->frame++;
             }
@@ -2427,7 +2427,7 @@ effPCPWhirlwind3Poly_tag *effPCPWhirlwind3PolyCreate(src, resource)
     delayModulus = delayLimit;
     count = inst->param.particleCount;
     for (i = 0; i < count; i++) {
-        particle->frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
+        particle->frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % delayModulus);
         particle++;
     }
     return inst;
@@ -2626,7 +2626,7 @@ void effPCPWhirlwind3PolyDraw(effPCPWhirlwind3Poly_tag *hData) {
                 effPCPWhirlwind3PolyPartMove(hData, i);
             }
             if (loop != 0 && !(instanceAge < duration)) {
-                particle->frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
+                particle->frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % delayModulus);
             } else {
                 particle->frame++;
             }
@@ -2701,7 +2701,7 @@ effPCPWwSpherePoly_tag *effPCPWwSpherePolyCreate(src, resource)
         delayModulus = 1;
     }
     for (i = 0; i < count; i++) {
-        particle->age = -(dds3GetRandA((EffRandState *)dds3EffectBase) % delayModulus);
+        particle->age = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % delayModulus);
         particle++;
     }
     return inst;
