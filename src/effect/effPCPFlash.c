@@ -4,7 +4,7 @@
 #include "sdf_types.h"
 
 struct effDebugPolyParams_t;
-struct EffRandState;
+struct effRandState_t;
 struct dds3FlashPolyList_t;
 struct EffRingColorSlot;
 struct effPCPFlashPolyRingExpHPart_tag;
@@ -39,7 +39,7 @@ union SdfDrawTransform;
 struct SdfGsTextureStateValues;
 struct sdfGsMemSlice_t;
 
-typedef struct EffRandState EffRandState;
+typedef struct effRandState_t effRandState_t;
 typedef union SdfDrawTransform SdfDrawTransform;
 typedef struct SdfGsTextureStateValues SdfGsTextureStateValues;
 typedef struct sdfMatPacket_t sdfMatPacket_t;
@@ -104,7 +104,7 @@ typedef struct effDebugPolyParams_t effDebugPolyParams_t;
 
 
 /* Four ordered 32-bit words in the shared effect random-number state. */
-struct EffRandState {
+struct effRandState_t {
     u32 words[4];
 };
 
@@ -761,7 +761,7 @@ struct effBezierDrawParam_t {
 
 extern void *effPkt3DPrimMakePoly(effBezierDrawParam_t *);
 
-extern EffRandState dds3EffectBase[];
+extern effRandState_t dds3EffectBase[];
 
 extern u32 D_0031F1E0[];
 
@@ -771,10 +771,10 @@ extern f32 effPCPFlashPolyRingExpVertex[];
 
 /* Advance caller-owned state, returning its next 32-bit value. NULL selects
  * the shared effect RNG state. */
-u32 dds3GetRandA(EffRandState *name);
+u32 dds3GetRandA(effRandState_t *name);
 
 /* Returns 24 random bits scaled to [0, 1); NULL selects the shared state. */
-f32 dds3GetRandFloatA(EffRandState *name);
+f32 dds3GetRandFloatA(effRandState_t *name);
 
 extern u32 effMagaCylinderCalcColor(u32 color, u32 colorB);
 
@@ -1231,7 +1231,7 @@ effPCPFlashPolySphere_tag *effPCPFlashPolySphereCreate(effPCPFlashPolySpherePara
     record->blend = work->drawMode;
     range = work->randomRange;
     for (particleIndex = 0; particleIndex < work->particleCount; particleIndex++) {
-        work->pPart[particleIndex].frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
+        work->pPart[particleIndex].frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % range);
     }
     return work;
 }
@@ -1436,7 +1436,7 @@ void effPCPFlashPolySphereDraw(effPCPFlashPolySphere_tag *hData) {
         } else {
             if (part->frame >= lifetime) {
                 if (restart != 0) {
-                    part->frame = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
+                    part->frame = ~(dds3GetRandA((effRandState_t *)dds3EffectBase) % range);
                 }
                 color = 0;
                 effPCPFlashPolySpherePartSetVC(hData, index, color);
@@ -1498,7 +1498,7 @@ effPCPFlashPolyRing_tag *effPCPFlashPolyRingCreate(effPCPFlashPolyRingParam_t *p
     step = 3.14159265f * 2.0f / (f32)(u32)work->particleCount;
     range = work->randomRange;
     for (i = 0; i < (u32)work->particleCount; i++) {
-        work->parts[i].frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
+        work->parts[i].frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % range);
         work->parts[i].rotate = angle;
         angle += step;
     }
@@ -1675,7 +1675,7 @@ void effPCPFlashPolyRingDraw(effPCPFlashPolyRing_tag *hData) {
         } else {
             if (part->frame >= lifetime) {
                 if (restart != 0) {
-                    part->frame = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
+                    part->frame = ~(dds3GetRandA((effRandState_t *)dds3EffectBase) % range);
                 }
                 color = 0;
                 effPCPFlashPolyRingPartSetVC(hData, index, color);
@@ -1737,7 +1737,7 @@ effPCPFlashPolyPipe_tag *effPCPFlashPolyPipeCreate(effPCPFlashPolyPipeParam_t *p
     step = 3.14159265f * 2.0f / (f32)(u32)work->particleCount;
     range = work->randomRange;
     for (i = 0; i < (u32)work->particleCount; i++) {
-        work->parts[i].frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
+        work->parts[i].frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % range);
         work->parts[i].rotate = angle;
         angle += step;
     }
@@ -1926,7 +1926,7 @@ void effPCPFlashPolyPipeDraw(effPCPFlashPolyPipe_tag *hData)
             part->up = 0;
         } else if (age >= lifetime) {
             if (restart != 0) {
-                part->frame = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % randomRange);
+                part->frame = ~(dds3GetRandA((effRandState_t *)dds3EffectBase) % randomRange);
             }
             color = 0;
             effPCPFlashPolyPipePartSetVC(hData, index, color);
@@ -1988,7 +1988,7 @@ effPCPFlashPolyRingExp_tag *effPCPFlashPolyRingExpCreate(effPCPFlashPolyRingExpP
     step = EFFECT_RING_FULL_TURN / (u32)ring->particleCount;
     spread = ring->randomRange;
     for (i = 0; i < (u32)ring->particleCount; i++) {
-        ring->pPart[i].frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % spread);
+        ring->pPart[i].frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % spread);
         ring->pPart[i].accumulator = angle;
         angle += step;
     }
@@ -2188,7 +2188,7 @@ void effPCPFlashPolyRingExpDraw(effPCPFlashPolyRingExp_tag *hData)
             part->color = EFF_NEUTRAL_COLOR;
         } else if (age >= lifetime) {
             if (restart != 0) {
-                part->frame = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % randomRange);
+                part->frame = ~(dds3GetRandA((effRandState_t *)dds3EffectBase) % randomRange);
             }
             color = 0;
             effPCPFlashPolyRingExpPartSetVC(hData, index, color);
@@ -2244,7 +2244,7 @@ effPCPFlashPolySphereExp_tag *effPCPFlashPolySphereExpCreate(effPCPFlashPolySphe
     record->blend = work->drawMode;
     range = work->randomRange;
     for (i = 0; i < work->particleCount; i++) {
-        work->parts[i].frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
+        work->parts[i].frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % range);
     }
     return work;
 }
@@ -2434,7 +2434,7 @@ void effPCPFlashPolySphereExpDraw(effPCPFlashPolySphereExp_tag *hData) {
         } else {
             if (part->frame >= lifetime) {
                 if (restart != 0) {
-                    part->frame = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
+                    part->frame = ~(dds3GetRandA((effRandState_t *)dds3EffectBase) % range);
                 }
                 color = 0;
                 effPCPFlashPolySphereExpPartSetVC(hData, index, color);
@@ -2690,7 +2690,7 @@ effPCPFlashPolySphere3_tag *effPCPFlashPolySphere3Create(effFlashRadialStripPara
     work->hPoly = record;
     range = work->randomRange;
     for (i = 0; i < work->particleCount; i++) {
-        work->parts[i].frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
+        work->parts[i].frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % range);
     }
     return work;
 }
@@ -2910,7 +2910,7 @@ void effPCPFlashPolySphere3Draw(effPCPFlashPolySphere3_tag *hData) {
                 effPCPFlashPolySphere3PartSetVC(hData, index, effMagaCylinderCalcColor(effColorBlend(0, part->abgr, blend), tintColor));
             }
             if (age == lifetime && restart != 0) {
-                part->frame = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
+                part->frame = ~(dds3GetRandA((effRandState_t *)dds3EffectBase) % range);
                 effPCPFlashPolySphere3PartSetVC(hData, index, 0);
             } else {
                 part->frame = part->frame + 1;
@@ -2953,7 +2953,7 @@ effPCPFlashPolyRingExp2_tag *effPCPFlashPolyRingExp2Create(effPCPFlashPolyRingEx
     step = 3.14159265f * 2.0f / (f32)(u32)work->particleCount;
     range = work->randomRange;
     for (i = 0; i < (u32)work->particleCount; i++) {
-        work->pPart[i].frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
+        work->pPart[i].frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % range);
         work->pPart[i].rotate = angle;
         angle += step;
     }
@@ -3157,7 +3157,7 @@ void effPCPFlashPolyRingExp2Draw(effPCPFlashPolyRingExp2_tag *hData) {
                 effPCPFlashPolyRingExp2PartSetVC(hData, index, effMagaCylinderCalcColor(effColorBlend(0, part->abgr, blend), tintColor));
             }
             if (age == lifetime && restart != 0) {
-                part->frame = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % range);
+                part->frame = ~(dds3GetRandA((effRandState_t *)dds3EffectBase) % range);
                 effPCPFlashPolyRingExp2PartSetVC(hData, index, 0);
             } else {
                 part->frame = part->frame + 1;
@@ -3397,7 +3397,7 @@ effPCPFlashPolyRingExpH_tag *effPCPFlashPolyRingExpHCreate(effPCPFlashPolyRingEx
     step = EFFECT_RING_FULL_TURN / ring->count;
     spread = ring->spread;
     for (i = 0; i < ring->count; i++) {
-        ring->pPart[i].frame = -(dds3GetRandA((EffRandState *)dds3EffectBase) % spread);
+        ring->pPart[i].frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % spread);
         ring->pPart[i].rotate = angle;
         angle += step;
     }
@@ -3601,7 +3601,7 @@ void effPCPFlashPolyRingExpHDraw(effPCPFlashPolyRingExpH_tag *hData)
             part->abgr = EFF_NEUTRAL_COLOR;
         } else if (age >= lifetime) {
             if (restart != 0) {
-                part->frame = ~(dds3GetRandA((EffRandState *)dds3EffectBase) % randomRange);
+                part->frame = ~(dds3GetRandA((effRandState_t *)dds3EffectBase) % randomRange);
             }
             color = 0;
             effPCPFlashPolyRingExpHPartSetVC(hData, index, color);
