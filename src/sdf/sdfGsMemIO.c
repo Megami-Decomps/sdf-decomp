@@ -16,7 +16,7 @@ struct sdfDrawTag_t;
 
 struct sdfStoreImagePacket_t;
 
-struct SdfPatchableResourcePacket;
+struct sdfStoreFrameImagePacket_t;
 
 struct sdfPreDrawTag_t;
 
@@ -41,6 +41,8 @@ typedef void (*SdfPacketPatchCallback)();
 typedef struct sdfPreDrawHook_t {
     struct sdfPreDrawHook_t *next;
     SdfPacketPatchCallback predrawFunc;
+    u32 option0;
+    u32 option1;
 } sdfPreDrawHook_t;
 
 /* The four A+D writes controlling a GS image transfer. */
@@ -94,12 +96,10 @@ typedef struct sdfStoreImagePacket_t {
 } sdfStoreImagePacket_t;
 
 /* Metadata node followed by the resource-transfer payload (0x100). */
-typedef struct SdfPatchableResourcePacket {
-    sdfPreDrawHook_t link;
-    u32 unk08;
-    u32 unk0C;
-    sdfStoreImagePacket_t resourcePacket;
-} SdfPatchableResourcePacket;
+typedef struct sdfStoreFrameImagePacket_t {
+    sdfPreDrawHook_t worker;
+    sdfStoreImagePacket_t packet;
+} sdfStoreFrameImagePacket_t;
 
 /* Complete linked-packet list, distinct from the 0x20-byte DMA list head. */
 typedef struct sdfPreDrawTag_t {
@@ -136,7 +136,7 @@ void sdfLinkStoreImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle, s32 a
                    s32 aSrcY, s32 aWidth, s32 aHeight, s32 aBuffer, s32 aCallback,
                    s32 aCallbackParam, s32 (*aAllocator)(s32));
 
-void sdfLinkStoreFrameImagePredraw(SdfPatchableResourcePacket *aPre, s32 aEvenOdd);
+void sdfLinkStoreFrameImagePredraw(sdfStoreFrameImagePacket_t *aPre, s32 aEvenOdd);
 
 void sdfLinkStoreFrameImage(sdfDrawTag_t *aDrawTag, sdfPreDrawTag_t *aPreDrawTag, s32 aSrcX, s32 aSrcY,
                    s32 aWidth, s32 aHeight, s32 aBuffer, s32 aCallback, s32 aCallbackParam,
@@ -207,27 +207,27 @@ void sdfLinkStoreImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle, s32 a
     sdfDrawTagLink2(aDrawTag, packetAddress, packetAddress + 0xc0);
 }
 
-void sdfLinkStoreFrameImagePredraw(SdfPatchableResourcePacket *aPre, s32 aEvenOdd) {
-    aPre->resourcePacket.bitblt.bitbltbuf.data =
-        (aPre->resourcePacket.bitblt.bitbltbuf.data & ~0x3FFF) |
+void sdfLinkStoreFrameImagePredraw(sdfStoreFrameImagePacket_t *aPre, s32 aEvenOdd) {
+    aPre->packet.bitblt.bitbltbuf.data =
+        (aPre->packet.bitblt.bitbltbuf.data & ~0x3FFF) |
         (u64)(u32)(D_00529388.buffers[aEvenOdd]->addr >> 6);
 }
 
 void sdfLinkStoreFrameImage(sdfDrawTag_t *aDrawTag, sdfPreDrawTag_t *aPreDrawTag, s32 aSrcX, s32 aSrcY,
                    s32 aWidth, s32 aHeight, s32 aBuffer, s32 aCallback, s32 aCallbackParam,
                    s32 (*aAllocator)(s32)) {
-    SdfPatchableResourcePacket *packet;
+    sdfStoreFrameImagePacket_t *packet;
 
     if (aAllocator == NULL) {
         aAllocator = sdfGrAllocPacketBuff;
     }
-    packet = (SdfPatchableResourcePacket *)aAllocator(SDF_PATCHABLE_PACKET_BYTES);
-    packet->link.predrawFunc = sdfLinkStoreFrameImagePredraw;
-    sdfSetStoreImage(&packet->resourcePacket,
+    packet = (sdfStoreFrameImagePacket_t *)aAllocator(SDF_PATCHABLE_PACKET_BYTES);
+    packet->worker.predrawFunc = sdfLinkStoreFrameImagePredraw;
+    sdfSetStoreImage(&packet->packet,
         D_00529388.buffers[0], aSrcX, aSrcY, aWidth, aHeight,
         aBuffer, aCallback, aCallbackParam);
-    sdfPreDrawTagLink(aPreDrawTag, &packet->link);
-    sdfDrawTagLink2(aDrawTag, (u32)&packet->resourcePacket,
+    sdfPreDrawTagLink(aPreDrawTag, &packet->worker);
+    sdfDrawTagLink2(aDrawTag, (u32)&packet->packet,
         (u32)packet + SDF_PATCHABLE_PACKET_TAIL_OFFSET);
 }
 

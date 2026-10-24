@@ -115,7 +115,7 @@ struct sdfDrawTag_t;
 
 struct sdfMemHandle_t;
 
-struct SdfGraphCopyPacket;
+struct sdfPrimFrameMovePacket_t;
 
 struct sdfPreDrawTag_t;
 
@@ -214,6 +214,8 @@ typedef struct sdfPrimTexflushPacket_t {
 typedef struct sdfPreDrawHook_t {
     struct sdfPreDrawHook_t *next;
     SdfPacketPatchCallback predrawFunc;
+    u32 option0;
+    u32 option1;
 } sdfPreDrawHook_t;
 
 /* PRIM followed by 3 individually textured and colored vertices. */
@@ -386,12 +388,10 @@ typedef struct sdfGrFrameSet_t {
 
 
 /* Metadata node plus the extended local-to-local image-copy payload (0x70). */
-typedef struct SdfGraphCopyPacket {
-    sdfPreDrawHook_t link;
-    u32 resourceIndexXor; /* Selects the source resource for the queued buffer. */
-    u32 unk0C;
-    sdfPrimBitBltPacket_t draw;
-} SdfGraphCopyPacket;
+typedef struct sdfPrimFrameMovePacket_t {
+    sdfPreDrawHook_t worker; /* option0 selects the source resource for the buffer */
+    sdfPrimBitBltPacket_t packet;
+} sdfPrimFrameMovePacket_t;
 
 /* Complete linked-packet list, distinct from the 0x20-byte DMA list head. */
 typedef struct sdfPreDrawTag_t {
@@ -495,7 +495,7 @@ void sdfPrimLinkBitBltPacket(s32 aTag, u32 aDstGsAddr, s32 aDstBuffWidth,
                              s32 aSrcX, s32 aSrcY, s32 aWidth, s32 aHeight,
                              s32 aDirMode, s32 (*aAllocator)(s32));
 
-void sdfPrimFrameMovePredraw(SdfGraphCopyPacket *aPre, s32 aEvenOdd);
+void sdfPrimFrameMovePredraw(sdfPrimFrameMovePacket_t *aPre, s32 aEvenOdd);
 
 void sdfPrimLinkFrameMovePacket(sdfDrawTag_t *aDrawTag, sdfPreDrawTag_t *aPreDrawTag,
                    sdfGsMemSlice_t *aBuffHandle, s32 aDstX, s32 aDstY,
@@ -775,33 +775,33 @@ void sdfPrimLinkBitBltPacket(s32 aTag, u32 aDstGsAddr, s32 aDstBuffWidth,
     sdfDrawTagLink(aTag, packetAddress);
 }
 
-void sdfPrimFrameMovePredraw(SdfGraphCopyPacket *aPre, s32 aEvenOdd) {
-    aPre->draw.bitblt.bitbltbuf.data =
-        (aPre->draw.bitblt.bitbltbuf.data & ~0x3FFF) |
-        (u64)(u32)(D_00529388.buffers[aEvenOdd ^ aPre->resourceIndexXor]->addr >> 6);
+void sdfPrimFrameMovePredraw(sdfPrimFrameMovePacket_t *aPre, s32 aEvenOdd) {
+    aPre->packet.bitblt.bitbltbuf.data =
+        (aPre->packet.bitblt.bitbltbuf.data & ~0x3FFF) |
+        (u64)(u32)(D_00529388.buffers[aEvenOdd ^ aPre->worker.option0]->addr >> 6);
 }
 
 void sdfPrimLinkFrameMovePacket(sdfDrawTag_t *aDrawTag, sdfPreDrawTag_t *aPreDrawTag,
                    sdfGsMemSlice_t *aBuffHandle, s32 aDstX, s32 aDstY,
                    s32 aSrcX, s32 aSrcY, s32 aWidth, s32 aHeight,
                    s32 aFrameSw, s32 (*aAllocator)(s32)) {
-    SdfGraphCopyPacket *packet;
+    sdfPrimFrameMovePacket_t *packet;
     sdfPrimBitBltPacket_t *drawPacket;
 
     if (aAllocator == NULL) {
         aAllocator = sdfGrAllocPacketBuff;
     }
-    packet = (SdfGraphCopyPacket *)aAllocator(0x70);
-    packet->resourceIndexXor = aFrameSw;
-    packet->link.predrawFunc = sdfPrimFrameMovePredraw;
-    drawPacket = &packet->draw;
+    packet = (sdfPrimFrameMovePacket_t *)aAllocator(0x70);
+    packet->worker.option0 = aFrameSw;
+    packet->worker.predrawFunc = sdfPrimFrameMovePredraw;
+    drawPacket = &packet->packet;
 
     sdfPrimSetBitBltPacket(
         drawPacket, aBuffHandle->addr, aBuffHandle->w,
         aBuffHandle->pixelFormat, aDstX, aDstY, D_00529388.buffers[0]->addr,
         D_00529388.width, D_00529388.bufferFormat, aSrcX, aSrcY, aWidth,
         aHeight, 2);
-    sdfPreDrawTagLink(aPreDrawTag, &packet->link);
+    sdfPreDrawTagLink(aPreDrawTag, &packet->worker);
     sdfDrawTagLink(aDrawTag, (s32)drawPacket);
 }
 
