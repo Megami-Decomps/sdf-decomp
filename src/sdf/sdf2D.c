@@ -40,9 +40,7 @@ enum {
 
 struct sdfDrawTag_t;
 
-struct SdfDrawPacket;
-
-struct SdfTextureDrawPacket;
+struct sdf2DTexPacket_t;
 
 struct sdfTexPacket_t;
 
@@ -56,16 +54,6 @@ struct TMX_HEADER_t;
 typedef u8 SdfTextureClampMode;
 
 
-/* Variable-sized packet header initialized by sdf2DMakePrimPacketHeader. */
-typedef struct SdfDrawPacket {
-    u16 quadwords;
-    u8 pad02[6];
-    u32 pad08;
-    u32 command;
-    u64 gifTag;
-    u64 payloadHeader;
-} SdfDrawPacket;
-
 #define SDF_GIF_PRIM_SHIFT 47
 
 #define SDF_DMA_QWORD_SHIFT 4
@@ -77,15 +65,12 @@ typedef struct SdfDrawPacket {
 #define SDF_VIF_DIRECT_COMMAND 0x50000000
 
 /* Fixed-size texture packet; constructor allocation and writes cover 0x50. */
-typedef struct SdfTextureDrawPacket {
-    SdfDrawPacket header;
-    u64 textureWordA;
-    u64 registerAddressA;
-    u64 textureWordB;
-    u64 registerAddressB;
-    u64 textureWordC;
-    u64 registerAddressC;
-} SdfTextureDrawPacket;
+typedef struct sdf2DTexPacket_t {
+    sdfGrPacketHeader_t header;
+    sdfGrTagStdReg_t tex1;
+    sdfGrTagStdReg_t tex0;
+    sdfGrTagStdReg_t clamp;
+} sdf2DTexPacket_t;
 
 void sdfDrawTagLink(struct sdfDrawTag_t *aTag, u32 aPacket);
 
@@ -127,7 +112,7 @@ struct sdfTexHandle_t *sdfTexSetDirect(const TMX_HEADER_t *aTex);
  * Returns the prior cursor as a 32-bit address; the buffer owns this storage. */
 s32 sdfGrAllocPacketBuff(s32 aSize);
 
-SdfTextureDrawPacket *sdf2DMakeTexPacket(SdfTextureDrawPacket *aPacket, sdfTexHandle_t *aTexHndl, s32 aCtx);
+sdf2DTexPacket_t *sdf2DMakeTexPacket(sdf2DTexPacket_t *aPacket, sdfTexHandle_t *aTexHndl, s32 aCtx);
 
 s32 sdf2DLinkTexPacket(sdfDrawTag_t *aTag, sdfTexHandle_t *aTexHndl, s32 aCtx);
 
@@ -135,32 +120,32 @@ u32 sdf2DMakeStdPacket(u32 aPacket, s32 aLeng);
 
 s32 sdf2DGetPrimPacketSize(s32 aNumOfRegs, s32 aNumOfPrim);
 
-SdfDrawPacket *sdf2DMakePrimPacketHeader(SdfDrawPacket *aPacketPtr, s32 aPrimReg, s32 aNumOfRegs, s64 aGifRegs, s32 aNumOfPrim);
+sdfGrPacketHeader_t *sdf2DMakePrimPacketHeader(sdfGrPacketHeader_t *aPacketPtr, s32 aPrimReg, s32 aNumOfRegs, s64 aGifRegs, s32 aNumOfPrim);
 
-SdfDrawPacket *sdf2DAllocSprite(s32 aNumOfSpr);
+sdfGrPacketHeader_t *sdf2DAllocSprite(s32 aNumOfSpr);
 
 u32 sdf2DGetTexPacketSize(sdfTexHandle_t *aTexHndl) {
     return 5 << SDF_DMA_QWORD_SHIFT;
 }
 
-SdfTextureDrawPacket *sdf2DMakeTexPacket(SdfTextureDrawPacket *aPacket, sdfTexHandle_t *aTexHndl, s32 aCtx) {
-    aPacket->header.quadwords = 4;
-    aPacket->header.gifTag = 0x1000000000008003ULL;
-    aPacket->header.command = 0x50000004;
-    aPacket->header.pad08 = 0;
-    aPacket->header.payloadHeader = SDF_GIF_REGISTER_AD;
-    aPacket->textureWordA = sdfTexGetTex1Reg(aTexHndl);
-    aPacket->registerAddressA = aCtx + 0x14;
-    aPacket->textureWordB = sdfTexGetTex0Reg(aTexHndl);
-    aPacket->registerAddressB = aCtx + 6;
-    aPacket->textureWordC = sdfTexGetClampReg(aTexHndl);
-    aPacket->registerAddressC = aCtx + 8;
+sdf2DTexPacket_t *sdf2DMakeTexPacket(sdf2DTexPacket_t *aPacket, sdfTexHandle_t *aTexHndl, s32 aCtx) {
+    aPacket->header.dmatag.qwc = 4;
+    aPacket->header.giftag.parm = 0x1000000000008003ULL;
+    aPacket->header.dmatag.dat1 = 0x50000004;
+    aPacket->header.dmatag.addr = NULL;
+    aPacket->header.giftag.regs = SDF_GIF_REGISTER_AD;
+    aPacket->tex1.data = sdfTexGetTex1Reg(aTexHndl);
+    aPacket->tex1.reg = aCtx + 0x14;
+    aPacket->tex0.data = sdfTexGetTex0Reg(aTexHndl);
+    aPacket->tex0.reg = aCtx + 6;
+    aPacket->clamp.data = sdfTexGetClampReg(aTexHndl);
+    aPacket->clamp.reg = aCtx + 8;
     return aPacket;
 }
 
 s32 sdf2DLinkTexPacket(sdfDrawTag_t *aTag, sdfTexHandle_t *aTexHndl, s32 aCtx) {
     s32 packetBytes = sdf2DGetTexPacketSize(aTexHndl);
-    SdfTextureDrawPacket *packet = (SdfTextureDrawPacket *)sdfGrAllocPacketBuff(packetBytes);
+    sdf2DTexPacket_t *packet = (sdf2DTexPacket_t *)sdfGrAllocPacketBuff(packetBytes);
     s32 packetAddress = (s32)sdf2DMakeTexPacket(packet, aTexHndl, aCtx);
     sdfDrawTagLink(aTag, packetAddress);
     return packetAddress;
@@ -175,26 +160,26 @@ s32 sdf2DGetPrimPacketSize(s32 aNumOfRegs, s32 aNumOfPrim) {
     return (aNumOfRegs * aNumOfPrim + 2) << SDF_DMA_QWORD_SHIFT;
 }
 
-void *sdf2DGetPrimPtr(SdfDrawPacket *aPacketPtr) {
+void *sdf2DGetPrimPtr(sdfGrPacketHeader_t *aPacketPtr) {
     return aPacketPtr + 1;
 }
 
-SdfDrawPacket *sdf2DMakePrimPacketHeader(SdfDrawPacket *aPacketPtr, s32 aPrimReg, s32 aNumOfRegs, s64 aGifRegs, s32 aNumOfPrim) {
+sdfGrPacketHeader_t *sdf2DMakePrimPacketHeader(sdfGrPacketHeader_t *aPacketPtr, s32 aPrimReg, s32 aNumOfRegs, s64 aGifRegs, s32 aNumOfPrim) {
     s32 packetQuadwords = aNumOfRegs * aNumOfPrim + 1;
     s64 gifTag = aNumOfPrim | ((s64)aNumOfRegs << SDF_GIF_NREG_SHIFT);
 
     gifTag |= (s64)aPrimReg << SDF_GIF_PRIM_SHIFT;
     gifTag |= SDF_GIF_PRE_EOP_FLAGS;
-    aPacketPtr->gifTag = gifTag;
-    aPacketPtr->command = packetQuadwords | SDF_VIF_DIRECT_COMMAND;
-    aPacketPtr->payloadHeader = aGifRegs;
-    aPacketPtr->pad08 = 0;
-    aPacketPtr->quadwords = packetQuadwords;
+    aPacketPtr->giftag.parm = gifTag;
+    aPacketPtr->dmatag.dat1 = packetQuadwords | SDF_VIF_DIRECT_COMMAND;
+    aPacketPtr->giftag.regs = aGifRegs;
+    aPacketPtr->dmatag.addr = NULL;
+    aPacketPtr->dmatag.qwc = packetQuadwords;
     return aPacketPtr;
 }
 
-SdfDrawPacket *sdf2DAllocSprite(s32 aNumOfSpr) {
-    SdfDrawPacket *packet = (SdfDrawPacket *)sdfGrAllocPacketBuff(sdf2DGetPrimPacketSize(5, aNumOfSpr));
+sdfGrPacketHeader_t *sdf2DAllocSprite(s32 aNumOfSpr) {
+    sdfGrPacketHeader_t *packet = (sdfGrPacketHeader_t *)sdfGrAllocPacketBuff(sdf2DGetPrimPacketSize(5, aNumOfSpr));
     sdf2DMakePrimPacketHeader(packet, 0x156, 5, 0x53531, aNumOfSpr);
     return packet;
 }
