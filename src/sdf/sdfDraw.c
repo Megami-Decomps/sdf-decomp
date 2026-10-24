@@ -90,8 +90,6 @@ struct sdfGrClearPacket_t;
 
 struct sdfGrRefGifPacketHeader_t;
 
-struct SdfDmaReferenceChainPacket;
-
 struct sdfGrDrawFrame_t;
 
 
@@ -201,15 +199,6 @@ typedef struct sdfGrRefGifPacketHeader_t {
     sdfGrTagStdReg_t reftag;
     sdfGrTagStdReg_t linktag;
 } sdfGrRefGifPacketHeader_t;
-
-/* GIF tag followed by a REF transfer and the patchable NEXT link. */
-typedef struct SdfDmaReferenceChainPacket {
-    sdfGrPacketHeader_t header;
-    u64 referenceTag;
-    u64 referenceVifCommands;
-    u64 nextTag;
-    u64 zeroTailWord;
-} SdfDmaReferenceChainPacket;
 
 /* Accessed output span of the common scene-context builder. */
 typedef struct sdfGrDrawFrame_t {
@@ -328,7 +317,7 @@ typedef struct sdfGrStdDrawEnv_t {
 
 void sdfGrStdDrawEnvPredraw(sdfGrStdDrawEnv_t *aPre, s32 aEvenOdd);
 
-void sdfGrSetRefGifPacket(SdfDmaReferenceChainPacket *aPacket, u32 aRegs, s32 aNumRegs);
+void sdfGrSetRefGifPacket(sdfGrRefGifPacketHeader_t *aPacket, u32 aRegs, s32 aNumRegs);
 
 void sdfGrSetDrawDefParmPacket(sdfGrRefGifPacketHeader_t *aDef);
 
@@ -703,15 +692,15 @@ void sdfGrSetRegsPacketHeader(sdfGrPacketHeader_t *header, s32 payloadQwords) {
     header->giftag.regs = SDF_GIF_REGISTER_AD;
 }
 
-void sdfGrSetRefGifPacket(SdfDmaReferenceChainPacket *aPacket, u32 aRegs, s32 aNumRegs) {
-    aPacket->header.dmaWords.tag = SDF_DMA_CNT_ONE_WORD;
-    aPacket->header.dmaWords.vif = SDF_VIF_DIRECT_ONE_FLUSHE;
-    aPacket->header.giftag.parm = (u64)aNumRegs | SDF_GIF_PACKED_AD_BITS;
-    aPacket->header.giftag.regs = SDF_GIF_REGISTER_AD;
-    aPacket->referenceTag = (u32)((aNumRegs & SDF_DMA_QWC_MASK) | SDF_DMA_TAG_REF_WORD) | ((u64)(aRegs & SDF_DMA_ADDRESS_MASK) << 32);
-    aPacket->referenceVifCommands = SDF_VIF_DIRECT_ONE_NOP;
-    aPacket->nextTag = SDF_DMA_TAG_NEXT_WORD;
-    aPacket->zeroTailWord = 0;
+void sdfGrSetRefGifPacket(sdfGrRefGifPacketHeader_t *aPacket, u32 aRegs, s32 aNumRegs) {
+    aPacket->dmatag.data = SDF_DMA_CNT_ONE_WORD;
+    aPacket->dmatag.reg = SDF_VIF_DIRECT_ONE_FLUSHE;
+    aPacket->giftag.data = (u64)aNumRegs | SDF_GIF_PACKED_AD_BITS;
+    aPacket->giftag.reg = SDF_GIF_REGISTER_AD;
+    aPacket->reftag.data = (u32)((aNumRegs & SDF_DMA_QWC_MASK) | SDF_DMA_TAG_REF_WORD) | ((u64)(aRegs & SDF_DMA_ADDRESS_MASK) << 32);
+    aPacket->reftag.reg = SDF_VIF_DIRECT_ONE_NOP;
+    aPacket->linktag.data = SDF_DMA_TAG_NEXT_WORD;
+    aPacket->linktag.reg = 0;
 }
 
 void sdfGrSetDrawFramePacket(sdfGrDrawFramePacket_t *aFrame, s32 aFrameAddr, s32 aW, s32 aH,
@@ -835,7 +824,7 @@ void sdfGrLinkStdDrawEnv(sdfDrawTag_t *aTag, sdfPreDrawTag_t *aPreDrawTag, sdfPr
     sdfDrawTagLink(aTag, (s32)aEnv + SDF_QWORD_BYTES);
 }
 
-void sdfGrSetFrameMaskRGB(const u8 *aEnv, SdfDmaReferenceChainPacket *aHdr, s32 aContext) {
+void sdfGrSetFrameMaskRGB(const u8 *aEnv, sdfGrRefGifPacketHeader_t *aHdr, s32 aContext) {
     if (aContext == 0) {
         sdfGrSetRefGifPacket(aHdr, (u32)(aEnv + 0x180), 1);
         return;
@@ -843,7 +832,7 @@ void sdfGrSetFrameMaskRGB(const u8 *aEnv, SdfDmaReferenceChainPacket *aHdr, s32 
     sdfGrSetRefGifPacket(aHdr, (u32)(aEnv + 400), 1);
 }
 
-void sdfGrSetFrameMaskReset(const u8 *aEnv, SdfDmaReferenceChainPacket *aHdr, s32 aContext) {
+void sdfGrSetFrameMaskReset(const u8 *aEnv, sdfGrRefGifPacketHeader_t *aHdr, s32 aContext) {
     if (aContext == 0) {
         sdfGrSetRefGifPacket(aHdr, (u32)(aEnv + 0x70), 1);
         return;
