@@ -1,5 +1,6 @@
 #include "common.h"
 #include "ps2asm.h"
+#include "sdf_types.h"
 
 enum sdfDecomp_enum {
     SDF_DECOMP_STAT_END = 0,
@@ -32,20 +33,10 @@ enum {
     SDF_DECOMP_LENGTH_MASK = 0x1F
 };
 
-struct SdfPacket;
-
 struct sdfDecompCb_t;
 
 /* Load matrix into the VU0 scratch bank and postmultiply the primary bank. */
 void MultMatrixRev(const void *aMatrix);
-
-/* Four-doubleword DMA packet payload (0x20); DDS1/2 game/code_002D33C8/0032C278.c. */
-typedef struct SdfPacket {
-    u64 unk0;
-    u64 unk8;
-    u64 unk10;
-    u64 unk18;
-} SdfPacket;
 
 extern const u8 *D_00594780[16];
 
@@ -89,11 +80,11 @@ s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length);
 
 void sdfDecompInit(sdfDecompCb_t *cb, u8 *dst);
 
-SdfPacket *sdfDrawModelWithMatrix(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags);
+sdfGrPacketHeader_t *sdfDrawModelWithMatrix(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags);
 
-SdfPacket *effDebugDrawWireModel(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags);
+sdfGrPacketHeader_t *effDebugDrawWireModel(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags);
 
-SdfPacket *sdfDrawRotatedModel(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags);
+sdfGrPacketHeader_t *sdfDrawRotatedModel(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags);
 
 s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length) {
     s32 count;
@@ -257,8 +248,8 @@ void sdfDecompInit(sdfDecompCb_t *cb, u8 *dst) {
     cb->stat = 1;
 }
 
-SdfPacket *sdfDrawModelWithMatrix(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags) {
-    SdfPacket *packet;
+sdfGrPacketHeader_t *sdfDrawModelWithMatrix(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags) {
+    sdfGrPacketHeader_t *packet;
     f32 (*viewport)[4];
     u128 *cursor;
     s32 i;
@@ -269,7 +260,7 @@ SdfPacket *sdfDrawModelWithMatrix(const f32 vertices[][4], const u32 *colors, s3
     u32 secondClip;
     u32 quadwordCount;
 
-    packet = (SdfPacket *)sdfGrOpenPacketBuff();
+    packet = (sdfGrPacketHeader_t *)sdfGrOpenPacketBuff();
     cursor = (u128 *)(packet + 1);
     viewport = sdfDrawFaceListParam;
     VU0_LOAD_VF14(viewport);
@@ -361,19 +352,19 @@ SdfPacket *sdfDrawModelWithMatrix(const f32 vertices[][4], const u32 *colors, s3
     }
     sdfGrClosePacketBuff((s32)cursor & 0x0FFFFFFF);
     quadwordCount = emitted * 2 + 1;
-    packet->unk0 = (quadwordCount & 0xFFFF) | 0x20000000;
-    packet->unk8 = ((u64)(quadwordCount | 0x50000000) << 32) | 0x10000000;
-    packet->unk10 = emitted | ((u64)(primitiveFlags | 9) << 47) | 0x2000400000008000ULL;
-    packet->unk18 = 0x41;
+    packet->dmaWords.tag = (quadwordCount & 0xFFFF) | 0x20000000;
+    packet->dmaWords.vif = ((u64)(quadwordCount | 0x50000000) << 32) | 0x10000000;
+    packet->giftag.parm = emitted | ((u64)(primitiveFlags | 9) << 47) | 0x2000400000008000ULL;
+    packet->giftag.regs = 0x41;
     return packet;
 }
 
-SdfPacket *effDebugDrawWireModel(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags) {
+sdfGrPacketHeader_t *effDebugDrawWireModel(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags) {
     SDF_VU0_LOADMATRIX(sdf3DScreenTm);
     return sdfDrawModelWithMatrix(vertices, colors, vertexCount, primitiveFlags);
 }
 
-SdfPacket *sdfDrawRotatedModel(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags) {
+sdfGrPacketHeader_t *sdfDrawRotatedModel(const f32 vertices[][4], const u32 *colors, s32 vertexCount, u32 primitiveFlags) {
     MultMatrixRev(sdf3DScreenTm);
     return sdfDrawModelWithMatrix(vertices, colors, vertexCount, primitiveFlags);
 }
