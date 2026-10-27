@@ -201,7 +201,15 @@ void *sdfFixupModelBinary(sdfBinaryHeader_t *aData)
     return body;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfDevFile", sdfDevLoadModel);
+void *sdfDevLoadModel(const char *aFilename, void **aOutBody) {
+    u32 dataAddress;
+    sdfMemHandle_t *allocation;
+
+    printf(D_0054A2D8, aFilename);
+    allocation = sdfDevLoadFileEx(aFilename, &dataAddress, 0);
+    *aOutBody = sdfFixupModelBinary((sdfBinaryHeader_t *)dataAddress);
+    return allocation;
+}
 
 void *sdfFixupMotionBinary(sdfBinaryHeader_t *aData)
 {
@@ -211,7 +219,15 @@ void *sdfFixupMotionBinary(sdfBinaryHeader_t *aData)
     return body;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfDevFile", sdfDevLoadMotion);
+void *sdfDevLoadMotion(const char *aFilename, void **aOutBody) {
+    u32 dataAddress;
+    sdfMemHandle_t *allocation;
+
+    printf(D_0054A2D8, aFilename);
+    allocation = sdfDevLoadFileEx(aFilename, &dataAddress, 0);
+    *aOutBody = sdfFixupMotionBinary((sdfBinaryHeader_t *)dataAddress);
+    return allocation;
+}
 
 INCLUDE_RODATA(const s32, "sdf/sdfDevFile", D_0054A2D8);
 
