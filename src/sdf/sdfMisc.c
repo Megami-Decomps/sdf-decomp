@@ -85,4 +85,45 @@ void sdfItemArrayFree(sdfItemArray_t *aArray)
     sdfChipFreeDirect(aArray);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfMisc", sdfItemArrayGrow);
+void sdfMemUnlock(sdfMemHandle_t *aHandle);
+
+void sdfMemReallocRecord(sdfMemHandle_t *aHandle, s32 aSize);
+
+void func_002BFF98(sdfItemArray_t *aArray, s32 aCapacity);
+
+void sdfItemArrayGrow(sdfItemArray_t *aArray)
+{
+    if (aArray->memHandle == NULL) {
+        func_002BFF98(aArray, aArray->growStep);
+        return;
+    }
+    sdfMemUnlock(aArray->memHandle);
+    aArray->capacity = aArray->capacity + aArray->growStep;
+    sdfMemReallocRecord(aArray->memHandle, aArray->capacity * aArray->elemSize);
+    aArray->items = (void *)sdfMemLock(aArray->memHandle);
+}
+
+void func_002BFF98(sdfItemArray_t *aArray, s32 aCapacity)
+{
+    if (aArray->memHandle == NULL) {
+        if (aCapacity > 0) {
+            aArray->capacity = aCapacity;
+            aArray->memHandle = sdfMemAllocDirect(aArray->elemSize * aCapacity);
+            aArray->items = (void *)sdfMemLock(aArray->memHandle);
+        }
+    } else if (aCapacity <= 0) {
+        sdfMemFreeDirect(aArray->memHandle);
+        aArray->memHandle = NULL;
+        aArray->count = 0;
+        aArray->capacity = 0;
+        aArray->items = NULL;
+    } else {
+        sdfMemUnlock(aArray->memHandle);
+        aArray->capacity = aCapacity;
+        sdfMemReallocRecord(aArray->memHandle, aArray->elemSize * aCapacity);
+        aArray->items = (void *)sdfMemLock(aArray->memHandle);
+        if (aCapacity < aArray->count) {
+            aArray->count = aCapacity;
+        }
+    }
+}
