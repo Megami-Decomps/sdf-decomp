@@ -282,7 +282,7 @@ struct effPCPWhirlwindPoly_tag {
     effPCPWhirlwindPolyParam_t param;
     effPCPWhirlwindPolyPart_tag *pPart;
     f32 scale;
-    u32 color;
+    u32 abgr;
     dds3WhirlwindPolyList_tag *hPoly;
     sdfMemHandle_t *allocationHandle;
 };
@@ -376,7 +376,7 @@ struct effPCPWhirlwind3Poly_tag {
     effPCPWhirlwind3PolyParam_t param;
     effPCPWhirlwindPolyPart_tag *pPart;
     f32 scale;
-    u32 color;
+    u32 abgr;
     s32 frame_all;
     dds3WhirlwindPolyList_tag *hPoly;
     sdfMemHandle_t *hMem;
@@ -614,7 +614,7 @@ struct effPCPHamaCardSphere_tag {
     dds3ScatterPolyList_tag *hPoly;
     sdfMemHandle_t *hMem;
     u32 AttachNum;
-    effPartHandle_t **duplicatedHandles;
+    effPartHandle_t **pAttach;
     sdfMemHandle_t *hAttachMem;
 };
 
@@ -1132,7 +1132,7 @@ effPCPHamaCardSphere_tag *effPCPHamaCardSphereCreate(params, resource, particleP
     work->abgr = EFF_SCATTER_NEUTRAL_COLOR;
     work->hMem = allocation;
     work->scale = 1.0f;
-    work->duplicatedHandles = NULL;
+    work->pAttach = NULL;
     work->hAttachMem = NULL;
     work->hPoly = dds3ScatterPolyListCreate(params->number);
     work->hPoly->poolMode = params->blend;
@@ -1151,11 +1151,11 @@ effPCPHamaCardSphere_tag *effPCPHamaCardSphereCreate(params, resource, particleP
         allocation = sdfMemAllocDirect(count * sizeof(u32));
         handles = (effPartHandle_t **)sdfMemLock(allocation);
         work->hAttachMem = allocation;
-        work->duplicatedHandles = handles;
+        work->pAttach = handles;
         /* Native setup seeds group zero even when the computed group count is zero. */
-        work->duplicatedHandles[0] = dds3EffectPartCreate(EFF_PARAM_WORK_KIND_EXTENDED_WORK_WITH_MATRIX_CALLBACK, particleParams);
+        work->pAttach[0] = dds3EffectPartCreate(EFF_PARAM_WORK_KIND_EXTENDED_WORK_WITH_MATRIX_CALLBACK, particleParams);
         for (i = 1; i < count; i++) {
-            work->duplicatedHandles[i] = dds3EffectPartCopy(work->duplicatedHandles[0]);
+            work->pAttach[i] = dds3EffectPartCopy(work->pAttach[0]);
         }
     }
     delaySpread = work->param.timing;
@@ -1195,9 +1195,9 @@ effPCPHamaCardSphere_tag *effPCPHamaCardSphereCopy(source)
         allocation = sdfMemAllocDirect(count * EFF_SCATTER_WORD_BYTES);
         handles = (effPartHandle_t **)sdfMemLock(allocation);
         work->hAttachMem = allocation;
-        work->duplicatedHandles = handles;
+        work->pAttach = handles;
         for (i = 0; i < count; i++) {
-            work->duplicatedHandles[i] = dds3EffectPartCopy(*source->duplicatedHandles);
+            work->pAttach[i] = dds3EffectPartCopy(*source->pAttach);
         }
     }
     return work;
@@ -1213,7 +1213,7 @@ void effPCPHamaCardSphereDelete(effPCPHamaCardSphere_tag *hData)
         duplicatedHandleIndex = 0;
         if (count != 0) {
             do {
-                dds3EffectPartDelete(hData->duplicatedHandles[duplicatedHandleIndex]);
+                dds3EffectPartDelete(hData->pAttach[duplicatedHandleIndex]);
                 duplicatedHandleIndex++;
             } while (duplicatedHandleIndex < count);
         }
@@ -1277,7 +1277,7 @@ void effPCPHamaCardSphereDraw(effPCPHamaCardSphere_tag *hData) {
     i = 0;
     duration = hData->param.life;
     endAge = hData->param.wait + duration;
-    duplicates = hData->duplicatedHandles != NULL;
+    duplicates = hData->pAttach != NULL;
     count = hData->param.number;
     VEC3_SPLAT(halfWidth, hData->param.tex_w * 0.5f);
     VEC3_SPLAT(halfHeight, hData->param.tex_h * 0.5f);
@@ -1398,13 +1398,13 @@ void effPCPHamaCardSphereDraw(effPCPHamaCardSphere_tag *hData) {
         }
         if (duplicates && age >= duplicateStart && age >= 0 && i % perGroup == 0) {
             u32 group = i / perGroup;
-            dds3EffectPartSetColor(hData->duplicatedHandles[group], baseColor);
+            dds3EffectPartSetColor(hData->pAttach[group], baseColor);
             SDF_VU0_LOADVECTOR(hData->param.pos);
             SDF_VU0_LOADVECTOR_B(duplicatePosition);
             SDF_VU0_ADDVECTOR();
             SDF_VU0_STOREVECTOR_NOMEM(duplicatePosition);
-            dds3EffectPartSetPosition(hData->duplicatedHandles[group], duplicatePosition);
-            dds3EffectPartDraw(hData->duplicatedHandles[group]);
+            dds3EffectPartSetPosition(hData->pAttach[group], duplicatePosition);
+            dds3EffectPartDraw(hData->pAttach[group]);
         }
         particle->rot++;
     }
@@ -1884,7 +1884,7 @@ effPCPWhirlwindPoly_tag *effPCPWhirlwindPolyCreate(src, resource)
     particle = (effPCPWhirlwindPolyPart_tag *)(inst + 1);
     /* Preserve the complete serialized parameter block, including padding. */
     memcpy(&inst->param, src, sizeof(inst->param));
-    inst->color = EFF_SCATTER_NEUTRAL_COLOR;
+    inst->abgr = EFF_SCATTER_NEUTRAL_COLOR;
     inst->scale = 1.0f;
     inst->allocationHandle = allocation;
     inst->pPart = particle;
@@ -2056,7 +2056,7 @@ void effPCPWhirlwindPolyDraw(effPCPWhirlwindPoly_tag *hData) {
     loop = hData->param.loop;
     fadeIn = hData->param.fadeIn;
     fadeRange = hData->param.fadeRange;
-    color = effMagaCylinderCalcColor(hData->color, hData->param.baseColor);
+    color = effMagaCylinderCalcColor(hData->abgr, hData->param.baseColor);
 
     for (i = 0; i < count; i++) {
         s32 age = particle->frame;
@@ -2103,7 +2103,7 @@ void effPCPWhirlwindPolySetScale(effPCPWhirlwindPoly_tag *hData, f32 scale)
 
 void effPCPWhirlwindPolySetColor(effPCPWhirlwindPoly_tag *hData, u32 abgr)
 {
-    hData->color = abgr;
+    hData->abgr = abgr;
 }
 
 /* vu0 routine: compose params.matrix and source via the native product into work->matrix. */
@@ -2403,7 +2403,7 @@ effPCPWhirlwind3Poly_tag *effPCPWhirlwind3PolyCreate(src, resource)
     particle = (effPCPWhirlwindPolyPart_tag *)(inst + 1);
     /* Copy the complete serialized parameter block, including padding. */
     memcpy(&inst->param, src, sizeof(inst->param));
-    inst->color = EFF_SCATTER_NEUTRAL_COLOR;
+    inst->abgr = EFF_SCATTER_NEUTRAL_COLOR;
     inst->scale = 1.0f;
     inst->hMem = allocation;
     inst->pPart = particle;
@@ -2592,7 +2592,7 @@ void effPCPWhirlwind3PolyDraw(effPCPWhirlwind3Poly_tag *hData) {
     delayModulus = hData->param.timing;
     startColor = hData->param.abgr_s;
     endColor = hData->param.abgr_e;
-    tintColor = hData->color;
+    tintColor = hData->abgr;
     if (duration < instanceAge) {
         return;
     }
@@ -2652,7 +2652,7 @@ void effPCPWhirlwind3PolySetScale(effPCPWhirlwind3Poly_tag *hData, f32 scale)
 
 void effPCPWhirlwind3PolySetColor(effPCPWhirlwind3Poly_tag *hData, u32 abgr)
 {
-    hData->color = abgr;
+    hData->abgr = abgr;
 }
 
 /* vu0 routine: compose params.matrix and source via the native product into work->matrix. */
