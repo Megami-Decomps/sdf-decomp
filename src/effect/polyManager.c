@@ -242,7 +242,7 @@ typedef struct {
     dds3SpPoly_Basic_t head;
     u32 spawnDelayStep;
     u32 vertex;
-    f32 radialWidth;
+    f32 width;
     f32 radius_s;
     f32 radius_e;
     f32 radius_s_r;
@@ -250,9 +250,9 @@ typedef struct {
     u32 simu_num;
     f32 incline;
     f32 roll_s;
-    void *dispatchArgB;            /* 0xE8 */
-    u8 padEC[4];
-    void *dispatchArgA;            /* 0xF0 */
+    void *color_edge_in;            /* 0xE8 */
+    u8 color[4];
+    void *color_edge_out;            /* 0xF0 */
     dds3TrackPoly_t *hTrackPoly;              /* 0xF4 */
     dds3SpPoly_RollRingPhysics_t *pPhysics; /* 0xF8 */
     struct sdfMemHandle_t *allocation; /* 0xFC */
@@ -1863,7 +1863,7 @@ dds3SpPoly_RollRing_t3 *dds3SpPoly_RollRingCreate(dds3SpPoly_Basic_t *templateHe
         ((dds3SpPolyRingUnion_t *)band)->rotating.vertex = 3;
     }
     band->hTrackPoly = dds3TrackPolyCreate(band->head.number, band->vertex, 1, 0);
-    dds3TrackPolyVCSet(band->hTrackPoly, 0, band->dispatchArgA, band->dispatchArgB);
+    dds3TrackPolyVCSet(band->hTrackPoly, 0, band->color_edge_out, band->color_edge_in);
     dds3SpPoly_RollRingAllBuffInit(band);
     SDF_VU0_LOADMATRIX(band->head.matrix);
     SDF_VU0_STOREMATRIX(band->head.matrixCopy);
@@ -1941,9 +1941,9 @@ void dds3SpPoly_RollRingMove(dds3SpPoly_RollRing_t3 *pRollRing, s32 number)
     baseRadiusVector[0] = radius;
     baseRadiusVector[1] = radius;
     baseRadiusVector[2] = radius;
-    offsetRadiusVector[0] = radius + pRollRing->radialWidth;
-    offsetRadiusVector[1] = radius + pRollRing->radialWidth;
-    offsetRadiusVector[2] = radius + pRollRing->radialWidth;
+    offsetRadiusVector[0] = radius + pRollRing->width;
+    offsetRadiusVector[1] = radius + pRollRing->width;
+    offsetRadiusVector[2] = radius + pRollRing->width;
     angle = 0.0f;
     SDF_VU0_LOADVECTOR_C(pRollRing->head.origin);
     for (i = 0; i < pairs - 1; i++) {
