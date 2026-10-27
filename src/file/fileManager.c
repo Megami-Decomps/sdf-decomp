@@ -57,7 +57,7 @@ typedef struct fileQueue {
     /* 0x10 */ fileCb_t *endCallbackLink;
     /* 0x14 */ pacFileRequest_t *pacEndCallbackLink;
     /* 0x18 */ fileRequest_t *closeLink;
-    /* 0x1C */ u8 *buf;
+    /* 0x1C */ u8 *buffer;
     /* 0x20 */ fileSlot_t data[4];
 } fileMngCb_tag;
 
@@ -355,7 +355,7 @@ void pacRead(fileRequest_t *pacHandle) {
     }
     SignalSema(work->semaId);
     sdfFileCmdRead((sdfFileCmd_t *)pacHandle->dev,
-                    work->buf + (slotIndex << 16), chunkBytes);
+                    work->buffer + (slotIndex << 16), chunkBytes);
 }
 
 s32 pacLoadCallback(void *fileHandle, s32 cause, s32 buffer, s32 length, fileCb_t *data) {
@@ -677,7 +677,7 @@ s32 fileManager(void) {
     fullcnt = work->activeCount;
     while (fullcnt != 0) {
         u32 slot = work->index;
-        const u8 *input = work->buf + (slot << 16);
+        const u8 *input = work->buffer + (slot << 16);
         fileCb_t *job = (fileCb_t *)work->data[slot].req;
         u8 kind = job->kind;
 
@@ -731,7 +731,7 @@ void fileSysInit(void) {
     memset(&fileQueueHead, 0, 0x40);
     fileQueueHead.freeCount = 4;
     fileQueueHead.semaId = sdfCreateSema(1, 0x7F, 0);
-    fileQueueHead.buf = (u8 *)sdfMemLock(sdfMemAllocDirect(0x40000));
+    fileQueueHead.buffer = (u8 *)sdfMemLock(sdfMemAllocDirect(0x40000));
     dds3StartProcess(D_00551650, 0x384, 1, 0, fileManagerProc, 0, 0);
     p2sdSmgBuf = fileManager;
 }
