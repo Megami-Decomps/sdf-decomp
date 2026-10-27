@@ -5,6 +5,8 @@
 
 f32 sdfSin(f32 aRadius);
 
+f32 sdfClipAngleValuePI(f32 aValue);
+
 enum SdfFileIOCmdStat {
     SDF_FILE_CMD_STAT_INIT = 0,
     SDF_FILE_CMD_STAT_DORMANT = 1,
@@ -131,13 +133,75 @@ void ToMatrix(void)
     VU0_SEQ_TO_MATRIX();
 }
 
+/* NON_MATCHING: 60 of 70 words match at the exact size; four fp temporaries rotated. */
+#ifdef NON_MATCHING
+/* vu0 routine: the composed quaternion is left in the shared register. */
+void FromEulerXYZ(f32 aRotateX, f32 aRotateY, f32 aRotateZ)
+{
+    f32 quaternion[4];
+    f32 half;
+    f32 cx;
+    f32 sx;
+    f32 cy;
+    f32 sy;
+    f32 cz;
+    f32 sz;
+
+    half = sdfClipAngleValuePI(-aRotateX) * 0.5f;
+    cx = sdfCos(half);
+    sx = sdfSin(half);
+    half = sdfClipAngleValuePI(-aRotateY) * 0.5f;
+    cy = sdfCos(half);
+    sy = sdfSin(half);
+    half = sdfClipAngleValuePI(-aRotateZ) * 0.5f;
+    cz = sdfCos(half);
+    sz = sdfSin(half);
+    quaternion[0] = sz * sy * cx + cz * cy * sx;
+    quaternion[1] = cz * sy * cx - sz * cy * sx;
+    quaternion[2] = sz * cy * cx + cz * sy * sx;
+    quaternion[3] = cz * cy * cx - sz * sy * sx;
+    SDF_VU0_LOADVECTOR(quaternion);
+}
+#else
 void FromEulerXYZ(f32 aRotateX, f32 aRotateY, f32 aRotateZ);
 
 INCLUDE_ASM(const s32, "sdf/sdfQuat", FromEulerXYZ);
+#endif
 
+/* NON_MATCHING: 59 of 69 words match at the exact size; four fp temporaries rotated. */
+#ifdef NON_MATCHING
+/* vu0 routine: the composed quaternion is left in the shared register. */
+void FromEuler(f32 aRotateX, f32 aRotateY, f32 aRotateZ)
+{
+    f32 quaternion[4];
+    f32 half;
+    f32 cx;
+    f32 sx;
+    f32 cy;
+    f32 sy;
+    f32 cz;
+    f32 sz;
+
+    half = -aRotateX * 0.5f;
+    cx = sdfCos(half);
+    sx = sdfSin(half);
+    half = -aRotateY * 0.5f;
+    cy = sdfCos(half);
+    sy = sdfSin(half);
+    half = -aRotateZ * 0.5f;
+    cz = sdfCos(half);
+    sz = sdfSin(half);
+    quaternion[0] = sz * sy * cx + cz * cy * sx;
+    quaternion[1] = cz * sy * cx - sz * cy * sx;
+    quaternion[2] = sz * cy * cx + cz * sy * sx;
+    quaternion[3] = cz * cy * cx - sz * sy * sx;
+    SDF_VU0_LOADVECTOR(quaternion);
+}
+#else
 void FromEuler(f32 aRotateX, f32 aRotateY, f32 aRotateZ);
 
 INCLUDE_ASM(const s32, "sdf/sdfQuat", FromEuler);
+#endif
 
 /* vu0 routine: compose pitch and offset-adjusted planar direction quaternions. */
 void LookAt(f32 aFrontX, f32 aFrontZ) {
