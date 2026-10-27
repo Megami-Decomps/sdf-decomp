@@ -6,13 +6,11 @@
 struct effDebugPolyParams_t;
 struct effRandState_t;
 struct dds3FlashPolyList_t;
-struct EffRingColorSlot;
 struct effPCPFlashPolyRingExpHPart_tag;
 struct effPCPFlashPolyRingExpH_tag;
 struct effBezierDrawParam_t;
 struct effPCPFlashPolyPipePart_tag;
 struct effPCPFlashPolyPipe_tag;
-struct PcpFlashColorSlot;
 struct effPCPFlashPolyRingExp2_tag;
 struct effPCPFlashPolyRingExpPart_tag;
 struct effPCPFlashPolyCircleParam_t;
@@ -20,7 +18,6 @@ struct effPCPFlashPolyCircle_tag;
 struct effPCPFlashPolyRingExp_tag;
 struct effPCPFlashPolyRingExp2Part_tag;
 struct effPCPFlashPolySphere2Part_tag;
-struct PcpFlashQuadColorSlot;
 struct effPCPFlashPolySphere3Part_tag;
 struct effPCPFlashPolySphere3_tag;
 struct effPCPFlashPolySphere2ExpParam_t;
@@ -41,13 +38,10 @@ typedef struct effRandState_t effRandState_t;
 typedef struct sdfMatPacket_t sdfMatPacket_t;
 typedef union sdfMatUvwParm_t sdfMatUvwParm_t;
 typedef struct sdfTexPacket_t sdfTexPacket_t;
-typedef struct EffRingColorSlot EffRingColorSlot;
 typedef struct effPCPFlashPolyRingExpHPart_tag effPCPFlashPolyRingExpHPart_tag;
 typedef struct effPCPFlashPolyRingExpH_tag effPCPFlashPolyRingExpH_tag;
-typedef struct PcpFlashColorSlot PcpFlashColorSlot;
 typedef struct effPCPFlashPolyCircleParam_t effPCPFlashPolyCircleParam_t;
 typedef struct effPCPFlashPolySphere2Part_tag effPCPFlashPolySphere2Part_tag;
-typedef struct PcpFlashQuadColorSlot PcpFlashQuadColorSlot;
 typedef struct effPCPFlashPolySphere2ExpParam_t effPCPFlashPolySphere2ExpParam_t;
 typedef struct effPCPFlashPolySphereParam_t effPCPFlashPolySphereParam_t;
 typedef struct effPCPFlashPolySphere2Param_t effPCPFlashPolySphere2Param_t;
@@ -215,9 +209,6 @@ typedef struct dds3FlashPolyList_t {
     sdfMemHandle_t *hMem;
 } dds3FlashPolyList_t; /* 0x70 */
 
-struct EffRingColorSlot {
-    s32 colors[5];
-};
 
 struct effPCPFlashPolyRingExpHPart_tag {
     u32 abgr;
@@ -305,12 +296,6 @@ struct effPCPFlashPolyPipe_tag {
 
 /* Paired Flash runtime owners and their variable particle records.
  * Factory allocations place each particle array immediately after its owner. */
-/* Three consecutive packed colors returned by dds3FlashPolyList2GetVC. */
-struct PcpFlashColorSlot {
-    s32 first;
-    s32 second;
-    s32 third;
-};
 
 typedef struct effPCPFlashPolyRingExp2_tag effPCPFlashPolyRingExp2_tag;
 
@@ -454,9 +439,6 @@ struct effPCPFlashPolySphere2Part_tag {
     u8 radius_max[4];
 };
 
-struct PcpFlashQuadColorSlot {
-    s32 color[5];
-};
 
 typedef struct effPCPFlashPolySphere3Part_tag effPCPFlashPolySphere3Part_tag;
 
@@ -1077,16 +1059,16 @@ void effPCPFlashPolySphere2SetScale(effPCPFlashPolySphere2_tag *hData, f32 scale
 
 void effPCPFlashPolySphere2PartSetVC(effPCPFlashPolySphere2_tag *work, s32 index, s32 color)
 {
-    PcpFlashColorSlot *slot;
+    u32 *vc;
     s32 rgb1;
     s32 rgb2;
 
-    slot = (PcpFlashColorSlot *)dds3FlashPolyList2GetVC(work->hPoly, index);
+    vc = (u32 *)dds3FlashPolyList2GetVC(work->hPoly, index);
     rgb1 = work->colorA & 0xFFFFFF;
     rgb2 = work->colorB & 0xFFFFFF;
-    slot->first = effMagaCylinderCalcColor(rgb2, color);
-    slot->second = effMagaCylinderCalcColor(rgb2, color);
-    slot->third = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
+    vc[0] = effMagaCylinderCalcColor(rgb2, color);
+    vc[1] = effMagaCylinderCalcColor(rgb2, color);
+    vc[2] = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
 }
 
 void effPCPFlashPolySphere2PartSetVertex(effPCPFlashPolySphere2_tag *work, s32 index, void *view)
@@ -1265,23 +1247,23 @@ void effPCPFlashPolySphereSetScale(effPCPFlashPolySphere_tag *hData, f32 scale)
 
 void effPCPFlashPolySpherePartSetVC(effPCPFlashPolySphere_tag *work, s32 index, s32 color)
 {
-    PcpFlashQuadColorSlot *slot;
+    u32 *vc;
     s32 rgb1;
     s32 rgb2;
 
-    slot = (PcpFlashQuadColorSlot *)dds3FlashPolyListGetVC(work->hPoly, index);
+    vc = (u32 *)dds3FlashPolyListGetVC(work->hPoly, index);
     rgb1 = work->centerColor & 0xFFFFFF;
     rgb2 = work->edgeColor & 0xFFFFFF;
-    slot->color[0] = effMagaCylinderCalcColor(rgb2, color);
-    slot->color[1] = effMagaCylinderCalcColor(rgb2, color);
+    vc[0] = effMagaCylinderCalcColor(rgb2, color);
+    vc[1] = effMagaCylinderCalcColor(rgb2, color);
     if (index & 1) {
-        slot->color[2] = effMagaCylinderCalcColor(0x80000000, color);
-        slot->color[3] = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
-        slot->color[4] = effMagaCylinderCalcColor(0x80000000, color);
+        vc[2] = effMagaCylinderCalcColor(0x80000000, color);
+        vc[3] = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
+        vc[4] = effMagaCylinderCalcColor(0x80000000, color);
     } else {
-        slot->color[2] = effMagaCylinderCalcColor(0xFF000000, color);
-        slot->color[3] = effMagaCylinderCalcColor(rgb1 | 0x40000000, color);
-        slot->color[4] = effMagaCylinderCalcColor(0xFF000000, color);
+        vc[2] = effMagaCylinderCalcColor(0xFF000000, color);
+        vc[3] = effMagaCylinderCalcColor(rgb1 | 0x40000000, color);
+        vc[4] = effMagaCylinderCalcColor(0xFF000000, color);
     }
 }
 
@@ -1534,23 +1516,23 @@ void effPCPFlashPolyRingSetScale(effPCPFlashPolyRing_tag *hData, f32 scale)
 
 void effPCPFlashPolyRingPartSetVC(effPCPFlashPolyRing_tag *work, s32 index, s32 color)
 {
-    PcpFlashQuadColorSlot *slot;
+    u32 *vc;
     s32 rgb1;
     s32 rgb2;
 
-    slot = (PcpFlashQuadColorSlot *)dds3FlashPolyListGetVC(work->hPoly, index);
+    vc = (u32 *)dds3FlashPolyListGetVC(work->hPoly, index);
     rgb1 = work->centerColor & 0xFFFFFF;
     rgb2 = work->edgeColor & 0xFFFFFF;
-    slot->color[0] = effMagaCylinderCalcColor(rgb2, color);
-    slot->color[1] = effMagaCylinderCalcColor(rgb2, color);
+    vc[0] = effMagaCylinderCalcColor(rgb2, color);
+    vc[1] = effMagaCylinderCalcColor(rgb2, color);
     if (index & 1) {
-        slot->color[2] = effMagaCylinderCalcColor(0x80000000, color);
-        slot->color[3] = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
-        slot->color[4] = effMagaCylinderCalcColor(0x80000000, color);
+        vc[2] = effMagaCylinderCalcColor(0x80000000, color);
+        vc[3] = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
+        vc[4] = effMagaCylinderCalcColor(0x80000000, color);
     } else {
-        slot->color[2] = effMagaCylinderCalcColor(0xFF000000, color);
-        slot->color[3] = effMagaCylinderCalcColor(rgb1 | 0x40000000, color);
-        slot->color[4] = effMagaCylinderCalcColor(0xFF000000, color);
+        vc[2] = effMagaCylinderCalcColor(0xFF000000, color);
+        vc[3] = effMagaCylinderCalcColor(rgb1 | 0x40000000, color);
+        vc[4] = effMagaCylinderCalcColor(0xFF000000, color);
     }
 }
 
@@ -2024,23 +2006,23 @@ void effPCPFlashPolyRingExpSetScale(effPCPFlashPolyRingExp_tag *hData, f32 scale
 
 void effPCPFlashPolyRingExpPartSetVC(effPCPFlashPolyRingExp_tag *work, s32 index, s32 color)
 {
-    PcpFlashQuadColorSlot *slot;
+    u32 *vc;
     s32 rgb1;
     s32 rgb2;
 
-    slot = (PcpFlashQuadColorSlot *)dds3FlashPolyListGetVC(work->hPoly, index);
+    vc = (u32 *)dds3FlashPolyListGetVC(work->hPoly, index);
     rgb1 = work->centerColor & 0xFFFFFF;
     rgb2 = work->edgeColor & 0xFFFFFF;
-    slot->color[0] = effMagaCylinderCalcColor(rgb2, color);
-    slot->color[1] = effMagaCylinderCalcColor(rgb2, color);
+    vc[0] = effMagaCylinderCalcColor(rgb2, color);
+    vc[1] = effMagaCylinderCalcColor(rgb2, color);
     if (index & 1) {
-        slot->color[2] = effMagaCylinderCalcColor(0x80000000, color);
-        slot->color[3] = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
-        slot->color[4] = effMagaCylinderCalcColor(0x80000000, color);
+        vc[2] = effMagaCylinderCalcColor(0x80000000, color);
+        vc[3] = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
+        vc[4] = effMagaCylinderCalcColor(0x80000000, color);
     } else {
-        slot->color[2] = effMagaCylinderCalcColor(0xFF000000, color);
-        slot->color[3] = effMagaCylinderCalcColor(rgb1 | 0x40000000, color);
-        slot->color[4] = effMagaCylinderCalcColor(0xFF000000, color);
+        vc[2] = effMagaCylinderCalcColor(0xFF000000, color);
+        vc[3] = effMagaCylinderCalcColor(rgb1 | 0x40000000, color);
+        vc[4] = effMagaCylinderCalcColor(0xFF000000, color);
     }
 }
 
@@ -2278,23 +2260,23 @@ void effPCPFlashPolySphereExpSetScale(effPCPFlashPolySphereExp_tag *hData, f32 s
 
 void effPCPFlashPolySphereExpPartSetVC(effPCPFlashPolySphereExp_tag *work, s32 index, s32 color)
 {
-    PcpFlashQuadColorSlot *slot;
+    u32 *vc;
     s32 rgb1;
     s32 rgb2;
 
-    slot = (PcpFlashQuadColorSlot *)dds3FlashPolyListGetVC(work->hPoly, index);
+    vc = (u32 *)dds3FlashPolyListGetVC(work->hPoly, index);
     rgb1 = work->centerColor & 0xFFFFFF;
     rgb2 = work->edgeColor & 0xFFFFFF;
-    slot->color[0] = effMagaCylinderCalcColor(rgb2, color);
-    slot->color[1] = effMagaCylinderCalcColor(rgb2, color);
+    vc[0] = effMagaCylinderCalcColor(rgb2, color);
+    vc[1] = effMagaCylinderCalcColor(rgb2, color);
     if (index & 1) {
-        slot->color[2] = effMagaCylinderCalcColor(0x80000000, color);
-        slot->color[3] = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
-        slot->color[4] = effMagaCylinderCalcColor(0x80000000, color);
+        vc[2] = effMagaCylinderCalcColor(0x80000000, color);
+        vc[3] = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
+        vc[4] = effMagaCylinderCalcColor(0x80000000, color);
     } else {
-        slot->color[2] = effMagaCylinderCalcColor(0xFF000000, color);
-        slot->color[3] = effMagaCylinderCalcColor(rgb1 | 0x40000000, color);
-        slot->color[4] = effMagaCylinderCalcColor(0xFF000000, color);
+        vc[2] = effMagaCylinderCalcColor(0xFF000000, color);
+        vc[3] = effMagaCylinderCalcColor(rgb1 | 0x40000000, color);
+        vc[4] = effMagaCylinderCalcColor(0xFF000000, color);
     }
 }
 
@@ -2528,16 +2510,16 @@ void effPCPFlashPolySphere2ExpSetScale(effPCPFlashPolySphere2Exp_tag *hData, f32
 
 void effPCPFlashPolySphere2ExpPartSetVC(effPCPFlashPolySphere2Exp_tag *work, s32 index, s32 color)
 {
-    PcpFlashColorSlot *slot;
+    u32 *vc;
     s32 rgb1;
     s32 rgb2;
 
-    slot = (PcpFlashColorSlot *)dds3FlashPolyList2GetVC(work->hPoly, index);
+    vc = (u32 *)dds3FlashPolyList2GetVC(work->hPoly, index);
     rgb1 = work->centerColor & 0xFFFFFF;
     rgb2 = work->edgeColor & 0xFFFFFF;
-    slot->first = effMagaCylinderCalcColor(rgb2, color);
-    slot->second = effMagaCylinderCalcColor(rgb2, color);
-    slot->third = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
+    vc[0] = effMagaCylinderCalcColor(rgb2, color);
+    vc[1] = effMagaCylinderCalcColor(rgb2, color);
+    vc[2] = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
 }
 
 void effPCPFlashPolySphere2ExpPartSetVertex(effPCPFlashPolySphere2Exp_tag *work, s32 index, void *view)
@@ -2989,23 +2971,23 @@ void effPCPFlashPolyRingExp2SetScale(effPCPFlashPolyRingExp2_tag *hData, f32 sca
 
 void effPCPFlashPolyRingExp2PartSetVC(effPCPFlashPolyRingExp2_tag *work, s32 index, s32 color)
 {
-    PcpFlashQuadColorSlot *slot;
+    u32 *vc;
     s32 rgb1;
     s32 rgb2;
 
-    slot = (PcpFlashQuadColorSlot *)dds3FlashPolyListGetVC(work->hPoly, index);
+    vc = (u32 *)dds3FlashPolyListGetVC(work->hPoly, index);
     rgb1 = work->centerColor & 0xFFFFFF;
     rgb2 = work->edgeColor & 0xFFFFFF;
-    slot->color[0] = effMagaCylinderCalcColor(rgb2, color);
-    slot->color[1] = effMagaCylinderCalcColor(rgb2, color);
+    vc[0] = effMagaCylinderCalcColor(rgb2, color);
+    vc[1] = effMagaCylinderCalcColor(rgb2, color);
     if (index & 1) {
-        slot->color[2] = effMagaCylinderCalcColor(0x80000000, color);
-        slot->color[3] = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
-        slot->color[4] = effMagaCylinderCalcColor(0x80000000, color);
+        vc[2] = effMagaCylinderCalcColor(0x80000000, color);
+        vc[3] = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
+        vc[4] = effMagaCylinderCalcColor(0x80000000, color);
     } else {
-        slot->color[2] = effMagaCylinderCalcColor(0xFF000000, color);
-        slot->color[3] = effMagaCylinderCalcColor(rgb1 | 0x40000000, color);
-        slot->color[4] = effMagaCylinderCalcColor(0xFF000000, color);
+        vc[2] = effMagaCylinderCalcColor(0xFF000000, color);
+        vc[3] = effMagaCylinderCalcColor(rgb1 | 0x40000000, color);
+        vc[4] = effMagaCylinderCalcColor(0xFF000000, color);
     }
 }
 
@@ -3224,16 +3206,16 @@ void effPCPFlashPolyCircleSetScale(effPCPFlashPolyCircle_tag *hData, f32 scale)
 
 void effPCPFlashPolyCirclePartSetVC(effPCPFlashPolyCircle_tag *work, s32 index, s32 color)
 {
-    PcpFlashColorSlot *slot;
+    u32 *vc;
     s32 rgb1;
     s32 rgb2;
 
-    slot = (PcpFlashColorSlot *)dds3FlashPolyList2GetVC(work->hPoly, index);
+    vc = (u32 *)dds3FlashPolyList2GetVC(work->hPoly, index);
     rgb1 = work->centerColor & 0xFFFFFF;
     rgb2 = work->edgeColor & 0xFFFFFF;
-    slot->first = effMagaCylinderCalcColor(rgb2, color);
-    slot->second = effMagaCylinderCalcColor(rgb2, color);
-    slot->third = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
+    vc[0] = effMagaCylinderCalcColor(rgb2, color);
+    vc[1] = effMagaCylinderCalcColor(rgb2, color);
+    vc[2] = effMagaCylinderCalcColor(rgb1 | 0xFF000000, color);
 }
 
 void effPCPFlashPolyCirclePartSetVertex(effPCPFlashPolyCircle_tag *work, s32 index, void *view)
@@ -3438,23 +3420,23 @@ void effPCPFlashPolyRingExpHSetRotateMatrix(effPCPFlashPolyRingExpH_tag *hData, 
 }
 
 void effPCPFlashPolyRingExpHPartSetVC(effPCPFlashPolyRingExpH_tag *work, s32 index, s32 modulationColor) {
-    EffRingColorSlot *slot;
+    u32 *vc;
     s32 firstRgb;
     s32 secondRgb;
 
-    slot = (EffRingColorSlot *)dds3FlashPolyListHGetVC(work->hPoly, index);
+    vc = (u32 *)dds3FlashPolyListHGetVC(work->hPoly, index);
     firstRgb = work->firstColor & EFF_RGB_MASK;
     secondRgb = work->secondColor & EFF_RGB_MASK;
-    slot->colors[0] = effMagaCylinderCalcColor(secondRgb, modulationColor);
-    slot->colors[1] = effMagaCylinderCalcColor(secondRgb, modulationColor);
+    vc[0] = effMagaCylinderCalcColor(secondRgb, modulationColor);
+    vc[1] = effMagaCylinderCalcColor(secondRgb, modulationColor);
     if (index & 1) {
-        slot->colors[2] = effMagaCylinderCalcColor(0x80000000, modulationColor);
-        slot->colors[3] = effMagaCylinderCalcColor(firstRgb | 0xFF000000, modulationColor);
-        slot->colors[4] = effMagaCylinderCalcColor(0x80000000, modulationColor);
+        vc[2] = effMagaCylinderCalcColor(0x80000000, modulationColor);
+        vc[3] = effMagaCylinderCalcColor(firstRgb | 0xFF000000, modulationColor);
+        vc[4] = effMagaCylinderCalcColor(0x80000000, modulationColor);
     } else {
-        slot->colors[2] = effMagaCylinderCalcColor(0xFF000000, modulationColor);
-        slot->colors[3] = effMagaCylinderCalcColor(firstRgb | 0x40000000, modulationColor);
-        slot->colors[4] = effMagaCylinderCalcColor(0xFF000000, modulationColor);
+        vc[2] = effMagaCylinderCalcColor(0xFF000000, modulationColor);
+        vc[3] = effMagaCylinderCalcColor(firstRgb | 0x40000000, modulationColor);
+        vc[4] = effMagaCylinderCalcColor(0xFF000000, modulationColor);
     }
 }
 
