@@ -15,9 +15,12 @@ struct sdfIpuInitParm_t;
 
 struct sdfGsMemSlice_t;
 
-struct SdfStreamInputDmaTag;
+struct sdfIpuDmaTag_t;
 
-typedef struct IpuDmaState
+/* The to-IPU and from-IPU DMA channel words the decoder keeps, plus the bit
+ * position and IPU_CTRL it restores. The remaster's control block stops before
+ * these. */
+typedef struct sdfIpuDmaRegs_t
 {
     u32 inputAddress;
     u32 inputTagAddress;
@@ -28,7 +31,7 @@ typedef struct IpuDmaState
     u32 outputControl;
     u32 bitPointer;
     u32 ipuControl;
-} IpuDmaState;
+} sdfIpuDmaRegs_t;
 
 typedef struct sdfIpuDecodeCb_t
 {
@@ -62,7 +65,7 @@ typedef struct sdfIpuDecodeCb_t
     u32 frameCount;
     u32 tickCount;
     s32 frame;
-    struct SdfStreamInputDmaTag *inputDmaChain;
+    struct sdfIpuDmaTag_t *inputDmaChain;
     u8 headerReady;
     u8 done;
     u8 filledSlots;
@@ -74,7 +77,7 @@ typedef struct sdfIpuDecodeCb_t
     u8 inputFeedDmaInFlight;
     u8 unk65;
     u8 pad66[2];
-    IpuDmaState dma;
+    sdfIpuDmaRegs_t dma;
 } sdfIpuDecodeCb_t;
 
 typedef s32 (*SdfStreamRead)(sdfIpuDecodeCb_t *, struct sdfMovieCb_t *, s32, void *, s32);
@@ -202,7 +205,9 @@ enum sdf_tex_resource {
     SDF_TEX_RESOURCE_KNOWN_MODE_COUNT = 4
 };
 
-struct SdfStreamInputDmaTag {
+/* One tag in the to-IPU chain. Written as two quadword halves rather than by
+ * field, which is what the single 64-bit store in sdfIpuSetStreamChunk needs. */
+struct sdfIpuDmaTag_t {
     u64 control;
     u64 reserved;
 };
@@ -464,7 +469,7 @@ void sdfIpuAllocBuff(sdfIpuDecodeCb_t *cb) {
 /* Each 16-byte DMA tag holds control/address bits and a zero reserved half. */
 void sdfIpuMakeToIpuDmaTag(sdfIpuDecodeCb_t *cb, u8 *data, s32 leng) {
     s32 remaining = (leng + 15) & ~15;
-    struct SdfStreamInputDmaTag *tag;
+    struct sdfIpuDmaTag_t *tag;
     u32 address;
     tag = sdfAllocAuto(((remaining + 0xFFEFF) / 0xFFF00) * 16);
     cb->inputDmaChain = tag;

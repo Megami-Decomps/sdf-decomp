@@ -4,9 +4,12 @@
 struct sdfMovieCb_t;
 struct sdfIpuInitParm_t;
 struct sdfGsMemSlice_t;
-struct SdfStreamInputDmaTag;
+struct sdfIpuDmaTag_t;
 
-typedef struct IpuDmaState
+/* The to-IPU and from-IPU DMA channel words the decoder keeps, plus the bit
+ * position and IPU_CTRL it restores. The remaster's control block stops before
+ * these. */
+typedef struct sdfIpuDmaRegs_t
 {
     u32 inputAddress;
     u32 inputTagAddress;
@@ -17,7 +20,7 @@ typedef struct IpuDmaState
     u32 outputControl;
     u32 bitPointer;
     u32 ipuControl;
-} IpuDmaState;
+} sdfIpuDmaRegs_t;
 
 typedef struct sdfIpuDecodeCb_t
 {
@@ -51,7 +54,7 @@ typedef struct sdfIpuDecodeCb_t
     u32 frameCount;
     u32 tickCount;
     s32 frame;
-    struct SdfStreamInputDmaTag *inputDmaChain;
+    struct sdfIpuDmaTag_t *inputDmaChain;
     u8 headerReady;
     u8 done;
     u8 filledSlots;
@@ -63,7 +66,7 @@ typedef struct sdfIpuDecodeCb_t
     u8 inputFeedDmaInFlight;
     u8 unk65;
     u8 pad66[2];
-    IpuDmaState dma;
+    sdfIpuDmaRegs_t dma;
 } sdfIpuDecodeCb_t;
 
 typedef struct sdfIpuInitParm_t
@@ -90,16 +93,16 @@ typedef struct sdfMovieInitParm_t
 typedef s32 (*SdfStreamRead)(sdfIpuDecodeCb_t *, struct sdfMovieCb_t *, s32, void *, s32);
 
 /* Ring buffer of raw file data for a plain (non PAC) movie stream. */
-typedef struct MovLinearStream
+typedef struct sdfMovieStrmLinear_t
 {
     sdfMemHandle_t *allocation;
     u8 *bufferStart;
     u8 *readCursor;
     u8 *writeCursor;
     s32 bufferedBytes;
-} MovLinearStream;
+} sdfMovieStrmLinear_t;
 
-typedef struct MovPacStream
+typedef struct sdfMovieStrmPac_t
 {
     u8 pad00[0x18];
     s32 packetBytes;
@@ -119,12 +122,12 @@ typedef struct MovPacStream
     s32 unk6C;
     s32 scratchSize;
     u8 *scratch;
-} MovPacStream;
+} sdfMovieStrmPac_t;
 
 typedef union movieDecodeCtx_t
 {
-    MovLinearStream *linear;
-    MovPacStream *pac;
+    sdfMovieStrmLinear_t *linear;
+    sdfMovieStrmPac_t *pac;
 } movieDecodeCtx_t;
 
 typedef struct sdfMovieCb_t
@@ -191,7 +194,7 @@ void movie_2C5080(const char *aStr)
 u8 *movieWaitSema(s32 aSize)
 {
     sdfMovieCb_t *mov = movieSemaId;
-    MovPacStream *obj = mov->readCb.pac;
+    sdfMovieStrmPac_t *obj = mov->readCb.pac;
     u8 *ptr = NULL;
 
     WaitSema(movieStreamSema);
@@ -223,7 +226,7 @@ INCLUDE_ASM(const s32, "sdf/sdfMovie", release_movieobj2);
 void movieReadNextChunk(sdfMovieCb_t *aMov)
 {
     s32 remaining = aMov->readRemain;
-    MovLinearStream *stream = aMov->readCb.linear;
+    sdfMovieStrmLinear_t *stream = aMov->readCb.linear;
     s32 size;
     u8 *dst;
     u8 *next;
@@ -247,7 +250,7 @@ void movieReadNextChunk(sdfMovieCb_t *aMov)
 
 s32 movieGetStreamSize(void *aHandle, s32 aOp, void *aBuf, s32 aSize, sdfMovieCb_t *aMov)
 {
-    MovLinearStream *stream = aMov->readCb.linear;
+    sdfMovieStrmLinear_t *stream = aMov->readCb.linear;
     s32 enabled;
 
     aMov->fileHandle = aHandle;
@@ -302,7 +305,7 @@ s32 movieGetStreamSize(void *aHandle, s32 aOp, void *aBuf, s32 aSize, sdfMovieCb
 void movieReadHeaderChunk(sdfMovieCb_t *aMov)
 {
     s32 remaining = aMov->readRemain;
-    MovPacStream *stream = aMov->readCb.pac;
+    sdfMovieStrmPac_t *stream = aMov->readCb.pac;
     s32 size;
 
     if (remaining != 0) {
@@ -319,7 +322,7 @@ void movieReadHeaderChunk(sdfMovieCb_t *aMov)
 }
 
 s32 movieReadChunk(void *file, s32 operation, void *readBuffer, s32 bytesRead, sdfMovieCb_t *movie) {
-    MovPacStream *stream;
+    sdfMovieStrmPac_t *stream;
 
     movie->fileHandle = file;
     stream = movie->readCb.pac;
@@ -438,7 +441,7 @@ s32 movieReadChunk(void *file, s32 operation, void *readBuffer, s32 bytesRead, s
 
 s32 movieCopyChunk(sdfIpuDecodeCb_t *aNode, sdfMovieCb_t *aMov, s32 aOp, void *aBuf, s32 aSize)
 {
-    MovLinearStream *stream = aMov->readCb.linear;
+    sdfMovieStrmLinear_t *stream = aMov->readCb.linear;
     u8 *src;
     u8 *base;
     s32 over;
@@ -494,7 +497,7 @@ s32 movieParseHeader(sdfIpuDecodeCb_t *aNode, sdfMovieCb_t *aMov, s32 aOp, void 
     {
         memcpy(aDst, aSrc, aCount);
     }
-    MovPacStream *stream = aMov->readCb.pac;
+    sdfMovieStrmPac_t *stream = aMov->readCb.pac;
     u8 *body;
     s32 off;
     s32 over;
@@ -545,8 +548,8 @@ s32 movieParseHeader(sdfIpuDecodeCb_t *aNode, sdfMovieCb_t *aMov, s32 aOp, void 
 void movieOpenStream(sdfMovieCb_t *stream, sdfMovieInitParm_t *desc, const char *path)
 {
     sdfIpuInitParm_t fmt;
-    MovLinearStream *linear;
-    MovPacStream *pac;
+    sdfMovieStrmLinear_t *linear;
+    sdfMovieStrmPac_t *pac;
     char *ext;
     u8 isPac;
 
@@ -572,7 +575,7 @@ void movieOpenStream(sdfMovieCb_t *stream, sdfMovieInitParm_t *desc, const char 
         sdfMemHandle_t *handle;
         u8 *base;
 
-        linear = sdfChipAllocZeroDirect(sizeof(MovLinearStream));
+        linear = sdfChipAllocZeroDirect(sizeof(sdfMovieStrmLinear_t));
         stream->readCb.linear = linear;
         handle = sdfMemAllocDirect(0x20000);
         linear->allocation = handle;
@@ -595,7 +598,7 @@ void movieOpenStream(sdfMovieCb_t *stream, sdfMovieInitParm_t *desc, const char 
             movieStreamSema = sdfCreateSema(1, 1, 0);
         }
         movieSemaCount = -1;
-        pac = sdfChipAllocZeroDirect(sizeof(MovPacStream));
+        pac = sdfChipAllocZeroDirect(sizeof(sdfMovieStrmPac_t));
         stream->readCb.pac = pac;
         handle = sdfMemAllocDirect(0x24000);
         pac->allocation = handle;
@@ -620,8 +623,8 @@ void movieOpenStream(sdfMovieCb_t *stream, sdfMovieInitParm_t *desc, const char 
 void movieCloseStream(sdfMovieCb_t *aMov)
 {
     u8 state;
-    MovLinearStream *stream;
-    MovPacStream *pac;
+    sdfMovieStrmLinear_t *stream;
+    sdfMovieStrmPac_t *pac;
 
     if (aMov->stat == 0) {
         return;
