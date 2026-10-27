@@ -26,14 +26,10 @@ struct effPCPHamaCardSphereParam_t;
 struct effPCPWwSpherePolyPart_tag;
 struct effPCPHamaCardSphere_tag;
 struct sdfMatPacket_t;
-union SdfDrawTransform;
-struct SdfGsTextureStateValues;
 struct sdfGsMemSlice_t;
 
 typedef struct effDebugPolyParams_t effDebugPolyParams_t;
 typedef struct sdfTexPacket_t sdfTexPacket_t;
-typedef union SdfDrawTransform SdfDrawTransform;
-typedef struct SdfGsTextureStateValues SdfGsTextureStateValues;
 typedef struct sdfMatPacket_t sdfMatPacket_t;
 typedef union sdfMatUvwParm_t sdfMatUvwParm_t;
 typedef struct dds3WhirlwindPolyList_tag dds3WhirlwindPolyList_tag;
@@ -144,18 +140,13 @@ typedef struct dds3ScatterPolyListTexResource_tag {
 
 struct sdfMat_t;
 
-/* Draw entries store six transform floats and expose the same bytes as three qwords. */
-union SdfDrawTransform {
+/* A texture coordinate transform in a material packet. sdfMatSetUvwParm fills
+ * it either as six floats or, for the identity case, as three quadword halves. */
+typedef union {
     f32 m[6];
-    u64 words[3];
-};
+    u64 q[3];
+} sdfMatTexTm_t;
 
-/* The cached GS TEX1, TEX0 and CLAMP values shared by texture draw records. */
-struct SdfGsTextureStateValues {
-    u64 sampling;
-    u64 texture;
-    u64 clamp;
-};
 
 /* Native 0xA0-byte draw-entry block allocated by SDF_ASSET_DRAW_ENTRY_BYTES. */
 struct sdfMatPacket_t {
@@ -172,9 +163,15 @@ struct sdfMatPacket_t {
     f32 y;                 /* 0x28 */
     f32 x;                 /* 0x2C */
     u8 pad30[8];           /* 0x30 */
-    SdfGsTextureStateValues primaryTextureState; /* 0x38 */
-    SdfGsTextureStateValues secondaryTextureState; /* 0x50 */
-    SdfDrawTransform transforms[2]; /* 0x68 */
+    u64 tex1Data;          /* 0x38 */
+    u64 tex0Data;
+    u64 clampData;
+    u64 mtexTex1Data;      /* 0x50 */
+    u64 mtexTex0Data;
+    u64 mtexClampData;
+    /* sdfMatSetUvwParm writes one transform per texture: a 2x2 then an offset. */
+    sdfMatTexTm_t texTm;   /* 0x68 */
+    sdfMatTexTm_t mtexTexTm;
     u32 vifItopCommand;    /* 0x98: VIF ITOP with immediate 0xC */
     u32 vifMscalCommand;   /* 0x9C: VIF MSCAL with microprogram index zero */
 };
