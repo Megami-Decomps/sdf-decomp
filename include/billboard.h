@@ -22,9 +22,9 @@ typedef struct
 
 /* A quad's four GS texture coordinate pairs, as the billboard code stores
  * them: one flat array, not four UV_t. */
-typedef struct BillTextureQuad {
+typedef struct billUvQuad_t {
     u16 components[8];
-} BillTextureQuad;
+} billUvQuad_t;
 
 /* One corner offset from a quad's centre, in screen units. */
 typedef struct
@@ -66,7 +66,7 @@ struct dds3BillResource_tag
     /* Eight halfwords, not four UV_t: the flat array is what the stores in
      * BillboardLoadTex and the single 16-byte copy in dds3BillboardTagLink
      * reproduce. */
-    BillTextureQuad uv;
+    billUvQuad_t uv;
     f32 cx;
     f32 cy;
     f32 width;
