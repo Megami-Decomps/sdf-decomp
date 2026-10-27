@@ -91,11 +91,47 @@ void *sdfPrintRpcFunc(s32 unused, sifCommand_t *packet) {
     return NULL;
 }
 
+void sdfPrintRpcThread();
+
 INCLUDE_ASM(const s32, "sdf/sdfPrint", sdfPrintRpcThread);
 
 INCLUDE_ASM(const s32, "sdf/sdfPrint", sdf_2BD3E8);
 
-INCLUDE_ASM(const s32, "sdf/sdfPrint", sdfPrintIopInit);
+extern char D_005495C8[];
+
+extern s32 printf(const char *format, ...);
+
+extern s32 sdfCreateThreadWithStack(void (*entryAddress)(), s32 stackBytes, s32 priority);
+
+extern void StartThread();
+
+extern s32 sdfGetRunTimeCountBase(void);
+
+extern s32 sdfGetRunTimeCount(s32 aBaseTime);
+
+extern s32 sceSifMBindRpc(sifRpcClientDataPrefix_t *client, s32 number, s32 mode);
+
+void sdfPrintIopInit(void)
+{
+    s32 threadId;
+    s32 startTicks;
+
+    threadId = sdfCreateThreadWithStack(sdfPrintRpcThread, 0x1000, 0x4C);
+    StartThread(threadId, 0);
+    while (1) {
+        if (sceSifMBindRpc(&D_0058F310.client, 0x646E7270, 0) < 0) {
+            printf(D_005495C8);
+            return;
+        }
+        if (D_0058F310.client.server != NULL) {
+            break;
+        }
+        startTicks = sdfGetRunTimeCountBase();
+        while (sdfGetRunTimeCount(startTicks) < 4) {
+        }
+    }
+    sdfPrintIopFlag = 1;
+}
 
 /* Print text through the bound IOP dev client, or locally when it is unbound. */
 void sdfPuts(const char *str) {
@@ -123,6 +159,8 @@ s32 sdfPrintf(const char *str, ...) {
     sdfPuts(buffer);
     return length;
 }
+INCLUDE_RODATA(const s32, "sdf/sdfPrint", D_005495C8);
+
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfPrintIopFlag);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551901);
