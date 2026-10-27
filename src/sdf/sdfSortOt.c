@@ -162,19 +162,22 @@ typedef struct _glue {
     FILE *iobs;
 } _glue;
 
-typedef struct AtExitEntry {
-    void *unk00;
-    void *unk04;
-    void *fn;
-    void *unk0C;
-    void *unk10;
-    struct AtExitEntry *next;
-} AtExitEntry;
+/* libgcc frame-dwarf2.c's object list node. __register_frame_info stores the
+ * FDE base and clears the rest; __register_frame allocates one of these. */
+typedef struct object {
+    void *pc_begin;
+    void *pc_end;
+    void *fde_begin;
+    void *fde_array;
+    void *count;
+    struct object *next;
+} object;
 
-typedef struct AtExitList {
-    u32 **entries;
+/* libgcc's fde_vector, as add_fdes fills it. */
+typedef struct fde_vector {
+    u32 **array;
     s32 count;
-} AtExitList;
+} fde_vector;
 
 typedef struct _atexit {
     struct _atexit *_next;
@@ -333,18 +336,18 @@ extern void (*D_002F5600[])(void) __attribute__((section(".data")));
 
 extern s32 D_0059AD58 __attribute__((section(".data")));
 
-extern AtExitEntry *D_0059AD60 __attribute__((section(".data")));
+extern object *D_0059AD60 __attribute__((section(".data")));
 
-typedef struct SdfUnpacked {
-    s32 kind;
+typedef struct fp_number_type {
+    s32 class;
     s32 sign;
-    s32 exp;
-    u32 mant;
-} SdfUnpacked;
+    s32 normal_exp;
+    u32 fraction;
+} fp_number_type;
 
-extern void sdfUnpackFloat(const void *x, SdfUnpacked *u);
+extern void sdfUnpackFloat(const void *x, fp_number_type *u);
 
-extern f32 sdfPackFloat(const SdfUnpacked *u);
+extern f32 sdfPackFloat(const fp_number_type *u);
 
 extern long dptoul(s32 kind, s32 sign, s32 exp, long mant);
 
@@ -357,20 +360,21 @@ typedef union f32_bits {
     u32 u;
 } f32_bits;
 
-typedef struct SdfUnpackedD {
-    s32 kind;
+/* The same record from the double-precision build of fp-bit.c. */
+typedef struct fp_number_type_df {
+    s32 class;
     s32 sign;
-    s32 exp;
-    long mant;
-} SdfUnpackedD;
+    s32 normal_exp;
+    long fraction;
+} fp_number_type_df;
 
-extern long libc_2D34A0(const SdfUnpackedD *u);
+extern long libc_2D34A0(const fp_number_type_df *u);
 
-extern void sdfUnpackDouble(const double *x, SdfUnpackedD *u);
+extern void sdfUnpackDouble(const double *x, fp_number_type_df *u);
 
-extern SdfUnpackedD *libc_2D1590(const SdfUnpackedD *a, const SdfUnpackedD *b, SdfUnpackedD *r);
+extern fp_number_type_df *libc_2D1590(const fp_number_type_df *a, const fp_number_type_df *b, fp_number_type_df *r);
 
-extern long libc_2D3638(const SdfUnpackedD *a, const SdfUnpackedD *b);
+extern long libc_2D3638(const fp_number_type_df *a, const fp_number_type_df *b);
 
 sdfSortOtNode_tag *sdfSortOtAvlRotateLR(sdfSortOtNode_tag *node, sdfSortOtNode_tag *parent) {
     sdfSortOtNode_tag *childRoot = node;
