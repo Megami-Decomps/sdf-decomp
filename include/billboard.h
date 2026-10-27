@@ -20,6 +20,12 @@ typedef struct
     u16 v;
 } UV_t;
 
+/* A quad's four GS texture coordinate pairs, as the billboard code stores
+ * them: one flat array, not four UV_t. */
+typedef struct BillTextureQuad {
+    u16 components[8];
+} BillTextureQuad;
+
 /* One corner offset from a quad's centre, in screen units. */
 typedef struct
 {
@@ -55,8 +61,12 @@ struct dds3BillResource_tag
 {
     sdfTexHandle_t *hTex;
     u16 type;
+    u8 pad06[2];
     u32 count;
-    UV_t uv[4];
+    /* Eight halfwords, not four UV_t: the flat array is what the stores in
+     * BillboardLoadTex and the single 16-byte copy in dds3BillboardTagLink
+     * reproduce. */
+    BillTextureQuad uv;
     f32 cx;
     f32 cy;
     f32 width;
@@ -65,6 +75,7 @@ struct dds3BillResource_tag
      * into, and dds3BillboardLinkOt flushes all four. */
     sdfDrawTag_t *pBillTag[4];
     u16 current_mode;
+    u8 pad42[2];
     sdfMemHandle_t *hMem;
     sdfBillBoardBatch_t *batch;
     /* The pending list dds3BillboardLinkOt walks from dds3BillboardTag; set to
@@ -209,7 +220,7 @@ enum BILL_DRAW
 };
 
 typedef struct billRenderPair_t {
-    struct billChildPayload_t *children[2];
+    dds3BillResource_tag *children[2];
     u16 cameraFacingMode;  
     u16 kind;
     u32 colors[2];
@@ -230,7 +241,7 @@ typedef struct billHandle_t {
     u16 mode;  
     union {
         void *payload;  
-        struct billChildPayload_t *child;  
+        dds3BillResource_tag *child;  
         struct billData_t *animationData;  
     } u;
     billRenderPair_t pair;  
