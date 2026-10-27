@@ -45,13 +45,10 @@ extern u32 sdfDrawFrameCount;
 
 extern volatile u8 sdfDrawSyncFlag;
 
-struct SdfGsGouraudTexturedVertex;
 
 struct sdfPrimRectElem_t;
 
-struct SdfGsTexturedVertex;
 
-struct SdfGsGouraudVertex;
 
 struct sdfPrimF3Elem_t;
 
@@ -69,7 +66,7 @@ struct sdfPrimGt3Elem_t;
 
 struct sdfPrimGt4Elem_t;
 
-struct SdfGsTwoVertexPacket;
+struct sdfPrimRectPacket_t;
 
 struct sdfPrimSpriteElem_t;
 
@@ -123,12 +120,6 @@ struct sdfPreDrawTag_t;
  * handlers project the node into their distinct complete packet owners. */
 typedef void (*SdfPacketPatchCallback)();
 
-/* Each GIF REGLIST vertex carries UV, its own RGBAQ, and packed XYZ2. */
-typedef struct SdfGsGouraudTexturedVertex {
-    u64 uv;
-    u64 rgbaq;
-    u64 xyz2;
-} SdfGsGouraudTexturedVertex;
 
 /* GIF REGLIST stream: PRIM, RGBAQ and two packed XYZ2 vertices. */
 typedef struct sdfPrimRectElem_t {
@@ -140,16 +131,6 @@ typedef struct sdfPrimRectElem_t {
 } sdfPrimRectElem_t;
 
 /* GIF REGLIST stream: PRIM, RGBAQ, then UV/XYZ2 for each vertex. */
-typedef struct SdfGsTexturedVertex {
-    u64 uv;
-    u64 xyz2;
-} SdfGsTexturedVertex;
-
-/* GIF REGLIST vertices carry their own RGBAQ and a packed XYZ2 position. */
-typedef struct SdfGsGouraudVertex {
-    u64 rgbaq;
-    u64 xyz2;
-} SdfGsGouraudVertex;
 
 /* GIF stream for one flat-color triangle: tag/register list, PRIM, RGBAQ,
  * and the three XYZ2 values. */
@@ -223,7 +204,15 @@ typedef struct sdfPrimGt3Elem_t {
     u64 giftag;
     u64 gifRegisters;
     u64 prim;
-    SdfGsGouraudTexturedVertex vertices[3];
+    u64 uv0;
+    u64 rgbaq0;
+    u64 xy0;
+    u64 uv1;
+    u64 rgbaq1;
+    u64 xy1;
+    u64 uv2;
+    u64 rgbaq2;
+    u64 xy2;
 } sdfPrimGt3Elem_t;
 
 /* PRIM followed by 4 individually textured and colored vertices. */
@@ -231,22 +220,37 @@ typedef struct sdfPrimGt4Elem_t {
     u64 giftag;
     u64 gifRegisters;
     u64 prim;
-    SdfGsGouraudTexturedVertex vertices[4];
+    u64 uv0;
+    u64 rgbaq0;
+    u64 xy0;
+    u64 uv1;
+    u64 rgbaq1;
+    u64 xy1;
+    u64 uv2;
+    u64 rgbaq2;
+    u64 xy2;
+    u64 uv3;
+    u64 rgbaq3;
+    u64 xy3;
 } sdfPrimGt4Elem_t;
 
 /* DMA/VIF header followed by the complete two-vertex GIF payload. */
-typedef struct SdfGsTwoVertexPacket {
+typedef struct sdfPrimRectPacket_t {
+    /* The chain tag's two data words carry the VIF codes that upload the elem. */
     u64 dmaTag;
     u64 vifCommands;
-    sdfPrimRectElem_t drawing;
-} SdfGsTwoVertexPacket;
+    sdfPrimRectElem_t elem;
+} sdfPrimRectPacket_t;
 
 typedef struct sdfPrimSpriteElem_t {
     u64 gifTag;
     u64 gifRegisters;
     u64 primitive;
     u64 rgbaq;
-    SdfGsTexturedVertex vertices[2];
+    u64 uv0;
+    u64 xy0;
+    u64 uv1;
+    u64 xy1;
 } sdfPrimSpriteElem_t;
 
 /* GIF REGLIST stream: PRIM, one RGBAQ, then UV/XYZ2 for each vertex. */
@@ -255,7 +259,12 @@ typedef struct sdfPrimFt3Elem_t {
     u64 gifRegisters;
     u64 prim;
     u64 rgbaq;
-    SdfGsTexturedVertex vertices[3];
+    u64 uv0;
+    u64 xy0;
+    u64 uv1;
+    u64 xy1;
+    u64 uv2;
+    u64 xy2;
 } sdfPrimFt3Elem_t;
 
 /* GIF REGLIST stream: PRIM, one RGBAQ, then UV/XYZ2 for each vertex. */
@@ -264,7 +273,14 @@ typedef struct sdfPrimFt4Elem_t {
     u64 gifRegisters;
     u64 prim;
     u64 rgbaq;
-    SdfGsTexturedVertex vertices[4];
+    u64 uv0;
+    u64 xy0;
+    u64 uv1;
+    u64 xy1;
+    u64 uv2;
+    u64 xy2;
+    u64 uv3;
+    u64 xy3;
 } sdfPrimFt4Elem_t;
 
 /* PRIM followed by three independently colored vertices. */
@@ -272,7 +288,12 @@ typedef struct sdfPrimG3Elem_t {
     u64 gifTag;
     u64 gifRegisters;
     u64 primitive;
-    SdfGsGouraudVertex vertices[3];
+    u64 rgbaq0;
+    u64 xy0;
+    u64 rgbaq1;
+    u64 xy1;
+    u64 rgbaq2;
+    u64 xy2;
 } sdfPrimG3Elem_t;
 
 /* PRIM followed by four independently colored vertices. */
@@ -280,7 +301,14 @@ typedef struct sdfPrimG4Elem_t {
     u64 giftag;
     u64 gifRegisters;
     u64 prim;
-    SdfGsGouraudVertex vertices[4];
+    u64 rgbaq0;
+    u64 xy0;
+    u64 rgbaq1;
+    u64 xy1;
+    u64 rgbaq2;
+    u64 xy2;
+    u64 rgbaq3;
+    u64 xy3;
 } sdfPrimG4Elem_t;
 
 /* The four A+D writes controlling a GS image transfer. */
@@ -812,10 +840,10 @@ void sdfPrimSetSpriteElem(sdfPrimSpriteElem_t *aElem, s32 aColor, s32 aPrim, s32
     aElem->gifRegisters = 0x535310;
     aElem->primitive = (u32)(aPrim | 0x116);
     aElem->rgbaq = (u32)aColor | ((u64)0xFE00 << 46);
-    aElem->vertices[0].uv = (aU0 & 0xFFFF) | (aV0 << 16);
-    aElem->vertices[0].xyz2 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
-    aElem->vertices[1].uv = (aU1 & 0xFFFF) | (aV1 << 16);
-    aElem->vertices[1].xyz2 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
+    aElem->uv0 = (aU0 & 0xFFFF) | (aV0 << 16);
+    aElem->xy0 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
+    aElem->uv1 = (aU1 & 0xFFFF) | (aV1 << 16);
+    aElem->xy1 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
 }
 
 void sdfPrimLinkSprite(sdfDrawTag_t *aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aU0,
@@ -891,12 +919,12 @@ void sdfPrimSetG3Elem(sdfPrimG3Elem_t *aElem, s32 aPrim, s32 aX0, s32 aY0, s32 a
     aElem->gifTag = 0x8400000000008001ULL;
     aElem->gifRegisters = 0xFFFFFFFFF5151510ULL;
     aElem->primitive = (u32)(aPrim | 0x10C);
-    aElem->vertices[0].rgbaq = (u32)aColor0 | ((u64)0xFE00 << 46);
-    aElem->vertices[0].xyz2 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
-    aElem->vertices[1].rgbaq = (u32)aColor1 | ((u64)0xFE00 << 46);
-    aElem->vertices[1].xyz2 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
-    aElem->vertices[2].rgbaq = (u32)aColor2 | ((u64)0xFE00 << 46);
-    aElem->vertices[2].xyz2 = (u32)((aX2 & 0xFFFF) | (aY2 << 16)) | depthHigh;
+    aElem->rgbaq0 = (u32)aColor0 | ((u64)0xFE00 << 46);
+    aElem->xy0 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
+    aElem->rgbaq1 = (u32)aColor1 | ((u64)0xFE00 << 46);
+    aElem->xy1 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
+    aElem->rgbaq2 = (u32)aColor2 | ((u64)0xFE00 << 46);
+    aElem->xy2 = (u32)((aX2 & 0xFFFF) | (aY2 << 16)) | depthHigh;
 }
 
 void sdfPrimLinkG3(sdfDrawTag_t *aTag, s32 aPrim, s32 aX0, s32 aY0, s32 aColor0, s32 aX1, s32 aY1, s32 aColor1, s32 aX2, s32 aY2, s32 aColor2, s32 aZ, s32 (*aAllocator)(s32)) {
@@ -918,14 +946,14 @@ void sdfPrimSetG4Elem(sdfPrimG4Elem_t *aElem, s32 aPrim, s32 aX0, s32 aY0, s32 a
     aElem->giftag = 0xA400000000008001ULL;
     aElem->gifRegisters = 0xF515151510ULL;
     aElem->prim = (u32)(aPrim | 0x10C);
-    aElem->vertices[0].rgbaq = (u32)aColor0 | ((u64)0xFE00 << 46);
-    aElem->vertices[0].xyz2 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
-    aElem->vertices[1].rgbaq = (u32)aColor1 | ((u64)0xFE00 << 46);
-    aElem->vertices[1].xyz2 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
-    aElem->vertices[2].rgbaq = (u32)aColor2 | ((u64)0xFE00 << 46);
-    aElem->vertices[2].xyz2 = (u32)((aX2 & 0xFFFF) | (aY2 << 16)) | depthHigh;
-    aElem->vertices[3].rgbaq = (u32)aColor3 | ((u64)0xFE00 << 46);
-    aElem->vertices[3].xyz2 = (u32)((aX3 & 0xFFFF) | (aY3 << 16)) | depthHigh;
+    aElem->rgbaq0 = (u32)aColor0 | ((u64)0xFE00 << 46);
+    aElem->xy0 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
+    aElem->rgbaq1 = (u32)aColor1 | ((u64)0xFE00 << 46);
+    aElem->xy1 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
+    aElem->rgbaq2 = (u32)aColor2 | ((u64)0xFE00 << 46);
+    aElem->xy2 = (u32)((aX2 & 0xFFFF) | (aY2 << 16)) | depthHigh;
+    aElem->rgbaq3 = (u32)aColor3 | ((u64)0xFE00 << 46);
+    aElem->xy3 = (u32)((aX3 & 0xFFFF) | (aY3 << 16)) | depthHigh;
 }
 
 void sdfPrimLinkG4(s32 aTag, s32 aPrim, s32 aX0, s32 aY0, s32 aColor0, s32 aX1,
@@ -949,12 +977,12 @@ void sdfPrimSetFt3Elem(sdfPrimFt3Elem_t *aElem, s32 aColor, s32 aPrim, s32 aX0, 
     aElem->gifRegisters = 0x53535310;
     aElem->prim = (u32)(aPrim | 0x114);
     aElem->rgbaq = (u32)aColor | ((u64)0xFE00 << 46);
-    aElem->vertices[0].uv = (aU0 & 0xFFFF) | (aV0 << 16);
-    aElem->vertices[0].xyz2 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
-    aElem->vertices[1].uv = (aU1 & 0xFFFF) | (aV1 << 16);
-    aElem->vertices[1].xyz2 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
-    aElem->vertices[2].uv = (aU2 & 0xFFFF) | (aV2 << 16);
-    aElem->vertices[2].xyz2 = (u32)((aX2 & 0xFFFF) | (aY2 << 16)) | depthHigh;
+    aElem->uv0 = (aU0 & 0xFFFF) | (aV0 << 16);
+    aElem->xy0 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
+    aElem->uv1 = (aU1 & 0xFFFF) | (aV1 << 16);
+    aElem->xy1 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
+    aElem->uv2 = (aU2 & 0xFFFF) | (aV2 << 16);
+    aElem->xy2 = (u32)((aX2 & 0xFFFF) | (aY2 << 16)) | depthHigh;
 }
 
 void sdfPrimLinkFt3(s32 aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aU0,
@@ -980,14 +1008,14 @@ void sdfPrimSetFt4Elem(sdfPrimFt4Elem_t *aElem, s32 aColor, s32 aPrim, s32 aX0, 
     aElem->gifRegisters = 0x5353535310ULL;
     aElem->prim = (u32)(aPrim | 0x114);
     aElem->rgbaq = (u32)aColor | ((u64)0xFE00 << 46);
-    aElem->vertices[0].uv = (aU0 & 0xFFFF) | (aV0 << 16);
-    aElem->vertices[0].xyz2 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
-    aElem->vertices[1].uv = (aU1 & 0xFFFF) | (aV1 << 16);
-    aElem->vertices[1].xyz2 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
-    aElem->vertices[2].uv = (aU2 & 0xFFFF) | (aV2 << 16);
-    aElem->vertices[2].xyz2 = (u32)((aX2 & 0xFFFF) | (aY2 << 16)) | depthHigh;
-    aElem->vertices[3].uv = (aU3 & 0xFFFF) | (aV3 << 16);
-    aElem->vertices[3].xyz2 = (u32)((aX3 & 0xFFFF) | (aY3 << 16)) | depthHigh;
+    aElem->uv0 = (aU0 & 0xFFFF) | (aV0 << 16);
+    aElem->xy0 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
+    aElem->uv1 = (aU1 & 0xFFFF) | (aV1 << 16);
+    aElem->xy1 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
+    aElem->uv2 = (aU2 & 0xFFFF) | (aV2 << 16);
+    aElem->xy2 = (u32)((aX2 & 0xFFFF) | (aY2 << 16)) | depthHigh;
+    aElem->uv3 = (aU3 & 0xFFFF) | (aV3 << 16);
+    aElem->xy3 = (u32)((aX3 & 0xFFFF) | (aY3 << 16)) | depthHigh;
 }
 
 void sdfPrimLinkFt4(sdfDrawTag_t *aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aU0,
@@ -1013,15 +1041,15 @@ void sdfPrimSetGt3Elem(sdfPrimGt3Elem_t *aElem, s32 aPrim, s32 aX0, s32 aY0, s32
     aElem->giftag = 0xA400000000008001ULL;
     aElem->gifRegisters = 0x5135135130ULL;
     aElem->prim = (u32)(aPrim | 0x11C);
-    aElem->vertices[0].uv = (aU0 & 0xFFFF) | (aV0 << 16);
-    aElem->vertices[0].rgbaq = (u32)aColor0 | ((u64)0xFE00 << 46);
-    aElem->vertices[0].xyz2 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
-    aElem->vertices[1].uv = (aU1 & 0xFFFF) | (aV1 << 16);
-    aElem->vertices[1].rgbaq = (u32)aColor1 | ((u64)0xFE00 << 46);
-    aElem->vertices[1].xyz2 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
-    aElem->vertices[2].uv = (aU2 & 0xFFFF) | (aV2 << 16);
-    aElem->vertices[2].rgbaq = (u32)aColor2 | ((u64)0xFE00 << 46);
-    aElem->vertices[2].xyz2 = (u32)((aX2 & 0xFFFF) | (aY2 << 16)) | depthHigh;
+    aElem->uv0 = (aU0 & 0xFFFF) | (aV0 << 16);
+    aElem->rgbaq0 = (u32)aColor0 | ((u64)0xFE00 << 46);
+    aElem->xy0 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
+    aElem->uv1 = (aU1 & 0xFFFF) | (aV1 << 16);
+    aElem->rgbaq1 = (u32)aColor1 | ((u64)0xFE00 << 46);
+    aElem->xy1 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
+    aElem->uv2 = (aU2 & 0xFFFF) | (aV2 << 16);
+    aElem->rgbaq2 = (u32)aColor2 | ((u64)0xFE00 << 46);
+    aElem->xy2 = (u32)((aX2 & 0xFFFF) | (aY2 << 16)) | depthHigh;
 }
 
 void sdfPrimLinkGt3(s32 aTag, s32 aPrim, s32 aX0, s32 aY0, s32 aU0, s32 aV0,
@@ -1047,18 +1075,18 @@ void sdfPrimSetGt4Elem(sdfPrimGt4Elem_t *aElem, s32 aPrim, s32 aX0, s32 aY0, s32
     aElem->giftag = 0xE400000000008001ULL;
     aElem->gifRegisters = 0xF5135135135130ULL;
     aElem->prim = (u32)(aPrim | 0x11C);
-    aElem->vertices[0].uv = (aU0 & 0xFFFF) | (aV0 << 16);
-    aElem->vertices[0].rgbaq = (u32)aColor0 | ((u64)0xFE00 << 46);
-    aElem->vertices[0].xyz2 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
-    aElem->vertices[1].uv = (aU1 & 0xFFFF) | (aV1 << 16);
-    aElem->vertices[1].rgbaq = (u32)aColor1 | ((u64)0xFE00 << 46);
-    aElem->vertices[1].xyz2 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
-    aElem->vertices[2].uv = (aU2 & 0xFFFF) | (aV2 << 16);
-    aElem->vertices[2].rgbaq = (u32)aColor2 | ((u64)0xFE00 << 46);
-    aElem->vertices[2].xyz2 = (u32)((aX2 & 0xFFFF) | (aY2 << 16)) | depthHigh;
-    aElem->vertices[3].uv = (aU3 & 0xFFFF) | (aV3 << 16);
-    aElem->vertices[3].rgbaq = (u32)aColor3 | ((u64)0xFE00 << 46);
-    aElem->vertices[3].xyz2 = (u32)((aX3 & 0xFFFF) | (aY3 << 16)) | depthHigh;
+    aElem->uv0 = (aU0 & 0xFFFF) | (aV0 << 16);
+    aElem->rgbaq0 = (u32)aColor0 | ((u64)0xFE00 << 46);
+    aElem->xy0 = (u32)((aX0 & 0xFFFF) | (aY0 << 16)) | depthHigh;
+    aElem->uv1 = (aU1 & 0xFFFF) | (aV1 << 16);
+    aElem->rgbaq1 = (u32)aColor1 | ((u64)0xFE00 << 46);
+    aElem->xy1 = (u32)((aX1 & 0xFFFF) | (aY1 << 16)) | depthHigh;
+    aElem->uv2 = (aU2 & 0xFFFF) | (aV2 << 16);
+    aElem->rgbaq2 = (u32)aColor2 | ((u64)0xFE00 << 46);
+    aElem->xy2 = (u32)((aX2 & 0xFFFF) | (aY2 << 16)) | depthHigh;
+    aElem->uv3 = (aU3 & 0xFFFF) | (aV3 << 16);
+    aElem->rgbaq3 = (u32)aColor3 | ((u64)0xFE00 << 46);
+    aElem->xy3 = (u32)((aX3 & 0xFFFF) | (aY3 << 16)) | depthHigh;
 }
 
 void sdfPrimLinkGt4(sdfDrawTag_t *aTag, s32 aPrim, s32 aX0, s32 aY0, s32 aU0, s32 aV0,
@@ -1090,15 +1118,15 @@ void sdfPrimSetRectElem(sdfPrimRectElem_t *aElem, s32 aColor, s32 aPrim, s32 aX0
 }
 
 void sdfPrimLinkRect(sdfDrawTag_t *aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aX1, s32 aY1, s32 aZ, s32 (*aAllocator)(s32)) {
-    SdfGsTwoVertexPacket *packet;
+    sdfPrimRectPacket_t *packet;
 
     if (aAllocator == NULL) {
         aAllocator = sdfGrAllocPacketBuff;
     }
-    packet = (SdfGsTwoVertexPacket *)aAllocator(0x40);
+    packet = (sdfPrimRectPacket_t *)aAllocator(0x40);
     packet->dmaTag = 0x20000003ULL;
     packet->vifCommands = 0x5000000310000000ULL;
-    sdfPrimSetRectElem(&packet->drawing, aColor, aPrim, aX0, aY0, aX1, aY1, aZ);
+    sdfPrimSetRectElem(&packet->elem, aColor, aPrim, aX0, aY0, aX1, aY1, aZ);
     sdfDrawTagLink(aTag, (u32)packet);
 }
 
@@ -1116,15 +1144,15 @@ void sdfPrimSetLineElem(sdfPrimRectElem_t *aElem, s32 aColor, s32 aPrim, s32 aX0
 }
 
 void sdfPrimLinkLine(sdfDrawTag_t *aTag, s32 aColor, s32 aPrim, s32 aX0, s32 aY0, s32 aX1, s32 aY1, s32 aZ, s32 (*aAllocator)(s32)) {
-    SdfGsTwoVertexPacket *packet;
+    sdfPrimRectPacket_t *packet;
 
     if (aAllocator == NULL) {
         aAllocator = sdfGrAllocPacketBuff;
     }
-    packet = (SdfGsTwoVertexPacket *)aAllocator(0x40);
+    packet = (sdfPrimRectPacket_t *)aAllocator(0x40);
     packet->dmaTag = 0x20000003ULL;
     packet->vifCommands = 0x5000000310000000ULL;
-    sdfPrimSetLineElem(&packet->drawing, aColor, aPrim, aX0, aY0, aX1, aY1, aZ);
+    sdfPrimSetLineElem(&packet->elem, aColor, aPrim, aX0, aY0, aX1, aY1, aZ);
     sdfDrawTagLink(aTag, (u32)packet);
 }
 
