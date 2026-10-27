@@ -13,7 +13,7 @@ struct SdfChunkHeader;
 
 struct sdfMemHandle_t;
 
-struct DevRequest;
+struct sdfItemArray_t;
 
 struct sdfModelPacketHeader_tag;
 
@@ -91,14 +91,15 @@ typedef struct SdfChunkHeader {
 } SdfChunkHeader;
 
 
-typedef struct DevRequest {
-    struct sdfMemHandle_t *backingAllocation;
-    s16 usedCount;
-    u16 capacity;
-    s16 stride;
+typedef struct sdfItemArray_t sdfItemArray_t;
+struct sdfItemArray_t {
+    struct sdfMemHandle_t *memHandle;
+    s16 count;
+    s16 capacity;
+    s16 elemSize;
     s16 growStep;
-    void *buffer;
-} DevRequest;
+    void *items;
+};
 
 /* Command-list node: allocation owns the node and trailing command data.
  * A null descriptor identifies a separately chip-allocated node. */
@@ -139,11 +140,11 @@ typedef struct sdfModelNode_t {
 
 /* The buffered-transform constructor allocates and clears all 0x9C bytes. */
 typedef struct sdfModelRootNode_t {
-    DevRequest *list;
+    sdfItemArray_t *list;
     sdfModelNode_t *rootNode;
     void *assetData;
-    DevRequest *resources;
-    DevRequest *slotPairs;
+    sdfItemArray_t *resources;
+    sdfItemArray_t *slotPairs;
     struct sdfMotionCtrlr_t *motionList;
     u8 complexNodeId;
     u8 flags;
@@ -190,7 +191,7 @@ typedef struct sdfMotionCtrlr_t {
     sdfModelRootNode_t *owner;
     sdfMotionPlayBook_t *motionTable;
     s32 playbookMemHandle;
-    DevRequest *request;
+    sdfItemArray_t *request;
     f32 blendDurationFrames;
     f32 blendStartFrame;
     f32 currentFrame;
@@ -231,7 +232,7 @@ void sdfCoreDrawInit(s32 buffSize);
 INCLUDE_ASM(const s32, "sdf/sdfCoreDraw", sdfCorePacketGen);
 
 void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *root, SdfObjectRefCommand *p) {
-    sdfModelNode_t **objects = root->list->buffer;
+    sdfModelNode_t **objects = root->list->items;
     u16 *indices = &p->count;
     if ((p->flags & 0x800) != 0) {
         s32 count = *indices;
