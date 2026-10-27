@@ -5,7 +5,7 @@
 
 struct SdfDmaTagHeader;
 
-struct SdfObjectRefCommand;
+struct sdfCorePacket_t;
 
 struct sdfMotionCutDef_t;
 
@@ -40,13 +40,15 @@ typedef struct SdfDmaTagHeader {
 } QWORD_ALIGNED SdfDmaTagHeader;
 
 /* Serialized kinds 5/7 name draw nodes by index in the model's buffered list. */
-typedef struct SdfObjectRefCommand {
-    u8 kind;
+/* The 24-byte generated-packet header, as draw3d.h spells it: the packet
+ * header then the prim header. The skin node list follows it inline. */
+typedef struct sdfCorePacket_t {
+    u8 packetType;
     u8 pad01[0x15];
-    u16 flags;
-    u16 count;
-    u16 objectIndices[1];
-} SdfObjectRefCommand;
+    u16 packetBits;
+} sdfCorePacket_t;
+
+#define SDF_PACKETBIT_BLENDVERT 0x0800
 
 /* Serialized clip duration/reserved remain halfwords (tools/fld.py).
  * The viewer MAXFRAME diagnostic reads their packed little-endian word. */
@@ -226,7 +228,7 @@ extern void *sceDmaGetChan(s32);
 
 extern void sceDmaSendN(void *, void *, s32);
 
-void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *root, SdfObjectRefCommand *p);
+void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *root, sdfCorePacket_t *p);
 
 void sdfCoreDrawSetFog(u8 *fog);
 
@@ -234,10 +236,10 @@ void sdfCoreDrawInit(s32 buffSize);
 
 INCLUDE_ASM(const s32, "sdf/sdfCoreDraw", sdfCorePacketGen);
 
-void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *root, SdfObjectRefCommand *p) {
+void sdfCoreDrawScanOneSkinNodes(sdfModelRootNode_t *root, sdfCorePacket_t *p) {
     sdfModelNode_t **objects = root->list->items;
-    u16 *indices = &p->count;
-    if ((p->flags & 0x800) != 0) {
+    u16 *indices = (u16 *)(p + 1);
+    if ((p->packetBits & SDF_PACKETBIT_BLENDVERT) != 0) {
         s32 count = *indices;
         if (count != 0) {
             indices++;

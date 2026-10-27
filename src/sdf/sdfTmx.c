@@ -19,9 +19,9 @@ struct TMX_HEADER_t;
 
 struct sdfFileCmdHandle_t;
 
-struct SdfStreamReadRequest;
+struct sdfFileRpcReadReq_t;
 
-struct SdfStreamState;
+struct sdfFileRpcCb_t;
 
 /* Read the raw free-running count from EE timer 0. */
 extern u32 sdfGetRunTimeCountBase(void);
@@ -103,22 +103,22 @@ s32 sdfFileCmdClearError(sdfFileCmdHandle_t *aHandle);
 
 s32 sdfFileCmdClose(sdfFileCmdHandle_t *aHandle);
 
-typedef struct SdfStreamReadRequest {
+typedef struct sdfFileRpcReadReq_t {
     u8 opaque00[4];
     s32 destinationAddress; /* Caller-provided address word in the read request. */
     s32 byteCount;
-} SdfStreamReadRequest;
+} sdfFileRpcReadReq_t;
 
-typedef struct SdfStreamState {
+typedef struct sdfFileRpcCb_t {
     sdfFileCmdHandle_t *deviceState;
     s32 semaphore;
     s32 readResult;
     s32 remainingBytes;
     u8 *destination; /* +0x10: current DMA destination; advanced per completed chunk. */
     s32 transferredBytes;
-} SdfStreamState;
+} sdfFileRpcCb_t;
 
-extern SdfStreamState sdfFileRpcState;
+extern sdfFileRpcCb_t sdfFileRpcState;
 
 extern s32 sdfFileRpcBuf[];
 
@@ -188,7 +188,7 @@ void sdfFileRpcContinueRead(void) {
 
 s32 sdfFileRpcReadCallback(sdfFileCmdHandle_t *deviceState, s32 command, s32 sourceAddress,
                   s32 byteCount, s32 callbackArg) {
-    SdfStreamState *stream = &sdfFileRpcState;
+    sdfFileRpcCb_t *stream = &sdfFileRpcState;
     s32 dmaId;
     s32 timer;
 
@@ -241,7 +241,7 @@ s32 sdfFileRpcReadCallback(sdfFileCmdHandle_t *deviceState, s32 command, s32 sou
 }
 
 s32 *sdfFileRpcHandler(u32 command, s32 request) {
-    SdfStreamState *state = &sdfFileRpcState;
+    sdfFileRpcCb_t *state = &sdfFileRpcState;
     sdfFileCmdHandle_t *deviceState;
     switch (command) {
     case SDF_STREAM_COMMAND_CREATE_STATE:
@@ -266,9 +266,9 @@ s32 *sdfFileRpcHandler(u32 command, s32 request) {
         sdfFileRpcBuf[0] = state->readResult;
         break;
     case SDF_STREAM_COMMAND_READ:
-        state->remainingBytes = ((SdfStreamReadRequest *)request)->byteCount;
+        state->remainingBytes = ((sdfFileRpcReadReq_t *)request)->byteCount;
         state->transferredBytes = 0;
-        state->destination = (u8 *)((SdfStreamReadRequest *)request)->destinationAddress;
+        state->destination = (u8 *)((sdfFileRpcReadReq_t *)request)->destinationAddress;
         sdfFileRpcContinueRead();
         WaitSema(state->semaphore);
         sdfFileRpcBuf[0] = state->transferredBytes;

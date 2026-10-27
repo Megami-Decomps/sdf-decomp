@@ -110,12 +110,6 @@ extern f32 sdf3DEyeOffset[4];
 
 extern u8 sdf3DScreenParam[];
 
-/* Indexed triangle count occupies the two bytes following nodeCount. */
-typedef struct {
-    u8 pad00[0x52];
-    s16 indexedTriangleCount;
-} VuIndexedTriangleCount;
-
 void corePktEmitTexTris();
 
 extern u8 corePktWorldLightMtxCache[];
@@ -752,7 +746,7 @@ void corePktBuildBackFaceList(corePktCb_t *cb) {
 
     VU0_SET_CLIP_PLANES(scale, clipPlane, projection);
     acceptAll = corePktSoftenBias;
-    remaining = ((VuIndexedTriangleCount *)cb)->indexedTriangleCount;
+    remaining = cb->backfaceCount;
     indices = corePktBackFaceList;
     triangles = (u16 *)cb->facePtr;
     nodes = (sdfCorePacketPointBuff_tag *)cb->pointBuff;
