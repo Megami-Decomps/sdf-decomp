@@ -454,7 +454,7 @@ typedef struct dds3Particle_Spiral_t3 {
     effEmitterHead_t head;
     u8 flag150;
     u8 loop;
-    u8 pad152[6];
+    u8 timing[6];
     f32 radius;      /* 0x158 */
     u32 period;      /* 0x15C */
     f32 verticalSpeed;
@@ -529,7 +529,7 @@ typedef struct dds3Particle_SphereRing_t3 {
     effEmitterHead_t head;
     u8 pad150;
     u8 loop;         /* 0x151 */
-    u8 pad152[6];
+    u8 timing[6];
     f32 radius;      /* 0x158 */
     f32 radius_r;      /* 0x15C */
     u32 simu_num;      /* 0x160 */
