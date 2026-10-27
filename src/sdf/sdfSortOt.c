@@ -82,15 +82,6 @@ extern s32 sceSifDmaStat(s32);
 
 extern s32 GetThreadId(void);
 
-/* One row per administrative mode. The entry receives the restore flag and
- * mode data; destroy and cleanup return scheduler results. Each row is 12 bytes
- * on the EE. */
-typedef struct Dds3AdminModeDispatch {
-    void (*entry)(s32 restoring, void *data);
-    s32 (*destroy)(void);
-    s32 (*cleanup)(void);
-} Dds3AdminModeDispatch;
-
 extern void *memcpy(void *, const void *, unsigned int);
 
 sdfSortOtNode_tag *sdfSortOtAvlRotateLR(sdfSortOtNode_tag *node, sdfSortOtNode_tag *parent);

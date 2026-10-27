@@ -144,15 +144,6 @@ extern s32 sdfFileRpcThreadId;
 
 void SdfFileRpcServerThreadProc(void);
 
-/* One row per administrative mode. The entry receives the restore flag and
- * mode data; destroy and cleanup return scheduler results. Each row is 12 bytes
- * on the EE. */
-typedef struct Dds3AdminModeDispatch {
-    void (*entry)(s32 restoring, void *data);
-    s32 (*destroy)(void);
-    s32 (*cleanup)(void);
-} Dds3AdminModeDispatch;
-
 void sdfTmxSetHeader(TMX_HEADER_t *aHeader, s32 aWidth, s32 aHeight, s32 aPixelFormat, s32 aNumOfCLUT, s32 aCLUTFormat);
 
 void sdfFileRpcContinueRead(void);

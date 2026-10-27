@@ -65,15 +65,6 @@ void sdfGrClosePacketBuff(s32 aBuffPtr);
 
 extern s32 D_00552170;
 
-/* One row per administrative mode. The entry receives the restore flag and
- * mode data; destroy and cleanup return scheduler results. Each row is 12 bytes
- * on the EE. */
-typedef struct Dds3AdminModeDispatch {
-    void (*entry)(s32 restoring, void *data);
-    s32 (*destroy)(void);
-    s32 (*cleanup)(void);
-} Dds3AdminModeDispatch;
-
 extern void *memcpy(void *, const void *, unsigned int);
 
 s32 sdfDecomp(sdfDecompCb_t *cb, const u8 *src, s32 length);
