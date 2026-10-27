@@ -35,7 +35,7 @@ typedef struct dds3Particle_SphereRing_t3 dds3Particle_SphereRing_t3;
 typedef struct dds3Particle_Spark2_t3 dds3Particle_Spark2_t3;
 typedef struct dds3Particle_SparkOffset_t3 dds3Particle_SparkOffset_t3;
 typedef struct dds3Particle_SmokeOffset_t3 dds3Particle_SmokeOffset_t3;
-typedef struct billChildPayload_t billChildPayload_t;
+typedef struct dds3BillResource_tag dds3BillResource_tag;
 typedef struct billData_t billData_t;
 typedef struct billOut_t billOut_t;
 typedef struct effTrackPolyList_t effTrackPolyList_t;
