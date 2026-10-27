@@ -44,7 +44,6 @@ struct sdfDrawTag_t;
 
 struct sdf3DFogParam_t;
 
-struct SdfCamera;
 
 struct sdf3DViewportPacket_t;
 
@@ -64,7 +63,6 @@ struct sdfMemHandle_t;
 
 struct TMX_HEADER_t;
 
-struct SdfGeneratedLookupTexture;
 
 /* Serialized byte consumed by the GS texture-state packet builder. */
 typedef u8 SdfTextureClampMode;
@@ -82,30 +80,6 @@ typedef struct sdf3DFogParam_t {
 } sdf3DFogParam_t;
 
 /* Native 0x90-byte camera/viewport owner shared by both projection builders. */
-typedef struct SdfCamera {
-    u32 flags;       // 0x00: 1 half-height, 2 field-of-view projection
-    f32 aspect;      // 0x04
-    f32 scale;       // 0x08
-    f32 fov;         // 0x0C
-    f32 offsetX;     // 0x10
-    f32 offsetY;     // 0x14
-    f32 width;       // 0x18
-    f32 height;      // 0x1C
-    f32 top;         // 0x20
-    f32 bottom;      // 0x24
-    f32 nearZ;       // 0x28
-    f32 farZ;        // 0x2C
-    u8 matrix[0x40]; // 0x30
-    f32 halfWidth;   // 0x70
-    f32 halfHeight;  // 0x74
-    f32 centerY;     // 0x78
-    f32 one;         // 0x7C
-    f32 originX;     // 0x80
-    f32 originY;     // 0x84
-    f32 bottomY;     // 0x88
-    u32 zero;        // 0x8C
-} SdfCamera;
-
 /* Shared 0xD0 VIF packet: two stored matrices, three vector slots, and trailer. */
 typedef struct sdf3DViewportPacket_t {
     u16 quadwords;        /* 0x00 */
@@ -197,10 +171,27 @@ extern u8 D_002E8ED0[];
 
 extern u8 D_002ECF10[];
 
-/* Complete static projection record, including the inverse-origin cache. */
+/* The camera, as sdf3DMakeScreenParam derives it: twelve inputs, then the
+ * matrix and the clip-to-screen mapping it computes. cameraPos is the inverted
+ * camera origin sdf3DMakeViewportPacket caches here. Same record as
+ * draw3d.h's. */
 typedef struct sdf3DScreenParam_t {
-    SdfCamera camera;
-    f32 inverseOrigin[4]; /* 0x90 */
+    u32 flags; /* sdf_3d_screen_flag */
+    f32 aspect;
+    f32 projDist;
+    f32 fovy;
+    f32 ox;
+    f32 oy;
+    f32 width;
+    f32 height;
+    f32 zMin;
+    f32 zMax;
+    f32 nearClip;
+    f32 farClip;
+    u8 TM[0x40];   /* 0x30 */
+    f32 scale[4];  /* 0x70 */
+    f32 trans[4];  /* 0x80 */
+    f32 cameraPos[4]; /* 0x90 */
 } sdf3DScreenParam_t;
 
 void sdfDrawTagLinkRef(struct sdfDrawTag_t *aTag, u32 aPacket);
@@ -237,11 +228,13 @@ struct sdfTexHandle_t *sdfTexSetDirect(const TMX_HEADER_t *aTex);
 
 /* Generated 128x64 grayscale power lookup texture: a serialized texture
  * header, 256 RGBA palette words, then the full 64x128 index image. */
-typedef struct SdfGeneratedLookupTexture {
+/* The specular falloff table sdf3DInitSpecularTex2 generates and hands to
+ * sdfTexSet: a TMX header, the 256-entry CLUT, and 64 rows of 128 exponents. */
+typedef struct sdf3DSpecularTexImage_t {
     TMX_HEADER_t header; /* 0x0000 */
     u32 palette[256];            /* 0x0040 */
     u8 indices[64][128];         /* 0x0440 */
-} SdfGeneratedLookupTexture;
+} sdf3DSpecularTexImage_t;
 
 extern sdfTexHandle_t *D_005518B8;
 
@@ -283,17 +276,17 @@ void sdf3DMakeViewportPacket(sdf3DViewportPacket_t *aPacket, sdf3DScreenParam_t 
     aPacket->reservedWord = 0;
     SDF_VU0_LOADMATRIX(aCamera);
     SDF_VU0_STOREMATRIX(aPacket->matrixA);
-    MultMatrixRev(aParam->camera.matrix);
+    MultMatrixRev(aParam->TM);
     SDF_VU0_STOREMATRIX(aPacket->matrixB);
-    SDF_VU0_LOADVECTOR(&aParam->camera.halfWidth);
+    SDF_VU0_LOADVECTOR(aParam->scale);
     SDF_VU0_STOREVECTOR(aPacket->vecA);
-    SDF_VU0_LOADVECTOR(&aParam->camera.originX);
+    SDF_VU0_LOADVECTOR(aParam->trans);
     SDF_VU0_STOREVECTOR(aPacket->vecB);
     SDF_VU0_LOADMATRIX(aCamera);
     ReverseMatrix();
     SDF_VU0_GET_ROW3();
     SDF_VU0_STOREVECTOR(aPacket->vecC);
-    SDF_VU0_STOREVECTOR(aParam->inverseOrigin);
+    SDF_VU0_STOREVECTOR(aParam->cameraPos);
     aPacket->stmodCommand = SDF_VIF_ITOP_MATRIX;
     aPacket->mscalCommand = SDF_VIF_MSCAL_COMMAND;
     aPacket->unknownC8 = 0;
@@ -303,8 +296,8 @@ void sdf3DMakeViewportPacket(sdf3DViewportPacket_t *aPacket, sdf3DScreenParam_t 
 void sdf3DSetCamera(sdf3DScreenParam_t *aParam, void *aCamera) {
     SDF_VU0_LOADMATRIX(aCamera);
     SDF_VU0_STOREMATRIX(sdfCameraTm);
-    MultMatrixRev(aParam->camera.matrix);
-    SDF_VU0_LOADVECTOR(aParam->inverseOrigin);
+    MultMatrixRev(aParam->TM);
+    SDF_VU0_LOADVECTOR(aParam->cameraPos);
     SDF_VU0_STOREMATRIX(sdf3DScreenTm);
     SDF_VU0_APPLYMATRIX_XYZ1();
     SDF_VU0_STOREVECTOR(sdf3DEyeOffset);
@@ -372,7 +365,7 @@ void sdf3DLinkInitPacket(sdfDrawTag_t *aTag, DmaPacketHeader *aPacket) {
 
 void sdf3DInitSpecularTex2(void) {
     struct sdfMemHandle_t *allocation = sdfMemAllocDirect(0x2440);
-    SdfGeneratedLookupTexture *texture = (SdfGeneratedLookupTexture *)(u32)sdfMemLock(allocation);
+    sdf3DSpecularTexImage_t *texture = (sdf3DSpecularTexImage_t *)(u32)sdfMemLock(allocation);
     s32 i;
     s32 j;
 

@@ -9,7 +9,7 @@ struct SdfObjectRefCommand;
 
 struct sdfMotionCutDef_t;
 
-struct SdfChunkHeader;
+struct sdfModelExtraChunk_t;
 
 struct sdfMemHandle_t;
 
@@ -83,12 +83,15 @@ extern u8 vu1MicroPacket[];
 
 extern s32 sceDmaSync(void *, s32, s32);
 
-/* Variable-size serialized chunk streams share only this eight-byte header.
- * The word at +8 belongs to each chunk's payload. */
-typedef struct SdfChunkHeader {
-    u32 id;   /* 0x00: zero terminates the chunk stream */
-    u32 size; /* 0x04: byte extent to the next chunk */
-} SdfChunkHeader;
+/* One serialized model extra chunk: the id and size, then the payload words
+ * the chunk kind defines. sdfModelDef_t.extraData points at the first. */
+typedef struct sdfModelExtraChunk_t {
+    u32 chunkId; /* 0x00: zero terminates the chunk stream */
+    u32 size;    /* 0x04: byte extent to the next chunk */
+    u32 data0;
+    u32 data1;
+    s32 sPos;
+} sdfModelExtraChunk_t;
 
 
 typedef struct sdfItemArray_t sdfItemArray_t;
@@ -157,7 +160,7 @@ typedef struct sdfModelRootNode_t {
     struct SdfDmaTagHeader *secondaryLighting; /* Borrowed second DMA reference prefix. */
     f32 scalarOverrideFirst;
     f32 scalarOverrideSecond;
-    struct SdfChunkHeader *chunkTable; /* Borrowed from the model resource data. */
+    struct sdfModelExtraChunk_t *chunkTable; /* Borrowed from the model resource data. */
     /* Model scale read by sdfVuSetGlobalScale and copied unchanged into the
      * three-scalar VIF payload (DDS1 0x2D9530). */
     f32 modelScale;
