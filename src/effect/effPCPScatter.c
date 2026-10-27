@@ -14,7 +14,7 @@ struct effPCPWhirlwind3PolyParam_t;
 struct effPCPWhirlwindPolyPart_tag;
 struct effPCPWwSpherePoly_tag;
 struct effPCPWwSpherePolyParam_t;
-struct PcpScatterPlainParticle;
+struct effPCPWwSpherePolyPart_tag;
 struct dds3ScatterPolyList_tag;
 struct effPCPHamaCardSpiralParam_t;
 struct effPCPHamaCardSpiralPart_tag;
@@ -23,7 +23,7 @@ struct effPCPHamaCardScatterParam_t;
 struct effPCPHamaCardScatterPart_tag;
 struct effPCPHamaCardScatter_tag;
 struct effPCPHamaCardSphereParam_t;
-struct effPCPWwSpherePolyPart_tag;
+struct effPCPHamaCardSpherePart_tag;
 struct effPCPHamaCardSphere_tag;
 struct sdfMatPacket_t;
 struct sdfGsMemSlice_t;
@@ -41,7 +41,7 @@ typedef struct effPCPWhirlwind2Poly_tag effPCPWhirlwind2Poly_tag;
 typedef struct effPCPWhirlwind3PolyParam_t effPCPWhirlwind3PolyParam_t;
 typedef struct effPCPWhirlwind3Poly_tag effPCPWhirlwind3Poly_tag;
 typedef struct effPCPWwSpherePolyParam_t effPCPWwSpherePolyParam_t;
-typedef struct PcpScatterPlainParticle PcpScatterPlainParticle;
+typedef struct effPCPWwSpherePolyPart_tag effPCPWwSpherePolyPart_tag;
 typedef struct effPCPWwSpherePoly_tag effPCPWwSpherePoly_tag;
 typedef struct effPartHandle_t effPartHandle_t;
 typedef struct effPCPHamaCardSpiralParam_t effPCPHamaCardSpiralParam_t;
@@ -51,7 +51,7 @@ typedef struct effPCPHamaCardScatterPart_tag effPCPHamaCardScatterPart_tag;
 typedef struct effPCPHamaCardScatterParam_t effPCPHamaCardScatterParam_t;
 typedef struct effPCPHamaCardScatter_tag effPCPHamaCardScatter_tag;
 typedef struct effPCPHamaCardSphereParam_t effPCPHamaCardSphereParam_t;
-typedef struct effPCPWwSpherePolyPart_tag effPCPWwSpherePolyPart_tag;
+typedef struct effPCPHamaCardSpherePart_tag effPCPHamaCardSpherePart_tag;
 typedef struct effPCPHamaCardSphere_tag effPCPHamaCardSphere_tag;
 typedef struct sdfGrOt_t sdfGrOt_t;
 typedef struct effRandState_t effRandState_t;
@@ -413,21 +413,21 @@ struct effPCPWwSpherePolyParam_t {
 
 /* The flat particle has three rotation angles before its signed age; it is
  * distinct from the other variants' particle even though both records are 0x28. */
-struct PcpScatterPlainParticle {
+struct effPCPWwSpherePolyPart_tag {
     f32 rot[3];
-    s32 age;
-    f32 angle;
-    f32 angularSpeed;
-    f32 angleStep;
+    s32 frame;
+    f32 radian;
+    f32 radian_s;
+    f32 radian_add;
     f32 radius;
-    f32 radialSpeed;
-    f32 height;
+    f32 radius_s;
+    f32 width;
 };
 
 struct effPCPWwSpherePoly_tag {
     f32 matrix[16];
     effPCPWwSpherePolyParam_t param;
-    PcpScatterPlainParticle *pPart;
+    effPCPWwSpherePolyPart_tag *pPart;
     f32 scale;
     u32 abgr;
     dds3WhirlwindPolyList_tag *hPoly;
@@ -594,21 +594,19 @@ struct effPCPHamaCardSphereParam_t {
     u32 attach_i;
 };
 
-struct effPCPWwSpherePolyPart_tag {
-    s32 rot;
-    f32 frame;
-    f32 radian;
-    f32 radian_s;
-    f32 radian_add;
-    f32 radius;
+struct effPCPHamaCardSpherePart_tag {
+    s32 frame;
     f32 radius_s;
-    f32 width;
+    f32 roll_s;
+    f32 radius;
+    f32 radian;
+    f32 axis[3];
 };
 
 /* Runtime owner followed inline by its variable-length particle array. */
 struct effPCPHamaCardSphere_tag {
     effPCPHamaCardSphereParam_t param;
-    effPCPWwSpherePolyPart_tag *pPart;
+    effPCPHamaCardSpherePart_tag *pPart;
     f32 scale;
     u32 abgr;
     dds3ScatterPolyList_tag *hPoly;
@@ -1118,16 +1116,16 @@ effPCPHamaCardSphere_tag *effPCPHamaCardSphereCreate(params, resource, particleP
     void *particleParams;
 {
     effPCPHamaCardSphere_tag *work;
-    effPCPWwSpherePolyPart_tag *particle;
+    effPCPHamaCardSpherePart_tag *particle;
     sdfMemHandle_t *allocation;
     effPartHandle_t **handles;
     u32 count;
     u32 i;
     s32 delaySpread;
 
-    allocation = sdfMemAllocDirect(sizeof(effPCPHamaCardSphere_tag) + params->number * sizeof(effPCPWwSpherePolyPart_tag));
+    allocation = sdfMemAllocDirect(sizeof(effPCPHamaCardSphere_tag) + params->number * sizeof(effPCPHamaCardSpherePart_tag));
     work = (effPCPHamaCardSphere_tag *)sdfMemLock(allocation);
-    work->pPart = (effPCPWwSpherePolyPart_tag *)(work + 1);
+    work->pPart = (effPCPHamaCardSpherePart_tag *)(work + 1);
     work->param = *params;
     work->abgr = EFF_SCATTER_NEUTRAL_COLOR;
     work->hMem = allocation;
@@ -1165,7 +1163,7 @@ effPCPHamaCardSphere_tag *effPCPHamaCardSphereCreate(params, resource, particleP
         delaySpread = 1;
     }
     for (i = 0; i < count; i++, particle++) {
-        particle->rot = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % delaySpread);
+        particle->frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % delaySpread);
     }
     return work;
 }
@@ -1225,26 +1223,26 @@ void effPCPHamaCardSphereDelete(effPCPHamaCardSphere_tag *hData)
 
 void effPCPHamaCardSpherePartInit(effPCPHamaCardSphere_tag *pHCardSphere, s32 number)
 {
-    effPCPWwSpherePolyPart_tag *sprite = &pHCardSphere->pPart[number];
+    effPCPHamaCardSpherePart_tag *sprite = &pHCardSphere->pPart[number];
     f32 direction[4];
     f32 jitter;
 
-    sprite->radian_add = dds3GetRandFloatA(dds3EffectBase) * (EFF_SCATTER_HALF_TURN * 2.0f);
+    sprite->radian = dds3GetRandFloatA(dds3EffectBase) * (EFF_SCATTER_HALF_TURN * 2.0f);
     jitter = pHCardSphere->param.radius_s_r;
-    sprite->radian_s = pHCardSphere->param.radius_s * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
+    sprite->radius = pHCardSphere->param.radius_s * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
     jitter = pHCardSphere->param.radius_e_r;
-    sprite->frame = (pHCardSphere->param.radius_e * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) - sprite->radian_s) / (f32)pHCardSphere->param.life;
-    sprite->radian = pHCardSphere->param.roll_s;
+    sprite->radius_s = (pHCardSphere->param.radius_e * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) - sprite->radius) / (f32)pHCardSphere->param.life;
+    sprite->roll_s = pHCardSphere->param.roll_s;
     direction[0] = (dds3GetRandFloatA(dds3EffectBase) - EFF_SCATTER_RANDOM_MIDPOINT) * EFF_SCATTER_RANDOM_SPAN;
     direction[1] = (dds3GetRandFloatA(dds3EffectBase) - EFF_SCATTER_RANDOM_MIDPOINT) * EFF_SCATTER_RANDOM_SPAN;
     direction[2] = (dds3GetRandFloatA(dds3EffectBase) - EFF_SCATTER_RANDOM_MIDPOINT) * EFF_SCATTER_RANDOM_SPAN;
     SDF_VU0_LOADVECTOR(direction);
     SDF_VU0_NORMALIZE();
     SDF_VU0_STOREVECTOR(direction);
-    sprite->rot = 0;
-    sprite->radius = direction[0];
-    sprite->radius_s = direction[1];
-    sprite->width = direction[2];
+    sprite->frame = 0;
+    sprite->axis[0] = direction[0];
+    sprite->axis[1] = direction[1];
+    sprite->axis[2] = direction[2];
 }
 
 void effPCPHamaCardSphereDraw(effPCPHamaCardSphere_tag *hData) {
@@ -1270,7 +1268,7 @@ void effPCPHamaCardSphereDraw(effPCPHamaCardSphere_tag *hData) {
     s32 duration;
     s32 endAge;
     s32 duplicateStart;
-    effPCPWwSpherePolyPart_tag *particle;
+    effPCPHamaCardSpherePart_tag *particle;
     f32 pulseAngle;
     f32 angleDamping;
 
@@ -1293,7 +1291,7 @@ void effPCPHamaCardSphereDraw(effPCPHamaCardSphere_tag *hData) {
     baseColor = hData->abgr;
 
     for (; i < count; i++, particle++) {
-        s32 age = particle->rot;
+        s32 age = particle->frame;
         u128 *vertices = dds3ScatterPolyListGetVertex(hData->hPoly, i);
         u32 *colors = dds3ScatterPolyListGetVC(hData->hPoly, i);
         if (age == 0) {
@@ -1317,9 +1315,9 @@ void effPCPHamaCardSphereDraw(effPCPHamaCardSphere_tag *hData) {
             }
             moving = age < duration;
             color = effColorBlend(baseColor & 0xFFFFFF, baseColor, factor);
-            angle = particle->radian_add;
-            radius = particle->radian_s;
-            angleStep = particle->radian;
+            angle = particle->radian;
+            radius = particle->radius;
+            angleStep = particle->roll_s;
             if (!moving && pulse) {
                 if (age == duration) {
                     angle += pulseAngle;
@@ -1327,9 +1325,9 @@ void effPCPHamaCardSphereDraw(effPCPHamaCardSphere_tag *hData) {
                     angle -= pulseAngle;
                 }
             }
-            axis[0] = particle->radius;
-            axis[1] = particle->radius_s;
-            axis[2] = particle->width;
+            axis[0] = particle->axis[0];
+            axis[1] = particle->axis[1];
+            axis[2] = particle->axis[2];
             SetRotateMatrixAxis(angle, (const void *)axis);
             position[0] = radius;
             position[1] = 0.0f;
@@ -1381,9 +1379,9 @@ void effPCPHamaCardSphereDraw(effPCPHamaCardSphere_tag *hData) {
                 SDF_VU0_COPYVECTOR(position, next);
             }
             if (moving) {
-                particle->radian_s += particle->frame;
-                particle->radian_add += angleStep;
-                particle->radian = angleStep * angleDamping;
+                particle->radius += particle->radius_s;
+                particle->radian += angleStep;
+                particle->roll_s = angleStep * angleDamping;
             }
         } else {
             colors[0] = 0;
@@ -1394,7 +1392,7 @@ void effPCPHamaCardSphereDraw(effPCPHamaCardSphere_tag *hData) {
             colors[5] = 0;
         }
         if (respawn && age >= endAge) {
-            particle->rot = -1;
+            particle->frame = -1;
         }
         if (duplicates && age >= duplicateStart && age >= 0 && i % perGroup == 0) {
             u32 group = i / perGroup;
@@ -1406,7 +1404,7 @@ void effPCPHamaCardSphereDraw(effPCPHamaCardSphere_tag *hData) {
             dds3EffectPartSetPosition(hData->pAttach[group], duplicatePosition);
             dds3EffectPartDraw(hData->pAttach[group]);
         }
-        particle->rot++;
+        particle->frame++;
     }
     hData->hPoly->origin[0] = hData->param.pos[0];
     hData->hPoly->origin[1] = hData->param.pos[1];
@@ -2668,16 +2666,16 @@ effPCPWwSpherePoly_tag *effPCPWwSpherePolyCreate(src, resource)
     effPCPWwSpherePolyParam_t *src;
     u32 resource;
 {
-    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->number * sizeof(PcpScatterPlainParticle) + sizeof(effPCPWwSpherePoly_tag));
+    sdfMemHandle_t *allocation = sdfMemAllocDirect(src->number * sizeof(effPCPWwSpherePolyPart_tag) + sizeof(effPCPWwSpherePoly_tag));
     effPCPWwSpherePoly_tag *inst = (effPCPWwSpherePoly_tag *)sdfMemLock(allocation);
-    PcpScatterPlainParticle *particle;
+    effPCPWwSpherePolyPart_tag *particle;
     u32 delayModulus;
     u32 count;
     u32 i;
     dds3WhirlwindPolyList_tag *object;
     u32 drawWord;
 
-    particle = (PcpScatterPlainParticle *)(inst + 1);
+    particle = (effPCPWwSpherePolyPart_tag *)(inst + 1);
     /* Preserve the complete serialized parameter block, including padding. */
     memcpy(&inst->param, src, sizeof(inst->param));
     inst->abgr = EFF_SCATTER_NEUTRAL_COLOR;
@@ -2698,7 +2696,7 @@ effPCPWwSpherePoly_tag *effPCPWwSpherePolyCreate(src, resource)
         delayModulus = 1;
     }
     for (i = 0; i < count; i++) {
-        particle->age = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % delayModulus);
+        particle->frame = -(dds3GetRandA((effRandState_t *)dds3EffectBase) % delayModulus);
         particle++;
     }
     return inst;
@@ -2726,7 +2724,7 @@ void effPCPWwSpherePolyDelete(effPCPWwSpherePoly_tag *hData)
 
 void effPCPWwSpherePolyPartInit(effPCPWwSpherePoly_tag *pWwSpherePoly, s32 index) {
     f32 *uv = dds3WhirlwindPolyListGetUV(pWwSpherePoly->hPoly, index);
-    PcpScatterPlainParticle *ring;
+    effPCPWwSpherePolyPart_tag *ring;
     f32 angle;
     f32 angleStep;
     f32 radius;
@@ -2751,12 +2749,12 @@ void effPCPWwSpherePolyPartInit(effPCPWwSpherePoly_tag *pWwSpherePoly, s32 index
     ring->rot[0] = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_FULL_TURN;
     ring->rot[1] = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_FULL_TURN;
     ring->rot[2] = dds3GetRandFloatA(dds3EffectBase) * EFF_SCATTER_FULL_TURN;
-    ring->angle = angle;
+    ring->radian = angle;
     ring->radius = radius;
-    ring->height = height;
-    ring->angleStep = angleStep;
-    ring->angularSpeed = pWwSpherePoly->param.roll_s;
-    ring->radialSpeed = pWwSpherePoly->param.radius_s;
+    ring->width = height;
+    ring->radian_add = angleStep;
+    ring->radian_s = pWwSpherePoly->param.roll_s;
+    ring->radius_s = pWwSpherePoly->param.radius_s;
     v = (f32)pWwSpherePoly->param.repeat_v;
     u = 0.0f;
     du = (f32)pWwSpherePoly->param.repeat_u / (f32)count;
@@ -2773,7 +2771,7 @@ void effPCPWwSpherePolyPartInit(effPCPWwSpherePoly_tag *pWwSpherePoly, s32 index
 void effPCPWwSpherePolyPartMove(effPCPWwSpherePoly_tag *pWwSpherePoly, s32 index)
 {
     f32 *vertex = dds3WhirlwindPolyListGetVertex(pWwSpherePoly->hPoly, index);
-    PcpScatterPlainParticle *ring;
+    effPCPWwSpherePolyPart_tag *ring;
     f32 angle;
     f32 radius;
     f32 step;
@@ -2785,18 +2783,18 @@ void effPCPWwSpherePolyPartMove(effPCPWwSpherePoly_tag *pWwSpherePoly, s32 index
     dds3WhirlwindPolyListGetUV(pWwSpherePoly->hPoly, index);
     ring = &pWwSpherePoly->pPart[index];
     count = pWwSpherePoly->hPoly->vectorsPerParticle >> 1;
-    angle = ring->angle + ring->angularSpeed;
+    angle = ring->radian + ring->radian_s;
     radius = ring->radius;
-    step = ring->angleStep;
-    radius += ring->radialSpeed;
-    if (ring->age >= pWwSpherePoly->param.radius_aw) {
-        ring->radialSpeed *= pWwSpherePoly->param.radius_a;
+    step = ring->radian_add;
+    radius += ring->radius_s;
+    if (ring->frame >= pWwSpherePoly->param.radius_aw) {
+        ring->radius_s *= pWwSpherePoly->param.radius_a;
     }
     SetRotateMatrixXYZ(ring->rot);
     ring->radius = radius;
-    ring->angle = angle;
-    ring->angularSpeed *= pWwSpherePoly->param.roll_a;
-    height = ring->height;
+    ring->radian = angle;
+    ring->radian_s *= pWwSpherePoly->param.roll_a;
+    height = ring->width;
     for (i = 0; i < count; i++) {
         vertex[0] = sdfCos(angle) * radius;
         vertex[1] = 0;
@@ -2820,7 +2818,7 @@ void effPCPWwSpherePolyDraw(effPCPWwSpherePoly_tag *hData) {
     u32 i;
     u32 count = hData->param.number;
     dds3WhirlwindPolyList_tag *draw = hData->hPoly;
-    PcpScatterPlainParticle *particle = hData->pPart;
+    effPCPWwSpherePolyPart_tag *particle = hData->pPart;
     s32 duration = hData->param.life;
     s32 fadeIn;
     s32 fadeRange;
@@ -2831,7 +2829,7 @@ void effPCPWwSpherePolyDraw(effPCPWwSpherePoly_tag *hData) {
     color = effMagaCylinderCalcColor(hData->abgr, hData->param.abgr);
 
     for (i = 0; i < count; i++) {
-        s32 age = particle->age;
+        s32 age = particle->frame;
         if (duration < age) {
             draw->colors[i] = 0;
         } else {
@@ -2851,9 +2849,9 @@ void effPCPWwSpherePolyDraw(effPCPWwSpherePoly_tag *hData) {
                 effPCPWwSpherePolyPartMove(hData, i);
             }
             if (loop != 0 && age >= duration) {
-                particle->age = 0;
+                particle->frame = 0;
             } else {
-                particle->age++;
+                particle->frame++;
             }
         }
         particle++;
