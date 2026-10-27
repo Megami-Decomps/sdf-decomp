@@ -9,7 +9,7 @@ enum {
     SDF_STREAM_READ_RESUME = 2
 };
 
-struct movieStream_t;
+struct sdfMovieCb_t;
 
 struct sdfIpuInitParm_t;
 
@@ -69,19 +69,19 @@ typedef struct sdfIpuDecodeCb_t
     u8 firstSlot;
     u8 *scratchBuffer;
     u8 pad58[4];
-    s32 (*read)(struct sdfIpuDecodeCb_t *, struct movieStream_t *, s32, void *, s32);
-    struct movieStream_t *strmCallbackParm;
+    s32 (*read)(struct sdfIpuDecodeCb_t *, struct sdfMovieCb_t *, s32, void *, s32);
+    struct sdfMovieCb_t *strmCallbackParm;
     u8 inputFeedDmaInFlight;
     u8 unk65;
     u8 pad66[2];
     IpuDmaState dma;
 } sdfIpuDecodeCb_t;
 
-typedef s32 (*SdfStreamRead)(sdfIpuDecodeCb_t *, struct movieStream_t *, s32, void *, s32);
+typedef s32 (*SdfStreamRead)(sdfIpuDecodeCb_t *, struct sdfMovieCb_t *, s32, void *, s32);
 
-void sdfIpuStrmDecodeInit(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct movieStream_t *aContext);
+void sdfIpuStrmDecodeInit(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct sdfMovieCb_t *aContext);
 
-void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *cb, struct sdfIpuInitParm_t *parm, SdfStreamRead hdr, struct movieStream_t *leng);
+void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *cb, struct sdfIpuInitParm_t *parm, SdfStreamRead hdr, struct sdfMovieCb_t *leng);
 
 void sdfIpuAttachTask(sdfIpuDecodeCb_t *cb);
 
@@ -588,7 +588,7 @@ void sdfIpuInitCb(sdfIpuDecodeCb_t *cb, struct sdfIpuInitParm_t *parm) {
 }
 
 /* Decode the frame header, allocate its buffers, then queue the bytes after that header. */
-void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *cb, struct sdfIpuInitParm_t *parm, SdfStreamRead hdr, struct movieStream_t *leng) {
+void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *cb, struct sdfIpuInitParm_t *parm, SdfStreamRead hdr, struct sdfMovieCb_t *leng) {
     s32 sourceSize = (s32)leng;
     s32 interruptsEnabled;
     u8 *frameBytes = (u8 *)hdr;
@@ -607,7 +607,7 @@ void sdfIpuSetDecodeParams(sdfIpuDecodeCb_t *cb, struct sdfIpuInitParm_t *parm, 
 }
 
 /* Store the callback and movie context, then allocate the feed ring and leading mirror bytes. */
-void sdfIpuStrmDecodeInit(sdfIpuDecodeCb_t *node, struct sdfIpuInitParm_t *format, SdfStreamRead readSource, struct movieStream_t *readContext) {
+void sdfIpuStrmDecodeInit(sdfIpuDecodeCb_t *node, struct sdfIpuInitParm_t *format, SdfStreamRead readSource, struct sdfMovieCb_t *readContext) {
     sdfIpuInitCb(node, format);
     node->read = readSource;
     node->strmCallbackParm = readContext;
@@ -954,7 +954,7 @@ s32 sdfIpuSetChainTag(sdfIpuDecodeCb_t *cb)
 
 INCLUDE_ASM(const s32, "sdf/sdfIpu", sdfIpuRunDecode);
 
-void sdfIpuStartDecodeTask(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct movieStream_t *aContext, s32 aResourceWord)
+void sdfIpuStartDecodeTask(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct sdfMovieCb_t *aContext, s32 aResourceWord)
 {
     sdfIpuSetDecodeParams(aNode, aFormat, aRead, aContext);
     aNode->resourceWord = aResourceWord;
@@ -971,10 +971,10 @@ void sdfIpuSetOutputTex(sdfIpuDecodeCb_t *node, struct sdfIpuInitParm_t *params,
         streamParams.rgbMode = 1;
         break;
     }
-    sdfIpuStartDecodeTask(node, &streamParams, (SdfStreamRead)sourceData, (struct movieStream_t *)sourceSize, sdfTexGetPixelAddr(source));
+    sdfIpuStartDecodeTask(node, &streamParams, (SdfStreamRead)sourceData, (struct sdfMovieCb_t *)sourceSize, sdfTexGetPixelAddr(source));
 }
 
-void movieAttachDecodeTask(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct movieStream_t *aContext, s32 aResourceWord)
+void movieAttachDecodeTask(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct sdfMovieCb_t *aContext, s32 aResourceWord)
 {
     sdfIpuStrmDecodeInit(aNode, aFormat, aRead, aContext);
     aNode->resourceWord = aResourceWord;
