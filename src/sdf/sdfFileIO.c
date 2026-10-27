@@ -40,22 +40,22 @@ typedef s8 sdfDevStateCode_t;
  * 0x30-byte prefix for consumers outside the device queue implementation. */
 typedef struct sdfFileCmdHandle_t {
     struct sdfFileCmdHandle_t *next;
-    struct sdfFileCmdHandle_t *previous;
-    struct sdfFileCmdHandle_t *workerNext;
-    struct sdfFileCmdHandle_t *workerPrev;
+    struct sdfFileCmdHandle_t *prev;
+    struct sdfFileCmdHandle_t *deviceNext;
+    struct sdfFileCmdHandle_t *devicePrev;
     char *filename;
     u8 device;
     sdfDevOperationCode_t cmd;
     sdfDevStateCode_t stat;
-    u8 pad17;
+    u8 phase;
     s32 offset;
     s32 length;
     void *buffer;
     s32 cmdParm;
     s32 fd;
-    s32 result;
+    s32 errorCode;
     s32 currentOffset;
-    u8 pad34[4];
+    u8 remainder[4];
     void (*callback)(struct sdfFileCmdHandle_t *, s32, s32, s32, s32);
     s32 userData;
 } sdfFileCmdHandle_t;
@@ -192,7 +192,7 @@ s32 sdfFileCmdReleaseHandle(sdfFileCmd_t *aHandle)
 
 /* Store an error/result, release the request, and notify its callback of inactivity. */
 void sdfFileCmdFinish(sdfFileCmdHandle_t *state, s32 result) {
-    state->result = result;
+    state->errorCode = result;
     state->stat = SDF_FILE_CMD_STAT_ERROR;
     sdfFileCmdReleaseHandle((sdfFileCmd_t *)state);
     if (state->callback != NULL) {

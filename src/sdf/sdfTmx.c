@@ -75,22 +75,22 @@ s32 sdfCreateThreadWithStack(void (*entryAddress)(), s32 stackBytes, s32 priorit
 /* Complete 0x40-byte owner allocated by sdfFileCmdNewHandle. */
 typedef struct sdfFileCmdHandle_t {
     struct sdfFileCmdHandle_t *next; /* 0x00 */
-    struct sdfFileCmdHandle_t *previous; /* 0x04 */
-    struct sdfFileCmdHandle_t *workerNext; /* 0x08 */
-    struct sdfFileCmdHandle_t *workerPrev; /* 0x0C */
+    struct sdfFileCmdHandle_t *prev; /* 0x04 */
+    struct sdfFileCmdHandle_t *deviceNext; /* 0x08 */
+    struct sdfFileCmdHandle_t *devicePrev; /* 0x0C */
     char *filename; /* 0x10 */
     u8 device; /* 0x14 */
     SdfDevOperationCode cmd; /* 0x15 */
     SdfDevStateCode stat; /* 0x16 */
-    u8 pad17; /* 0x17 */
+    u8 phase; /* 0x17 */
     s32 offset; /* 0x18 */
     s32 length; /* 0x1C */
     void *buffer; /* 0x20 */
     s32 cmdParm; /* 0x24 */
     s32 fd; /* 0x28 */
-    s32 result; /* 0x2C */
+    s32 errorCode; /* 0x2C */
     s32 currentOffset; /* 0x30 */
-    u8 pad34[4]; /* 0x34 */
+    u8 remainder[4]; /* 0x34 */
     void (*callback)(struct sdfFileCmdHandle_t *, s32, s32, s32, s32); /* 0x38 */
     s32 userData; /* 0x3C: opaque callback-context word */
 } sdfFileCmdHandle_t;
@@ -249,7 +249,7 @@ s32 *sdfFileRpcHandler(u32 command, s32 request) {
         if (state->deviceState != 0) {
             WaitSema(state->semaphore);
             deviceState = state->deviceState;
-            if (deviceState->result != 0) {
+            if (deviceState->errorCode != 0) {
                 sdfFileCmdClearError(deviceState);
                 sdfFileCmdFree(state->deviceState);
                 state->deviceState = 0;

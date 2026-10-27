@@ -511,13 +511,13 @@ void sdfPacTmxDecoderInit(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr)
 
 void sdfPacTexListDecoderTmxHeaderEndFunc(sdfPacDecodeCb_t *cb)
 {
-    sdfPacTmxDecoderInitFunc(cb, &cb->slot.list->header, &cb->slot.list->tmxCb);
+    sdfPacTmxDecoderInitFunc(cb, &cb->slot.list->currHeader, &cb->slot.list->tmxCb);
     cb->onEnd = sdfPacTexListDecoderTmxBodyEndFunc;
 }
 
 void func_002C6D58(sdfPacDecodeCb_t *aState)
 {
-    aState->dst = (u8 *)&aState->slot.list->header;
+    aState->dst = (u8 *)&aState->slot.list->currHeader;
     aState->rest = 0x10;
     aState->decoder = sdfPacMemDecoderFunc;
     aState->onEnd = sdfPacTexListDecoderTmxHeaderEndFunc;

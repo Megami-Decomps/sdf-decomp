@@ -356,7 +356,7 @@ typedef struct
     u32 count;
     s32 currNum;
     u32 pad[2];
-    sdfPacStdBlockHeader_t header;
+    sdfPacStdBlockHeader_t currHeader;
     sdfPacTmxDecodeCb_t tmxCb;
 } sdfPacTexListDecodeCb_t;
 

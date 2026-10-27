@@ -143,8 +143,8 @@ typedef struct tagPipeObject {
     f32 vpos[2];
     s8 id;
     u8 action;
+    u8 enabled;
     u8 mdl;
-    u8 unk1B;
     s16 count;
     u16 flags;
 } tagPipeObject;

@@ -408,9 +408,9 @@ typedef struct
 {
     dds3ModelBlurInstance_t *instants;
     s16 spawnCount;
-    u16 capacity;
+    u16 count;
     s16 interval;
-    s16 growStep;
+    s16 intervalCount;
     s32 keepCount;
     f32 colorBase[4];
     f32 colorDelta[4];
