@@ -775,10 +775,10 @@ void mdlSetBlur(mdlObj_t *aHandle, s32 interval, s32 count,
     mdlFreeBlur(aHandle);
     if (count > 0) {
         deviceList = sdfChipAllocZeroDirect(sizeof(dds3ModelBlurCb_t));
-        deviceList->growStep = 1;
+        deviceList->intervalCount = 1;
         aHandle->devList = deviceList;
         deviceList->spawnCount = count;
-        deviceList->capacity = count;
+        deviceList->count = count;
         deviceList->interval = interval;
         /* Final argument use: see docs/idioms.md, "Final argument use: mdlSetBlur". */
         deviceList->keepCount = count * interval;
@@ -827,9 +827,9 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
     s32 remaining;
     u32 color;
 
-    if (list->spawnCount != 0 && --list->growStep == 0) {
+    if (list->spawnCount != 0 && --list->intervalCount == 0) {
         list->spawnCount--;
-        list->growStep = list->interval;
+        list->intervalCount = list->interval;
         slot = sdfChipAllocDirect(sizeof(dds3ModelBlurInstance_t));
         model = sdfModelMake(ctx->sub->texList, ctx->sub->modelDefPtr);
         /* Finish initialization before publishing the new list head. */
