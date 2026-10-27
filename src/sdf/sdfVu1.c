@@ -38,9 +38,7 @@ enum {
     SDF_GS_TRXDIR = 0x53
 };
 
-union SdfDrawTransform;
 
-struct SdfGsTextureStateValues;
 
 struct sdfCorePacketFaceDivParm_t;
 
@@ -59,18 +57,13 @@ struct TMX_HEADER_t;
 /* Serialized byte consumed by the GS texture-state packet builder. */
 typedef u8 SdfTextureClampMode;
 
-/* Draw entries store six transform floats and expose the same bytes as three qwords. */
-typedef union SdfDrawTransform {
+/* A texture coordinate transform in a material packet. sdfMatSetUvwParm fills
+ * it either as six floats or, for the identity case, as three quadword halves. */
+typedef union {
     f32 m[6];
-    u64 words[3];
-} SdfDrawTransform;
+    u64 q[3];
+} sdfMatTexTm_t;
 
-/* The cached GS TEX1, TEX0 and CLAMP values shared by texture draw records. */
-typedef struct SdfGsTextureStateValues {
-    u64 sampling;
-    u64 texture;
-    u64 clamp;
-} SdfGsTextureStateValues;
 
 /* VU0 input basis and emitted base/delta color vectors. */
 typedef struct sdfCorePacketFaceDivParm_t {
@@ -144,9 +137,15 @@ typedef struct sdfMatPacket_t {
     f32 y;                 /* 0x28 */
     f32 x;                 /* 0x2C */
     u8 pad30[8];           /* 0x30 */
-    SdfGsTextureStateValues primaryTextureState; /* 0x38 */
-    SdfGsTextureStateValues secondaryTextureState; /* 0x50 */
-    SdfDrawTransform transforms[2]; /* 0x68 */
+    u64 tex1Data;          /* 0x38 */
+    u64 tex0Data;
+    u64 clampData;
+    u64 mtexTex1Data;      /* 0x50 */
+    u64 mtexTex0Data;
+    u64 mtexClampData;
+    /* sdfMatSetUvwParm writes one transform per texture: a 2x2 then an offset. */
+    sdfMatTexTm_t texTm;   /* 0x68 */
+    sdfMatTexTm_t mtexTexTm;
     u32 vifItopCommand;    /* 0x98: VIF ITOP with immediate 0xC */
     u32 vifMscalCommand;   /* 0x9C: VIF MSCAL with microprogram index zero */
 } sdfMatPacket_t;
@@ -897,15 +896,15 @@ void corePktEmitTexTris(work)
                 cursor += 2;
                 *(u64 *)cursor = 0xE;
                 cursor += 2;
-                *(u64 *)cursor = node->primaryTextureState.sampling;
+                *(u64 *)cursor = node->tex1Data;
                 cursor += 2;
                 *(u64 *)cursor = 0x14;
                 cursor += 2;
-                *(u64 *)cursor = node->primaryTextureState.texture;
+                *(u64 *)cursor = node->tex0Data;
                 cursor += 2;
                 *(u64 *)cursor = 6;
                 cursor += 2;
-                *(u64 *)cursor = node->primaryTextureState.clamp;
+                *(u64 *)cursor = node->clampData;
                 cursor += 2;
                 *(u64 *)cursor = 8;
                 cursor += 2;
@@ -1089,9 +1088,9 @@ void corePktEmitMultiTexPass(corePktCb_t *cb) {
             corePktSetConstColor(cb, secondaryColor);
             break;
     }
-    corePktEmitTexTrisCtx2(cb, node->secondaryTextureState.sampling,
-                                  node->secondaryTextureState.texture,
-                                  node->secondaryTextureState.clamp, node->alphaState, 0);
+    corePktEmitTexTrisCtx2(cb, node->mtexTex1Data,
+                                  node->mtexTex0Data,
+                                  node->mtexClampData, node->alphaState, 0);
 }
 
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktEmitRefMapPass);

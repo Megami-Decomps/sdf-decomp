@@ -7,9 +7,7 @@ struct sdfDrawTag_t;
 
 union sdfMatUvwParm_t;
 
-union SdfDrawTransform;
 
-struct SdfGsTextureStateValues;
 
 struct SdfDmaTagHeader;
 
@@ -54,18 +52,13 @@ typedef union sdfMatUvwParm_t {
     } transformInputs;
 } sdfMatUvwParm_t;
 
-/* Draw entries store six transform floats and expose the same bytes as three qwords. */
-typedef union SdfDrawTransform {
+/* A texture coordinate transform in a material packet. sdfMatSetUvwParm fills
+ * it either as six floats or, for the identity case, as three quadword halves. */
+typedef union {
     f32 m[6];
-    u64 words[3];
-} SdfDrawTransform;
+    u64 q[3];
+} sdfMatTexTm_t;
 
-/* The cached GS TEX1, TEX0 and CLAMP values shared by texture draw records. */
-typedef struct SdfGsTextureStateValues {
-    u64 sampling;
-    u64 texture;
-    u64 clamp;
-} SdfGsTextureStateValues;
 
 /* DMA tag prefix followed by the two VIF words used by indexed-model writers.
  * The control byte stays whole, and address is a hardware word rather than a
@@ -117,9 +110,15 @@ typedef struct sdfMatPacket_t {
     f32 y;                 /* 0x28 */
     f32 x;                 /* 0x2C */
     u8 pad30[8];           /* 0x30 */
-    SdfGsTextureStateValues primaryTextureState; /* 0x38 */
-    SdfGsTextureStateValues secondaryTextureState; /* 0x50 */
-    SdfDrawTransform transforms[2]; /* 0x68 */
+    u64 tex1Data;          /* 0x38 */
+    u64 tex0Data;
+    u64 clampData;
+    u64 mtexTex1Data;      /* 0x50 */
+    u64 mtexTex0Data;
+    u64 mtexClampData;
+    /* sdfMatSetUvwParm writes one transform per texture: a 2x2 then an offset. */
+    sdfMatTexTm_t texTm;   /* 0x68 */
+    sdfMatTexTm_t mtexTexTm;
     u32 vifItopCommand;    /* 0x98: VIF ITOP with immediate 0xC */
     u32 vifMscalCommand;   /* 0x9C: VIF MSCAL with microprogram index zero */
 } sdfMatPacket_t;
