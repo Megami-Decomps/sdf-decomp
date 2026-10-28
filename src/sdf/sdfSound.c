@@ -596,7 +596,22 @@ void p2sdSetStandPos(f32 Cposx, f32 Cposy, f32 Cposz,
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", p2sdLoadCheckMidi);
+extern void InvalidDCache(void *start, void *end);
+
+s32 p2sdLoadCheckMidi(s32 MidiNo)
+{
+    sndMergedWork_t *work = (sndMergedWork_t *)sdfSndMap;
+    s32 bank = MidiNo >> 16;
+    s32 i;
+
+    InvalidDCache(work, (u8 *)work + 0x5A0);
+    for (i = 0; i < 7; i++) {
+        if (work->slots[i].unk0 == bank) {
+            return 1;
+        }
+    }
+    return (p2sdSmgHandle == bank) ? 2 : 0;
+}
 
 /* Make sure the MIDI bank named by the packed track id is resident, loading it if not. */
 void p2sdLoadSMGFile(s32 MidiNo) {
