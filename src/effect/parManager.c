@@ -3419,17 +3419,11 @@ void dds3ParticleSetColorTable(dds3ParticleColorAnim_t *pColAnim, s32 frame) {
     pColAnim->b12 = ((f32)((a >> 16) & 0xFF) - (f32)((b >> 16) & 0xFF)) / span;
 }
 
-/* NON_MATCHING: 19 of 83 words differ (first at +0x98). */
-#ifdef NON_MATCHING
 u32 dds3ParticleColorAnim(dds3ParticleColorAnim_t *pColAnim, u32 color_now, s32 frame) {
-    u32 alpha;
-    u32 rgb;
     s32 components[3];
-    s32 red;
-    s32 green;
-    s32 blue;
-    u32 base;
-    f32 elapsed;
+    u32 alpha;
+    u32 sum;
+    f32 t;
 
     if (frame >= pColAnim->frame_end - pColAnim->alpha_e) {
         if (pColAnim->frame_end < frame) {
@@ -3437,44 +3431,44 @@ u32 dds3ParticleColorAnim(dds3ParticleColorAnim_t *pColAnim, u32 color_now, s32 
         }
         alpha = pColAnim->alpha_e_sub * (pColAnim->frame_end - frame);
         alpha &= 0xFF000000;
+    } else if (frame <= pColAnim->alpha_s) {
+        alpha = pColAnim->alpha_s_add * frame;
+        alpha &= 0xFF000000;
     } else {
-        if (frame <= pColAnim->alpha_s) {
-            alpha = pColAnim->alpha_s_add * frame;
-            alpha &= 0xFF000000;
-        } else {
-            alpha = pColAnim->alpha << 24;
-        }
+        alpha = pColAnim->alpha << 24;
     }
     if (pColAnim->type == 1) {
-        rgb = pColAnim->color0;
-    } else {
-        elapsed = (f32)frame;
-        if (frame < pColAnim->frame_h) {
-            base = pColAnim->color0;
-            red = (s32)(pColAnim->r01 * elapsed);
-            green = (s32)(pColAnim->g01 * elapsed);
-            blue = (s32)(pColAnim->b01 * elapsed);
-            components[2] = blue;
-            components[1] = green;
-            components[0] = red;
-            rgb = (base + red + (green << 8) + (blue << 16)) & 0xFFFFFF;
-        } else {
-            elapsed = elapsed - (f32)pColAnim->frame_h;
-            base = pColAnim->color1;
-            red = (s32)(pColAnim->r12 * elapsed);
-            green = (s32)(pColAnim->g12 * elapsed);
-            blue = (s32)(pColAnim->b12 * elapsed);
-            components[2] = blue;
-            components[1] = green;
-            components[0] = red;
-            rgb = (base + red + (green << 8) + (blue << 16)) & 0xFFFFFF;
-        }
+        return pColAnim->color0 | alpha;
     }
-    return rgb | alpha;
+    t = frame;
+    if (frame < pColAnim->frame_h) {
+        s32 red = pColAnim->r01 * t;
+        s32 green = pColAnim->g01 * t;
+        s32 blue = pColAnim->b01 * t;
+        sum = pColAnim->color0;
+        components[0] = red;
+        components[1] = green;
+        components[2] = blue;
+        sum += components[0];
+        sum += (u32)components[1] << 8;
+        sum += (u32)components[2] << 16;
+        return (sum & 0xFFFFFF) | alpha;
+    } else {
+        s32 red, green, blue;
+        t -= (f32)pColAnim->frame_h;
+        red = pColAnim->r12 * t;
+        green = pColAnim->g12 * t;
+        blue = pColAnim->b12 * t;
+        sum = pColAnim->color1;
+        components[0] = red;
+        components[1] = green;
+        components[2] = blue;
+        sum += components[0];
+        sum += (u32)components[1] << 8;
+        sum += (u32)components[2] << 16;
+        return (sum & 0xFFFFFF) | alpha;
+    }
 }
-#else
-INCLUDE_ASM(const s32, "effect/parManager", dds3ParticleColorAnim);
-#endif
 
 /* Allocate contiguous point slabs, slot records and the trailing table header. */
 dds3Particle_BlurBuff_t *dds3Particle_BlurCreate(u32 number, u16 length, billHandle_t **pBill_Handle) {
