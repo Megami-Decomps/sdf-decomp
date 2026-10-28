@@ -806,6 +806,10 @@ s32 IpuWriteCommand(void) {
     return decodedBits;
 }
 
+#ifdef NON_MATCHING
+/* NON_MATCHING: 22 of 115 words match at 460 bytes against retail 464; the
+   whole body is one word short because reorg fills the bnez delay slot with
+   the &cb->dma address instead of the sceIpuSync argument. */
 s32 sdfIpuDecode(sdfIpuDecodeCb_t *cb)
 {
     sdfIpuDmaRegs_t *dma;
@@ -832,9 +836,9 @@ s32 sdfIpuDecode(sdfIpuDecodeCb_t *cb)
     bufferIndex = cb->bufferIndex;
     sdfCurrIpuDecodeCb = cb;
     D_00552158 = cb;
-    dma->outputAddress = (u32)cb->frameBuffers[bufferIndex] & 0x0FFFFFFF;
-    dma->outputQwords = cb->buffSize / 16;
-    dma->outputControl = 0x100;
+    cb->dma.outputAddress = (u32)cb->frameBuffers[bufferIndex] & 0x0FFFFFFF;
+    cb->dma.outputQwords = cb->buffSize / 16;
+    cb->dma.outputControl = 0x100;
     cb->bufferIndex = bufferIndex ^ 1;
     cb->inputFeedEnabled = 1;
     sceIpuRestartDMA(dma);
@@ -855,6 +859,9 @@ s32 sdfIpuDecode(sdfIpuDecodeCb_t *cb)
     }
     SDF_IPU_CMD = cmd;
 }
+#else
+INCLUDE_ASM(const s32, "sdf/sdfIpu", sdfIpuDecode);
+#endif
 
 /* Remove and advance the first list item matching the IPU cleanup test. */
 void sdfIpuExecQueue(s32 critical) {
