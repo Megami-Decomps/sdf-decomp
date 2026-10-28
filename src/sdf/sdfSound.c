@@ -259,6 +259,28 @@ void p2sdLoadSMGFile(s32 MidiNo);
 
 u32 *sdfFileRpcHandleCmd(u32 command, sdfSoundRpcRequest_t *request);
 
+typedef struct sdfFileCmdHandle_t sdfFileCmdHandle_t;
+
+extern sdfFileCmdHandle_t *sdfFileRpcArg;
+extern sdfSoundRpcRequest_t *sdfFileRpcResult;
+extern s32 sdfFileRpcCmdState;
+/* This handler writes the first word of the RPC reply block. */
+extern u32 sdfFileRpcQueue[];
+/* The first cell stores the PCM base pointer. This unsized view keeps the
+ * non-small-data address form; see docs/levers/addressing-and-types.md. */
+extern u8 *p2sdPcmBuffer[];
+extern sdfMemHandle_t *sdfMemAllocDirect(s32 size);
+extern void *sdfMemLock(sdfMemHandle_t *handle);
+extern void sdfMemFreeDirect(sdfMemHandle_t *handle);
+extern sdfFileCmdHandle_t *sdfFileCmdReadOpen(
+    const char *path,
+    void (*callback)(sdfFileCmdHandle_t *, s32, s32, s32, s32),
+    s32 callbackContext);
+extern s32 sdfFileCmdClearError(sdfFileCmd_t *handle);
+extern s32 sdfFileCmdFree(sdfFileCmd_t *handle);
+extern s32 sdfFileCmdRead(void *handle, void *buffer, s32 byteCount);
+extern s32 sdfFileCmdClose(void *handle);
+
 void sdfGrFlushOtChain(u32 *source);
 
 s32 sdfPrintf(const char *str, ...);
@@ -752,7 +774,111 @@ s32 sdfFileRpcCallback(s32 unused, u32 event) {
     return 0;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfFileRpcHandleCmd);
+/* Handle sound-file and PCM-buffer RPC commands. */
+u32 *sdfFileRpcHandleCmd(u32 command, sdfSoundRpcRequest_t *request)
+{
+    char path[0x100];
+
+    switch (command) {
+    case 0: {
+        sdfFileCmdHandle_t *state;
+
+        if (D_00529BE8[0] == 0) {
+            sdfFileRpcQueue[0] = 0;
+            break;
+        }
+        p2sdPcmState = 1;
+        sdfSndMakeFilename(path, D_00529BE8);
+        state = sdfFileCmdReadOpen(path,
+            (void (*)(sdfFileCmdHandle_t *, s32, s32, s32, s32))sdfFileRpcCallback, 0);
+        sdfFileRpcArg = state;
+        if (state != NULL) {
+            WaitSema(sifRpcServerSema);
+            state = sdfFileRpcArg;
+            if (((sdfFileCmd_t *)state)->error != 0) {
+                sdfFileCmdClearError((sdfFileCmd_t *)state);
+                sdfFileCmdFree((sdfFileCmd_t *)sdfFileRpcArg);
+                sdfFileRpcArg = NULL;
+                state = NULL;
+            }
+        }
+        sdfFileRpcQueue[0] = (u32)state;
+        break;
+    }
+    case 1: {
+        sdfMemHandle_t *allocation;
+        void *buffer;
+
+        sdfFileRpcResult = request;
+        allocation = sdfMemAllocDirect(request->byteCount);
+        buffer = sdfMemLock(allocation);
+        if (buffer != NULL) {
+            sdfFileCmdRead(sdfFileRpcArg, buffer, sdfFileRpcResult->byteCount);
+            WaitSema(sifRpcServerSema);
+            sdfSndTransToIOP(sdfFileRpcResult->destination, buffer, sdfFileRpcResult->byteCount);
+            sdfMemFreeDirect(allocation);
+            sdfFileRpcQueue[0] = sdfFileRpcResult->byteCount;
+        } else {
+            sdfFileRpcQueue[0] = 0;
+        }
+        break;
+    }
+    case 2:
+        sdfFileCmdClose(sdfFileRpcArg);
+        WaitSema(sifRpcServerSema);
+        sdfFileCmdFree((sdfFileCmd_t *)sdfFileRpcArg);
+        sdfFileRpcArg = NULL;
+        p2sdPcmState = 0;
+        sdfFileRpcQueue[0] = 0;
+        break;
+    case 3:
+        sdfFileRpcCmdState = 0;
+        sdfFileRpcQueue[0] = 0;
+        break;
+    case 4: {
+        s32 bytes;
+
+        sdfFileRpcResult = request;
+        sdfSndTransToIOP(request->destination, p2sdPcmBuffer[0] + sdfFileRpcCmdState,
+                         request->byteCount);
+        bytes = sdfFileRpcResult->byteCount;
+        sdfFileRpcQueue[0] = bytes;
+        sdfFileRpcCmdState += bytes;
+        break;
+    }
+    case 5:
+        sdfFileRpcQueue[0] = 0;
+        break;
+    case 6: {
+        u32 word = p2sdPcmCallback;
+
+        if (word != 0) {
+            p2sdPcmBusy = 1;
+        }
+        sdfFileRpcQueue[0] = word;
+        break;
+    }
+    case 7: {
+        void *buffer;
+
+        sdfFileRpcResult = request;
+        buffer = ((u8 *(*)(s32))p2sdPcmCallback)(request->byteCount);
+        if (buffer != NULL) {
+            sdfSndTransToIOP(sdfFileRpcResult->destination, buffer,
+                             sdfFileRpcResult->byteCount);
+            sdfFileRpcQueue[0] = sdfFileRpcResult->byteCount;
+        } else {
+            sdfFileRpcQueue[0] = -1;
+        }
+        break;
+    }
+    case 8:
+        p2sdPcmBusy = 0;
+        sdfFileRpcQueue[0] = 0;
+        break;
+    }
+    return sdfFileRpcQueue;
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfSound", SifRpcServerThreadProc);
 
