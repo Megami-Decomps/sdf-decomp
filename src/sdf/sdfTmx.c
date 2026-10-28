@@ -558,8 +558,6 @@ extern const u8 D_0054B551[];
 
 INCLUDE_ASM(const s32, "sdf/sdfTmx", SdfFileRpcServerThreadProc);
 
-INCLUDE_ASM(const s32, "sdf/sdfTmx", sdf_2C7BC4);
-
 void sdfStartFileRpcServer(void) {
     s32 workerId = sdfCreateThreadWithStack(SdfFileRpcServerThreadProc, 0x1000, 0x4C);
 
