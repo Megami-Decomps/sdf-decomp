@@ -780,7 +780,7 @@ void dds3TrackPolySet(parSystem_t *hTrackPoly, s32 number, const u128 *pV);
 void dds3TrackPolySet2(parSystem_t *hTrackPoly, s32 number, const u128 *pV);
 void Eff_ModelTrackPolyListVertexSet(effTrackPolyList_t *hMTPolyList, s32 index, const u128 *pVertex);
 void Eff_ModelTrackPolyListColorSet(effTrackPolyList_t *hMTPolyList, s32 index, u32 abgr);
-void func_00162270();
+void func_00162270(effParticleOverlay_t *effect);
 
 /* Both draw paths submit the resource owned by the selected particle kind. */
 static __inline__ void SubmitKindDrawing(dds3Particle_Effect_t *kind) {
@@ -2612,7 +2612,56 @@ void dds3Particle_SphereAtomDraw(effTemplatePacketList_t *hData) {
     }
 }
 
-INCLUDE_ASM(const s32, "effect/parManager", dds3Particle_SpiralRandomize);
+void dds3Particle_SpiralRandomize(effParticleOverlay_t *effect) {
+    func_00162270(effect);
+}
+
+void func_001621A0(f32 factor, effEmitterHead_t *head) {
+    head->scale[0] *= factor;
+    head->scale[1] *= factor;
+    head->scale[2] *= factor;
+}
+
+effEmitterHead_t *func_001621C8(effEmitterHead_t *source) {
+    effEmitterHead_t *clone = sdfChipAllocDirect(0x150);
+    /* This variant has no appended tail; retail retains the template-tail copy. */
+    s32 tailBytes = 0;
+
+    memset(clone, 0, 0x150);
+    memcpy(clone, source, source->templateSize);
+    memcpy((u8 *)clone + 0x150, (u8 *)source + source->templateSize, tailBytes);
+    clone->particleCount = 1;
+    clone->lifetimeFrames = 0;
+    dds3Particle_BasicCreate(clone);
+    return clone;
+}
+
+void func_00162248(effEmitterHead_t *object) {
+    dds3Particle_BasicDelete(object);
+    sdfChipFreeDirect(object);
+}
+
+void func_00162270(effParticleOverlay_t *effect) {
+    effParticleRecord_t *record = (effParticleRecord_t *)effect->buffer->pPhysics;
+    f32 jitter;
+
+    record->x = effect->x;
+    record->color = effect->color | (effect->alpha << 24);
+    record->frame = -1;
+    record->y = effect->y;
+    record->z = effect->z;
+    record->speed = 1.0f;
+    record->angle = 0.0f;
+    effect->lastSpeed = effect->speed;
+    jitter = effect->speedJitter;
+    record->speed = effect->speed * (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter));
+    jitter = effect->angleJitter;
+    if (jitter != 0.0f) {
+        record->angle = (dds3GetRandFloatA(dds3EffectBase) * jitter + (1.0f - jitter)) * (3.14159265f * 2.0f);
+    } else {
+        record->angle = 0.0f;
+    }
+}
 
 /* Frame zero reinitializes to -1 before incrementing; refresh position and modulated packed color. */
 void dds3Particle_SpiralBlendColor(effParticleOverlay_t *effect) {
