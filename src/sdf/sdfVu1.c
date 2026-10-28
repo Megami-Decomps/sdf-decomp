@@ -348,7 +348,29 @@ INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktSkinVertFirst);
 
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktSkinVertAccum);
 
+/* NON_MATCHING: reference implementation, not a match candidate. The retail
+ * body is assembly: it packs the three words with an unaligned ldr/ldl pair
+ * and pcpyld, which cc1 does not select. */
+#ifdef NON_MATCHING
+void corePktLoadVerts(u8 *dst, s32 count, const u32 *src)
+{
+    do {
+        s32 z = (s32)src[2];
+        u32 *quad = (u32 *)dst;
+
+        quad[0] = src[0];
+        quad[1] = src[1];
+        quad[2] = z;
+        /* pcpyld leaves the lw's sign extension in the fourth word. */
+        quad[3] = z >> 31;
+
+        src += 3;
+        dst += 0x60;
+    } while (--count != 0);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktLoadVerts);
+#endif
 
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktLoadVertsNorms);
 
