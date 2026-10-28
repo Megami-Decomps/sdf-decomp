@@ -304,6 +304,8 @@ extern void SetRotateMatrixY_B(f32 aAngle);
 extern void MultMatrixRevNoArg(void);
 extern void MultMatrixNoArg(void);
 extern void dds3SpPoly_RingBuffInit(dds3SpPoly_Ring_t3 *pRing, s32 number);
+/* Separate geometry builder reached by the initializer's native tail call. */
+extern void func_00168A50(dds3SpPoly_Ring_t3 *ring, s32 number, f32 radius);
 
 dds3SpPolyOldDesc_t *dds3SpPoly_Ring_Old_Create(dds3SpPolyOldDesc_t *src);
 void dds3SpPoly_Ring_Old_Delete(dds3SpPoly_Ring_Old_t3 *hData);
@@ -1825,7 +1827,80 @@ void dds3SpPoly_RingAllBuffInit(dds3SpPoly_Ring_t3 *band) {
     }
 }
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3SpPoly_RingBuffInit);
+void dds3SpPoly_RingBuffInit(dds3SpPoly_Ring_t3 *ring, s32 number)
+{
+    dds3SpPoly_RingPhysics_t *record;
+    f32 spread;
+    f32 radius;
+    f32 endRadius;
+    s32 frames;
+
+    record = ring->pPhysics;
+    record += number;
+    spread = ring->initialRadiusJitter;
+    radius = ring->initialRadius * (dds3GetRandFloatA(dds3EffectBase) * spread + (1.0f - spread));
+    spread = ring->targetRadiusJitter;
+    endRadius = ring->targetRadius * (dds3GetRandFloatA(dds3EffectBase) * spread + (1.0f - spread));
+    record->frame = 0;
+    frames = ring->head.frame;
+    if (frames > 0) {
+        record->spread_s = (endRadius - radius) / (f32)frames;
+    } else {
+        record->spread_s = endRadius - radius;
+    }
+    func_00168A50(ring, number, radius);
+}
+
+void func_00168A50(dds3SpPoly_Ring_t3 *ring, s32 number, f32 radius)
+{
+    dds3TrackPoly_t *strip = ring->hTrackPoly;
+    dds3TrackPolyList_t *entry = &strip->trackList[number];
+    f32 radial[4];
+    f32 inner[4];
+    f32 outer[4];
+    f32 angleStep;
+    f32 angle;
+    u128 *pointCursor;
+    u128 *firstPointPair;
+    s32 pairs;
+    s32 i;
+
+    entry->count = strip->point;
+    pointCursor = entry->pVertex;
+    pairs = strip->point / 2;
+    inner[0] = radius;
+    inner[1] = radius;
+    inner[2] = radius;
+    outer[0] = radius + ring->radialWidth;
+    outer[1] = radius + ring->radialWidth;
+    outer[2] = radius + ring->radialWidth;
+    angleStep = 6.2831853f / (f32)ring->vertex;
+    SDF_VU0_LOADMATRIX(ring->head.matrix);
+    angle = 0.0f;
+    SDF_VU0_LOADVECTOR_C(ring->head.origin);
+    for (i = 0; i < pairs - 1; i++) {
+        radial[0] = sdfCos(angle);
+        radial[1] = 0.0f;
+        radial[2] = sdfSin(angle);
+        SDF_VU0_LOADVECTOR(radial);
+        SDF_VU0_APPLYMATRIX();
+        SDF_VU0_STOREVECTOR(radial);
+        SDF_VU0_LOADVECTOR_B(inner);
+        SDF_VU0_MULVECTOR();
+        SDF_VU0_ADDVECTOR_A_C();
+        SDF_VU0_STOREVECTOR(pointCursor + 1);
+        SDF_VU0_LOADVECTOR(radial);
+        SDF_VU0_LOADVECTOR_B(outer);
+        SDF_VU0_MULVECTOR();
+        SDF_VU0_ADDVECTOR_A_C();
+        SDF_VU0_STOREVECTOR(pointCursor);
+        pointCursor += 2;
+        angle += angleStep;
+    }
+    firstPointPair = entry->pVertex;
+    SDF_VU0_COPYVECTOR(pointCursor, firstPointPair);
+    SDF_VU0_COPYVECTOR(pointCursor + 1, firstPointPair + 1);
+}
 
 void dds3SpPoly_RingMove(dds3SpPoly_Ring_t3 *pRing, s32 number) {
     dds3TrackPoly_t *strip = pRing->hTrackPoly;
