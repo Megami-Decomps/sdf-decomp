@@ -656,7 +656,58 @@ void sdfTexSetMonoClut(sdfTexHandle_t *aHandle)
     } while (entryCount != 0);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfTex", sdfTexSetClutColor);
+void sdfTexSetClutColor(sdfTexHandle_t *texture, s32 tint, f32 amount)
+{
+    sdfTexHandle_t *source = texture->origin;
+    u32 count;
+    u8 *intensity;
+
+    intensity = source->monoClutData;
+    if (intensity == NULL) {
+        sdfTexSetMonoClut(source);
+        intensity = source->monoClutData;
+    }
+
+    MMI_PALETTE_TINT_SETUP(amount, tint, 1.0f / 255.0f);
+
+    if (texture->CLUTFormat == 0) {
+        u32 *sourcePalette = (u32 *)source->clutData;
+        u32 *destinationPalette = (u32 *)texture->clutData;
+        count = (u32)texture->clutDataSize >> 2;
+        do {
+            u32 value = *intensity;
+            u32 color = *sourcePalette;
+
+            MMI_PALETTE_TINT_RGBA(value, color);
+            count--;
+            *destinationPalette = value;
+            sourcePalette++;
+            intensity++;
+            destinationPalette++;
+        } while (count != 0);
+    } else {
+        u16 *sourcePalette;
+        u16 *destinationPalette;
+        u32 fiveBitExpandMask = 0x070707;
+
+        count = (u32)texture->clutDataSize >> 1;
+        sourcePalette = (u16 *)source->clutData;
+        destinationPalette = (u16 *)texture->clutData;
+        do {
+            u32 value = *intensity;
+            u16 color = *sourcePalette;
+
+            MMI_PALETTE_TINT_RGB5(color, value, fiveBitExpandMask);
+            count--;
+            *destinationPalette = color;
+            sourcePalette++;
+            intensity++;
+            destinationPalette++;
+        } while (count != 0);
+    }
+
+    sdfTexClutToGs(texture);
+}
 
 sdfTexHandle_t *sdfTexSearch(u32 id)
 {

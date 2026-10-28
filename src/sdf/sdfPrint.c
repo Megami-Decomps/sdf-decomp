@@ -93,9 +93,55 @@ void *sdfPrintRpcFunc(s32 unused, sifCommand_t *packet) {
 
 void sdfPrintRpcThread();
 
-INCLUDE_ASM(const s32, "sdf/sdfPrint", sdfPrintRpcThread);
+typedef struct sifPrintRpcServerData_t sifPrintRpcServerData_t;
+typedef struct sifRpcDataQueue_t {
+    s32 threadId;
+    s32 active;
+    sifPrintRpcServerData_t *serverList;
+    sifPrintRpcServerData_t *request;
+    s32 requestState;
+    struct sifRpcDataQueue_t *next;
+} __attribute__((aligned(16))) sifRpcDataQueue_t;
 
-INCLUDE_ASM(const s32, "sdf/sdfPrint", sdf_2BD3E8);
+struct sifPrintRpcServerData_t {
+    s32 serviceId;
+    void *(*handler)(s32, sifCommand_t *);
+    void *buffer;
+    u32 opaque0C;
+    s32 bufferSize;
+    void *callback;
+    u8 opaque18[0x20];
+    sifPrintRpcServerData_t *next;
+    sifPrintRpcServerData_t *nextRequest;
+    sifRpcDataQueue_t *queue;
+};
+
+typedef char sifRpcDataQueue_size_must_be_0x20[
+    sizeof(sifRpcDataQueue_t) == 0x20 ? 1 : -1];
+typedef char sifPrintRpcServerData_size_must_be_0x44[
+    sizeof(sifPrintRpcServerData_t) == 0x44 ? 1 : -1];
+
+extern void *sdfPrintRpcFunc(s32 unused, sifCommand_t *packet);
+extern s32 GetThreadId(void);
+extern s32 sceSifSetRpcQueue(sifRpcDataQueue_t *queue, s32 threadId);
+extern s32 sceSifRegisterRpc(sifPrintRpcServerData_t *server, s32 serviceId,
+                             void *(*handler)(s32, sifCommand_t *), void *buffer,
+                             s32 bufferSize, void *callback,
+                             sifRpcDataQueue_t *queue);
+extern void sceSifRpcLoop(sifRpcDataQueue_t *queue);
+extern u8 sdfPrintRpcBuff[];
+
+void sdfPrintRpcThread(void)
+{
+    sifRpcDataQueue_t queue;
+    sifPrintRpcServerData_t server;
+
+    sceSifSetRpcQueue(&queue, GetThreadId());
+    sceSifRegisterRpc(&server, 0x32647270, sdfPrintRpcFunc,
+                      sdfPrintRpcBuff, 0, NULL, &queue);
+    sceSifRpcLoop(&queue);
+}
+
 
 extern char D_005495C8[];
 

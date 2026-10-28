@@ -343,10 +343,6 @@ extern s32 sdfIpuDecode(sdfIpuDecodeCb_t *);
 
 extern void sceIpuStopDMA(void *);
 
-extern void sceIpuRestartDMA(void *);
-
-extern u8 D_00529CE8[];
-
 extern s32 sdfIpuDecodeThId;
 
 extern s32 iWakeupThread(s32 threadId);
@@ -806,62 +802,7 @@ s32 IpuWriteCommand(void) {
     return decodedBits;
 }
 
-#ifdef NON_MATCHING
-/* NON_MATCHING: 22 of 115 words match at 460 bytes against retail 464; the
-   whole body is one word short because reorg fills the bnez delay slot with
-   the &cb->dma address instead of the sceIpuSync argument. */
-s32 sdfIpuDecode(sdfIpuDecodeCb_t *cb)
-{
-    sdfIpuDmaRegs_t *dma;
-    u32 dmaEnable;
-    u8 bufferIndex;
-    s32 bits;
-    u32 cmd;
-
-    dma = &cb->dma;
-    if (cb->ipuCycleInitialized == 0) {
-        cb->ipuCycleInitialized = 1;
-        dmaEnable = SDF_DMAC_ENABLE;
-        SDF_DMAC_ENABLE = 0x10000;
-        SDF_TO_IPU_CHCR = 1;
-        SDF_DMAC_ENABLE = dmaEnable;
-        SDF_IPU_CTRL = 0x40000000;
-        sceIpuSync(0, 0);
-        SDF_IPU_CMD = 0;
-        sceIpuSync(0, 0);
-        sdfIpuSetToIpuDma(cb);
-        SDF_IPU_CTRL = 0;
-        sceIpuStopDMA(dma);
-    }
-    bufferIndex = cb->bufferIndex;
-    sdfCurrIpuDecodeCb = cb;
-    D_00552158 = cb;
-    cb->dma.outputAddress = (u32)cb->frameBuffers[bufferIndex] & 0x0FFFFFFF;
-    cb->dma.outputQwords = cb->buffSize / 16;
-    cb->dma.outputControl = 0x100;
-    cb->bufferIndex = bufferIndex ^ 1;
-    cb->inputFeedEnabled = 1;
-    sceIpuRestartDMA(dma);
-    if (cb->unk65 != 0) {
-        SDF_IPU_CMD = 0x40000020;
-        sceIpuSync(0, 0);
-    } else {
-        cb->unk65 = 1;
-    }
-    bits = IpuWriteCommand();
-    SDF_IPU_CTRL = (bits >> 8) & 0xFB0000;
-    cmd = (D_00529CE8[cb->rgbMode * 2] << 27) | (D_00529CE8[cb->rgbMode * 2 + 1] << 26) |
-          0x10000000;
-    if (bits & 0x4000000) {
-        cmd |= 0x1010000;
-    } else {
-        cmd |= 0x10000;
-    }
-    SDF_IPU_CMD = cmd;
-}
-#else
 INCLUDE_ASM(const s32, "sdf/sdfIpu", sdfIpuDecode);
-#endif
 
 /* Remove and advance the first list item matching the IPU cleanup test. */
 void sdfIpuExecQueue(s32 critical) {
@@ -1016,50 +957,51 @@ s32 sdfIpuSetChainTag(sdfIpuDecodeCb_t *cb)
     return 1;
 }
 
-void sdfIpuRunDecode(s32 step)
+void sdfIpuRunDecode(s32 frames)
 {
-    sdfIpuDecodeCb_t *cb;
-    s32 rem;
+    sdfIpuDecodeCb_t *node;
+    s32 cadence;
     s32 interruptsEnabled;
 
-    cb = sdfCurrIpuDecodeCb;
-    if (cb != NULL) {
-        if (cb->inputDmaStartPending != 0) {
-            sdfIpuSetToIpuDma(cb);
-        }
+    node = sdfCurrIpuDecodeCb;
+    if (node != NULL && node->inputDmaStartPending != 0) {
+        sdfIpuSetToIpuDma(node);
     }
-    cb = sdfIpuTaskLink;
-    while (cb != NULL) {
-        if (cb->imageTrans != 0) {
-            cb->imageTrans--;
+    for (node = sdfIpuTaskLink; node != NULL; node = node->next) {
+        if (node->imageTrans != 0) {
+            node->imageTrans--;
         }
-        rem = cb->playbackCadenceRemainder;
-        switch (cb->playbackPhase) {
+        cadence = node->playbackCadenceRemainder;
+        switch (node->playbackPhase) {
         case SDF_STREAM_PLAYBACK_FIRST_COMPLETION:
-            sdfIpuSetChainTag(cb);
-            cb->playbackPhase = SDF_STREAM_PLAYBACK_CADENCED;
-            cb->playbackCadenceRemainder = cb->fps;
+            sdfIpuSetChainTag(node);
+            node->playbackPhase = SDF_STREAM_PLAYBACK_CADENCED;
+            node->playbackCadenceRemainder = node->fps;
             break;
         case SDF_STREAM_PLAYBACK_CADENCED:
-            rem += cb->fps;
-            if (rem >= step && sdfIpuSetChainTag(cb) != 0) {
-                rem -= step;
+            cadence += node->fps;
+            if (cadence < frames) {
+                node->playbackCadenceRemainder = cadence;
+            } else {
+                if (sdfIpuSetChainTag(node) != 0) {
+                    cadence -= frames;
+                }
+                node->playbackCadenceRemainder = cadence;
             }
-            cb->playbackCadenceRemainder = rem;
             break;
         }
-        if (cb->active == 1) {
-            sdfIpuAllocGsRect(cb);
-            if (cb->filledSlots < 8) {
-                interruptsEnabled = DIntr();
-                sdfIpuHandleDmaEnd(cb);
-                if (interruptsEnabled != 0) {
-                    EIntr();
-                }
-            }
-            cb->read(cb, cb->strmCallbackParm, SDF_STREAM_READ_RESUME, NULL, 0);
+        if (node->active != 1) {
+            continue;
         }
-        cb = cb->next;
+        sdfIpuAllocGsRect(node);
+        if (node->filledSlots < 8) {
+            interruptsEnabled = DIntr();
+            sdfIpuHandleDmaEnd(node);
+            if (interruptsEnabled != 0) {
+                EIntr();
+            }
+        }
+        node->read(node, node->strmCallbackParm, SDF_STREAM_READ_RESUME, NULL, 0);
     }
     sdfIpuExecQueue(0);
 }

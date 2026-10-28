@@ -1,4 +1,5 @@
 #include "common.h"
+#include "fpu.h"
 #include "ps2asm.h"
 #include "sdf_lighting.h"
 #include "sdf_resource.h"
@@ -255,15 +256,6 @@ extern void *memcpy(void *, const void *, unsigned int);
 void ReverseMatrix(void);
 
 void MultMatrixRev(const void *aMatrix);
-void MultMatrix(void *aMatrix);
-f32 tanf(f32);
-
-enum sdf_3d_screen_flag {
-    SDF_3D_SCREEN_FLAG_HALFHEIGHT = 1,
-    SDF_3D_SCREEN_FLAG_FOVY = 2
-};
-
-void sdf3DMakeScreenParam(sdf3DScreenParam_t *aParam);
 
 void sdf3DMakeViewportPacket(sdf3DViewportPacket_t *aPacket, sdf3DScreenParam_t *aParam, void *aCamera);
 
@@ -321,81 +313,66 @@ void sdf3DSetDefaultFog(u8 *aFog) {
     sdf3DFogDefault = (u32)aFog;
 }
 
-void sdf3DMakeScreenParam(sdf3DScreenParam_t *aParam) {
-    f32 m[4][4] __attribute__((aligned(16)));
-    f32 farClip = aParam->farClip;
-    f32 nearClip = aParam->nearClip;
-    f32 depth = farClip - nearClip;
-    f32 halfWidth = aParam->width * 0.5f;
-    f32 halfHeight = aParam->height * 0.5f;
-    f32 projDist;
-    f32 halfRange;
+extern f32 tanf(f32 angle);
+extern void MultMatrix(const void *matrix);
 
-    SDF_VU0_STOREIDENTITY((f32 *)m);
-    m[0][0] = 1.0f / (halfWidth * aParam->aspect);
-    m[1][1] = 1.0f / halfHeight;
-    m[2][2] = (farClip * nearClip + farClip * nearClip) / depth;
-    m[3][2] = -(nearClip + farClip) / depth;
-    SDF_VU0_LOADMATRIX((f32 *)m);
+/* vu0 routine: compose the perspective matrix and clip-to-screen mapping. */
+void sdf3DMakeScreenParam(sdf3DScreenParam_t *camera)
+{
+    f32 projectionMatrix[16] __attribute__((aligned(16)));
+    f32 farZ = camera->farClip;
+    f32 nearZ = camera->nearClip;
+    f32 depthRange = farZ - nearZ;
+    f32 halfWidth = camera->width * 0.5f;
+    f32 halfHeight = camera->height * 0.5f;
+    f32 projectionScale;
+    f32 centerY;
 
-    SDF_VU0_STOREIDENTITY((f32 *)m);
-    if (aParam->flags & SDF_3D_SCREEN_FLAG_FOVY) {
-        projDist = aParam->height / (tanf(aParam->fovy * 0.5f) * 2.0f);
+    SDF_MMI_STORE_UNIT_MATRIX(projectionMatrix);
+    projectionMatrix[0] = 1.0f / (halfWidth * camera->aspect);
+    projectionMatrix[5] = 1.0f / halfHeight;
+    projectionMatrix[10] = farZ * nearZ * 2.0f / depthRange;
+    projectionMatrix[14] = -(nearZ + farZ) / depthRange;
+    SDF_VU0_LOADMATRIX(projectionMatrix);
+    SDF_MMI_STORE_UNIT_MATRIX(projectionMatrix);
+    if (camera->flags & 2) {
+        projectionScale = camera->height / (tanf(camera->fovy * 0.5f) * 2.0f);
     } else {
-        projDist = aParam->projDist;
+        projectionScale = camera->projDist;
     }
-    m[0][0] = projDist;
-    m[1][1] = projDist;
-    m[2][2] = 0.0f;
-    m[3][3] = 0.0f;
-    m[2][3] = 1.0f;
-    m[3][2] = 1.0f;
-    MultMatrix((f32 *)m);
-    SDF_VU0_STOREMATRIX(aParam->TM);
-
-    halfRange = (aParam->zMax - aParam->zMin) * 0.5f;
-    aParam->scale[0] = halfWidth;
-    if (aParam->flags & SDF_3D_SCREEN_FLAG_HALFHEIGHT) {
-        aParam->scale[1] = halfHeight * 0.5f;
+    projectionMatrix[5] = projectionMatrix[0] = projectionScale;
+    projectionMatrix[10] = 0;
+    projectionMatrix[15] = 0;
+    projectionMatrix[14] = projectionMatrix[11] = 1.0f;
+    MultMatrix(projectionMatrix);
+    SDF_VU0_STOREMATRIX(camera->TM);
+    camera->scale[0] = halfWidth;
+    centerY = (camera->zMax - camera->zMin) * 0.5f;
+    if (camera->flags & 1) {
+        camera->scale[1] = halfHeight * 0.5f;
     } else {
-        aParam->scale[1] = halfHeight;
+        camera->scale[1] = halfHeight;
     }
-    aParam->trans[3] = 0.0f;
-    aParam->scale[3] = 1.0f;
-    aParam->scale[2] = halfRange;
-    aParam->trans[1] = aParam->oy;
-    aParam->trans[2] = halfRange + aParam->zMin;
-    aParam->trans[0] = aParam->ox;
+    camera->scale[2] = centerY;
+    camera->scale[3] = 1.0f;
+    camera->trans[0] = camera->ox;
+    camera->trans[1] = camera->oy;
+    camera->trans[2] = centerY + camera->zMin;
+    camera->trans[3] = 0;
 }
 
-/* vf11 from one column of a 4x4 matrix, gathered through the same four
- * scratch registers as the vf10 form. */
-#define SDF_VU0_LOADVECTOR_B_MTXCOL(src) __asm__ volatile ( \
-    ".set noreorder\n\tlw $2, 0(%0)\n\tlw $3, 0x10(%0)\n\t" \
-    "lw $4, 0x20(%0)\n\tlw $5, 0x30(%0)\n\t" \
-    "pextlw $2, $3, $2\n\tpextlw $4, $5, $4\n\t" \
-    "pcpyld $2, $4, $2\n\tqmtc2.ni $2, vf11\n\t.set reorder" \
-    : : "r" (src) : "$2", "$3", "$4", "$5", "memory")
+void sdf3DMakeLightParallelPacket(sdf3DLightParallelPacket_t *aPacket, sdfLightSources_t aLights, f32 *aAmbient);
 
-/* Four quadwords: colour, direction, position and the falloff parameters. */
-typedef struct {
-    sdfVector4_t color;
-    sdfVector4_t v;
-    sdfVector4_t p;
-    f32 param[4];
-} sdf3DLight_t;
+extern f32 D_00529630[];
+extern void DiagMatrix(void);
 
-extern f32 D_00529630[4];
-
-void DiagMatrix(void);
-
-/* vu0 routine: build the three normalized light directions, the colour sum
- * and the specular basis matrix */
-void sdf3DMakeLightParallelPacket(sdf3DLightParallelPacket_t *aPacket, sdf3DLight_t **aLights, sdfVector4_t *aAmbient) {
-    f32 dir[4] QWORD_ALIGNED;
-    volatile f32 up[4] QWORD_ALIGNED;
-    sdf3DLight_t *light;
-    sdf3DLight_t *found;
+/* vu0 routine: parallel-light packet and lighting basis construction */
+void sdf3DMakeLightParallelPacket(sdf3DLightParallelPacket_t *aPacket, sdfLightSources_t aLights, f32 *aAmbient) {
+    f32 direction[4] __attribute__((aligned(16)));
+    /* VU0 lqc2 reads this scratch through its address, like the DDS rotation
+     * loaders and Euler-to-quaternion routines; volatile preserves its stores. */
+    volatile f32 axis[4] __attribute__((aligned(16)));
+    f32 (*first)[4];
     s32 i;
 
     aPacket->dmatag.qwc = 13;
@@ -403,9 +380,10 @@ void sdf3DMakeLightParallelPacket(sdf3DLightParallelPacket_t *aPacket, sdf3DLigh
     aPacket->dmatag.dat1 = 0x6C0D4398;
     SDF_VU0_LOADVECTOR_B(aAmbient);
     SDF_VU0_STOREVECTOR_B(&aPacket->color[3]);
-    found = NULL;
+    first = NULL;
     for (i = 0; i < 3; i++) {
-        light = aLights[i];
+        f32 (*light)[4] = aLights[i];
+
         if (light == NULL) {
             aPacket->normalComponents[0][i] = 0.0f;
             aPacket->normalComponents[1][i] = 0.0f;
@@ -415,38 +393,38 @@ void sdf3DMakeLightParallelPacket(sdf3DLightParallelPacket_t *aPacket, sdf3DLigh
             aPacket->color[i].z = 0.0f;
             aPacket->color[i].w = 0.0f;
         } else {
-            if (found == NULL) {
-                found = light;
+            if (first == NULL) {
+                first = light;
             }
-            SDF_VU0_LOADVECTOR(&light->v);
+            SDF_VU0_LOADVECTOR(light[1]);
             SDF_VU0_NORMALIZE();
             SDF_VU0_SCALEVECTOR_BITS(-1.0f);
-            SDF_VU0_STOREVECTOR(dir);
-            aPacket->normalComponents[0][i] = dir[0];
-            aPacket->normalComponents[1][i] = dir[1];
-            aPacket->normalComponents[2][i] = dir[2];
-            SDF_VU0_LOADVECTOR(&light->color);
+            SDF_VU0_STOREVECTOR(direction);
+            aPacket->normalComponents[0][i] = direction[0];
+            aPacket->normalComponents[1][i] = direction[1];
+            aPacket->normalComponents[2][i] = direction[2];
+            SDF_VU0_LOADVECTOR(light[0]);
             SDF_VU0_ADDVECTOR_B_A();
             SDF_VU0_STOREVECTOR(&aPacket->color[i]);
         }
     }
-    SDF_VU0_COPYVECTOR(&aPacket->colorBase, &aPacket->color[0]);
+    SDF_VU0_COPYVECTOR_F32(&aPacket->colorBase, &aPacket->color[0]);
     SDF_VU0_STOREVECTOR_B(&aPacket->color[4]);
-    if (found == NULL) {
-        SDF_VU0_STOREIDENTITY(aPacket->TM.m);
+    if (first == NULL) {
+        SDF_MMI_STORE_UNIT_MATRIX(&aPacket->TM);
         return;
     }
-    SDF_VU0_LOADVECTOR(&found->v);
+    SDF_VU0_LOADVECTOR(first[1]);
     SDF_VU0_NORMALIZE();
     SDF_VU0_VECTOR_W_SET_ZERO();
     SDF_VU0_SET_ROW2();
-    SDF_VU0_STOREVECTOR((f32 *)up);
-    if (sdfFabs(up[0]) < 1e-6f && sdfFabs(up[2]) < 1e-6f) {
-        up[0] = -up[1];
-        up[1] = 0.0f;
-        up[2] = 0.0f;
-        up[3] = 0.0f;
-        SDF_VU0_LOADVECTOR_B((f32 *)up);
+    SDF_VU0_STOREVECTOR_F32(axis);
+    if (ffabsf(axis[0]) < 0.000001f && ffabsf(axis[2]) < 0.000001f) {
+        axis[0] = -axis[1];
+        axis[1] = 0.0f;
+        axis[2] = 0.0f;
+        axis[3] = 0.0f;
+        SDF_VU0_LOADVECTOR_B_F32(axis);
     } else {
         SDF_VU0_LOADVECTOR_B(D_00529630);
     }
@@ -461,14 +439,14 @@ void sdf3DMakeLightParallelPacket(sdf3DLightParallelPacket_t *aPacket, sdf3DLigh
     SDF_VU0_SET_ROW1();
     SDF_VU0_RESET_ROW3();
     DiagMatrix();
-    SDF_VU0_LOADVECTOR(&found->v);
+    SDF_VU0_LOADVECTOR(first[1]);
     SDF_VU0_NORMALIZE();
     SDF_VU0_LOADVECTOR_B_MTXCOL(sdfCameraTm + 8);
     SDF_VU0_ADDVECTOR();
     SDF_VU0_NEGVECTOR_XYZ();
     SDF_VU0_NORMALIZE();
     SDF_VU0_SET_ROW3();
-    SDF_VU0_STOREMATRIX(aPacket->TM.m);
+    SDF_VU0_STOREMATRIX(&aPacket->TM);
 }
 
 void sdf3DMakeFogPacket(sdf3DFogPacket_t *aPacket, sdf3DFogParam_t *aParam) {

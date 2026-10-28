@@ -614,3 +614,11 @@ void sdfSetMainThreadPriority(void)
     SleepThread();
 }
 
+INCLUDE_SDATA(const s32, "sdf/sdfSystem", sdfDmacHandlerTable);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSystem", D_00551824);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSystem", D_00551828);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSystem", sdfVblankFlag);
+

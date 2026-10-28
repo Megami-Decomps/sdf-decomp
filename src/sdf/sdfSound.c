@@ -2,8 +2,25 @@
 #include "common.h"
 #include "libsdf.h"
 #include "ps2asm.h"
+#include "sif_rpc.h"
 
 struct sdfGsMemSlice_t;
+
+typedef struct {
+    u32 mode;
+    u32 attributes;
+    u32 size;
+    u8 creationTime[8];
+    u8 accessTime[8];
+    u8 modificationTime[8];
+    u32 highSize;
+    u32 privateData[6];
+} sdfSceIoStat_t;
+
+extern s32 sceSifLoadModule(const char *path, s32 argSize, const char *args);
+extern s32 sceGetstat(const char *path, sdfSceIoStat_t *info);
+extern s32 SdfIopFileRpc(const char *name, s32 dataSize, const void *data, s32 *outSize);
+extern u8 sdfHddValid;
 
 s32 strlen(const char *aStr);
 
@@ -132,9 +149,11 @@ typedef struct sndMergedWork_t {
     u32 opaque1D4;
     u32 opaque1D8;
     u32 opaque1DC;
-    u8 unk1E0[0x380];
+    u8 controlData[7][0x80];
     sndMidiStateGroup_t stateGroups[2];
 } sndMergedWork_t;
+
+extern sndMergedWork_t sdfSndWork asm("sdfSndMap");
 
 typedef struct sdfSoundRpcRequest_t {
     u8 opaque00[8];
@@ -257,15 +276,76 @@ extern s32 (*p2sdSmgBuf)(void);
 
 void p2sdLoadSMGFile(s32 MidiNo);
 
-u32 *sdfFileRpcHandleCmd(u32 command, sdfSoundRpcRequest_t *request);
+void *sdfFileRpcHandleCmd(s32 function, void *requestData, s32 requestSize);
+
+typedef struct sdfFileCmdHandle_t sdfFileCmdHandle_t;
+
+extern sdfFileCmdHandle_t *sdfFileRpcArg;
+extern sdfSoundRpcRequest_t *sdfFileRpcResult;
+extern s32 sdfFileRpcCmdState;
+/* This handler writes the first word of the RPC reply block. */
+extern u32 sdfFileRpcQueue[];
+/* The first cell stores the PCM base pointer. This unsized view keeps the
+ * non-small-data address form; see docs/levers/addressing-and-types.md. */
+extern u8 *p2sdPcmBuffer[];
+extern sdfMemHandle_t *sdfMemAllocDirect(s32 size);
+extern void *sdfMemLock(sdfMemHandle_t *handle);
+extern void sdfMemFreeDirect(sdfMemHandle_t *handle);
+extern sdfFileCmdHandle_t *sdfFileCmdReadOpen(
+    const char *path,
+    void (*callback)(sdfFileCmdHandle_t *, s32, s32, s32, s32),
+    s32 callbackContext);
+extern s32 sdfFileCmdClearError(sdfFileCmd_t *handle);
+extern s32 sdfFileCmdFree(sdfFileCmd_t *handle);
+extern s32 sdfFileCmdRead(void *handle, void *buffer, s32 byteCount);
+extern s32 sdfFileCmdClose(void *handle);
 
 void sdfGrFlushOtChain(u32 *source);
 
 s32 sdfPrintf(const char *str, ...);
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndIopAlloc);
+extern s32 sceSifAllocIopHeap(s32 size);
+extern s32 sceSifQueryMaxFreeMemSize(void);
+extern s32 sceSifQueryMemSize(void);
+extern s32 sceSifQueryTotalFreeMemSize(void);
+extern s32 printf(const char *format, ...);
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndCmdTrans);
+s32 sdfSndIopAlloc(s32 size) {
+    s32 address;
+
+    address = sceSifAllocIopHeap(size);
+    printf("--------\n");
+    printf("sceSifAllocIopHeap         :%08x\n", size);
+    printf("sceSifQueryMaxFreeMemSize  :%08x\n", sceSifQueryMaxFreeMemSize());
+    printf("sceSifQueryMemSize         :%08x\n", sceSifQueryMemSize());
+    printf("sceSifQueryTotalFreeMemSize:%08x\n", sceSifQueryTotalFreeMemSize());
+    return address;
+}
+
+extern s32 sceSifSendCmd(s32 command, void *packet, s32 packetBytes,
+                         void *source, void *destination, s32 dataBytes);
+
+s32 sdfSndCmdTrans(void)
+{
+    s32 current = (s16)sdfSndCmdIndex;
+    s32 tail = (s16)sdfSndCmdTailIndex;
+    sndRingPacket_t *packet;
+    s32 result;
+
+    if (current == tail) {
+        return 1;
+    }
+    packet = &D_00590840[current];
+    result = sceSifSendCmd(0, packet, ((u8 *)packet)[0xF] & 0xF0,
+                           NULL, NULL, 0);
+    if (result == 0) {
+        printf(" cannot send cmd\n");
+        return 1;
+    }
+    current = (current + 1) & 0x1F;
+    sdfSndCmdIndex = current;
+    return 0;
+}
 
 void sdfSndCmdIFThread(void)
 {
@@ -279,7 +359,54 @@ void sdfSndCmdIFThread(void)
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndInitCmdIF);
+typedef struct sdfSndInitThreadParam_t {
+    s32 status;
+    void (*entry)(void);
+    void *stack;
+    s32 stackSize;
+    void *gp;
+    s32 priority;
+    u8 reserved[0x18];
+} sdfSndInitThreadParam_t;
+
+extern sdfSndInitThreadParam_t D_005907C0;
+extern u8 D_00591840[];
+extern u8 D_00592880[];
+extern s32 D_005519D4;
+extern s32 _gp;
+extern s32 sceSifGetSreg(s32 index);
+extern s32 CreateThread(sdfSndInitThreadParam_t *parameter);
+extern s32 StartThread(s32 threadId, s32 argument);
+extern s32 CreateThreadSimple(void *entryAddress, void *workspace, s32 stackBytes, s32 priority);
+extern void SifRpcServerThreadProc(void);
+
+void sdfSndInitCmdIF(void)
+{
+    s32 retries = 0;
+    s32 threadId;
+
+    while (sceSifGetSreg(0x1F) == 0) {
+        retries++;
+        if (retries == 0x5F5E100) {
+            printf("sifSndInitCmdIF locked.\n");
+            retries = 0;
+        }
+    }
+    D_005907C0.entry = sdfSndCmdIFThread;
+    D_005907C0.stack = D_00591840;
+    D_005907C0.stackSize = 0x1000;
+    /* Same descriptor order as CreateThreadSimple in sdfSystem.c. */
+    D_005907C0.priority = 0x42;
+    D_005907C0.gp = &_gp;
+    sdfSndCmdIndex = 0;
+    sdfSndCmdTailIndex = 0;
+    threadId = CreateThread(&D_005907C0);
+    sdfSndCmdBuf = threadId;
+    StartThread(threadId, 0);
+    threadId = CreateThreadSimple(SifRpcServerThreadProc, D_00592880, 0x1000, 0x43);
+    D_005519D4 = threadId;
+    StartThread(threadId, 0);
+}
 
 s32 sdfSndSendCmd(s32 aCmd, s32 aParam, void *aExDataPtr, s32 aExDataSize) {
     s32 nextWriteIndex;
@@ -366,13 +493,52 @@ void sdfSndTransToIOP(s32 aIOPAddr, void *aEEAddr, s32 aSize)
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndLoadIRXModules);
+void sdfSndLoadIRXModules(void) {
+    sdfSceIoStat_t info;
+    char *module;
+
+    sceSifLoadModule("cdrom0:\\SOUNDIRX\\LIBSD.IRX;1", 0, NULL);
+    sceSifLoadModule("cdrom0:\\SOUNDIRX\\MODHSYN.IRX;1", 0, NULL);
+    sceSifLoadModule("cdrom0:\\SOUNDIRX\\MODMIDI.IRX;1", 0, NULL);
+    sceSifLoadModule("cdrom0:\\SOUNDIRX\\MODMSIN.IRX;1", 0, NULL);
+    module = "cdrom0:\\USERIRX\\SDFSDMAN.IRX;1";
+    if (sdfHddValid != 0 &&
+        sceGetstat("pfs:/userirx/SDFSDMAN.IRX", &info) == 0 &&
+        (info.mode & 0xF000) == 0x2000) {
+        module = "pfs:/userirx/SDFSDMAN.IRX";
+    }
+    SdfIopFileRpc(module, 0, NULL, NULL);
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndVoiceMapInit);
 
 INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndSeqMapInit);
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndInit);
+extern s32 sceSifInitIopHeap(void);
+extern s32 D_0055213C;
+
+void sdfSndInit(char *aVoiceInfo, s32 aVoiceCount, char *aSequenceInfo, s32 aSequenceCount)
+{
+    s32 iopAddress;
+
+    sdfSndBurstReqMode = 1;
+    sdfSndLoadIRXModules();
+    sceSifInitIopHeap();
+    sdfSndInitCmdIF();
+    printf("SDF_SND_READ_BUFF_SIZE\n");
+    sdfSndMap[2] = sdfSndIopAlloc(0x4000);
+    sdfSndMap[3] = 0x4000;
+    sdfSndVoiceMapInit(aVoiceInfo, aVoiceCount);
+    sdfSndSeqMapInit((u32 *)aSequenceInfo, aSequenceCount);
+    printf("sizeof(sdfSndMap)\n");
+    iopAddress = sdfSndIopAlloc(0x5A0);
+    sdfSndMap[0x72] = (u32)sdfSndMap;
+    sdfSndMap[0x73] = 0x5A0;
+    D_0055213C = iopAddress;
+    sdfSndTransToIOP(iopAddress, sdfSndMap, 0x5A0);
+    sdfSndSendSyncCmd(0, 0, &D_0055213C, 4);
+    sdfSndBurstReqMode = 0;
+}
 
 /* Starts a track with the default 0x7f setting after preparing its identifier. */
 void p2sdPlayBGM(s32 MidiNo) {
@@ -454,9 +620,38 @@ void p2sdPlaySE(s32 trackId, s32 volume, s32 pan) {
     sdfSndSendCmd(0x90, 0, &packet, 0xC);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", p2sdPlaySeDeg);
+/* The angle normalization and attenuation share one frame through the SE tail call. */
+void p2sdPlaySeDeg(s32 trackId, f32 angle, f32 distance) {
+    s32 degrees = (s32)angle % 360;
+    s32 side = 1;
+    s32 pan;
+    f32 volume;
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", func_002C1990);
+    if (degrees > 180) {
+        degrees -= 360;
+    }
+    if (degrees < -180) {
+        degrees += 360;
+    }
+    if (degrees < 0) {
+        degrees = -degrees;
+        side = -1;
+    }
+    volume = 1.0f;
+    if (degrees < 45) {
+        pan = 63 - (s32)(degrees * 0.71111f) * side;
+    } else if (degrees <= 90) {
+        pan = 63 - (s32)(degrees * 0.7f) * side;
+        volume = 1.0f - (degrees - 45) * 0.004444f;
+    } else {
+        volume = 0.75f - (degrees - 90) * 0.005556f;
+        pan = 63 - (s32)((180 - degrees) * 0.7f) * side;
+    }
+    if (distance > 1.0f) {
+        volume /= distance * 0.333f + 1.0f;
+    }
+    p2sdPlaySE(trackId, (s32)(volume * 127.0f), pan);
+}
 
 /* Converts world coordinates to the sound engine's one-tenth scale. */
 void p2sdPlaySe3DEx(s32 MidiNo, s32 posx, f32 posy, f32 posz, f32 limit) {
@@ -487,7 +682,22 @@ void p2sdSetStandPos(f32 Cposx, f32 Cposy, f32 Cposz,
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", p2sdLoadCheckMidi);
+extern void InvalidDCache(void *start, void *end);
+
+s32 p2sdLoadCheckMidi(s32 MidiNo)
+{
+    sndMergedWork_t *work = (sndMergedWork_t *)sdfSndMap;
+    s32 bank = MidiNo >> 16;
+    s32 i;
+
+    InvalidDCache(work, (u8 *)work + 0x5A0);
+    for (i = 0; i < 7; i++) {
+        if (work->slots[i].unk0 == bank) {
+            return 1;
+        }
+    }
+    return (p2sdSmgHandle == bank) ? 2 : 0;
+}
 
 /* Make sure the MIDI bank named by the packed track id is resident, loading it if not. */
 void p2sdLoadSMGFile(s32 MidiNo) {
@@ -752,15 +962,220 @@ s32 sdfFileRpcCallback(s32 unused, u32 event) {
     return 0;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfFileRpcHandleCmd);
+/* Handle sound-file and PCM-buffer RPC commands. */
+void *sdfFileRpcHandleCmd(s32 function, void *requestData, s32 requestSize)
+{
+    char path[0x100];
+    sdfSoundRpcRequest_t *request = requestData;
+    u32 command = (u32)function;
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", SifRpcServerThreadProc);
+    switch (command) {
+    case 0: {
+        sdfFileCmdHandle_t *state;
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdf_2C2608);
+        if (D_00529BE8[0] == 0) {
+            sdfFileRpcQueue[0] = 0;
+            break;
+        }
+        p2sdPcmState = 1;
+        sdfSndMakeFilename(path, D_00529BE8);
+        state = sdfFileCmdReadOpen(path,
+            (void (*)(sdfFileCmdHandle_t *, s32, s32, s32, s32))sdfFileRpcCallback, 0);
+        sdfFileRpcArg = state;
+        if (state != NULL) {
+            WaitSema(sifRpcServerSema);
+            state = sdfFileRpcArg;
+            if (((sdfFileCmd_t *)state)->error != 0) {
+                sdfFileCmdClearError((sdfFileCmd_t *)state);
+                sdfFileCmdFree((sdfFileCmd_t *)sdfFileRpcArg);
+                sdfFileRpcArg = NULL;
+                state = NULL;
+            }
+        }
+        sdfFileRpcQueue[0] = (u32)state;
+        break;
+    }
+    case 1: {
+        sdfMemHandle_t *allocation;
+        void *buffer;
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdf_2C2618);
+        sdfFileRpcResult = request;
+        allocation = sdfMemAllocDirect(request->byteCount);
+        buffer = sdfMemLock(allocation);
+        if (buffer != NULL) {
+            sdfFileCmdRead(sdfFileRpcArg, buffer, sdfFileRpcResult->byteCount);
+            WaitSema(sifRpcServerSema);
+            sdfSndTransToIOP(sdfFileRpcResult->destination, buffer, sdfFileRpcResult->byteCount);
+            sdfMemFreeDirect(allocation);
+            sdfFileRpcQueue[0] = sdfFileRpcResult->byteCount;
+        } else {
+            sdfFileRpcQueue[0] = 0;
+        }
+        break;
+    }
+    case 2:
+        sdfFileCmdClose(sdfFileRpcArg);
+        WaitSema(sifRpcServerSema);
+        sdfFileCmdFree((sdfFileCmd_t *)sdfFileRpcArg);
+        sdfFileRpcArg = NULL;
+        p2sdPcmState = 0;
+        sdfFileRpcQueue[0] = 0;
+        break;
+    case 3:
+        sdfFileRpcCmdState = 0;
+        sdfFileRpcQueue[0] = 0;
+        break;
+    case 4: {
+        s32 bytes;
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdf_2C27F8);
+        sdfFileRpcResult = request;
+        sdfSndTransToIOP(request->destination, p2sdPcmBuffer[0] + sdfFileRpcCmdState,
+                         request->byteCount);
+        bytes = sdfFileRpcResult->byteCount;
+        sdfFileRpcQueue[0] = bytes;
+        sdfFileRpcCmdState += bytes;
+        break;
+    }
+    case 5:
+        sdfFileRpcQueue[0] = 0;
+        break;
+    case 6: {
+        u32 word = p2sdPcmCallback;
+
+        if (word != 0) {
+            p2sdPcmBusy = 1;
+        }
+        sdfFileRpcQueue[0] = word;
+        break;
+    }
+    case 7: {
+        void *buffer;
+
+        sdfFileRpcResult = request;
+        buffer = ((u8 *(*)(s32))p2sdPcmCallback)(request->byteCount);
+        if (buffer != NULL) {
+            sdfSndTransToIOP(sdfFileRpcResult->destination, buffer,
+                             sdfFileRpcResult->byteCount);
+            sdfFileRpcQueue[0] = sdfFileRpcResult->byteCount;
+        } else {
+            sdfFileRpcQueue[0] = -1;
+        }
+        break;
+    }
+    case 8:
+        p2sdPcmBusy = 0;
+        sdfFileRpcQueue[0] = 0;
+        break;
+    }
+    return sdfFileRpcQueue;
+}
+
+extern s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
+extern s32 GetThreadId(void);
+void SifRpcServerThreadProc(void)
+{
+    sifRpcDataQueue_t queue;
+    sifRpcServerData_t server;
+    s32 sema = sdfCreateSema(0, 1, 0);
+
+    sifRpcServerSema = sema;
+    if (sema <= 0) {
+        for (;;) {
+        }
+    }
+    sceSifSetRpcQueue(&queue, GetThreadId());
+    sceSifRegisterRpc(&server, 0x54524E53, sdfFileRpcHandleCmd,
+                      sdfFileRpcQueue, 0, NULL, &queue);
+    sceSifRpcLoop(&queue);
+}
+
+
+void sdf_2C2618(u32 kind, const u8 *data)
+{
+    s32 i;
+    switch (kind) {
+    case 0:
+        for (i = 0; i < 32; i++) {
+            sdfSndWork.controlData[0][i] = data[i];
+        }
+        break;
+    case 1:
+        for (i = 0; i < 128; i++) {
+            sdfSndWork.controlData[1][i] = data[i];
+        }
+        break;
+    case 2:
+        for (i = 0; i < 128; i++) {
+            sdfSndWork.controlData[2][i] = data[i];
+        }
+        break;
+    case 3:
+        for (i = 0; i < 128; i++) {
+            sdfSndWork.controlData[3][i] = data[i];
+        }
+        break;
+    case 4:
+        for (i = 0; i < 128; i++) {
+            sdfSndWork.controlData[4][i] = data[i];
+        }
+        break;
+    case 5:
+        for (i = 0; i < 2; i++) {
+            sdfSndWork.controlData[5][i] = data[i];
+        }
+        break;
+    case 6:
+        for (i = 0; i < 2; i++) {
+            sdfSndWork.controlData[6][i] = data[i];
+        }
+        break;
+    }
+    sdfSndTransToIOP(D_0055213C, &sdfSndWork, 0x5A0);
+    sdfSndSendSyncCmd(0x1F0, 0, 0, 0);
+}
+
+void sdf_2C27F8(u32 kind, u8 *data)
+{
+    s32 i;
+    sdfSndSendSyncCmd(0x200, 0, 0, 0);
+    switch (kind) {
+    case 0:
+        for (i = 0; i < 32; i++) {
+            data[i] = sdfSndWork.controlData[0][i];
+        }
+        break;
+    case 1:
+        for (i = 0; i < 128; i++) {
+            data[i] = sdfSndWork.controlData[1][i];
+        }
+        break;
+    case 2:
+        for (i = 0; i < 128; i++) {
+            data[i] = sdfSndWork.controlData[2][i];
+        }
+        break;
+    case 3:
+        for (i = 0; i < 128; i++) {
+            data[i] = sdfSndWork.controlData[3][i];
+        }
+        break;
+    case 4:
+        for (i = 0; i < 128; i++) {
+            data[i] = 0;
+        }
+        break;
+    case 5:
+        for (i = 0; i < 2; i++) {
+            data[i] = sdfSndWork.controlData[5][i];
+        }
+        break;
+    case 6:
+        for (i = 0; i < 2; i++) {
+            data[i] = sdfSndWork.controlData[6][i];
+        }
+        break;
+    }
+}
 
 /* Print size bytes in address-aligned, sixteen-column hexadecimal rows. */
 void sdfDumpHexLine(const u8 *data, s32 size) {
@@ -863,7 +1278,290 @@ void sdfDumpDmaChain(sdfDmaDumpTag_t *source) {
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfGrFlushOtChain);
+extern char *D_00529C68[];
+extern s32 D_00529C88[];
+extern char D_00551A58[];
+extern char D_00551A60[];
+extern char D_00551B10[];
+extern char D_00551B18[];
+
+void sdfGrFlushOtChain(u32 *source) {
+    u32 *returnStack[2];
+    u32 *cursor;
+    u32 *wordCursor = NULL;
+    s32 dataMode = 0;
+    s32 tagId = 0;
+    s32 depth = 0;
+    s32 n = 0;
+    s32 directRow;
+    s32 phase;
+    s32 wordsLeft;
+    u32 tagAddress;
+    s32 qwc;
+    s32 done;
+    u32 value;
+
+    sdfPrintf("<<< DMA-VIF dump start [%p] >>>\n", source);
+    cursor = source;
+    directRow = 0;
+    tagAddress = 0;
+    qwc = 0;
+    phase = 0;
+    wordsLeft = 0;
+    done = 0;
+    for (;;) {
+        if (wordsLeft == 0) {
+            switch (phase) {
+            case 0: {
+                u32 tag;
+                if ((u32)cursor & 0xF) {
+                    sdfPrintf(D_00549B70, cursor);
+                    return;
+                }
+                tag = cursor[0];
+                tagAddress = cursor[1];
+                tagId = (tag >> 28) & 7;
+                qwc = tag & 0xFFFF;
+                sdfPrintf("\n%08X [DMA %s] : %08X %08X\n",
+                                           cursor, sdfDmaTagNameTable[tagId], tag, tagAddress);
+                wordCursor = cursor + 2;
+                cursor += 4;
+                wordsLeft = 2;
+                phase = 1;
+                break;
+            }
+            case 1:
+                wordsLeft = qwc * 4;
+                switch (tagId) {
+                case 0:
+                case 3:
+                case 4:
+                    wordCursor = (u32 *)tagAddress;
+                    break;
+                default:
+                    wordCursor = cursor;
+                    break;
+                }
+                phase = 2;
+                break;
+            case 2:
+                switch (tagId) {
+                case 0:
+                case 7:
+                    done = 1;
+                    break;
+                case 1:
+                    cursor += qwc * 4;
+                    break;
+                case 2:
+                    cursor = (u32 *)tagAddress;
+                    break;
+                case 3:
+                case 4:
+                    break;
+                case 5:
+                    if (depth == 2) {
+                        sdfPrintf("\ncall stack nest overflow!\n");
+                        return;
+                    }
+                    returnStack[depth++] = cursor + qwc * 4;
+                    cursor = (u32 *)tagAddress;
+                    break;
+                case 6:
+                    if (depth == 0) {
+                        done = 1;
+                    } else {
+                        depth--;
+                        cursor = returnStack[depth];
+                    }
+                    break;
+                }
+                phase = 0;
+                break;
+            }
+        } else {
+            value = *wordCursor++;
+            wordsLeft--;
+            switch (dataMode) {
+            case 0: {
+                u32 opcode = (value >> 24) & 0x7F;
+                u32 num = (value >> 16) & 0xFF;
+                u32 immediate = value & 0xFFFF;
+                s32 interrupt = (value >> 31) ? 'i' : ' ';
+                s32 bits;
+                s32 format;
+                s32 unpackFormat;
+
+                sdfPrintf("%08X %c%08X : ", (u32)(wordCursor - 1),
+                                           interrupt, value);
+                switch (opcode) {
+                case 0x00:
+                    sdfPrintf("VIF NOP\n");
+                    break;
+                case 0x01:
+                    sdfPrintf("VIF STCYCL (CL=%d, WL=%d)\n", (s32)(immediate & 0xFF),
+                                    (s32)(immediate >> 8));
+                    break;
+                case 0x02:
+                    sdfPrintf("VIF OFFSET (%04X)\n", immediate & 0x3FF);
+                    break;
+                case 0x03:
+                    sdfPrintf("VIF BASE   (%04X)\n", immediate & 0x3FF);
+                    break;
+                case 0x04:
+                    sdfPrintf("VIF ITOP   (%04X)\n", immediate & 0x3FF);
+                    break;
+                case 0x05:
+                    sdfPrintf("VIF STMOD  (%d)\n", (s32)(immediate & 3));
+                    break;
+                case 0x06:
+                    sdfPrintf("VIF MSKPATH3 (%s)\n",
+                                    (immediate & 0x8000) ? D_00551A58 : D_00551A60);
+                    break;
+                case 0x07:
+                    sdfPrintf("VIF MARK   (%04X)\n", immediate);
+                    break;
+                case 0x10:
+                    sdfPrintf("VIF FLUSHE\n");
+                    break;
+                case 0x11:
+                    sdfPrintf("VIF FLUSH\n");
+                    break;
+                case 0x13:
+                    sdfPrintf("VIF FLUSHA\n");
+                    break;
+                case 0x14:
+                    sdfPrintf("VIF MSCAL  (%04X)\n", immediate);
+                    break;
+                case 0x15:
+                    sdfPrintf("VIF MSCALF (%04X)\n", immediate);
+                    break;
+                case 0x17:
+                    sdfPrintf("VIF MSCNT\n");
+                    break;
+                case 0x20:
+                    dataMode = 1;
+                    sdfPrintf("VIF STMASK\n");
+                    break;
+                case 0x30:
+                    dataMode = 2;
+                    n = 4;
+                    sdfPrintf("VIF STROW\n");
+                    break;
+                case 0x31:
+                    dataMode = 3;
+                    n = 4;
+                    sdfPrintf("VIF STCOL\n");
+                    break;
+                case 0x4A:
+                    n = num * 2;
+                    sdfPrintf("VIF MPG   (%04X)\n", immediate);
+                    if (n == 0) {
+                        n = 0x200;
+                    }
+                    dataMode = 4;
+                    break;
+                case 0x50:
+                    n = immediate * 4;
+                    if (n == 0) {
+                        n = 0x40000;
+                    }
+                    sdfPrintf("VIF DIRECT (%06X bytes)\n", (u32)(n * 4));
+                    dataMode = 5;
+                    directRow = 0;
+                    break;
+                case 0x51:
+                    n = immediate * 4;
+                    if (n == 0) {
+                        n = 0x40000;
+                    }
+                    sdfPrintf("VIF DIRECTHL (%06X bytes)\n", (u32)(n * 4));
+                    dataMode = 6;
+                    directRow = 0;
+                    break;
+                default:
+                    if ((opcode & 0x60) == 0x60) {
+                        unpackFormat = opcode & 0xF;
+                        if (((char **)((u8 *)sdfDmaTagNameTable + 0x20))[unpackFormat] == NULL) {
+                            sdfPrintf("illegal unpack type !\n");
+                            return;
+                        }
+                        format = (((s32)immediate >> 13) & 6) | (((s32)opcode >> 4) & 1);
+                        dataMode = 7;
+                        sdfPrintf("VIF UNPACK%s %s,%04X,%04X\n",
+                                                   D_00529C68[format],
+                                                   ((char **)((u8 *)sdfDmaTagNameTable + 0x20))[unpackFormat],
+                                                   immediate & 0x3FF, num);
+                        bits = D_00529C88[unpackFormat];
+                        n = (bits * (s32)num + 0x1F) >> 5;
+                    } else {
+                        sdfPrintf("unkown vif command\n");
+                        return;
+                    }
+                    break;
+                }
+                break;
+            }
+            case 1:
+                sdfPrintf("    STMASK : %08X\n", value);
+                dataMode = 0;
+                break;
+            case 2:
+                n--;
+                sdfPrintf("    STROW : %08X\n", value);
+                if (n == 0) {
+                    dataMode = 0;
+                }
+                break;
+            case 3:
+                n--;
+                sdfPrintf("    STCOL : %08X\n", value);
+                if (n == 0) {
+                    dataMode = 0;
+                }
+                break;
+            case 4:
+                if (--n == 0) {
+                    dataMode = 0;
+                }
+                break;
+            case 5:
+                if (directRow == 0) {
+                    sdfPrintf(D_00551B10);
+                } else {
+                    sdfPrintf(D_00551A38);
+                }
+                directRow++;
+                sdfPrintf(D_00551B18, value);
+                if (directRow == 4) {
+                    directRow = 0;
+                    sdfPrintf(sdfDumpLineBuf);
+                }
+                if (--n == 0) {
+                    if (directRow != 0) {
+                        sdfPrintf(sdfDumpLineBuf);
+                    }
+                    dataMode = 0;
+                }
+                break;
+            case 6:
+                if (--n == 0) {
+                    dataMode = 0;
+                }
+                break;
+            case 7:
+                if (--n == 0) {
+                    dataMode = 0;
+                }
+                break;
+            }
+        }
+        if (done != 0) {
+            sdfPrintf("<<< DMA-VIF normal end [%p] >>>\n", (void *)wordCursor);
+            return;
+        }
+    }
+}
 
 void sdfDumpGsMemory(void) {
     char buf[8];

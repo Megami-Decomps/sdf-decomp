@@ -26,9 +26,9 @@ void sdfFileCmdThreadSetPrio(s32 prio);
 s32 sdfFileCmdRead(void *aHandle, void *aBuffer, s32 aLength);
 
 
-s32 sdfFileCmdUnlink(void *aHandle);
+void sdfFileCmdUnlink(void *aHandle);
 
-s32 sdfFileCmdDequeue(void *aCmd);
+void sdfFileCmdDequeue(void *aCmd);
 
 s32 sceClose(s32 a);
 
@@ -132,6 +132,24 @@ void *sdfChipAllocDirect(s32 aSize);
 
 extern sdfFileDeviceCB_t sdfFileDeviceCB[];
 
+extern s32 DIntr(void);
+
+extern void EIntr(void);
+
+extern void sdfChipFreeDirect(void *aPtr);
+
+extern sdfFileCmdHandle_t *D_00551948;
+
+extern sdfFileCmdHandle_t *sdfFileCmdFreeList;
+
+extern s16 sdfFileCmdCount;
+
+extern sdfFileCmdHandle_t *D_00551954;
+
+extern sdfFileCmdHandle_t *D_00551958;
+
+extern s16 sdfFileCmdFreeCount;
+
 u32 sdfMemLock(sdfMemHandle_t *aHandle);
 
 extern s32 sceWrite(s32 a, s32 b, s32 c);
@@ -141,6 +159,16 @@ extern char D_00551968[];
 extern char D_00551970[];
 
 extern char D_00551978[];
+
+extern char D_00551980[];
+
+extern char D_00551988[];
+
+extern u8 sdfFileCmdDefaultDevice;
+
+extern s32 memcmp(const void *aFirst, const void *aSecond, u32 aSize);
+
+extern char *strchr(const char *aString, s32 aCharacter);
 
 void *sdfChipAllocZeroDirect(s32 aSize);
 
@@ -175,11 +203,92 @@ s32 sdfCdImageGetCurrFileSize(void);
 
 char *sdfFileGetHostRoot(void);
 
-INCLUDE_ASM(const s32, "sdf/sdfFileIO", sdfFileCmdUnlink);
+/* Unlink a cached request under interrupt protection, then release its storage. */
+void sdfFileCmdUnlink(void *aHandle)
+{
+    sdfFileCmdHandle_t *state = aHandle;
+    s32 interrupts;
+    sdfFileCmdHandle_t *previous;
+    sdfFileCmdHandle_t *next;
 
-INCLUDE_ASM(const s32, "sdf/sdfFileIO", sdfFileCmdDequeue);
+    interrupts = DIntr();
+    previous = state->prev;
+    next = state->next;
+    if (previous == NULL) {
+        D_00551954 = next;
+    } else {
+        previous->next = next;
+    }
+    if (next == NULL) {
+        D_00551958 = previous;
+    } else {
+        next->prev = previous;
+    }
+    sdfFileCmdCount -= 1;
+    if (interrupts != 0) {
+        EIntr();
+    }
+    sdfChipFreeDirect(state->filename);
+    sdfChipFreeDirect(state);
+}
 
-s32 sdfFileCmdReleaseHandle(sdfFileCmd_t *aHandle)
+/* Move a completed request off both active lists and into the bounded cache. */
+void sdfFileCmdDequeue(void *aCmd)
+{
+    sdfFileCmdHandle_t *state = aCmd;
+    sdfFileDeviceCB_t *worker;
+    sdfFileCmdHandle_t *previous;
+    sdfFileCmdHandle_t *next;
+    s32 interrupts;
+
+    interrupts = DIntr();
+    previous = state->prev;
+    next = state->next;
+    if (previous == NULL) {
+        D_00551948 = next;
+    } else {
+        previous->next = next;
+    }
+    if (next == NULL) {
+        sdfFileCmdFreeList = previous;
+    } else {
+        next->prev = previous;
+    }
+    worker = &sdfFileDeviceCB[state->device];
+    previous = state->devicePrev;
+    next = state->deviceNext;
+    if (previous == NULL) {
+        worker->first = next;
+    } else {
+        previous->deviceNext = next;
+    }
+    if (next == NULL) {
+        worker->last = previous;
+    } else {
+        next->devicePrev = previous;
+    }
+    state->prev = D_00551958;
+    if (D_00551958 == NULL) {
+        D_00551954 = state;
+    } else {
+        D_00551958->next = state;
+    }
+    D_00551958 = state;
+    state->next = NULL;
+    sdfFileCmdCount++;
+    sdfFileCmdFreeCount--;
+    if (interrupts != 0) {
+        EIntr();
+    }
+    if (sdfFileCmdCount >= 9) {
+        sdfFileCmdUnlink(D_00551954);
+    }
+    if (worker->first != NULL) {
+        SignalSema(worker->semaId);
+    }
+}
+
+void sdfFileCmdReleaseHandle(sdfFileCmd_t *aHandle)
 {
     s32 fd = aHandle->fd;
 
@@ -187,7 +296,7 @@ s32 sdfFileCmdReleaseHandle(sdfFileCmd_t *aHandle)
     if (fd >= 0) {
         sceClose(fd);
     }
-    return sdfFileCmdDequeue(aHandle);
+    sdfFileCmdDequeue(aHandle);
 }
 
 /* Store an error/result, release the request, and notify its callback of inactivity. */
@@ -327,7 +436,7 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
                 sdfFileCmdFinish(state, result);
                 continue;
             }
-            ((void (*)(void *))sdfFileCmdDequeue)(state);
+            sdfFileCmdDequeue(state);
             state->stat = SDF_FILE_CMD_STAT_DONE;
             callback = state->callback;
             if (callback != NULL) {
@@ -373,7 +482,7 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
             state->stat = SDF_FILE_CMD_STAT_CLOSE;
             sceClose(state->fd);
             state->fd = -1;
-            ((void (*)(void *))sdfFileCmdDequeue)(state);
+            sdfFileCmdDequeue(state);
             state->stat = SDF_FILE_CMD_STAT_DONE;
             callback = state->callback;
             if (callback != NULL) {
@@ -406,7 +515,7 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
         state->stat = SDF_FILE_CMD_STAT_CLOSE;
         sceClose(state->fd);
         state->fd = -1;
-        ((void (*)(void *))sdfFileCmdDequeue)(state);
+        sdfFileCmdDequeue(state);
         state->stat = SDF_FILE_CMD_STAT_DONE;
         callback = state->callback;
         if (callback != NULL) {
@@ -474,7 +583,7 @@ void sdfFileCdImageCmdThread(sdfFileDeviceCB_t *aCB) {
         case SDF_FILE_CMD_CLOSE - SDF_FILE_CMD_READOPEN:
             state->stat = SDF_FILE_CMD_STAT_CLOSE;
             sdfCdImageClose();
-            ((void (*)(void *))sdfFileCmdDequeue)(state);
+            sdfFileCmdDequeue(state);
             state->stat = SDF_FILE_CMD_STAT_DONE;
             callback = state->callback;
             if (callback != NULL) {
@@ -508,7 +617,7 @@ void sdfFileCdImageCmdThread(sdfFileDeviceCB_t *aCB) {
             state->stat = SDF_FILE_CMD_STAT_CLOSE;
             sdfCdImageClose();
             state->fd = -1;
-            ((void (*)(void *))sdfFileCmdDequeue)(state);
+            sdfFileCmdDequeue(state);
             state->stat = SDF_FILE_CMD_STAT_DONE;
             callback = state->callback;
             if (callback != NULL) {
@@ -583,7 +692,45 @@ char *sdfFileCmdMakeRealFileName(char *aSrcName, s32 aDeviceType) {
     return result;
 }
 
+#ifdef NON_MATCHING
+/* Best draft: 65 of 72 words match; offset registers and the final failure branch differ. */
+s32 sdfFileCmdAnalyzeFileName(const char *aFileName, char **aRealNamePtr)
+{
+    char *path = (char *)aFileName;
+    s32 device;
+    s32 pathOffset;
+
+    if (strchr(path, ':') != NULL) {
+        if (memcmp(path, D_00551968, 7) == 0) {
+            if (memcmp(path + 7, D_00551980, 7) == 0) {
+                device = 3;
+                pathOffset = 0;
+            } else {
+                device = 0;
+                pathOffset = 7;
+            }
+        } else if (memcmp(path, D_00551970, 6) == 0) {
+            device = 1;
+            pathOffset = 6;
+        } else if (memcmp(path, D_00551978, 5) == 0) {
+            device = 2;
+            pathOffset = 5;
+        } else if (memcmp(path, D_00551988, 6) == 0) {
+            device = 3;
+            pathOffset = 6;
+        } else {
+            return -1;
+        }
+        *aRealNamePtr = sdfFileCmdMakeRealFileName(path + pathOffset, device);
+    } else {
+        device = sdfFileCmdDefaultDevice;
+        *aRealNamePtr = sdfFileCmdMakeRealFileName(path, device);
+    }
+    return device;
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfFileIO", sdfFileCmdAnalyzeFileName);
+#endif
 
 /* Allocate a request state and retain the callback's opaque context word. */
 sdfFileCmdHandle_t *sdfFileCmdNewHandle(void *resource, s32 workerIndex, s32 operation,
@@ -699,7 +846,16 @@ s32 sdfFileCmdClose(void *aHandle) {
     return 0;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfFileIO", sdfFileCmdFree);
+s32 sdfFileCmdFree(sdfFileCmd_t *aHandle)
+{
+    if (aHandle->stat < SDF_FILE_CMD_STAT_ERROR) {
+        if (aHandle->stat >= SDF_FILE_CMD_STAT_SUSPEND) {
+            sdfFileCmdUnlink(aHandle);
+            return 0;
+        }
+    }
+    return -1;
+}
 
 /* Enqueue a one-shot read: negative byte count requests the whole file. */
 sdfFileCmdHandle_t *sdfFileCmdReadFile(const char *path, s32 buffer, s32 byteCount,
