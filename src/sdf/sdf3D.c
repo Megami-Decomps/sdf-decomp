@@ -255,6 +255,15 @@ extern void *memcpy(void *, const void *, unsigned int);
 void ReverseMatrix(void);
 
 void MultMatrixRev(const void *aMatrix);
+void MultMatrix(void *aMatrix);
+f32 tanf(f32);
+
+enum sdf_3d_screen_flag {
+    SDF_3D_SCREEN_FLAG_HALFHEIGHT = 1,
+    SDF_3D_SCREEN_FLAG_FOVY = 2
+};
+
+void sdf3DMakeScreenParam(sdf3DScreenParam_t *aParam);
 
 void sdf3DMakeViewportPacket(sdf3DViewportPacket_t *aPacket, sdf3DScreenParam_t *aParam, void *aCamera);
 
@@ -312,7 +321,52 @@ void sdf3DSetDefaultFog(u8 *aFog) {
     sdf3DFogDefault = (u32)aFog;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdf3D", sdf3DMakeScreenParam);
+void sdf3DMakeScreenParam(sdf3DScreenParam_t *aParam) {
+    f32 m[4][4] __attribute__((aligned(16)));
+    f32 farClip = aParam->farClip;
+    f32 nearClip = aParam->nearClip;
+    f32 depth = farClip - nearClip;
+    f32 halfWidth = aParam->width * 0.5f;
+    f32 halfHeight = aParam->height * 0.5f;
+    f32 projDist;
+    f32 halfRange;
+
+    SDF_VU0_STOREIDENTITY((f32 *)m);
+    m[0][0] = 1.0f / (halfWidth * aParam->aspect);
+    m[1][1] = 1.0f / halfHeight;
+    m[2][2] = (farClip * nearClip + farClip * nearClip) / depth;
+    m[3][2] = -(nearClip + farClip) / depth;
+    SDF_VU0_LOADMATRIX((f32 *)m);
+
+    SDF_VU0_STOREIDENTITY((f32 *)m);
+    if (aParam->flags & SDF_3D_SCREEN_FLAG_FOVY) {
+        projDist = aParam->height / (tanf(aParam->fovy * 0.5f) * 2.0f);
+    } else {
+        projDist = aParam->projDist;
+    }
+    m[0][0] = projDist;
+    m[1][1] = projDist;
+    m[2][2] = 0.0f;
+    m[3][3] = 0.0f;
+    m[2][3] = 1.0f;
+    m[3][2] = 1.0f;
+    MultMatrix((f32 *)m);
+    SDF_VU0_STOREMATRIX(aParam->TM);
+
+    halfRange = (aParam->zMax - aParam->zMin) * 0.5f;
+    aParam->scale[0] = halfWidth;
+    if (aParam->flags & SDF_3D_SCREEN_FLAG_HALFHEIGHT) {
+        aParam->scale[1] = halfHeight * 0.5f;
+    } else {
+        aParam->scale[1] = halfHeight;
+    }
+    aParam->trans[3] = 0.0f;
+    aParam->scale[3] = 1.0f;
+    aParam->scale[2] = halfRange;
+    aParam->trans[1] = aParam->oy;
+    aParam->trans[2] = halfRange + aParam->zMin;
+    aParam->trans[0] = aParam->ox;
+}
 
 void sdf3DMakeLightParallelPacket(sdf3DLightParallelPacket_t *aPacket, sdfLightSources_t aLights, f32 *aAmbient);
 
