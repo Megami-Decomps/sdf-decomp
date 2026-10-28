@@ -133,12 +133,11 @@ void ToMatrix(void)
     VU0_SEQ_TO_MATRIX();
 }
 
-/* NON_MATCHING: 60 of 70 words match at the exact size; four fp temporaries rotated. */
-#ifdef NON_MATCHING
 /* vu0 routine: the composed quaternion is left in the shared register. */
 void FromEulerXYZ(f32 aRotateX, f32 aRotateY, f32 aRotateZ)
 {
-    f32 quaternion[4];
+    /* VU lqc2 reads this scratch through its address; retain retail store order. */
+    volatile f32 quaternion[4] __attribute__((aligned(16)));
     f32 half;
     f32 cx;
     f32 sx;
@@ -160,20 +159,14 @@ void FromEulerXYZ(f32 aRotateX, f32 aRotateY, f32 aRotateZ)
     quaternion[1] = cz * sy * cx - sz * cy * sx;
     quaternion[2] = sz * cy * cx + cz * sy * sx;
     quaternion[3] = cz * cy * cx - sz * sy * sx;
-    SDF_VU0_LOADVECTOR(quaternion);
+    SDF_VU0_LOADVECTOR((f32 *)quaternion);
 }
-#else
-void FromEulerXYZ(f32 aRotateX, f32 aRotateY, f32 aRotateZ);
 
-INCLUDE_ASM(const s32, "sdf/sdfQuat", FromEulerXYZ);
-#endif
-
-/* NON_MATCHING: 59 of 69 words match at the exact size; four fp temporaries rotated. */
-#ifdef NON_MATCHING
 /* vu0 routine: the composed quaternion is left in the shared register. */
 void FromEuler(f32 aRotateX, f32 aRotateY, f32 aRotateZ)
 {
-    f32 quaternion[4];
+    /* VU lqc2 reads this scratch through its address; retain retail store order. */
+    volatile f32 quaternion[4] __attribute__((aligned(16)));
     f32 half;
     f32 cx;
     f32 sx;
@@ -195,13 +188,8 @@ void FromEuler(f32 aRotateX, f32 aRotateY, f32 aRotateZ)
     quaternion[1] = cz * sy * cx - sz * cy * sx;
     quaternion[2] = sz * cy * cx + cz * sy * sx;
     quaternion[3] = cz * cy * cx - sz * sy * sx;
-    SDF_VU0_LOADVECTOR(quaternion);
+    SDF_VU0_LOADVECTOR((f32 *)quaternion);
 }
-#else
-void FromEuler(f32 aRotateX, f32 aRotateY, f32 aRotateZ);
-
-INCLUDE_ASM(const s32, "sdf/sdfQuat", FromEuler);
-#endif
 
 /* vu0 routine: compose pitch and offset-adjusted planar direction quaternions. */
 void LookAt(f32 aFrontX, f32 aFrontZ) {
