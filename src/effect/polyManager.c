@@ -1630,7 +1630,49 @@ void dds3SpPoly_Ring_Old_Draw(dds3SpPoly_Ring_Old_t3 *hData) {
     dds3TrackPolyDraw(hData->hTrackPoly);
 }
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3SpPoly_Ring_Old_New);
+void dds3SpPoly_Ring_Old_New(dds3SpPoly_Ring_Old_t3 *pRing, s32 number) {
+    dds3TrackPoly_t *strip = pRing->hTrackPoly;
+    dds3TrackPolyList_t *cell = &strip->trackList[number];
+    f32 radius = pRing->radius;
+    f32 origin[4];
+    f32 offset[4];
+    f32 angle;
+    f32 step;
+    f32 cosine;
+    f32 sine;
+    u128 *p;
+    u128 *hist;
+    s32 half;
+    s32 pairs;
+    s32 i;
+
+    step = 6.2831853f / (f32)pRing->segments;
+    cell->count = strip->point;
+    p = cell->pVertex;
+    half = strip->point / 2;
+    SDF_VU0_LOADMATRIX(pRing->matrix);
+    angle = 0.0f;
+    SDF_VU0_COPYVECTOR_F32(origin, pRing->origin);
+    pairs = half - 1;
+    for (i = 0; i < pairs; i++) {
+        cosine = sdfCos(angle);
+        sine = sdfSin(angle);
+        SDF_VU0_LOADVECTOR_B(origin);
+        SDF_VU0_STOREVECTOR_B(p);
+        offset[0] = cosine * radius;
+        offset[1] = 0.0f;
+        offset[2] = sine * radius;
+        SDF_VU0_LOADVECTOR(offset);
+        SDF_VU0_APPLYMATRIX();
+        SDF_VU0_ADDVECTOR();
+        SDF_VU0_STOREVECTOR(p + 1);
+        p += 2;
+        angle += step;
+    }
+    hist = cell->pVertex;
+    SDF_VU0_COPYVECTOR(p, hist);
+    SDF_VU0_COPYVECTOR(p + 1, hist + 1);
+}
 
 void dds3SpPoly_Ring_Old_Move(dds3SpPoly_Ring_Old_t3 *pRing, s32 number) {
     dds3TrackPoly_t *strip = pRing->hTrackPoly;
