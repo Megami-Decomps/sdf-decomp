@@ -1,5 +1,6 @@
 #include "common.h"
 #include "libsdf.h"
+#include "ps2asm.h"
 
 struct sdfMovieCb_t;
 struct sdfIpuInitParm_t;
@@ -221,7 +222,87 @@ u8 *movieWaitSema(s32 aSize)
 INCLUDE_ASM(const s32, "sdf/sdfMovie", movieWaitSema);
 #endif
 
+/* NON_MATCHING: draft, not yet measured as a near miss. It is ordinary C apart
+ * from the two bit-length idioms, which PS2_WORD_BIT_LENGTH covers; what is
+ * unverified is the order cc1 reassociates the TEX0 chain into and the
+ * schedule of the twenty packet stores. */
+#ifdef NON_MATCHING
+void release_movieobj2(sdfMovieCb_t *obj, sdfGrOt_t *ot)
+{
+    u64 *packet;
+    sdfDrawTag_t *tag;
+    s64 tbp0;
+    s64 tbw;
+    s64 tw;
+    s64 th;
+    s64 psm;
+    s64 tex0;
+    s32 width;
+    s32 height;
+    s32 x;
+    s32 y;
+
+    if (obj->decodeCb.playbackPhase < 2) {
+        return;
+    }
+    if (obj->sndActive != 0 && obj->sndPlaying == 0 && obj->readCb.pac->ringLength >= 0x1000) {
+        obj->sndPlaying = 1;
+        movieSemaId = obj;
+        p2sdSetPcmCallback(movieWaitSema);
+        p2sdPlayPcm(obj->sndVolume);
+    }
+
+    packet = sdfGrAllocPacketBuff(0xB0);
+    width = obj->decodeCb.width;
+    height = obj->decodeCb.height;
+    tw = (s64)PS2_WORD_BIT_LENGTH(width - 1) << 26;
+    th = (s64)PS2_WORD_BIT_LENGTH(height - 1) << 30;
+    tbw = (u32)width >> 6;
+    if (tbw == 0) {
+        tbw = 1;
+    }
+    tbw <<= 14;
+    tbp0 = (u32)obj->decodeCb.resourceWord >> 6;
+    psm = 0;
+    if (obj->decodeCb.rgbMode != 0) {
+        psm = 0x200000; /* PSMCT16 */
+    }
+    /* TCC is set, so the IPU output is sampled with its alpha. */
+    tex0 = ((u64)0x8000 << 19) | th | tw | tbw | tbp0 | psm;
+
+    x = obj->x;
+    y = obj->y;
+    packet[0] = 0x0100000A;                   /* DMAtag, CNT, 10 quadwords */
+    packet[1] = (u64)0x5000000A << 32;        /* VIF DIRECT, 10 quadwords */
+    packet[2] = 0x108B400000008009;           /* GIFtag: sprite, TME, FST, 9 A+D */
+    packet[3] = 0x0E /* A+D */;
+    packet[4] = 0x21;
+    packet[5] = 0x14 /* TEX1_1 */;
+    packet[6] = tex0;
+    packet[7] = 0x06 /* TEX0_1 */;
+    packet[8] = 5;
+    packet[9] = 0x08 /* CLAMP_1 */;
+    packet[10] = 0x4000000000000080;
+    packet[11] = 0x3B /* TEXA */;
+    packet[12] = 0x80808080;
+    packet[13] = 0x01 /* RGBAQ */;
+    packet[14] = 0;
+    packet[15] = 0x03 /* UV */;
+    packet[16] = ((u64)obj->z << 32) | (u32)(y << 16) | (u32)x;
+    packet[17] = 0x05 /* XYZ2 */;
+    packet[18] = (height << 20) | (width << 4);
+    packet[19] = 0x03 /* UV */;
+    packet[20] = ((u64)obj->z << 32) | (u32)((y + obj->height) << 16) |
+                 (u32)(x + obj->width);
+    packet[21] = 0x05 /* XYZ2 */;
+
+    tag = sdfPrimAllocDrawTag();
+    sdfDrawTagLink(tag, packet);
+    ot->regFunc(ot, tag);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfMovie", release_movieobj2);
+#endif
 
 void movieReadNextChunk(sdfMovieCb_t *aMov)
 {
