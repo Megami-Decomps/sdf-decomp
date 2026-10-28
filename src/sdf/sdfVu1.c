@@ -340,13 +340,123 @@ void corePktSetFaceDivParm(sdfCorePacketFaceDivParm_t *out, sdfMatPacket_t *work
                   work->y + deltaY);
 }
 
+/* NON_MATCHING: reference implementation, not a match candidate. The retail
+ * body is assembly and the arithmetic is not in it: it loads seven quadwords
+ * of matrix state (the 4x4 at mtx+0x00 into vf28-vf31, the three light basis
+ * rows at mtx+0x40 into vf24-vf26), then feeds vf2 and vf3 per vertex and runs
+ * `vcallms 0`. The operation below is what that microprogram does, inferred
+ * from the register setup and from corePktSkinVertFirst, which performs the
+ * position half inline. The loop is software pipelined: the next vertex is
+ * fetched before the current one's results are read back. */
+#ifdef NON_MATCHING
+void corePktSkinPointsFirst(sdfCorePacketPointBuff_tag *dst, s32 count, const f32 *mtx,
+                            const f32 *weighted, const u32 *norm)
+{
+    do {
+        const f32 *n = (const f32 *)norm;
+        f32 *lighting = (f32 *)dst->opaque10;
+        s32 lane;
+
+        for (lane = 0; lane < 4; lane++) {
+            dst->position[lane] = (mtx[lane] * weighted[0] + mtx[4 + lane] * weighted[1] +
+                                   mtx[8 + lane] * weighted[2] + mtx[12 + lane]) * weighted[3];
+        }
+        for (lane = 0; lane < 4; lane++) {
+            lighting[lane] = (mtx[16 + lane] * n[0] + mtx[20 + lane] * n[1] +
+                              mtx[24 + lane] * n[2]) * weighted[3];
+        }
+
+        weighted += 4;
+        norm += 3;
+        dst++;
+    } while (--count != 0);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktSkinPointsFirst);
+#endif
 
+/* NON_MATCHING: reference implementation, not a match candidate. As
+ * corePktSkinPointsFirst, but the microprogram is `vcallms 0x48` and it also
+ * takes the two destination quadwords in vf5 and vf6, so the bone's
+ * contribution accumulates. Retail runs the loop count - 1 times and repeats
+ * the body once after it, because the inputs for iteration i + 1 are fetched
+ * inside iteration i. */
+#ifdef NON_MATCHING
+void corePktSkinPointsAccum(sdfCorePacketPointBuff_tag *dst, s32 count, const f32 *mtx,
+                            const f32 *weighted, const u32 *norm)
+{
+    do {
+        const f32 *n = (const f32 *)norm;
+        f32 *lighting = (f32 *)dst->opaque10;
+        s32 lane;
+
+        for (lane = 0; lane < 4; lane++) {
+            dst->position[lane] += (mtx[lane] * weighted[0] + mtx[4 + lane] * weighted[1] +
+                                    mtx[8 + lane] * weighted[2] + mtx[12 + lane]) * weighted[3];
+        }
+        for (lane = 0; lane < 4; lane++) {
+            lighting[lane] += (mtx[16 + lane] * n[0] + mtx[20 + lane] * n[1] +
+                               mtx[24 + lane] * n[2]) * weighted[3];
+        }
+
+        weighted += 4;
+        norm += 3;
+        dst++;
+    } while (--count != 0);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktSkinPointsAccum);
+#endif
 
+/* NON_MATCHING: reference implementation, not a match candidate. The retail
+ * body is assembly, and it has a register slip: the loop branches on the
+ * destination pointer instead of the count, and the store is based on the
+ * weight pointer instead of the destination. The C below is the intended
+ * operation, the one corePktSkinVertAccum performs correctly. */
+#ifdef NON_MATCHING
+void corePktSkinVertFirst(sdfCorePacketPointBuff_tag *dst, s32 count, const f32 *mtx,
+                          const f32 *weighted)
+{
+    do {
+        s32 lane;
+
+        /* Four words per entry, read as two ldr/ldl pairs because the stream is
+         * 4-aligned and not 8-aligned: xyz is the vertex in bone space and w is
+         * the bone weight. */
+        for (lane = 0; lane < 4; lane++) {
+            dst->position[lane] = (mtx[lane] * weighted[0] + mtx[4 + lane] * weighted[1] +
+                                   mtx[8 + lane] * weighted[2] + mtx[12 + lane]) * weighted[3];
+        }
+
+        weighted += 4;
+        dst++;
+    } while (--count != 0);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktSkinVertFirst);
+#endif
 
+/* NON_MATCHING: reference implementation, not a match candidate. The retail
+ * body is assembly: a VU0 matrix multiply-add chain on vf28-vf31. */
+#ifdef NON_MATCHING
+void corePktSkinVertAccum(sdfCorePacketPointBuff_tag *dst, s32 count, const f32 *mtx,
+                          const f32 *weighted)
+{
+    do {
+        s32 lane;
+
+        for (lane = 0; lane < 4; lane++) {
+            dst->position[lane] += (mtx[lane] * weighted[0] + mtx[4 + lane] * weighted[1] +
+                                    mtx[8 + lane] * weighted[2] + mtx[12 + lane]) * weighted[3];
+        }
+
+        weighted += 4;
+        dst++;
+    } while (--count != 0);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktSkinVertAccum);
+#endif
 
 /* NON_MATCHING: reference implementation, not a match candidate. The retail
  * body is assembly: it packs the three words with an unaligned ldr/ldl pair
@@ -372,14 +482,266 @@ void corePktLoadVerts(u8 *dst, s32 count, const u32 *src)
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktLoadVerts);
 #endif
 
+/* NON_MATCHING: reference implementation, not a match candidate. The retail
+ * body is assembly: two unaligned ldr/ldl pairs per entry and pcpyld. */
+#ifdef NON_MATCHING
+void corePktLoadVertsNorms(sdfCorePacketPointBuff_tag *dst, s32 count, const u32 *vert,
+                           const u32 *norm)
+{
+    do {
+        u32 *position = (u32 *)dst->position;
+        u32 *lighting = (u32 *)dst->opaque10;
+
+        position[0] = vert[0];
+        position[1] = vert[1];
+        position[2] = vert[2];
+        /* pcpyld leaves the lw's sign extension in the fourth word. */
+        position[3] = (s32)vert[2] >> 31;
+        lighting[0] = norm[0];
+        lighting[1] = norm[1];
+        lighting[2] = norm[2];
+        lighting[3] = (s32)norm[2] >> 31;
+
+        vert += 3;
+        norm += 3;
+        dst++;
+    } while (--count != 0);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktLoadVertsNorms);
+#endif
 
+/* NON_MATCHING: reference implementation, not a match candidate. The retail
+ * body is assembly: two unaligned ldr/ldl pairs and two VU0 multiply-adds. */
+#ifdef NON_MATCHING
+void corePktMorphVertsNorms(sdfCorePacketPointBuff_tag *dst, s32 count, const u32 *vertDelta,
+                            const u32 *normDelta, f32 weight)
+{
+    do {
+        const f32 *dv = (const f32 *)vertDelta;
+        const f32 *dn = (const f32 *)normDelta;
+        u32 *position = (u32 *)dst->position;
+        f32 *lighting = (f32 *)dst->opaque10;
+        u32 *lightingWords = (u32 *)dst->opaque10;
+
+        dst->position[0] += dv[0] * weight;
+        dst->position[1] += dv[1] * weight;
+        dst->position[2] += dv[2] * weight;
+        position[3] = (s32)vertDelta[2] >> 31;
+        lighting[0] += dn[0] * weight;
+        lighting[1] += dn[1] * weight;
+        lighting[2] += dn[2] * weight;
+        lightingWords[3] = (s32)normDelta[2] >> 31;
+
+        vertDelta += 3;
+        normDelta += 3;
+        dst++;
+    } while (--count != 0);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktMorphVertsNorms);
+#endif
 
+/* NON_MATCHING: reference implementation, not a match candidate. The retail
+ * body is assembly: an unaligned ldr/ldl pair, pcpyld and a VU0 multiply-add. */
+#ifdef NON_MATCHING
+void corePktMorphVerts(sdfCorePacketPointBuff_tag *dst, s32 count, const u32 *delta, f32 weight)
+{
+    do {
+        const f32 *d = (const f32 *)delta;
+        u32 *position = (u32 *)dst->position;
+
+        dst->position[0] += d[0] * weight;
+        dst->position[1] += d[1] * weight;
+        dst->position[2] += d[2] * weight;
+        /* vmaddx writes xyz but sqc2 stores the whole quadword, so w is left as
+         * pcpyld built it: the sign extension of the delta's third word. */
+        position[3] = (s32)delta[2] >> 31;
+
+        delta += 3;
+        dst++;
+    } while (--count != 0);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktMorphVerts);
+#endif
 
+/* NON_MATCHING: reference implementation, not a match candidate. The retail
+ * body is assembly: a VU0 vrsqrt and vwaitq around the Q register. */
+#ifdef NON_MATCHING
+void corePktNormalizeNorms(sdfCorePacketPointBuff_tag *dst, s32 count)
+{
+    do {
+        f32 *lighting = (f32 *)dst->opaque10;
+        /* vmaddz.x against vf1.x, which the engine keeps at 1.0. */
+        f32 lengthSq = lighting[0] * lighting[0] + lighting[1] * lighting[1] +
+                       lighting[2] * lighting[2];
+        f32 scale = 1.0f / sdfSqrt(lengthSq);
+
+        lighting[0] *= scale;
+        lighting[1] *= scale;
+        lighting[2] *= scale;
+        /* vmulq is xyz only, so the fourth word survives untouched. */
+        dst++;
+    } while (--count != 0);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktNormalizeNorms);
+#endif
 
+/* NON_MATCHING: reference implementations, not match candidates. These four
+ * routines are assembly, and two of their inputs are VU0 register state no C
+ * expression reaches: vf28-vf31 hold the screen transform MultMatrixRev left
+ * behind, and vf24-vf26 hold the world light basis from
+ * corePktLoadWorldLightMtx, whose W lanes retail rescales by
+ * corePktFaceDivParm.scale on entry. They appear below under notional names.
+ *
+ * Each writes one 96-byte record per vertex: the transformed position at
+ * +0x00, the normal with the diffuse term in its W lane at +0x10, the
+ * interpolated colour at +0x20, the UV pair at +0x30 for the UV variants, the
+ * clip flags of the position at +0x51 and the two over/under bits of the
+ * diffuse term at +0x50. The quadword stores at +0x10 and +0x30 only ever
+ * have some lanes written by the VU, so the rest carry over whatever the
+ * source register held.
+ *
+ * `cfc2 $vi18` reads a 24-bit shift register, six bits per vclip, so the byte
+ * stored at +0x51 also carries the low two bits of the preceding clip in its
+ * top two bits. */
+#ifdef NON_MATCHING
+extern sdfCorePacketFaceDivParm_t corePktFaceDivParm;
+static f32 corePktScreenMtx[4][4]; /* vf28-vf31 */
+static f32 corePktLightRowW[3];    /* vf24-vf26, W lane only, already scaled */
+
+static void corePktShadeAndClip(sdfCorePacketPointBuff_tag *dst, const f32 *n)
+{
+    f32 *lighting = (f32 *)dst->opaque10;
+    f32 diffuse = corePktFaceDivParm.scaledY + corePktLightRowW[0] * n[0] +
+                  corePktLightRowW[1] * n[1] + corePktLightRowW[2] * n[2];
+    f32 shade = diffuse;
+    s32 lane;
+
+    if (shade < 0.0f) {
+        shade = 0.0f;
+    }
+    if (shade > 1.0f) {
+        shade = 1.0f;
+    }
+    lighting[3] = diffuse + diffuse - 1.0f;
+    for (lane = 0; lane < 4; lane++) {
+        dst->color[lane] = corePktFaceDivParm.colorBase[lane] +
+                           corePktFaceDivParm.colorDelta[lane] * shade;
+    }
+    /* vclipw of (2 * diffuse - 1) against 1.0: over, then under. */
+    dst->region = (u8)((diffuse > 1.0f) | ((diffuse < 0.0f) << 1));
+}
+
+static void corePktXfmAndClip(sdfCorePacketPointBuff_tag *dst, const f32 *v)
+{
+    s32 lane;
+    u32 flags = 0;
+
+    for (lane = 0; lane < 4; lane++) {
+        dst->position[lane] = corePktScreenMtx[0][lane] * v[0] +
+                              corePktScreenMtx[1][lane] * v[1] +
+                              corePktScreenMtx[2][lane] * v[2] + corePktScreenMtx[3][lane];
+    }
+    for (lane = 0; lane < 3; lane++) {
+        flags |= (dst->position[lane] > dst->position[3]) << (lane * 2);
+        flags |= (dst->position[lane] < -dst->position[3]) << (lane * 2 + 1);
+    }
+    dst->clipFlags = (u8)flags;
+}
+
+void corePktXfmLightClip(sdfCorePacketPointBuff_tag *dst, s32 count, const u32 *vert,
+                         const u32 *norm)
+{
+    do {
+        f32 *lighting = (f32 *)dst->opaque10;
+
+        lighting[0] = ((const f32 *)norm)[0];
+        lighting[1] = ((const f32 *)norm)[1];
+        lighting[2] = ((const f32 *)norm)[2];
+        corePktXfmAndClip(dst, (const f32 *)vert);
+        corePktShadeAndClip(dst, lighting);
+        vert += 3;
+        norm += 3;
+        dst++;
+    } while (--count != 0);
+}
+
+void corePktXfmLightClipPB(sdfCorePacketPointBuff_tag *dst, s32 count)
+{
+    /* The point buffer is already filled, so the position and the normal come
+     * back out of the record instead of out of two source streams. */
+    do {
+        f32 position[4];
+        s32 lane;
+
+        for (lane = 0; lane < 4; lane++) {
+            position[lane] = dst->position[lane];
+        }
+        corePktXfmAndClip(dst, position);
+        corePktShadeAndClip(dst, (f32 *)dst->opaque10);
+        dst++;
+    } while (--count != 0);
+}
+
+void corePktXfmLightClipUV(sdfCorePacketPointBuff_tag *dst, s32 count, const u32 *vert,
+                           const u32 *norm, const f32 *uv, const f32 *uvMtx)
+{
+    do {
+        f32 *lighting = (f32 *)dst->opaque10;
+
+        lighting[0] = ((const f32 *)norm)[0];
+        lighting[1] = ((const f32 *)norm)[1];
+        lighting[2] = ((const f32 *)norm)[2];
+        corePktXfmAndClip(dst, (const f32 *)vert);
+        corePktShadeAndClip(dst, lighting);
+        dst->xy[0] = uvMtx[4] + uvMtx[0] * uv[0] + uvMtx[2] * uv[1];
+        dst->xy[1] = uvMtx[5] + uvMtx[1] * uv[0] + uvMtx[3] * uv[1];
+        vert += 3;
+        norm += 3;
+        uv += 2;
+        dst++;
+    } while (--count != 0);
+}
+
+void corePktXfmLightClipUVPB(sdfCorePacketPointBuff_tag *dst, s32 count, const f32 *uv,
+                             const f32 *uvMtx)
+{
+    do {
+        f32 position[4];
+        s32 lane;
+
+        for (lane = 0; lane < 4; lane++) {
+            position[lane] = dst->position[lane];
+        }
+        corePktXfmAndClip(dst, position);
+        corePktShadeAndClip(dst, (f32 *)dst->opaque10);
+        dst->xy[0] = uvMtx[4] + uvMtx[0] * uv[0] + uvMtx[2] * uv[1];
+        dst->xy[1] = uvMtx[5] + uvMtx[1] * uv[0] + uvMtx[3] * uv[1];
+        uv += 2;
+        dst++;
+    } while (--count != 0);
+}
+
+void corePktRelightBackFaces(u32 pointBuff, s32 count)
+{
+    sdfCorePacketPointBuff_tag *dst = (sdfCorePacketPointBuff_tag *)pointBuff;
+
+    /* The position and its clip flags are left alone; only the normal is
+     * flipped and the shade and the over/under bits recomputed from it. */
+    do {
+        f32 *lighting = (f32 *)dst->opaque10;
+
+        lighting[0] = -lighting[0];
+        lighting[1] = -lighting[1];
+        lighting[2] = -lighting[2];
+        corePktShadeAndClip(dst, lighting);
+        dst++;
+    } while (--count != 0);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClip);
 
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClipPB);
@@ -389,8 +751,30 @@ INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClipUV);
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClipUVPB);
 
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktRelightBackFaces);
+#endif
 
+/* NON_MATCHING: reference implementation, not a match candidate. The retail
+ * body is assembly: a VU0 2x2-plus-offset multiply-add on the xy lanes, with
+ * the loop rotated so the result of entry i is read back and stored while
+ * entry i + 1 is being transformed. */
+#ifdef NON_MATCHING
+void corePktXfmUV(void *vertices, s32 count, void *uvSource, void *transform)
+{
+    sdfCorePacketPointBuff_tag *dst = vertices;
+    const f32 *uv = uvSource;
+    const f32 *mtx = transform;
+
+    /* Three 8-byte rows: the 2x2 in mtx[0..3] and the offset in mtx[4..5]. */
+    do {
+        dst->xy[0] = mtx[4] + mtx[0] * uv[0] + mtx[2] * uv[1];
+        dst->xy[1] = mtx[5] + mtx[1] * uv[0] + mtx[3] * uv[1];
+        uv += 2;
+        dst++;
+    } while (--count != 0);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmUV);
+#endif
 
 /* vu0 routine: lerp of the XY pair at +0x30 by the weight at node + 0x40 */
 void corePktLerpUVChain(sdfCorePacketPointBuff_tag *node) {
@@ -412,7 +796,47 @@ void corePktLerpUVColorChain(sdfCorePacketPointBuff_tag *node) {
     }
 }
 
+/* NON_MATCHING: reference implementation, not a match candidate. The retail
+ * body is assembly: 0.5 is broadcast into vf12 through a GPR, the colour loop
+ * is rotated so each record's colour is stored one iteration late, and the
+ * chain copy is a single lq/sq. */
+#ifdef NON_MATCHING
+void corePktApplyFaceDivColor(corePktCb_t *cb, void *parameters)
+{
+    const sdfCorePacketFaceDivParm_t *parm = parameters;
+    sdfCorePacketPointBuff_tag *point = (sdfCorePacketPointBuff_tag *)cb->pointBuff;
+    sdfCorePacketPointBuff_tag *node;
+    s32 count = cb->pointCount;
+
+    do {
+        const f32 *lighting = (const f32 *)point->opaque10;
+        /* The W lane holds 2 * diffuse - 1, so this maps it back to [0,1]. */
+        f32 shade = 0.5f + lighting[3] * 0.5f;
+        s32 lane;
+
+        if (shade < 0.0f) {
+            shade = 0.0f;
+        }
+        if (shade > 1.0f) {
+            shade = 1.0f;
+        }
+        for (lane = 0; lane < 4; lane++) {
+            point->color[lane] = parm->colorBase[lane] + parm->colorDelta[lane] * shade;
+        }
+        point++;
+    } while (--count != 0);
+
+    /* Interpolated points share a colour with the point they were split from. */
+    for (node = cb->extPointTop; node != NULL; node = node->next) {
+        node->color[0] = node->sourceA->color[0];
+        node->color[1] = node->sourceA->color[1];
+        node->color[2] = node->sourceA->color[2];
+        node->color[3] = node->sourceA->color[3];
+    }
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktApplyFaceDivColor);
+#endif
 
 void corePktSetConstColor(corePktCb_t *cb, u32 color) {
     f32 colorScale = 1.0f / 128.0f;
