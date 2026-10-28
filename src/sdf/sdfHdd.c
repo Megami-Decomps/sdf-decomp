@@ -54,11 +54,105 @@ enum sdf_stream_playback {
 
 extern s32 (*p2sdSmgBuf)(void);
 
-INCLUDE_ASM(const s32, "sdf/sdfHdd", sdfHddPowerOffTh);
+extern u8 sdfHddValid;
+
+extern u8 sdfDev9Ready;
+
+extern char D_00551990[];
+
+extern char D_00551998[];
+
+extern char D_005519A0[];
+
+extern char D_00529B60[];
+
+extern char D_00529B70[];
+
+extern u8 D_0058FFC0[];
+
+extern s32 printf(const char *format, ...);
+
+extern s32 WaitSema(s32 aSemaId);
+
+extern s32 sceDevctl(const char *device, s32 cmd, void *arg, s32 arglen, void *buf,
+                     s32 buflen);
+
+extern s32 sceCdPowerOff(s32 *result);
+
+extern void sdfDev9LoadModule(void);
+
+extern s32 sceSifLoadStartModule(const char *path, s32 arglen, char *args, s32 *result);
+
+extern s32 sdfCreateSema(s32 initial, s32 max, s32 option);
+
+extern s32 CreateThreadSimple(void *entry, void *stack, s32 stackSize, s32 priority);
+
+extern s32 StartThread(s32 threadId, void *arg);
+
+extern s32 sceCdPOffCallback(void *handler, s32 arg);
+
+extern s32 sceFsInit(void);
+
+extern s32 sceMount(char *mountPoint, char *device, s32 flag, void *arg, s32 arglen);
+
+void sdfHddPowerOffHandler(s32 aArg);
+
+void sdfHddPowerOffTh(s32 aSemaId)
+{
+    s32 result;
+
+    while (1) {
+        WaitSema(aSemaId);
+        printf("power off request has come.\n");
+        sceDevctl(D_00551990, 0x5003, NULL, 0, NULL, 0);
+        sceDevctl(D_00551998, 0x4806, NULL, 0, NULL, 0);
+        sceCdPowerOff(&result);
+    }
+}
 
 void sdfHddPowerOffHandler(s32 aArg)
 {
     iSignalSema(aArg);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfHdd", sdfHddInit);
+void sdfHddInit(void)
+{
+    s32 result;
+    s32 sema;
+
+    sdfHddValid = 0;
+    sdfDev9LoadModule();
+    if (sdfDev9Ready == 0) {
+        return;
+    }
+    if (sceSifLoadStartModule("cdrom0:\\IRX\\ATAD.IRX;1", 0, NULL, &result) < 0) {
+        printf("cdrom0:\\IRX\\ATAD.IRX;1 could't load.\n");
+        return;
+    }
+    if (result != 0) {
+        printf("cdrom0:\\IRX\\ATAD.IRX;1 resident fail.\n");
+        return;
+    }
+    if (sceSifLoadStartModule("cdrom0:\\IRX\\HDD.IRX;1", 0xC, D_00529B60, &result) < 0) {
+        printf("cdrom0:\\IRX\\HDD.IRX;1 could't load.\n");
+        return;
+    }
+    if (result != 0) {
+        printf("cdrom0:\\IRX\\HDD.IRX;1 resident fail.\n");
+        return;
+    }
+    if (sceSifLoadStartModule("cdrom0:\\IRX\\PFS.IRX;1", 0x12, D_00529B70, &result) < 0) {
+        printf("cdrom0:\\IRX\\PFS.IRX;1 could't load.\n");
+        return;
+    }
+    if (result != 0) {
+        printf("cdrom0:\\IRX\\PFS.IRX;1 resident fail.[%d]\n", result);
+        return;
+    }
+    sema = sdfCreateSema(0, 1, 0);
+    StartThread(CreateThreadSimple(sdfHddPowerOffTh, D_0058FFC0, 0x800, 1), (void *)sema);
+    sceCdPOffCallback(sdfHddPowerOffHandler, sema);
+    sceFsInit();
+    sceMount(D_005519A0, "hdd0:dds3,", 0, NULL, 0);
+    sdfHddValid = 1;
+}
