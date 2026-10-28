@@ -149,9 +149,11 @@ typedef struct sndMergedWork_t {
     u32 opaque1D4;
     u32 opaque1D8;
     u32 opaque1DC;
-    u8 unk1E0[0x380];
+    u8 controlData[7][0x80];
     sndMidiStateGroup_t stateGroups[2];
 } sndMergedWork_t;
+
+extern sndMergedWork_t sdfSndWork asm("sdfSndMap");
 
 typedef struct sdfSoundRpcRequest_t {
     u8 opaque00[8];
@@ -1088,7 +1090,49 @@ void SifRpcServerThreadProc(void)
 }
 
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdf_2C2618);
+void sdf_2C2618(u32 kind, const u8 *data)
+{
+    s32 i;
+    switch (kind) {
+    case 0:
+        for (i = 0; i < 32; i++) {
+            sdfSndWork.controlData[0][i] = data[i];
+        }
+        break;
+    case 1:
+        for (i = 0; i < 128; i++) {
+            sdfSndWork.controlData[1][i] = data[i];
+        }
+        break;
+    case 2:
+        for (i = 0; i < 128; i++) {
+            sdfSndWork.controlData[2][i] = data[i];
+        }
+        break;
+    case 3:
+        for (i = 0; i < 128; i++) {
+            sdfSndWork.controlData[3][i] = data[i];
+        }
+        break;
+    case 4:
+        for (i = 0; i < 128; i++) {
+            sdfSndWork.controlData[4][i] = data[i];
+        }
+        break;
+    case 5:
+        for (i = 0; i < 2; i++) {
+            sdfSndWork.controlData[5][i] = data[i];
+        }
+        break;
+    case 6:
+        for (i = 0; i < 2; i++) {
+            sdfSndWork.controlData[6][i] = data[i];
+        }
+        break;
+    }
+    sdfSndTransToIOP(D_0055213C, &sdfSndWork, 0x5A0);
+    sdfSndSendSyncCmd(0x1F0, 0, 0, 0);
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfSound", sdf_2C27F8);
 
