@@ -556,22 +556,22 @@ void *sdfDevVprintf(u32 *aCB, const char *aStr, void *LegacyParamArray) {
     return start;
 }
 
-void sdfDevPrintfEx(u32 *aCB, const char *aStr, ...)
+void *sdfDevPrintfEx(u32 *aCB, const char *aStr, ...)
 {
     __builtin_va_list args;
 
     __builtin_stdarg_start(args, aStr);
-    sdfDevVprintf(aCB, aStr, args);
+    return sdfDevVprintf(aCB, aStr, args);
 }
 
-void sdfDevPrintf(u32 aX, u32 aY, u32 aZ, s32 aAttr, const char *aStr, ...)
+void *sdfDevPrintf(u32 aX, u32 aY, u32 aZ, s32 aAttr, const char *aStr, ...)
 {
     u32 cb[4];
     __builtin_va_list args;
 
     sdfDevSetPrintCB(cb, aX, aY, aZ, aAttr);
     __builtin_stdarg_start(args, aStr);
-    sdfDevVprintf(cb, aStr, args);
+    return sdfDevVprintf(cb, aStr, args);
 }
 
 void func_002BD300(u32 *aCB, s32 aMode)
