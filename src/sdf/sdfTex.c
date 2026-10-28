@@ -463,7 +463,55 @@ void sdfTexFreeDelayed(sdfTexHandle_t *aHandle)
     sdfDelayedResrcEntry(&sdfTexDelayedResrcCB, aHandle);
 }
 
+/* NON_MATCHING: reference draft. Every GS field and both OR trees are exact
+ * and the body is the right length, but the schedule of the first fifty
+ * instructions does not converge: cc1 models the four-instruction bit-length
+ * asm block as one unit-latency insn, so the ready list around it differs
+ * from the hand-written order. */
+#ifdef NON_MATCHING
+void sdfTexSetPacket(sdfTexPacket_t *aPacket, s32 aWidth, s32 aHeight, s32 aGsAddr,
+                     s32 aPixelFormat, s32 aClutAddr, s32 aClutFormat, s32 aColorComp,
+                     s32 aNumOfMipmap, s32 aMipmapParm, s32 aWrapMode, s32 aContext)
+{
+    s64 cpsm = (s64)aClutFormat << 51;
+    s64 cbp = (s64)(aClutAddr >> 6) << 37;
+    s64 tcc = (s64)aColorComp << 34;
+    s64 th = (s64)PS2_WORD_BIT_LENGTH(aHeight - 1) << 30;
+    s32 tw = PS2_WORD_BIT_LENGTH(aWidth - 1) << 26;
+    s32 psm = aPixelFormat << 20;
+    s32 tbw = (aWidth >> 6) << 14;
+    s32 tbp0 = aGsAddr >> 6;
+    s64 k = (s64)(aMipmapParm & 0xFFF) << 32;
+    s64 l = (s64)((aMipmapParm >> 12) & 3) << 19;
+    s64 mxl = aNumOfMipmap << 2;
+    s64 tex0;
+    s64 tex1;
+
+    aPacket->giftag.regs = 0xE;
+    aPacket->giftag.parm = 0x1000000000008003;
+    tex0 = cpsm | cbp | tcc | th | tw | psm | tbw | tbp0;
+    if (aNumOfMipmap == 0) {
+        tex1 = 0x61;
+    } else {
+        tex1 = k | l | 0x360 | mxl;
+    }
+    aPacket->tex1.data = tex1;
+    aPacket->tex1.reg = aContext == 0 ? 0x14 : 0x15;
+    if (aClutAddr != 0) {
+        tex0 = cpsm | cbp | ((s64)4 << 61) | tcc | th | tw | psm | tbw | tbp0;
+    }
+    aPacket->tex0.data = tex0;
+    aPacket->tex0.reg = aContext == 0 ? 6 : 7;
+    if ((aWrapMode & 0xFF) == 0xFF) {
+        aPacket->clamp.data = 0;
+    } else {
+        aPacket->clamp.data = aWrapMode & 0xF;
+    }
+    aPacket->clamp.reg = aContext == 0 ? 8 : 9;
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfTex", sdfTexSetPacket);
+#endif
 
 sdfTexPacket_t *sdfTexMakeGIFPacketSub(sdfTexHandle_t *aHandle, s32 aContext)
 {
