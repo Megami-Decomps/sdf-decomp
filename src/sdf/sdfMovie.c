@@ -29,26 +29,26 @@ typedef struct sdfIpuDecodeCb_t
     struct sdfIpuDecodeCb_t *next;
     u8 active;
     u8 queueLinked;
-    u8 ipuCycleInitialized;
+    u8 ipuCycleInitialized; /* First-use IPU setup has run for this playback cycle. */
     u8 drained;
     u8 playbackPhase;
-    u8 inputFeedEnabled;
+    u8 inputFeedEnabled; /* Restart input feeding after DMA completion while input remains. */
     u8 inputDmaStartPending;
-    u8 imageTrans;
+    u8 imageTrans; /* Queued output submissions not yet retired by a playback update. */
     u8 rgbMode;
     u8 loopMode;
     u8 fps;
     u8 playbackCadenceRemainder;
     u8 bufferIndex;
     u8 getBuffId;
-    u8 activeBuffCount;
+    u8 activeBuffCount; /* Completed output buffers waiting for playback submission. */
     u8 pad1B;
     s32 buffSize;
     void *frameBuffers[2];
     void *transferPacketBuffers[2];
     u32 transferPacketBytes;
     s32 resourceWord;
-    struct sdfGsMemSlice_t *textureHead;
+    sdfGsMemSlice_t *textureHead;
     u16 width;
     u16 height;
     u32 frameCount;
@@ -61,10 +61,10 @@ typedef struct sdfIpuDecodeCb_t
     u8 firstSlot;
     u8 *scratchBuffer;
     u8 pad58[4];
-    s32 (*read)(struct sdfIpuDecodeCb_t *, struct sdfMovieCb_t *, s32, void *, s32);
-    struct sdfMovieCb_t *strmCallbackParm;
+    s32 (*read)(struct sdfIpuDecodeCb_t *, struct movieStream_t *, s32, void *, s32);
+    struct movieStream_t *strmCallbackParm; /* Owner context passed to the read callback. */
     u8 inputFeedDmaInFlight;
-    u8 unk65;
+    u8 strmToIpuDmaStep;
     u8 pad66[2];
     sdfIpuDmaRegs_t dma;
 } sdfIpuDecodeCb_t;
