@@ -589,9 +589,9 @@ void corePktNormalizeNorms(sdfCorePacketPointBuff_tag *dst, s32 count)
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktNormalizeNorms);
 #endif
 
-/* NON_MATCHING: reference implementations, not match candidates. These four
- * routines are assembly, and two of their inputs are VU0 register state no C
- * expression reaches: vf28-vf31 hold the screen transform MultMatrixRev left
+/* NON_MATCHING: reference implementations, not match candidates. The five
+ * routines below are assembly, and two of their inputs are VU0 register state
+ * no C expression reaches: vf28-vf31 hold the screen transform MultMatrixRev left
  * behind, and vf24-vf26 hold the world light basis from
  * corePktLoadWorldLightMtx, whose W lanes retail rescales by
  * corePktFaceDivParm.scale on entry. They appear below under notional names.
@@ -606,7 +606,10 @@ INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktNormalizeNorms);
  *
  * `cfc2 $vi18` reads a 24-bit shift register, six bits per vclip, so the byte
  * stored at +0x51 also carries the low two bits of the preceding clip in its
- * top two bits. */
+ * top two bits.
+ *
+ * The notional state and the two shared steps come first; each routine then
+ * gets its own guard so the drafts and the INCLUDE_ASM lines stay paired. */
 #ifdef NON_MATCHING
 extern sdfCorePacketFaceDivParm_t corePktFaceDivParm;
 static f32 corePktScreenMtx[4][4]; /* vf28-vf31 */
@@ -651,7 +654,9 @@ static void corePktXfmAndClip(sdfCorePacketPointBuff_tag *dst, const f32 *v)
     }
     dst->clipFlags = (u8)flags;
 }
+#endif
 
+#ifdef NON_MATCHING
 void corePktXfmLightClip(sdfCorePacketPointBuff_tag *dst, s32 count, const u32 *vert,
                          const u32 *norm)
 {
@@ -668,7 +673,11 @@ void corePktXfmLightClip(sdfCorePacketPointBuff_tag *dst, s32 count, const u32 *
         dst++;
     } while (--count != 0);
 }
+#else
+INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClip);
+#endif
 
+#ifdef NON_MATCHING
 void corePktXfmLightClipPB(sdfCorePacketPointBuff_tag *dst, s32 count)
 {
     /* The point buffer is already filled, so the position and the normal come
@@ -685,7 +694,11 @@ void corePktXfmLightClipPB(sdfCorePacketPointBuff_tag *dst, s32 count)
         dst++;
     } while (--count != 0);
 }
+#else
+INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClipPB);
+#endif
 
+#ifdef NON_MATCHING
 void corePktXfmLightClipUV(sdfCorePacketPointBuff_tag *dst, s32 count, const u32 *vert,
                            const u32 *norm, const f32 *uv, const f32 *uvMtx)
 {
@@ -705,7 +718,11 @@ void corePktXfmLightClipUV(sdfCorePacketPointBuff_tag *dst, s32 count, const u32
         dst++;
     } while (--count != 0);
 }
+#else
+INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClipUV);
+#endif
 
+#ifdef NON_MATCHING
 void corePktXfmLightClipUVPB(sdfCorePacketPointBuff_tag *dst, s32 count, const f32 *uv,
                              const f32 *uvMtx)
 {
@@ -724,7 +741,11 @@ void corePktXfmLightClipUVPB(sdfCorePacketPointBuff_tag *dst, s32 count, const f
         dst++;
     } while (--count != 0);
 }
+#else
+INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClipUVPB);
+#endif
 
+#ifdef NON_MATCHING
 void corePktRelightBackFaces(u32 pointBuff, s32 count)
 {
     sdfCorePacketPointBuff_tag *dst = (sdfCorePacketPointBuff_tag *)pointBuff;
@@ -742,14 +763,6 @@ void corePktRelightBackFaces(u32 pointBuff, s32 count)
     } while (--count != 0);
 }
 #else
-INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClip);
-
-INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClipPB);
-
-INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClipUV);
-
-INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClipUVPB);
-
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktRelightBackFaces);
 #endif
 
