@@ -587,7 +587,37 @@ void p2sdPlaySE(s32 trackId, s32 volume, s32 pan) {
 }
 
 /* The angle normalization and attenuation share one frame through the SE tail call. */
-INCLUDE_ASM(const s32, "sdf/sdfSound", p2sdPlaySeDeg);
+void p2sdPlaySeDeg(s32 trackId, f32 angle, f32 distance) {
+    s32 degrees = (s32)angle % 360;
+    s32 side = 1;
+    s32 pan;
+    f32 volume;
+
+    if (degrees > 180) {
+        degrees -= 360;
+    }
+    if (degrees < -180) {
+        degrees += 360;
+    }
+    if (degrees < 0) {
+        degrees = -degrees;
+        side = -1;
+    }
+    volume = 1.0f;
+    if (degrees < 45) {
+        pan = 63 - (s32)(degrees * 0.71111f) * side;
+    } else if (degrees <= 90) {
+        pan = 63 - (s32)(degrees * 0.7f) * side;
+        volume = 1.0f - (degrees - 45) * 0.004444f;
+    } else {
+        volume = 0.75f - (degrees - 90) * 0.005556f;
+        pan = 63 - (s32)((180 - degrees) * 0.7f) * side;
+    }
+    if (distance > 1.0f) {
+        volume /= distance * 0.333f + 1.0f;
+    }
+    p2sdPlaySE(trackId, (s32)(volume * 127.0f), pan);
+}
 
 /* Converts world coordinates to the sound engine's one-tenth scale. */
 void p2sdPlaySe3DEx(s32 MidiNo, s32 posx, f32 posy, f32 posz, f32 limit) {
