@@ -5,6 +5,22 @@
 
 struct sdfGsMemSlice_t;
 
+typedef struct {
+    u32 mode;
+    u32 attributes;
+    u32 size;
+    u8 creationTime[8];
+    u8 accessTime[8];
+    u8 modificationTime[8];
+    u32 highSize;
+    u32 privateData[6];
+} sdfSceIoStat_t;
+
+extern s32 sceSifLoadModule(const char *path, s32 argSize, const char *args);
+extern s32 sceGetstat(const char *path, sdfSceIoStat_t *info);
+extern s32 SdfIopFileRpc(const char *name, s32 dataSize, const void *data, s32 *outSize);
+extern u8 sdfHddValid;
+
 s32 strlen(const char *aStr);
 
 s32 sdfSndCmdTrans(void);
@@ -474,7 +490,22 @@ void sdfSndTransToIOP(s32 aIOPAddr, void *aEEAddr, s32 aSize)
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndLoadIRXModules);
+void sdfSndLoadIRXModules(void) {
+    sdfSceIoStat_t info;
+    char *module;
+
+    sceSifLoadModule("cdrom0:\\SOUNDIRX\\LIBSD.IRX;1", 0, NULL);
+    sceSifLoadModule("cdrom0:\\SOUNDIRX\\MODHSYN.IRX;1", 0, NULL);
+    sceSifLoadModule("cdrom0:\\SOUNDIRX\\MODMIDI.IRX;1", 0, NULL);
+    sceSifLoadModule("cdrom0:\\SOUNDIRX\\MODMSIN.IRX;1", 0, NULL);
+    module = "cdrom0:\\USERIRX\\SDFSDMAN.IRX;1";
+    if (sdfHddValid != 0 &&
+        sceGetstat("pfs:/userirx/SDFSDMAN.IRX", &info) == 0 &&
+        (info.mode & 0xF000) == 0x2000) {
+        module = "pfs:/userirx/SDFSDMAN.IRX";
+    }
+    SdfIopFileRpc(module, 0, NULL, NULL);
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndVoiceMapInit);
 
