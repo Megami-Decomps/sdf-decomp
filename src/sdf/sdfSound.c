@@ -586,9 +586,8 @@ void p2sdPlaySE(s32 trackId, s32 volume, s32 pan) {
     sdfSndSendCmd(0x90, 0, &packet, 0xC);
 }
 
+/* The angle normalization and attenuation share one frame through the SE tail call. */
 INCLUDE_ASM(const s32, "sdf/sdfSound", p2sdPlaySeDeg);
-
-INCLUDE_ASM(const s32, "sdf/sdfSound", func_002C1990);
 
 /* Converts world coordinates to the sound engine's one-tenth scale. */
 void p2sdPlaySe3DEx(s32 MidiNo, s32 posx, f32 posy, f32 posz, f32 limit) {
