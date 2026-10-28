@@ -441,7 +441,31 @@ INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndVoiceMapInit);
 
 INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndSeqMapInit);
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndInit);
+extern s32 sceSifInitIopHeap(void);
+extern s32 D_0055213C;
+
+void sdfSndInit(char *aVoiceInfo, s32 aVoiceCount, char *aSequenceInfo, s32 aSequenceCount)
+{
+    s32 iopAddress;
+
+    sdfSndBurstReqMode = 1;
+    sdfSndLoadIRXModules();
+    sceSifInitIopHeap();
+    sdfSndInitCmdIF();
+    printf("SDF_SND_READ_BUFF_SIZE\n");
+    sdfSndMap[2] = sdfSndIopAlloc(0x4000);
+    sdfSndMap[3] = 0x4000;
+    sdfSndVoiceMapInit(aVoiceInfo, aVoiceCount);
+    sdfSndSeqMapInit((u32 *)aSequenceInfo, aSequenceCount);
+    printf("sizeof(sdfSndMap)\n");
+    iopAddress = sdfSndIopAlloc(0x5A0);
+    sdfSndMap[0x72] = (u32)sdfSndMap;
+    sdfSndMap[0x73] = 0x5A0;
+    D_0055213C = iopAddress;
+    sdfSndTransToIOP(iopAddress, sdfSndMap, 0x5A0);
+    sdfSndSendSyncCmd(0, 0, &D_0055213C, 4);
+    sdfSndBurstReqMode = 0;
+}
 
 /* Starts a track with the default 0x7f setting after preparing its identifier. */
 void p2sdPlayBGM(s32 MidiNo) {
