@@ -1134,7 +1134,48 @@ void sdf_2C2618(u32 kind, const u8 *data)
     sdfSndSendSyncCmd(0x1F0, 0, 0, 0);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdf_2C27F8);
+void sdf_2C27F8(u32 kind, u8 *data)
+{
+    s32 i;
+    sdfSndSendSyncCmd(0x200, 0, 0, 0);
+    switch (kind) {
+    case 0:
+        for (i = 0; i < 32; i++) {
+            data[i] = sdfSndWork.controlData[0][i];
+        }
+        break;
+    case 1:
+        for (i = 0; i < 128; i++) {
+            data[i] = sdfSndWork.controlData[1][i];
+        }
+        break;
+    case 2:
+        for (i = 0; i < 128; i++) {
+            data[i] = sdfSndWork.controlData[2][i];
+        }
+        break;
+    case 3:
+        for (i = 0; i < 128; i++) {
+            data[i] = sdfSndWork.controlData[3][i];
+        }
+        break;
+    case 4:
+        for (i = 0; i < 128; i++) {
+            data[i] = 0;
+        }
+        break;
+    case 5:
+        for (i = 0; i < 2; i++) {
+            data[i] = sdfSndWork.controlData[5][i];
+        }
+        break;
+    case 6:
+        for (i = 0; i < 2; i++) {
+            data[i] = sdfSndWork.controlData[6][i];
+        }
+        break;
+    }
+}
 
 /* Print size bytes in address-aligned, sixteen-column hexadecimal rows. */
 void sdfDumpHexLine(const u8 *data, s32 size) {
