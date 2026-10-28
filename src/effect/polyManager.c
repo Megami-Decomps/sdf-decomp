@@ -422,7 +422,58 @@ void dds3PolygonDraw(dds3Polygon_t *hPolygon) {
     hDrawListTop = hPolygon;
 }
 
-INCLUDE_ASM(const s32, "effect/polyManager", dds3PolygonLinkOt);
+extern sdfGrOt_t sdfGrOtTable[85];
+
+static inline void parAppendDrawSurfacePool(sdfGrOt_t *pool, sdfDrawTag_t *packet) {
+    pool->regFunc(pool, packet);
+}
+
+void dds3PolygonLinkOt(void) {
+    dds3Polygon_t *record = hDrawListTop;
+    sdfDrawTag_t *packet;
+    s32 remaining;
+    s16 flags;
+    sdfGrOt_t *priorityPool;
+
+    if (record != NULL) {
+        priorityPool = &sdfGrOtTable[43];
+        do {
+            if (record->drawCount != 0 && record->flags != 1) {
+                packet = (sdfDrawTag_t *)sdfGrAllocPacketBuff(0x20);
+                sdfDrawTagInit(packet);
+                sdf3DPrimLinkResetTm(packet, 0);
+                sdf3DPrimLinkMat(packet, record->pMat, 0);
+                flags = record->flags;
+                remaining = record->drawCount;
+                record->parm.vertex = (sdfVector4_t *)record->pVertex;
+                record->parm.uv = (sdfVector2_t *)record->texcoords;
+                record->parm.vertexColor = record->pVertexColor;
+                record->parm.normal = (sdfVector4_t *)record->pNormal;
+                record->parm.faceCount = 16;
+                record->parm.pointCount = 48;
+                while (remaining >= 48) {
+                    sdfDrawTagLink(packet, (u32)effPkt3DPrimMakePoly(&record->parm));
+                    record->parm.vertex += 48;
+                    if (flags & 1) record->parm.uv += 48;
+                    if (flags & 2) record->parm.normal += 48;
+                    remaining -= 48;
+                    if (flags & 4) record->parm.vertexColor += 48;
+                }
+                if (remaining > 0) {
+                    record->parm.faceCount = remaining / 3;
+                    record->parm.pointCount = remaining;
+                    sdfDrawTagLink(packet, (u32)effPkt3DPrimMakePoly(&record->parm));
+                }
+                record->drawCount = 0;
+                if (flags & 0x10) parAppendDrawSurfacePool(priorityPool, packet);
+                else if (flags & 0x20) parAppendDrawSurfacePool(&sdfGrOtTable[44], packet);
+                else parAppendDrawSurfacePool(&sdfGrOtTable[39], packet);
+            }
+            record = record->next;
+        } while (record != NULL);
+    }
+    hDrawListTop = NULL;
+}
 
 void dds3PolygonSetTex(dds3Polygon_t *hPolygon, sdfTexHandle_t *hTex) {
     sdfMatSetTex(hPolygon->pMat, hTex);
