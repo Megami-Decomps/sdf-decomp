@@ -1005,9 +1005,63 @@ u32 *sdfFileRpcHandleCmd(u32 command, sdfSoundRpcRequest_t *request)
     return sdfFileRpcQueue;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", SifRpcServerThreadProc);
+typedef struct sifRpcServerData_t sifRpcServerData_t;
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdf_2C2608);
+typedef struct sifRpcDataQueue_t {
+    s32 threadId;
+    s32 active;
+    sifRpcServerData_t *serverList;
+    sifRpcServerData_t *request;
+    s32 requestState;
+    struct sifRpcDataQueue_t *next;
+} __attribute__((aligned(16))) sifRpcDataQueue_t;
+
+struct sifRpcServerData_t {
+    s32 serviceId;
+    u32 *(*handler)(u32, sdfSoundRpcRequest_t *);
+    void *buffer;
+    u32 opaque0C;
+    s32 bufferSize;
+    void *callback;
+    u8 opaque18[0x20];
+    sifRpcServerData_t *next;
+    sifRpcServerData_t *nextRequest;
+    sifRpcDataQueue_t *queue;
+};
+
+typedef char sifRpcDataQueue_size_must_be_0x20[
+    sizeof(sifRpcDataQueue_t) == 0x20 ? 1 : -1];
+typedef char sifRpcServerData_size_must_be_0x44[
+    sizeof(sifRpcServerData_t) == 0x44 ? 1 : -1];
+
+extern s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
+extern s32 GetThreadId(void);
+extern s32 sceSifSetRpcQueue(sifRpcDataQueue_t *queue, s32 threadId);
+extern s32 sceSifRegisterRpc(sifRpcServerData_t *server, s32 serviceId,
+                              u32 *(*handler)(u32, sdfSoundRpcRequest_t *),
+                              void *buffer, s32 bufferSize, void *callback,
+                              sifRpcDataQueue_t *queue);
+/* Runtime sceSifRpcLoop loops forever, though its caller was built without a
+ * noreturn declaration and therefore retains a normal return epilogue. */
+extern void sceSifRpcLoop(sifRpcDataQueue_t *queue);
+
+void SifRpcServerThreadProc(void)
+{
+    sifRpcDataQueue_t queue;
+    sifRpcServerData_t server;
+    s32 sema = sdfCreateSema(0, 1, 0);
+
+    sifRpcServerSema = sema;
+    if (sema <= 0) {
+        for (;;) {
+        }
+    }
+    sceSifSetRpcQueue(&queue, GetThreadId());
+    sceSifRegisterRpc(&server, 0x54524E53, sdfFileRpcHandleCmd,
+                      sdfFileRpcQueue, 0, NULL, &queue);
+    sceSifRpcLoop(&queue);
+}
+
 
 INCLUDE_ASM(const s32, "sdf/sdfSound", sdf_2C2618);
 
