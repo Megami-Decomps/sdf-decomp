@@ -313,7 +313,53 @@ void sdf3DSetDefaultFog(u8 *aFog) {
     sdf3DFogDefault = (u32)aFog;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdf3D", sdf3DMakeScreenParam);
+extern f32 tanf(f32 angle);
+extern void MultMatrix(const void *matrix);
+
+/* vu0 routine: compose the perspective matrix and clip-to-screen mapping. */
+void sdf3DMakeScreenParam(sdf3DScreenParam_t *camera)
+{
+    f32 projectionMatrix[16] __attribute__((aligned(16)));
+    f32 farZ = camera->farClip;
+    f32 nearZ = camera->nearClip;
+    f32 depthRange = farZ - nearZ;
+    f32 halfWidth = camera->width * 0.5f;
+    f32 halfHeight = camera->height * 0.5f;
+    f32 projectionScale;
+    f32 centerY;
+
+    SDF_MMI_STORE_UNIT_MATRIX(projectionMatrix);
+    projectionMatrix[0] = 1.0f / (halfWidth * camera->aspect);
+    projectionMatrix[5] = 1.0f / halfHeight;
+    projectionMatrix[10] = farZ * nearZ * 2.0f / depthRange;
+    projectionMatrix[14] = -(nearZ + farZ) / depthRange;
+    SDF_VU0_LOADMATRIX(projectionMatrix);
+    SDF_MMI_STORE_UNIT_MATRIX(projectionMatrix);
+    if (camera->flags & 2) {
+        projectionScale = camera->height / (tanf(camera->fovy * 0.5f) * 2.0f);
+    } else {
+        projectionScale = camera->projDist;
+    }
+    projectionMatrix[5] = projectionMatrix[0] = projectionScale;
+    projectionMatrix[10] = 0;
+    projectionMatrix[15] = 0;
+    projectionMatrix[14] = projectionMatrix[11] = 1.0f;
+    MultMatrix(projectionMatrix);
+    SDF_VU0_STOREMATRIX(camera->TM);
+    camera->scale[0] = halfWidth;
+    centerY = (camera->zMax - camera->zMin) * 0.5f;
+    if (camera->flags & 1) {
+        camera->scale[1] = halfHeight * 0.5f;
+    } else {
+        camera->scale[1] = halfHeight;
+    }
+    camera->scale[2] = centerY;
+    camera->scale[3] = 1.0f;
+    camera->trans[0] = camera->ox;
+    camera->trans[1] = camera->oy;
+    camera->trans[2] = centerY + camera->zMin;
+    camera->trans[3] = 0;
+}
 
 void sdf3DMakeLightParallelPacket(sdf3DLightParallelPacket_t *aPacket, sdfLightSources_t aLights, f32 *aAmbient);
 
