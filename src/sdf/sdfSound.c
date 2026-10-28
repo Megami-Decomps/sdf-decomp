@@ -989,7 +989,290 @@ void sdfDumpDmaChain(sdfDmaDumpTag_t *source) {
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfGrFlushOtChain);
+extern char *D_00529C68[];
+extern s32 D_00529C88[];
+extern char D_00551A58[];
+extern char D_00551A60[];
+extern char D_00551B10[];
+extern char D_00551B18[];
+
+void sdfGrFlushOtChain(u32 *source) {
+    u32 *returnStack[2];
+    u32 *cursor;
+    u32 *wordCursor = NULL;
+    s32 dataMode = 0;
+    s32 tagId = 0;
+    s32 depth = 0;
+    s32 n = 0;
+    s32 directRow;
+    s32 phase;
+    s32 wordsLeft;
+    u32 tagAddress;
+    s32 qwc;
+    s32 done;
+    u32 value;
+
+    sdfPrintf("<<< DMA-VIF dump start [%p] >>>\n", source);
+    cursor = source;
+    directRow = 0;
+    tagAddress = 0;
+    qwc = 0;
+    phase = 0;
+    wordsLeft = 0;
+    done = 0;
+    for (;;) {
+        if (wordsLeft == 0) {
+            switch (phase) {
+            case 0: {
+                u32 tag;
+                if ((u32)cursor & 0xF) {
+                    sdfPrintf(D_00549B70, cursor);
+                    return;
+                }
+                tag = cursor[0];
+                tagAddress = cursor[1];
+                tagId = (tag >> 28) & 7;
+                qwc = tag & 0xFFFF;
+                sdfPrintf("\n%08X [DMA %s] : %08X %08X\n",
+                                           cursor, sdfDmaTagNameTable[tagId], tag, tagAddress);
+                wordCursor = cursor + 2;
+                cursor += 4;
+                wordsLeft = 2;
+                phase = 1;
+                break;
+            }
+            case 1:
+                wordsLeft = qwc * 4;
+                switch (tagId) {
+                case 0:
+                case 3:
+                case 4:
+                    wordCursor = (u32 *)tagAddress;
+                    break;
+                default:
+                    wordCursor = cursor;
+                    break;
+                }
+                phase = 2;
+                break;
+            case 2:
+                switch (tagId) {
+                case 0:
+                case 7:
+                    done = 1;
+                    break;
+                case 1:
+                    cursor += qwc * 4;
+                    break;
+                case 2:
+                    cursor = (u32 *)tagAddress;
+                    break;
+                case 3:
+                case 4:
+                    break;
+                case 5:
+                    if (depth == 2) {
+                        sdfPrintf("\ncall stack nest overflow!\n");
+                        return;
+                    }
+                    returnStack[depth++] = cursor + qwc * 4;
+                    cursor = (u32 *)tagAddress;
+                    break;
+                case 6:
+                    if (depth == 0) {
+                        done = 1;
+                    } else {
+                        depth--;
+                        cursor = returnStack[depth];
+                    }
+                    break;
+                }
+                phase = 0;
+                break;
+            }
+        } else {
+            value = *wordCursor++;
+            wordsLeft--;
+            switch (dataMode) {
+            case 0: {
+                u32 opcode = (value >> 24) & 0x7F;
+                u32 num = (value >> 16) & 0xFF;
+                u32 immediate = value & 0xFFFF;
+                s32 interrupt = (value >> 31) ? 'i' : ' ';
+                s32 bits;
+                s32 format;
+                s32 unpackFormat;
+
+                sdfPrintf("%08X %c%08X : ", (u32)(wordCursor - 1),
+                                           interrupt, value);
+                switch (opcode) {
+                case 0x00:
+                    sdfPrintf("VIF NOP\n");
+                    break;
+                case 0x01:
+                    sdfPrintf("VIF STCYCL (CL=%d, WL=%d)\n", (s32)(immediate & 0xFF),
+                                    (s32)(immediate >> 8));
+                    break;
+                case 0x02:
+                    sdfPrintf("VIF OFFSET (%04X)\n", immediate & 0x3FF);
+                    break;
+                case 0x03:
+                    sdfPrintf("VIF BASE   (%04X)\n", immediate & 0x3FF);
+                    break;
+                case 0x04:
+                    sdfPrintf("VIF ITOP   (%04X)\n", immediate & 0x3FF);
+                    break;
+                case 0x05:
+                    sdfPrintf("VIF STMOD  (%d)\n", (s32)(immediate & 3));
+                    break;
+                case 0x06:
+                    sdfPrintf("VIF MSKPATH3 (%s)\n",
+                                    (immediate & 0x8000) ? D_00551A58 : D_00551A60);
+                    break;
+                case 0x07:
+                    sdfPrintf("VIF MARK   (%04X)\n", immediate);
+                    break;
+                case 0x10:
+                    sdfPrintf("VIF FLUSHE\n");
+                    break;
+                case 0x11:
+                    sdfPrintf("VIF FLUSH\n");
+                    break;
+                case 0x13:
+                    sdfPrintf("VIF FLUSHA\n");
+                    break;
+                case 0x14:
+                    sdfPrintf("VIF MSCAL  (%04X)\n", immediate);
+                    break;
+                case 0x15:
+                    sdfPrintf("VIF MSCALF (%04X)\n", immediate);
+                    break;
+                case 0x17:
+                    sdfPrintf("VIF MSCNT\n");
+                    break;
+                case 0x20:
+                    dataMode = 1;
+                    sdfPrintf("VIF STMASK\n");
+                    break;
+                case 0x30:
+                    dataMode = 2;
+                    n = 4;
+                    sdfPrintf("VIF STROW\n");
+                    break;
+                case 0x31:
+                    dataMode = 3;
+                    n = 4;
+                    sdfPrintf("VIF STCOL\n");
+                    break;
+                case 0x4A:
+                    n = num * 2;
+                    sdfPrintf("VIF MPG   (%04X)\n", immediate);
+                    if (n == 0) {
+                        n = 0x200;
+                    }
+                    dataMode = 4;
+                    break;
+                case 0x50:
+                    n = immediate * 4;
+                    if (n == 0) {
+                        n = 0x40000;
+                    }
+                    sdfPrintf("VIF DIRECT (%06X bytes)\n", (u32)(n * 4));
+                    dataMode = 5;
+                    directRow = 0;
+                    break;
+                case 0x51:
+                    n = immediate * 4;
+                    if (n == 0) {
+                        n = 0x40000;
+                    }
+                    sdfPrintf("VIF DIRECTHL (%06X bytes)\n", (u32)(n * 4));
+                    dataMode = 6;
+                    directRow = 0;
+                    break;
+                default:
+                    if ((opcode & 0x60) == 0x60) {
+                        unpackFormat = opcode & 0xF;
+                        if (((char **)((u8 *)sdfDmaTagNameTable + 0x20))[unpackFormat] == NULL) {
+                            sdfPrintf("illegal unpack type !\n");
+                            return;
+                        }
+                        format = (((s32)immediate >> 13) & 6) | (((s32)opcode >> 4) & 1);
+                        dataMode = 7;
+                        sdfPrintf("VIF UNPACK%s %s,%04X,%04X\n",
+                                                   D_00529C68[format],
+                                                   ((char **)((u8 *)sdfDmaTagNameTable + 0x20))[unpackFormat],
+                                                   immediate & 0x3FF, num);
+                        bits = D_00529C88[unpackFormat];
+                        n = (bits * (s32)num + 0x1F) >> 5;
+                    } else {
+                        sdfPrintf("unkown vif command\n");
+                        return;
+                    }
+                    break;
+                }
+                break;
+            }
+            case 1:
+                sdfPrintf("    STMASK : %08X\n", value);
+                dataMode = 0;
+                break;
+            case 2:
+                n--;
+                sdfPrintf("    STROW : %08X\n", value);
+                if (n == 0) {
+                    dataMode = 0;
+                }
+                break;
+            case 3:
+                n--;
+                sdfPrintf("    STCOL : %08X\n", value);
+                if (n == 0) {
+                    dataMode = 0;
+                }
+                break;
+            case 4:
+                if (--n == 0) {
+                    dataMode = 0;
+                }
+                break;
+            case 5:
+                if (directRow == 0) {
+                    sdfPrintf(D_00551B10);
+                } else {
+                    sdfPrintf(D_00551A38);
+                }
+                directRow++;
+                sdfPrintf(D_00551B18, value);
+                if (directRow == 4) {
+                    directRow = 0;
+                    sdfPrintf(sdfDumpLineBuf);
+                }
+                if (--n == 0) {
+                    if (directRow != 0) {
+                        sdfPrintf(sdfDumpLineBuf);
+                    }
+                    dataMode = 0;
+                }
+                break;
+            case 6:
+                if (--n == 0) {
+                    dataMode = 0;
+                }
+                break;
+            case 7:
+                if (--n == 0) {
+                    dataMode = 0;
+                }
+                break;
+            }
+        }
+        if (done != 0) {
+            sdfPrintf("<<< DMA-VIF normal end [%p] >>>\n", (void *)wordCursor);
+            return;
+        }
+    }
+}
 
 void sdfDumpGsMemory(void) {
     char buf[8];
