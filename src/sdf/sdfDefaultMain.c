@@ -13,7 +13,7 @@ extern sdfThCB_t D_00551B88;
 
 extern u8 D_00552310[];
 
-extern void initFloatOnce(void);
+extern void __main(void);
 
 extern void sceSifInitRpc(s32 mode);
 
@@ -66,7 +66,7 @@ s32 sdfDefaultMain(void) asm("main");
 
 s32 sdfDefaultMain(void)
 {
-    initFloatOnce();
+    __main();
     sceSifInitRpc(0);
     sceSifInitIopHeap();
     sdfCdTrayMode = D_0054E8BC;

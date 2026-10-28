@@ -426,7 +426,7 @@ extern _glue *__sfmoreglue(_reent *r, s32 n);
 
 extern s32 __sigtramp_r(_reent *r, s32 sig);
 
-extern void *libc_2D2648(void *fn);
+extern void *__deregister_frame_info(void *fn);
 
 extern void free(void *ptr);
 
@@ -448,9 +448,9 @@ extern s32 close(s32 fd);
 
 extern _Bigint *_Balloc(_reent *r, s32 k);
 
-extern s32 registerAtExit(void *fn, void *entry);
+extern s32 __register_frame_info(void *fn, void *entry);
 
-extern s32 libc_2D25B0(void *fn, void *entry);
+extern s32 __register_frame_info_table(void *fn, void *entry);
 
 extern s32 write(s32 fd, const void *buf, s32 count);
 
@@ -492,7 +492,7 @@ extern const double D_0054B930[];
 
 extern void abort(void);
 
-extern s32 initAtExit(void);
+extern s32 __do_global_ctors(void);
 
 extern s32 atexit(void (*fn)(void));
 
