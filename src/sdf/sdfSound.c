@@ -510,12 +510,84 @@ void sdfSndLoadIRXModules(void) {
     SdfIopFileRpc(module, 0, NULL, NULL);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndVoiceMapInit);
+extern char D_00549A48[]; /* "SDF_SND_IOP_SIZE\n" */
+extern char D_00549A60[]; /* "sdfSndSeqMapInit\n" */
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndSeqMapInit);
+#ifdef NON_MATCHING
+/* NON_MATCHING: 39 of 45 words match at the exact 180-byte size. */
+void sdfSndVoiceMapInit(char *aVoiceInfo, s32 aVoiceCount)
+{
+    p2sdLoadEntry_t *slot;
+    s32 address;
+    s32 i;
+
+    sdfSndWork.header = aVoiceCount;
+    for (i = 0; i < 0x10; i++) {
+        sdfSndWork.channels[i].index = i;
+        sdfSndWork.channels[i].unk1 = 0x20;
+        sdfSndWork.channels[i].unk2 = 0;
+        sdfSndWork.channels[i].iopWorkAddress = 0;
+        sdfSndWork.channels[i].unk4 = 0;
+        sdfSndWork.channels[i].unkC = 0;
+    }
+    printf(D_00549A48);
+    address = sdfSndIopAlloc(0x24E00);
+    sdfSndWork.opaque1D0 = 0;
+    sdfSndWork.opaque1D4 = 0;
+    sdfSndWork.channels[0].iopWorkAddress = address;
+    slot = sdfSndWork.slots;
+    for (i = 6; i >= 0; i--) {
+        slot->unk0 = -1;
+        slot->unk4 = 0;
+        slot->unk5 = 0;
+        slot++;
+    }
+}
+#else
+INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndVoiceMapInit);
+#endif
+
+void sdfSndSeqMapInit(u32 *aSequenceInfo, s32 aSequenceCount)
+{
+    sndIopBuffer_t *buffer;
+    s32 total = 0;
+    s32 iopAddress;
+    s32 i;
+
+    sdfSndWork.bufferCount = aSequenceCount;
+    buffer = sdfSndWork.buffers;
+    i = 0;
+    do {
+        s32 size = (*aSequenceInfo++ + 0xF) & ~0xF;
+
+        i++;
+        buffer->size = size;
+        buffer++;
+        total += size;
+    } while (i != aSequenceCount);
+    while (i < 0x10) {
+        sdfSndWork.buffers[i].size = 0;
+        sdfSndWork.buffers[i].iopAddress = 0;
+        i++;
+    }
+    printf(D_00549A60);
+    iopAddress = sdfSndIopAlloc(total);
+    i = 0;
+    do {
+        s32 size;
+
+        sdfSndWork.buffers[i].iopAddress = iopAddress;
+        size = sdfSndWork.buffers[i].size;
+        i++;
+        iopAddress += size;
+    } while (i != aSequenceCount);
+}
+
 
 extern s32 sceSifInitIopHeap(void);
 extern s32 D_0055213C;
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549A60);
 
 void sdfSndInit(char *aVoiceInfo, s32 aVoiceCount, char *aSequenceInfo, s32 aSequenceCount)
 {
