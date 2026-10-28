@@ -368,13 +368,13 @@ typedef struct fp_number_type_df {
     long fraction;
 } fp_number_type_df;
 
-extern long libc_2D34A0(const fp_number_type_df *u);
+extern long __pack_df(const fp_number_type_df *u);
 
 extern void sdfUnpackDouble(const double *x, fp_number_type_df *u);
 
 extern fp_number_type_df *libc_2D1590(const fp_number_type_df *a, const fp_number_type_df *b, fp_number_type_df *r);
 
-extern long libc_2D3638(const fp_number_type_df *a, const fp_number_type_df *b);
+extern long __fpcmp_parts_df(const fp_number_type_df *a, const fp_number_type_df *b);
 
 sdfSortOtNode_tag *sdfSortOtAvlRotateLR(sdfSortOtNode_tag *node, sdfSortOtNode_tag *parent) {
     sdfSortOtNode_tag *childRoot = node;
