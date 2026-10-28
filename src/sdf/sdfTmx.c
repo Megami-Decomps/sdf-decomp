@@ -559,7 +559,53 @@ extern const u8 D_0054B551[];
 
 #define SDF_TOLOWER(c) ((D_0054B551[(c)] & 1) ? (c) + 0x20 : (c))
 
-INCLUDE_ASM(const s32, "sdf/sdfTmx", SdfFileRpcServerThreadProc);
+typedef struct {
+    u32 mode;
+    u32 attributes;
+    u32 size;
+    u8 creationTime[8];
+    u8 accessTime[8];
+    u8 modificationTime[8];
+    u32 highSize;
+    u32 privateData[6];
+} sdfSceIoStat_t;
+
+typedef char sdfSceIoStat_size_must_be_0x40[
+    sizeof(sdfSceIoStat_t) == 0x40 ? 1 : -1];
+
+extern s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
+extern s32 sceGetstat(const char *path, sdfSceIoStat_t *stat);
+extern s32 SdfIopFileRpc(const char *name, s32 dataSize, const void *data, s32 *outSize);
+extern s32 WakeupThread(s32 threadId);
+extern u8 sdfHddValid;
+extern char D_0054A360[];
+extern char D_0054A380[];
+extern u8 D_00594800[];
+
+void SdfFileRpcServerThreadProc(void)
+{
+    sdfSceIoStat_t stat;
+    sifRpcDataQueue_t queue;
+    sifRpcServerData_t server;
+    const char *modulePath;
+    sdfFileRpcCb_t *state = &sdfFileRpcState;
+
+    state->semaphore = sdfCreateSema(0, 1, 0);
+    sceSifSetRpcQueue(&queue, GetThreadId());
+    sceSifRegisterRpc(&server, 0x66504F49, sdfFileRpcHandler, D_00594800, NULL, NULL, &queue);
+    modulePath = D_0054A360;
+    if (sdfHddValid != 0) {
+        if (sceGetstat(D_0054A380, &stat) == 0) {
+            if ((stat.mode & 0xF000) == 0x2000) {
+                modulePath = D_0054A380;
+            }
+        }
+    }
+    SdfIopFileRpc(modulePath, 0, NULL, NULL);
+    WakeupThread(sdfFileRpcThreadId);
+    sceSifRpcLoop(&queue);
+}
+
 
 void sdfStartFileRpcServer(void) {
     s32 workerId = sdfCreateThreadWithStack(SdfFileRpcServerThreadProc, 0x1000, 0x4C);
@@ -581,6 +627,10 @@ void LoadMcModules(const char *prefix, s32 moduleGroup) {
     }
     sceMcInit();
 }
+
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0054A360);
+
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0054A380);
 
 INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0054A3A0);
 
