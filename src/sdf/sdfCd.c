@@ -24,7 +24,7 @@ extern s32 sdfCdImageFd;
 
 extern s32 sdfCdTrayMode;
 
-sdfCdImageDirEntry_t *sdfCdImageSearchFile(const char *fname, s32 *lsn, s32 *modePtr);
+sdfCdImageDirEntry_t *sdfCdImageSearchFile(const char *fname, s32 *lsn, u8 *modePtr);
 
 extern s32 WaitSema(s32 aSemaId);
 
@@ -117,7 +117,7 @@ extern s32 sceRead(s32 fileHandle, s32 buffer, s32 byteCount);
 
 extern s32 dds3ImgPath;
 
-extern s32 sceCdSearchFile(void *, s32);
+extern s32 sceCdSearchFile(void *, const char *);
 
 extern u32 sdfCdImageFileName;
 
@@ -165,13 +165,112 @@ void sdfCdStStart(s32 lsn) {
     D_0055210C = lsn;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfCd", sdfCdStRead);
+extern s32 sceCdStRead(s32 sectors, void *buffer, s32 mode, s32 *status);
+extern s32 printf(const char *format, ...);
 
-INCLUDE_ASM(const s32, "sdf/sdfCd", sdfCdImageSearchFileDirect);
+void sdfCdStRead(s32 sectors, void *buffer)
+{
+    s32 status;
+    s32 result;
+
+    for (;;) {
+        WaitSema(sdfCdImageFd);
+        result = sceCdStRead(sectors, buffer, 1, &status);
+        SignalSema(sdfCdImageFd);
+        if (status == 0 && result == sectors) {
+            break;
+        }
+        if (sceCdStatus() == 1) {
+            sdfCdWaitTrayClose();
+            sdfCdStStart(D_0055210C);
+        } else {
+            printf("CD read error!\n");
+            WaitSema(sdfCdImageFd);
+            sceCdStStop();
+            SignalSema(sdfCdImageFd);
+            sdfCdStStart(D_0055210C);
+        }
+    }
+    D_0055210C += sectors;
+}
+
+extern char *strcpy(char *destination, const char *source);
+extern char *strchr(const char *text, s32 character);
+extern sdfCdImageDirEntry_t sdfCdImageSearchFileDirect_ent;
+
+sdfCdImageDirEntry_t *sdfCdImageSearchFileDirect(const char *filename, s32 *lsn, u8 *mode)
+{
+    /* Same CD search scratch capacity as sdfCdImageInit. */
+    u32 file[12];
+    char path[256];
+    char *name;
+    char *cursor;
+    s32 character;
+    s32 status;
+    s32 fd;
+
+    strcpy(path, filename);
+    name = strchr(path, ':') + 1;
+    cursor = name;
+    character = *cursor;
+    while (character != 0) {
+        if (character == '/') {
+            *cursor = '\\';
+        } else if (character >= 'a' && character <= 'z') {
+            *cursor = character - 0x20;
+        }
+        cursor++;
+        character = *cursor;
+    }
+    if (cursor[-2] != ';') {
+        cursor[0] = ';';
+        cursor[1] = '1';
+        cursor[2] = 0;
+    }
+    for (;;) {
+        WaitSema(sdfCdImageFd);
+        if (sceCdSearchFile(file, name) != 0) {
+            fd = sceOpen(path, 1);
+            if (fd < 0) {
+                SignalSema(sdfCdImageFd);
+                continue;
+            }
+            sdfCdImageSearchFileDirect_ent.size_ = sceLseek(fd, 0, 2);
+            sceClose(fd);
+            SignalSema(sdfCdImageFd);
+            break;
+        }
+        status = sceCdStatus();
+        SignalSema(sdfCdImageFd);
+        if (status == 1) {
+            sdfCdWaitTrayClose();
+        } else {
+            return NULL;
+        }
+    }
+    *lsn = file[0];
+    if (mode != NULL) {
+        *mode = 1;
+    }
+    return &sdfCdImageSearchFileDirect_ent;
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfCd", sdfCdImageSearchFile);
 
-INCLUDE_ASM(const s32, "sdf/sdfCd", sdfCdImageLoadStart);
+s32 sdfCdImageLoadStart(const char *filename)
+{
+    s32 lsn;
+    sdfCdImageDirEntry_t *entry = sdfCdImageSearchFile(filename, &lsn, &D_00552110);
+
+    if (entry == NULL) {
+        return -1;
+    }
+    sdfCdImageCurrRemain = entry->size_;
+    sdfCdImageCurrFile = entry;
+    sdfCdImageCurrActive = 0;
+    sdfCdStStart(lsn);
+    return entry->size_;
+}
 
 /* Consume up to size disc-file bytes, retaining a partial sector; return the byte count. */
 s32 sdfCdImageRead(void *buff, s32 length) {
@@ -208,23 +307,23 @@ s32 sdfCdImageRead(void *buff, s32 length) {
             t = transferBytes - t * 0x800;
             transferBytes -= t;
             if (transferBytes > 0) {
-                sdfCdStRead(transferBytes >> 11, (s32)destination);
+                sdfCdStRead(transferBytes >> 11, destination);
             }
             if (t > 0) {
-                sdfCdStRead(1, (s32)D_0058F7C0);
+                sdfCdStRead(1, D_0058F7C0);
                 memcpy(destination + transferBytes, D_0058F7C0, t);
                 sdfCdImageOffset = D_0058F7C0 + t;
                 sdfCdImageCurrActive = 0x800 - t;
             }
         } else {
             while (transferBytes >= 0x800) {
-                sdfCdStRead(1, (s32)D_0058F7C0);
+                sdfCdStRead(1, D_0058F7C0);
                 memcpy(destination, D_0058F7C0, 0x800);
                 transferBytes -= 0x800;
                 destination += 0x800;
             }
             if (transferBytes > 0) {
-                sdfCdStRead(1, (s32)D_0058F7C0);
+                sdfCdStRead(1, D_0058F7C0);
                 memcpy(destination, D_0058F7C0, transferBytes);
                 sdfCdImageOffset = D_0058F7C0 + transferBytes;
                 sdfCdImageCurrActive = 0x800 - transferBytes;
@@ -298,7 +397,7 @@ void sdfCdImageInit(const char *imageFile, const char *dirFile) {
     s32 iopHeapAddress;
     dds3ImgPath = (u32)imageFile;
     sdfCdImageLoadDir(dirFile);
-    if (sceCdSearchFile(discFileRecord, (s32)imageFile) == 0) {
+    if (sceCdSearchFile(discFileRecord, imageFile) == 0) {
         FatalError("%s couldn't open.", imageFile);
     }
     dds3ImgLsn = discFileRecord[0];
