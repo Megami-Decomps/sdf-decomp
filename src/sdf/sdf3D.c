@@ -368,9 +368,108 @@ void sdf3DMakeScreenParam(sdf3DScreenParam_t *aParam) {
     aParam->trans[0] = aParam->ox;
 }
 
-void sdf3DMakeLightParallelPacket(sdf3DLightParallelPacket_t *aPacket, sdfLightSources_t aLights, f32 *aAmbient);
+/* vf11 from one column of a 4x4 matrix, gathered through the same four
+ * scratch registers as the vf10 form. */
+#define SDF_VU0_LOADVECTOR_B_MTXCOL(src) __asm__ volatile ( \
+    ".set noreorder\n\tlw $2, 0(%0)\n\tlw $3, 0x10(%0)\n\t" \
+    "lw $4, 0x20(%0)\n\tlw $5, 0x30(%0)\n\t" \
+    "pextlw $2, $3, $2\n\tpextlw $4, $5, $4\n\t" \
+    "pcpyld $2, $4, $2\n\tqmtc2.ni $2, vf11\n\t.set reorder" \
+    : : "r" (src) : "$2", "$3", "$4", "$5", "memory")
 
-INCLUDE_ASM(const s32, "sdf/sdf3D", sdf3DMakeLightParallelPacket);
+/* Four quadwords: colour, direction, position and the falloff parameters. */
+typedef struct {
+    sdfVector4_t color;
+    sdfVector4_t v;
+    sdfVector4_t p;
+    f32 param[4];
+} sdf3DLight_t;
+
+extern f32 D_00529630[4];
+
+void DiagMatrix(void);
+
+/* vu0 routine: build the three normalized light directions, the colour sum
+ * and the specular basis matrix */
+void sdf3DMakeLightParallelPacket(sdf3DLightParallelPacket_t *aPacket, sdf3DLight_t **aLights, sdfVector4_t *aAmbient) {
+    f32 dir[4] QWORD_ALIGNED;
+    volatile f32 up[4] QWORD_ALIGNED;
+    sdf3DLight_t *light;
+    sdf3DLight_t *found;
+    s32 i;
+
+    aPacket->dmatag.qwc = 13;
+    aPacket->dmatag.dat0 = 0x10000000;
+    aPacket->dmatag.dat1 = 0x6C0D4398;
+    SDF_VU0_LOADVECTOR_B(aAmbient);
+    SDF_VU0_STOREVECTOR_B(&aPacket->color[3]);
+    found = NULL;
+    for (i = 0; i < 3; i++) {
+        light = aLights[i];
+        if (light == NULL) {
+            aPacket->normalComponents[0][i] = 0.0f;
+            aPacket->normalComponents[1][i] = 0.0f;
+            aPacket->normalComponents[2][i] = 0.0f;
+            aPacket->color[i].x = 0.0f;
+            aPacket->color[i].y = 0.0f;
+            aPacket->color[i].z = 0.0f;
+            aPacket->color[i].w = 0.0f;
+        } else {
+            if (found == NULL) {
+                found = light;
+            }
+            SDF_VU0_LOADVECTOR(&light->v);
+            SDF_VU0_NORMALIZE();
+            SDF_VU0_SCALEVECTOR_BITS(-1.0f);
+            SDF_VU0_STOREVECTOR(dir);
+            aPacket->normalComponents[0][i] = dir[0];
+            aPacket->normalComponents[1][i] = dir[1];
+            aPacket->normalComponents[2][i] = dir[2];
+            SDF_VU0_LOADVECTOR(&light->color);
+            SDF_VU0_ADDVECTOR_B_A();
+            SDF_VU0_STOREVECTOR(&aPacket->color[i]);
+        }
+    }
+    SDF_VU0_COPYVECTOR(&aPacket->colorBase, &aPacket->color[0]);
+    SDF_VU0_STOREVECTOR_B(&aPacket->color[4]);
+    if (found == NULL) {
+        SDF_VU0_STOREIDENTITY(aPacket->TM.m);
+        return;
+    }
+    SDF_VU0_LOADVECTOR(&found->v);
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_VECTOR_W_SET_ZERO();
+    SDF_VU0_SET_ROW2();
+    SDF_VU0_STOREVECTOR((f32 *)up);
+    if (sdfFabs(up[0]) < 1e-6f && sdfFabs(up[2]) < 1e-6f) {
+        up[0] = -up[1];
+        up[1] = 0.0f;
+        up[2] = 0.0f;
+        up[3] = 0.0f;
+        SDF_VU0_LOADVECTOR_B((f32 *)up);
+    } else {
+        SDF_VU0_LOADVECTOR_B(D_00529630);
+    }
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_VECTOR_W_SET_ZERO();
+    SDF_VU0_SET_ROW0();
+    SDF_VU0_COPYVECTOR_A_TO_B();
+    SDF_VU0_GET_ROW2();
+    SDF_VU0_OUTERPRODUCT();
+    SDF_VU0_VECTOR_W_SET_ZERO();
+    SDF_VU0_SET_ROW1();
+    SDF_VU0_RESET_ROW3();
+    DiagMatrix();
+    SDF_VU0_LOADVECTOR(&found->v);
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_LOADVECTOR_B_MTXCOL(sdfCameraTm + 8);
+    SDF_VU0_ADDVECTOR();
+    SDF_VU0_NEGVECTOR_XYZ();
+    SDF_VU0_NORMALIZE();
+    SDF_VU0_SET_ROW3();
+    SDF_VU0_STOREMATRIX(aPacket->TM.m);
+}
 
 void sdf3DMakeFogPacket(sdf3DFogPacket_t *aPacket, sdf3DFogParam_t *aParam) {
     f32 rangeMax = aParam->fogMin;
