@@ -301,7 +301,54 @@ void sdfSndCmdIFThread(void)
     }
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndInitCmdIF);
+typedef struct sdfSndInitThreadParam_t {
+    s32 status;
+    void (*entry)(void);
+    void *stack;
+    s32 stackSize;
+    void *gp;
+    s32 priority;
+    u8 reserved[0x18];
+} sdfSndInitThreadParam_t;
+
+extern sdfSndInitThreadParam_t D_005907C0;
+extern u8 D_00591840[];
+extern u8 D_00592880[];
+extern s32 D_005519D4;
+extern s32 _gp;
+extern s32 sceSifGetSreg(s32 index);
+extern s32 CreateThread(sdfSndInitThreadParam_t *parameter);
+extern s32 StartThread(s32 threadId, s32 argument);
+extern s32 CreateThreadSimple(void *entryAddress, void *workspace, s32 stackBytes, s32 priority);
+extern void SifRpcServerThreadProc(void);
+
+void sdfSndInitCmdIF(void)
+{
+    s32 retries = 0;
+    s32 threadId;
+
+    while (sceSifGetSreg(0x1F) == 0) {
+        retries++;
+        if (retries == 0x5F5E100) {
+            printf("sifSndInitCmdIF locked.\n");
+            retries = 0;
+        }
+    }
+    D_005907C0.entry = sdfSndCmdIFThread;
+    D_005907C0.stack = D_00591840;
+    D_005907C0.stackSize = 0x1000;
+    /* Same descriptor order as CreateThreadSimple in sdfSystem.c. */
+    D_005907C0.priority = 0x42;
+    D_005907C0.gp = &_gp;
+    sdfSndCmdIndex = 0;
+    sdfSndCmdTailIndex = 0;
+    threadId = CreateThread(&D_005907C0);
+    sdfSndCmdBuf = threadId;
+    StartThread(threadId, 0);
+    threadId = CreateThreadSimple(SifRpcServerThreadProc, D_00592880, 0x1000, 0x43);
+    D_005519D4 = threadId;
+    StartThread(threadId, 0);
+}
 
 s32 sdfSndSendCmd(s32 aCmd, s32 aParam, void *aExDataPtr, s32 aExDataSize) {
     s32 nextWriteIndex;
