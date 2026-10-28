@@ -285,7 +285,23 @@ void sdfGrFlushOtChain(u32 *source);
 
 s32 sdfPrintf(const char *str, ...);
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndIopAlloc);
+extern s32 sceSifAllocIopHeap(s32 size);
+extern s32 sceSifQueryMaxFreeMemSize(void);
+extern s32 sceSifQueryMemSize(void);
+extern s32 sceSifQueryTotalFreeMemSize(void);
+extern s32 printf(const char *format, ...);
+
+s32 sdfSndIopAlloc(s32 size) {
+    s32 address;
+
+    address = sceSifAllocIopHeap(size);
+    printf("--------\n");
+    printf("sceSifAllocIopHeap         :%08x\n", size);
+    printf("sceSifQueryMaxFreeMemSize  :%08x\n", sceSifQueryMaxFreeMemSize());
+    printf("sceSifQueryMemSize         :%08x\n", sceSifQueryMemSize());
+    printf("sceSifQueryTotalFreeMemSize:%08x\n", sceSifQueryTotalFreeMemSize());
+    return address;
+}
 
 INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndCmdTrans);
 
