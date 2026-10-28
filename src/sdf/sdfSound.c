@@ -303,7 +303,30 @@ s32 sdfSndIopAlloc(s32 size) {
     return address;
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndCmdTrans);
+extern s32 sceSifSendCmd(s32 command, void *packet, s32 packetBytes,
+                         void *source, void *destination, s32 dataBytes);
+
+s32 sdfSndCmdTrans(void)
+{
+    s32 current = (s16)sdfSndCmdIndex;
+    s32 tail = (s16)sdfSndCmdTailIndex;
+    sndRingPacket_t *packet;
+    s32 result;
+
+    if (current == tail) {
+        return 1;
+    }
+    packet = &D_00590840[current];
+    result = sceSifSendCmd(0, packet, ((u8 *)packet)[0xF] & 0xF0,
+                           NULL, NULL, 0);
+    if (result == 0) {
+        printf(" cannot send cmd\n");
+        return 1;
+    }
+    current = (current + 1) & 0x1F;
+    sdfSndCmdIndex = current;
+    return 0;
+}
 
 void sdfSndCmdIFThread(void)
 {
