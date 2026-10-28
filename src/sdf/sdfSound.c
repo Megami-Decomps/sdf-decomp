@@ -2,6 +2,7 @@
 #include "common.h"
 #include "libsdf.h"
 #include "ps2asm.h"
+#include "sif_rpc.h"
 
 struct sdfGsMemSlice_t;
 
@@ -273,7 +274,7 @@ extern s32 (*p2sdSmgBuf)(void);
 
 void p2sdLoadSMGFile(s32 MidiNo);
 
-u32 *sdfFileRpcHandleCmd(u32 command, sdfSoundRpcRequest_t *request);
+void *sdfFileRpcHandleCmd(s32 function, void *requestData, s32 requestSize);
 
 typedef struct sdfFileCmdHandle_t sdfFileCmdHandle_t;
 
@@ -960,9 +961,11 @@ s32 sdfFileRpcCallback(s32 unused, u32 event) {
 }
 
 /* Handle sound-file and PCM-buffer RPC commands. */
-u32 *sdfFileRpcHandleCmd(u32 command, sdfSoundRpcRequest_t *request)
+void *sdfFileRpcHandleCmd(s32 function, void *requestData, s32 requestSize)
 {
     char path[0x100];
+    sdfSoundRpcRequest_t *request = requestData;
+    u32 command = (u32)function;
 
     switch (command) {
     case 0: {
@@ -1065,46 +1068,8 @@ u32 *sdfFileRpcHandleCmd(u32 command, sdfSoundRpcRequest_t *request)
     return sdfFileRpcQueue;
 }
 
-typedef struct sifRpcServerData_t sifRpcServerData_t;
-
-typedef struct sifRpcDataQueue_t {
-    s32 threadId;
-    s32 active;
-    sifRpcServerData_t *serverList;
-    sifRpcServerData_t *request;
-    s32 requestState;
-    struct sifRpcDataQueue_t *next;
-} __attribute__((aligned(16))) sifRpcDataQueue_t;
-
-struct sifRpcServerData_t {
-    s32 serviceId;
-    u32 *(*handler)(u32, sdfSoundRpcRequest_t *);
-    void *buffer;
-    u32 opaque0C;
-    s32 bufferSize;
-    void *callback;
-    u8 opaque18[0x20];
-    sifRpcServerData_t *next;
-    sifRpcServerData_t *nextRequest;
-    sifRpcDataQueue_t *queue;
-};
-
-typedef char sifRpcDataQueue_size_must_be_0x20[
-    sizeof(sifRpcDataQueue_t) == 0x20 ? 1 : -1];
-typedef char sifRpcServerData_size_must_be_0x44[
-    sizeof(sifRpcServerData_t) == 0x44 ? 1 : -1];
-
 extern s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
 extern s32 GetThreadId(void);
-extern s32 sceSifSetRpcQueue(sifRpcDataQueue_t *queue, s32 threadId);
-extern s32 sceSifRegisterRpc(sifRpcServerData_t *server, s32 serviceId,
-                              u32 *(*handler)(u32, sdfSoundRpcRequest_t *),
-                              void *buffer, s32 bufferSize, void *callback,
-                              sifRpcDataQueue_t *queue);
-/* Runtime sceSifRpcLoop loops forever, though its caller was built without a
- * noreturn declaration and therefore retains a normal return epilogue. */
-extern void sceSifRpcLoop(sifRpcDataQueue_t *queue);
-
 void SifRpcServerThreadProc(void)
 {
     sifRpcDataQueue_t queue;

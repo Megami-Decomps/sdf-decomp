@@ -1,6 +1,7 @@
 #include "common.h"
 #include "ps2asm.h"
 #include "sdf_resource.h"
+#include "sif_rpc.h"
 
 enum {
     SDF_TMX_MAGIC = 0x30584D54,
@@ -151,7 +152,7 @@ void sdfFileRpcContinueRead(void);
 s32 sdfFileRpcReadCallback(sdfFileCmdHandle_t *deviceState, s32 command, s32 sourceAddress,
                   s32 byteCount, s32 callbackArg);
 
-s32 *sdfFileRpcHandler(u32 command, s32 request);
+void *sdfFileRpcHandler(s32 function, void *request, s32 requestSize);
 
 void sdfStartFileRpcServer(void);
 
@@ -231,9 +232,11 @@ s32 sdfFileRpcReadCallback(sdfFileCmdHandle_t *deviceState, s32 command, s32 sou
     return 0;
 }
 
-s32 *sdfFileRpcHandler(u32 command, s32 request) {
+void *sdfFileRpcHandler(s32 function, void *request, s32 requestSize) {
     sdfFileRpcCb_t *state = &sdfFileRpcState;
     sdfFileCmdHandle_t *deviceState;
+    u32 command = (u32)function;
+
     switch (command) {
     case SDF_STREAM_COMMAND_CREATE_STATE:
         state->deviceState = sdfFileCmdReadOpen((const char *)request, sdfFileRpcReadCallback, 0);
@@ -252,7 +255,7 @@ s32 *sdfFileRpcHandler(u32 command, s32 request) {
         sdfFileRpcBuf[0] = (s32)deviceState;
         break;
     case SDF_STREAM_COMMAND_CONTROL:
-        sdfFileCmdFileSize(state->deviceState, request, request);
+        sdfFileCmdFileSize(state->deviceState, (s32)request, (s32)request);
         WaitSema(state->semaphore);
         sdfFileRpcBuf[0] = state->readResult;
         break;
