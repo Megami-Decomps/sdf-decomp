@@ -24,7 +24,7 @@ typedef struct dds3TrackPoly_t
     u32 *pVC;
     sdfMat_t *pMat;
     struct dds3TrackPoly_t *next;
-    s32 unk28;
+    s32 d_next;
 } dds3TrackPoly_t;
 
 
@@ -34,7 +34,7 @@ typedef struct dds3Polygon_t
     s16 flags;
     u8 unk02[2];
     s32 capacity;
-    s32 unk08;
+    s32 strip_count;
     s32 drawCount;
     sdfMemHandle_t *hMem;
     sdf3DPrimPolyParm_t parm;
@@ -489,7 +489,7 @@ dds3TrackPoly_t *dds3TrackPolyCreate(s32 number, s32 face, s32 rec, u32 type) {
     system->rec = rec;
     system->hMem = allocation;
     system->next = 0;
-    system->unk28 = 0;
+    system->d_next = 0;
     return system;
 }
 
