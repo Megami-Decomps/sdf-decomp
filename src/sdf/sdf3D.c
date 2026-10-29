@@ -1,4 +1,5 @@
 #include "common.h"
+#include "libsdf.h"
 #include "fpu.h"
 #include "ps2asm.h"
 #include "sdf_lighting.h"
@@ -196,19 +197,7 @@ typedef struct sdf3DScreenParam_t {
 
 void sdfDrawTagLinkRef(struct sdfDrawTag_t *aTag, u32 aPacket);
 
-/* Per-texture reference count and non-owning clone source (0x8). */
-/* Texture buffer GPU command words (0x40); DDS1/2 game/code_002D10B0/00329F60.c. */
-typedef struct sdfTexPacket_t {
-    s32 gifTagWord; /* Low GIFtag word; NLOOP occupies bits 0-14. */
-    u32 gifTagControl; /* High GIFtag control word; one packed register. */
-    u64 gifTagRegisters; /* Packed register list: A+D. */
-    u64 samplingState; /* GS TEX1 data, including minification/magnification filters. */
-    u64 samplingRegister; /* GS TEX1_1/TEX1_2 register selector. */
-    u64 textureState; /* GS TEX0 data. */
-    u64 textureRegister; /* GS TEX0_1/TEX0_2 register selector. */
-    u64 clampState; /* GS CLAMP data. */
-    u64 clampRegister; /* GS CLAMP_1/CLAMP_2 register selector. */
-} sdfTexPacket_t;
+
 
 
 
