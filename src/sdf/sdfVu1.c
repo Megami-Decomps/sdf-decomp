@@ -1548,6 +1548,10 @@ void corePktEmitMultiTexPass(corePktCb_t *cb) {
 
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktEmitRefMapPass);
 
+#ifdef NON_MATCHING
+extern void corePktEmitRefMapPass(corePktCb_t *work);
+#endif
+
 void corePktEmitAllPasses(corePktCb_t *cb) {
     u32 selectedFlags;
 

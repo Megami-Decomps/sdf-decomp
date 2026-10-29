@@ -227,6 +227,12 @@ INCLUDE_ASM(const s32, "sdf/sdfMovie", movieWaitSema);
  * unverified is the order cc1 reassociates the TEX0 chain into and the
  * schedule of the twenty packet stores. */
 #ifdef NON_MATCHING
+extern s32 p2sdPlayPcm(u8 channel);
+extern s32 sdfGrAllocPacketBuff(s32 aSize);
+extern sdfDrawTag_t *sdfPrimAllocDrawTag(s32 (*aAllocator)(s32));
+extern u32 p2sdSetPcmCallback(u32 aCallback);
+extern void sdfDrawTagLink(sdfDrawTag_t *aTag, u32 aPacket);
+
 void release_movieobj2(sdfMovieCb_t *obj, sdfGrOt_t *ot)
 {
     u64 *packet;
@@ -296,7 +302,7 @@ void release_movieobj2(sdfMovieCb_t *obj, sdfGrOt_t *ot)
                  (u32)(x + obj->width);
     packet[21] = 0x05 /* XYZ2 */;
 
-    tag = sdfPrimAllocDrawTag();
+    tag = sdfPrimAllocDrawTag(NULL);
     sdfDrawTagLink(tag, packet);
     ot->regFunc(ot, tag);
 }

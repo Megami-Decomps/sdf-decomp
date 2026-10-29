@@ -1035,6 +1035,10 @@ s32 sdfFileRpcCallback(s32 unused, u32 event) {
 }
 
 /* Handle sound-file and PCM-buffer RPC commands. */
+#ifdef NON_MATCHING
+extern s32 WaitSema(s32 sema);
+#endif
+
 void *sdfFileRpcHandleCmd(s32 function, void *requestData, s32 requestSize)
 {
     char path[0x100];

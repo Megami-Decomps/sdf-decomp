@@ -1281,6 +1281,10 @@ void sdfModelLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
     }
 }
 
+#ifdef NON_MATCHING
+extern void *memcpy(void *a, const void *b, u32 c);
+#endif
+
 void sdfModelMorphListCopyStat(sdfModelMorphList_t *aDst, sdfModelMorphList_t *aSrc)
 {
     s16 count;
@@ -1395,6 +1399,11 @@ void *sdfModelGetExtraChunk(sdfModelRootNode_t *aRoot, u32 aChunkId)
 {
     return func_002B2628(aRoot->extraData, aChunkId);
 }
+
+#ifdef NON_MATCHING
+extern s32 memcmp(const void *first, const void *second, u32 size);
+extern u32 strlen(const char *text);
+#endif
 
 s32 sdfModelGetNodeIndexByName(sdfModelRootNode_t *aRoot, const char *aName)
 {
