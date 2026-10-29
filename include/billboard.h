@@ -51,7 +51,7 @@ typedef struct
     sdfVector4_t centre[15];
     u32 color[15];
     UV_t uv[15][4];
-    VTX_t offset[15][4];
+    f32 offset[15][8]; /* Four flat X/Y corner pairs per quad. */
     s32 count;
 } sdfBillBoardBatch_t;
 
