@@ -139,13 +139,6 @@ typedef struct tagpipeBasic {
 
 
 
-typedef struct tagPipeTexture {
-    sdfTexHandle_t *th;
-    sdfMemHandle_t *mh;
-    struct pipeTextureFile_t *mp;
-    u32 unk0C;
-} tagPipeTexture;
-
 typedef struct sdfSemaParam_t {
     s32 count;
     s32 maxCount;
