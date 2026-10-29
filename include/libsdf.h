@@ -28,6 +28,7 @@ typedef struct sdfMatPacket_t sdfMatPacket_t;
 typedef struct sdfPreDrawHook_t sdfPreDrawHook_t;
 typedef struct sdfModelPacketHeader_tag sdfModelPacketHeader_tag;
 typedef struct sdfItemArray_t sdfItemArray_t;
+void sdfTexListSetClutColor(sdfItemArray_t *list, s32 color, f32 ratio);
 typedef struct sdfGrOt_t sdfGrOt_t;
 typedef struct sdfPacDecodeCb_t sdfPacDecodeCb_t;
 
