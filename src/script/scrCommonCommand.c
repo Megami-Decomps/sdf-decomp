@@ -32,7 +32,8 @@ extern s8 D_005298C9[];
 extern s8 dds3PadBitTable[];
 extern char D_0052F5E8[];
 
-extern s32 printf(const char *fmt, ...);
+#include "sdk_libc.h"
+
 extern void datDebugPrintf(const char *fmt, ...);
 
 
