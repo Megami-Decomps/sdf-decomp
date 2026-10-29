@@ -463,11 +463,12 @@ void sdfTexFreeDelayed(sdfTexHandle_t *aHandle)
     sdfDelayedResrcEntry(&sdfTexDelayedResrcCB, aHandle);
 }
 
-/* NON_MATCHING: reference draft. Every GS field and both OR trees are exact
- * and the body is the right length, but the schedule of the first fifty
- * instructions does not converge: cc1 models the four-instruction bit-length
- * asm block as one unit-latency insn, so the ready list around it differs
- * from the hand-written order. */
+/* NON_MATCHING: reference draft. 15 of 90 words, first differing at +0x0;
+ * same 360 bytes, same instruction mix, and every GS field and both OR trees
+ * are exact. What is left is the schedule of the first fifty instructions:
+ * cc1 models the four-instruction bit-length asm block as one unit-latency
+ * insn, so the ready list around it differs from the hand-written order, and
+ * swapping the two bit-length statements leaves the output byte-identical. */
 #ifdef NON_MATCHING
 void sdfTexSetPacket(sdfTexPacket_t *aPacket, s32 aWidth, s32 aHeight, s32 aGsAddr,
                      s32 aPixelFormat, s32 aClutAddr, s32 aClutFormat, s32 aColorComp,
