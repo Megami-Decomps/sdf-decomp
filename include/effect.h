@@ -4,6 +4,10 @@
 #include "common.h"
 #include "libsdf.h"
 
+typedef struct effPCPBossONGYParam_t {
+    struct nbFormation_t *pFormation;
+} effPCPBossONGYParam_t;
+
 typedef struct effPCPBossBUNSINParam_t {
     union { s32 pStartBits; struct nbFormation_t *pStartForm; };
     union { s32 pEndBits; struct nbFormation_t *pEndForm; };
