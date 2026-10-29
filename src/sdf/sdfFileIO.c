@@ -638,7 +638,7 @@ void sdfFileCdImageCmdThread(sdfFileDeviceCB_t *aCB) {
 }
 
 /* Allocate a worker-specific device path; an unsupported worker returns NULL. */
-char *sdfFileCmdMakeRealFileName(char *aSrcName, s32 aDeviceType) {
+char *sdfFileCmdMakeRealFileName(const char *aSrcName, s32 aDeviceType) {
     s32 length = strlen(aSrcName);
     char *result;
     s32 index;
@@ -692,45 +692,45 @@ char *sdfFileCmdMakeRealFileName(char *aSrcName, s32 aDeviceType) {
     return result;
 }
 
-#ifdef NON_MATCHING
-/* Best draft: 65 of 72 words match; offset registers and the final failure branch differ. */
+/* DDS engine donor: dds-decomp (redthing1), sdfFileCmdAnalyzeFileName.
+ * SMT3 has the /movie/ exception, but not DDS's extra /movie2/ prefix. */
 s32 sdfFileCmdAnalyzeFileName(const char *aFileName, char **aRealNamePtr)
 {
-    char *path = (char *)aFileName;
     s32 device;
-    s32 pathOffset;
+    s32 prefixLength;
+    const char *suffix;
+    const char *name;
 
-    if (strchr(path, ':') != NULL) {
-        if (memcmp(path, D_00551968, 7) == 0) {
-            if (memcmp(path + 7, D_00551980, 7) == 0) {
+    if (strchr(aFileName, ':') != NULL) {
+        if (memcmp(aFileName, D_00551968, 7) == 0) {
+            suffix = aFileName + 7;
+            if (memcmp(suffix, D_00551980, 7) == 0) {
                 device = 3;
-                pathOffset = 0;
+                prefixLength = 0;
             } else {
                 device = 0;
-                pathOffset = 7;
+                prefixLength = 7;
             }
-        } else if (memcmp(path, D_00551970, 6) == 0) {
+        } else if (memcmp(aFileName, D_00551970, 6) == 0) {
             device = 1;
-            pathOffset = 6;
-        } else if (memcmp(path, D_00551978, 5) == 0) {
+            prefixLength = 6;
+        } else if (memcmp(aFileName, D_00551978, 5) == 0) {
             device = 2;
-            pathOffset = 5;
-        } else if (memcmp(path, D_00551988, 6) == 0) {
+            prefixLength = 5;
+        } else if (memcmp(aFileName, D_00551988, 6) == 0) {
             device = 3;
-            pathOffset = 6;
+            prefixLength = 6;
         } else {
             return -1;
         }
-        *aRealNamePtr = sdfFileCmdMakeRealFileName(path + pathOffset, device);
+        name = aFileName + prefixLength;
     } else {
         device = sdfFileCmdDefaultDevice;
-        *aRealNamePtr = sdfFileCmdMakeRealFileName(path, device);
+        name = aFileName;
     }
+    *aRealNamePtr = sdfFileCmdMakeRealFileName(name, device);
     return device;
 }
-#else
-INCLUDE_ASM(const s32, "sdf/sdfFileIO", sdfFileCmdAnalyzeFileName);
-#endif
 
 /* Allocate a request state and retain the callback's opaque context word. */
 sdfFileCmdHandle_t *sdfFileCmdNewHandle(void *resource, s32 workerIndex, s32 operation,

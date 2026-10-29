@@ -1113,16 +1113,15 @@ void sdfModelTempPacketLinkOt(sdfGrOt_t **ot, sdfModelRootNode_t *root)
 INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelTempPacketLinkOt);
 #endif
 
+/* DDS engine donor: dds-decomp (redthing1), sdfModelBuildNodeResourcePackets. */
 /* vu0 routine: each node's screen transform, and its w lane as the sort key. */
-/* NON_MATCHING: 69 of 288 words differ (first at +0x7C). */
-#ifdef NON_MATCHING
 void sdfModelLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
 {
     sdfDrawTag_t *tags[4];
     s32 i;
     s32 frame;
     u32 rootColor;
-    u32 color;
+    s32 color;
     u32 drawAttr;
     u32 attr;
     void *light;
@@ -1145,10 +1144,10 @@ void sdfModelLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
     sdfMatListUpdatePacket(aRoot->matList, frame);
     rootColor = aRoot->color;
     light = aRoot->light;
-    fog = aRoot->fog;
     if (light == NULL) {
         light = sdf3DLightDefault;
     }
+    fog = aRoot->fog;
     if (fog == NULL) {
         fog = sdf3DFogDefault;
     }
@@ -1163,7 +1162,6 @@ void sdfModelLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
     }
     reverseFace = aRoot->flags & SDF_MODEL_FLAG_REVERSE_FACE;
     reverse = reverseFace != 0;
-    softenParm = softenBias << 16;
     drew = 0;
     for (i = 0; i < aRoot->nodeList->count; i++) {
         sdfModelNode_t *node = aRoot->nodeList->items[i];
@@ -1171,6 +1169,10 @@ void sdfModelLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
         sdfModelBounds_t *bounds;
         f32 zValue;
         s32 j;
+        sdfDrawTag_t *tag;
+
+        softenParm = softenBias;
+        softenParm <<= 16;
 
         if (header == NULL) {
             continue;
@@ -1197,28 +1199,29 @@ void sdfModelLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
             tags[j] = NULL;
         }
         sdfCoreDrawSetZBias(aRoot->zBias);
-        semiTrans = (s32)color < 0;
+        semiTrans = 0;
+        if (color < 0) {
+            semiTrans = 1;
+        }
         parmTag = ((u64)(attr | softenParm) << 32) | 0x6102C000;
         do {
-            s32 otIndex;
-            sdfDrawTag_t *tag;
-
-            otIndex = header->otIndex;
-            if (otIndex == 0) {
-                otIndex = semiTrans == 0;
+            j = header->otIndex;
+            if (j == 0) {
+                j = semiTrans == 0;
             }
-            tag = tags[otIndex];
+            tag = tags[j];
             if (tag == NULL) {
                 sdfModelNodeDrawPacket_t *buf;
 
                 tag = sdfPrimAllocDrawTag(NULL);
                 *(f32 *)&tag->z = zValue;
                 tag->lightPacket = (u32)light;
-                tags[otIndex] = tag;
+                tags[j] = tag;
                 tag->fogPacket = (u32)fog;
                 buf = sdfGrAllocPacketBuff(sizeof(*buf));
                 sdfModelSetTmRefPacket(node, &buf->tmRef, frame);
                 *(u64 *)&buf->parm.next = 0x20000002;
+                *(u64 *)&buf->parm.next.dat0 = parmTag;
                 buf->parm.unpackColor = 0x6E01C002;
                 buf->parm.color = color;
                 buf->parm.unpackParm = 0x6003C003;
@@ -1227,7 +1230,6 @@ void sdfModelLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
                 buf->parm.faceDivBias = bias;
                 buf->parm.itop = 0x04000004;
                 buf->parm.mscal = 0x14000000;
-                *(u64 *)&buf->parm.next.dat0 = parmTag;
                 sdfDrawTagLinkRef(tag, (u32)buf);
             }
             switch (header->type) {
@@ -1262,23 +1264,22 @@ void sdfModelLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
             }
             header = header->next;
         } while (header != NULL);
-        for (j = 0; j != 4; j++) {
-            sdfDrawTag_t *tag = tags[j];
-
+        j = 0;
+        do {
+            tag = tags[j];
             if (tag != NULL) {
+                sdfGrOt_t **slot = aOt + j;
+                (*slot)->regFunc(*slot, tag);
                 drew = 1;
-                aOt[j]->regFunc(aOt[j], tag);
             }
             tags[j] = NULL;
-        }
+            j++;
+        } while (j != 4);
     }
     if (drew != 0) {
         aRoot->flags |= SDF_MODEL_FLAG_DREW;
     }
 }
-#else
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelLinkOt);
-#endif
 
 void sdfModelMorphListCopyStat(sdfModelMorphList_t *aDst, sdfModelMorphList_t *aSrc)
 {
