@@ -1,4 +1,5 @@
 #include "common.h"
+#include "eeregs.h"
 #include "libsdf.h"
 #include "ps2asm.h"
 
@@ -326,7 +327,7 @@ void sdfImageSetTrans(void)
         tagTail->vifCodes = 0;
         tagTail->tag = tag;
         chan = sceDmaGetChan(1);
-        *chan = *chan | 0x40;
+        HW_WRITE(chan, HW_READ(chan) | 0x40);
         FlushCache(0);
         sceDmaSend(chan, (void *)dmaAddr);
         SleepThread();
