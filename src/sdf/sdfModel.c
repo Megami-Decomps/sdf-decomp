@@ -524,7 +524,8 @@ sdfDmaTag_t *sdfModelSetOneSkinDrawPacket(sdfModelNode_t *aNode, sdfShapeOneSkin
 INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelSetOneSkinDrawPacket);
 #endif
 
-/* NON_MATCHING: 100 of 150 words differ (first at +0x0). */
+/* NON_MATCHING: 90 of 150 words differ (first at +0x0); eight saved registers
+ * where retail fits seven. */
 #ifdef NON_MATCHING
 void sdfModelLinkShapedDrawPacket(sdfModelNode_t *aNode, sdfShapeShapedPacket_t *aDataPtr,
                                   sdfDrawTag_t *aDrawTag, s32 aId)
