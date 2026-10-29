@@ -9,6 +9,11 @@
 #include "sdf_resource.h"
 #include "sdf_types.h"
 
+typedef struct sdfIVector2_t {
+    s32 x;
+    s32 y;
+} sdfIVector2_t;
+
 typedef struct
 {
     s32 pm[4];
