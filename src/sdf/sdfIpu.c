@@ -341,7 +341,8 @@ extern sdfIpuDecodeCb_t *D_00552158;
 
 extern s32 sdfIpuDecode(sdfIpuDecodeCb_t *);
 
-extern void sceIpuStopDMA(void *);
+extern void sceIpuStopDMA(sdfIpuDmaRegs_t *);
+extern void sceIpuRestartDMA(sdfIpuDmaRegs_t *);
 
 extern s32 sdfIpuDecodeThId;
 
@@ -802,7 +803,55 @@ s32 IpuWriteCommand(void) {
     return decodedBits;
 }
 
+extern u8 D_00529CE8[][2];
+
+#ifdef NON_MATCHING
+s32 sdfIpuDecode(sdfIpuDecodeCb_t *cb)
+{
+    s32 decodedBits;
+    s32 mode;
+
+    if (cb->ipuCycleInitialized == 0) {
+        u32 dmaEnable;
+
+        cb->ipuCycleInitialized = 1;
+        dmaEnable = SDF_DMAC_ENABLE;
+        SDF_DMAC_ENABLE = 0x10000;
+        SDF_TO_IPU_CHCR = 1;
+        SDF_DMAC_ENABLE = dmaEnable;
+        SDF_IPU_CTRL = 0x40000000;
+        sceIpuSync(0, 0);
+        SDF_IPU_CMD = 0;
+        sceIpuSync(0, 0);
+        sdfIpuSetToIpuDma(cb);
+        SDF_IPU_CTRL = 0;
+        sceIpuStopDMA(&cb->dma);
+    }
+
+    sdfCurrIpuDecodeCb = cb;
+    D_00552158 = cb;
+    cb->dma.outputAddress = (u32)cb->frameBuffers[cb->bufferIndex] & 0x0FFFFFFF;
+    cb->dma.outputQwords = cb->buffSize / 16;
+    cb->dma.outputControl = 0x100;
+    cb->bufferIndex ^= 1;
+    cb->inputFeedEnabled = 1;
+    sceIpuRestartDMA(&cb->dma);
+    if (cb->unk65 == 0) {
+        cb->unk65 = 1;
+    } else {
+        SDF_IPU_CMD = 0x40000020;
+        sceIpuSync(0, 0);
+    }
+    decodedBits = IpuWriteCommand();
+    SDF_IPU_CTRL = (decodedBits >> 8) & 0x00FB0000;
+    mode = (decodedBits & 0x04000000) ? 0x01010000 : 0x00010000;
+    SDF_IPU_CMD = 0x10000000 | ((u32)D_00529CE8[cb->rgbMode][0] << 27) |
+                  ((u32)D_00529CE8[cb->rgbMode][1] << 26) | mode;
+    return mode;
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfIpu", sdfIpuDecode);
+#endif
 
 /* Remove and advance the first list item matching the IPU cleanup test. */
 void sdfIpuExecQueue(s32 critical) {
