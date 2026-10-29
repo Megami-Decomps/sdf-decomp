@@ -1046,20 +1046,20 @@ void sdfGrDrawFrame(void)
         }
         FlushCache(0);
         channel = sceDmaGetChan(1);
-        channel->chcr |= 0xC0;
+        HW_FIELD_OR(channel->chcr, 0xC0);
         sdfDispThreadFlag = 3;
         sceDmaSend(channel, (void *)(drawTag->head & SDF_DMA_ADDRESS_MASK));
         sdfGrDrawFrameTagHead = drawTag->head;
         for (;;) {
             SleepThread();
             if (sdfDrawFrameFlag != 0) return;
-            if (((channel->chcr >> 16) & 0x7000) == 0x7000) {
+            if (((HW_FIELD_READ(channel->chcr) >> 16) & 0x7000) == 0x7000) {
                 break;
             }
             mask = (u32)sceGsGetIMR();
             sceGsPutIMR(mask | 0x200);
             HW_WRITE(GS_CSR, 2);
-            channel->chcr |= 0x100;
+            HW_FIELD_OR(channel->chcr, 0x100);
             SleepThread();
             if ((HW_READ(GS_CSR) & 2) == 0) {
                 do {
@@ -1071,10 +1071,10 @@ void sdfGrDrawFrame(void)
             }
             HW_WRITE(GS_CSR, 0);
             sceGsPutIMR(mask);
-            channel->chcr |= 0x100;
+            HW_FIELD_OR(channel->chcr, 0x100);
             SleepThread();
-            resumeAddress = channel->tadr;
-            transfer = (sdfStoreTransfer_t *)channel->madr;
+            resumeAddress = HW_FIELD_READ(channel->tadr);
+            transfer = (sdfStoreTransfer_t *)HW_FIELD_READ(channel->madr);
             while ((HW_READ(VIF1_STAT) & 3) != 0) {
                 if (sdfDrawFrameFlag != 0) return;
             }
@@ -1100,7 +1100,7 @@ void sdfGrDrawFrame(void)
             }
             HW_WRITE(VIF1_STAT, 0);
             HW_WRITE(GS_BUSDIR, 0);
-            channel->chcr &= ~1;
+            HW_FIELD_AND(channel->chcr, ~1);
             if (sdfDrawFrameFlag != 0) return;
             if (transfer->callback != NULL) transfer->callback(transfer->callbackParameter);
             sceDmaSend(channel, (void *)resumeAddress);
