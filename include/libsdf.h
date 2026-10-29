@@ -472,4 +472,11 @@ typedef struct
     f32 zBias;
 } sdf3DPrimPolyParm_t;
 
+/* Native REF/VIF payload and the trailing chain tag, 0x20 bytes. */
+typedef struct sdfGrRefPacketHeader_t {
+    u64 dmaTag;
+    u64 vifCommands;
+    s128 nextTag;
+} sdfGrRefPacketHeader_t;
+
 #endif /* LIBSDF_H */
