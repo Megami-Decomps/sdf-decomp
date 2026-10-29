@@ -44,7 +44,7 @@ extern s32 scrGetCommandTimer(void);
 extern s32 scrGetLabelCodeAddress(s32 labelindex);
 extern void scrSetCodePointer(s32 cp);
 extern scrProcessWork_s *scrGetScriptHandle(void);
-extern s32 scrRunScriptEx(s32 priority, void *header, void *typeTable, void *procTable,
+extern dds3ProcessID_t *scrRunScriptEx(s32 priority, void *header, void *typeTable, void *procTable,
                           void *labelTable, void *code, void *messageData, void *stringData,
                           s32 startProc);
 
@@ -304,7 +304,7 @@ s32 scrCommand_SCR_RUN(void)
     {
         return 1;
     }
-    scrSetIntReturnValue(scrRunScriptEx(work->ProcessID->priority + scrGetIntPara(1),
+    scrSetIntReturnValue((s32)scrRunScriptEx(work->ProcessID->priority + scrGetIntPara(1),
                                         work->Header, work->TypeTable, work->ProcTable,
                                         work->LabelTable, work->Code, work->MessageData,
                                         work->StringData, startProc));
