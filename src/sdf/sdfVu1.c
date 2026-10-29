@@ -75,20 +75,7 @@ typedef struct sdfCorePacketFaceDivParm_t {
     f32 colorDelta[4]; /* 0x20 */
 } sdfCorePacketFaceDivParm_t;
 
-typedef struct sdfCorePacketPointBuff_tag {
-    f32 position[4];            /* 0x00: position vector consumed by VU clipping */
-    u8 opaque10[0x10];          /* 0x10: only the W lane is used by clipping */
-    f32 color[4];               /* 0x20: copied and interpolated as a vector */
-    f32 xy[2];                  /* 0x30: interpolated XY pair */
-    u8 opaque38[8];             /* 0x38: other lanes are unresolved */
-    struct sdfCorePacketPointBuff_tag *next;   /* 0x40 */
-    struct sdfCorePacketPointBuff_tag *sourceA; /* 0x44 */
-    struct sdfCorePacketPointBuff_tag *sourceB; /* 0x48 */
-    f32 weight;                 /* 0x4C */
-    u8 region;                  /* 0x50: bit 0 selects the W = 0 clipping path */
-    u8 clipFlags;               /* 0x51: clip-plane bits used for triangle culling */
-    u8 opaque52[0x0E];          /* 0x52 */
-} sdfCorePacketPointBuff_tag;
+#include "sdfCorePacketPointBuff_tag.h"
 
 #define SDF_GIF_PRIM_SHIFT 47
 
@@ -144,39 +131,7 @@ typedef struct sdfMatPacket_t {
     u32 vifMscalCommand;   /* 0x9C: VIF MSCAL with microprogram index zero */
 } sdfMatPacket_t;
 
-typedef struct {
-    f32 tmSave[4][4];      /* 0x00 */
-    u16 faceCount;            /* 0x40 */
-    s16 pointCount;            /* 0x42 */
-    u32 attrBits;     /* 0x44 */
-    u32 packetBits;         /* 0x48 */
-    u32 orgAttrBits;             /* 0x4C */
-    s16 drawFaceCount;         /* 0x50 */
-    s16 backfaceCount; /* 0x52: rejected-triangle index count */
-    sdfMatPacket_t *matPacketPtr;   /* 0x54 */
-    u32 color;       /* 0x58: packed RGBA word */
-    f32 fdSoften;           /* 0x5C */
-    f32 fdBias;           /* 0x60 */
-    u32 pointBuff;           /* 0x64 */
-    sdfCorePacketPointBuff_tag *freePointBuff; /* 0x68: next free ring matPacketPtr */
-    sdfCorePacketPointBuff_tag *extPointBuff; /* 0x6C: ring wrap matPacketPtr */
-    u32 freePointCount;         /* 0x70 */
-    u32 extPointCount;         /* 0x74 */
-    sdfCorePacketPointBuff_tag *extPointTop; /* 0x78 */
-    sdfCorePacketPointBuff_tag **extPointLink;  /* 0x7C: list tail link */
-    u32 packetOpenPtr;       /* 0x80 */
-    u32 packetTopPtr;            /* 0x84: aligned packet packetPtr + 0x30 */
-    u32 *packetStartPtr;        /* 0x88 */
-    u32 *packetPtr;           /* 0x8C */
-    u8 *dataPtr;           /* 0x90 */
-    u8 *facePtr;             /* 0x94 */
-    u8 *vertexPtr;         /* 0x98 */
-    u8 *normalPtr;           /* 0x9C */
-    u8 *uvPtr;       /* 0xA0 */
-    u8 *uv2Ptr; /* 0xA4 */
-    u8 *vertColPtr;      /* 0xA8 */
-    f32 backfaceSign;             /* 0xAC */
-} sdfCorePacketCb_t;
+#include "sdfCorePacketCb_t.h"
 
 extern void corePktXfmUV(void *vertices, s32 count, void *uv, void *transform);
 
