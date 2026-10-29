@@ -6,7 +6,6 @@
 #include "ps2asm.h"
 #include "motion.h"
 
-EQUATE_FPTODP();
 
 typedef struct mdlBillboard_t mdlBillboard_t;
 
