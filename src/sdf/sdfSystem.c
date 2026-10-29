@@ -71,7 +71,7 @@ extern void EnableIntc(s32 channel);
 
 extern void WakeupThread(s32 threadId);
 
-extern void InitThread(void);
+extern s32 InitThread(void);
 
 extern void sdfPadManager(void);
 
