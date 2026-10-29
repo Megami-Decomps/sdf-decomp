@@ -1546,10 +1546,32 @@ void corePktEmitMultiTexPass(corePktCb_t *cb) {
                                   node->mtexClampData, node->alphaState, 0);
 }
 
-INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktEmitRefMapPass);
-
 #ifdef NON_MATCHING
-extern void corePktEmitRefMapPass(corePktCb_t *work);
+extern u64 sdf3DRefMapParam;
+
+void corePktEmitRefMapPass(corePktCb_t *work)
+{
+    sdf3DLightParallelPacket_t *light = (sdf3DLightParallelPacket_t *)corePktCurrLight;
+    sdfCorePacketPointBuff_tag *point = (sdfCorePacketPointBuff_tag *)work->pointBuff;
+    u32 count = (u16)work->pointCount;
+    u32 materialColor = work->matPacketPtr->primaryStateWordThird;
+    u64 scale = 0x3C0000003C000000ULL;
+
+    SDF_VU0_LOADVECTOR(&light->TM.m[12]);
+    if ((work->packetBits & 0x800) == 0) VU0_REFMAP_CACHED_BASIS(corePktWorldLightMtxCache);
+    else VU0_REFMAP_DIRECT_BASIS();
+    VU0_REFMAP_LOAD_NORMAL(point);
+    VU0_REFMAP_COLORS(materialColor, work->color, scale);
+    do {
+        VU0_REFMAP_STEP(point, point + 1);
+        point++;
+        count--;
+    } while (count != 0);
+    corePktLerpUVColorChain(work->extPointTop);
+    corePktEmitTexTrisCtx2(work, 0, sdf3DRefMapParam, 5, 0x48, 0x20);
+}
+#else
+INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktEmitRefMapPass);
 #endif
 
 void corePktEmitAllPasses(corePktCb_t *cb) {
@@ -1562,7 +1584,7 @@ void corePktEmitAllPasses(corePktCb_t *cb) {
         selectedFlags = cb->attrBits;
     }
     if ((selectedFlags & 1) != 0) {
-        corePktEmitRefMapPass((u32)cb);
+        corePktEmitRefMapPass(cb);
         return;
     }
 }
@@ -1630,4 +1652,36 @@ u64 *corePktClosePacket(corePktCb_t *cb) {
     return header;
 }
 
+#ifdef NON_MATCHING
+u8 *corePktVu0Run(sdfCorePacketPointBuff_tag *output, const void *source, s32 count,
+                  s32 transferCount, s32 transferStride)
+{
+    volatile u32 *dmaControl = (volatile u32 *)0x10008000;
+    volatile u32 *dmaAddress = (volatile u32 *)0x10008010;
+    volatile u32 *dmaQwc = (volatile u32 *)0x10008020;
+    volatile u32 *vifStatus = (volatile u32 *)0x10003800;
+    u32 input = (u32)source;
+    s32 done = 0;
+    s32 batch, i, qwc;
+
+    while (done < count) {
+        batch = count - done;
+        if (batch >= 25) batch = 24;
+        done += batch;
+        qwc = (s32)((u32)transferStride * (u32)batch + (u32)transferCount + 15) >> 4;
+        *dmaQwc = qwc;
+        *dmaAddress = input & SDF_DMA_ADDRESS_MASK;
+        input += (u32)qwc << 4;
+        *dmaControl = 0x101;
+        while ((*dmaControl & 0x100) != 0 || (*vifStatus & 0x0F000003) != 0) { }
+        VU0_BEGIN_POINT_UNPACK(0x60);
+        for (i = 0; i < batch; i++) {
+            VU0_UNPACK_POINT(output);
+            output++;
+        }
+    }
+    return (u8 *)input;
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktVu0Run);
+#endif
