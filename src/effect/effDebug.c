@@ -1,4 +1,5 @@
 #include "common.h"
+#include "sdfDevCons.h"
 #include "libsdf.h"
 #include "ps2asm.h"
 
@@ -24,7 +25,6 @@ extern void *dds3PrimLine(s32 aX0, s32 aY0, s32 aZ0, u32 aColor0, s32 aX1, s32 a
 sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
 void *sdfMemLock(sdfMemHandle_t *aHandle);
 void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
-void *sdfDevPrintf(s32 x, s32 y, s32 z, s32 color, const char *format);
 /* SDK matrix-bank helpers used by the wire sphere's second pass. */
 typedef struct
 {
