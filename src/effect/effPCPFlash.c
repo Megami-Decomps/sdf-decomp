@@ -1027,9 +1027,9 @@ effPCPFlashPolySphere2_tag *effPCPFlashPolySphere2Create(effPCPFlashPolySphere2P
     return work;
 }
 
-void effPCPFlashPolySphere2CreatePCF(void *table)
+effPCPFlashPolySphere2_tag *effPCPFlashPolySphere2CreatePCF(void *table)
 {
-    effPCPFlashPolySphere2Create((effPCPFlashPolySphere2Param_t *)dds3EffectPCPDataGetData(table, 0));
+    return effPCPFlashPolySphere2Create((effPCPFlashPolySphere2Param_t *)dds3EffectPCPDataGetData(table, 0));
 }
 
 effPCPFlashPolySphere2_tag *effPCPFlashPolySphere2Copy(effPCPFlashPolySphere2Param_t *params)
@@ -1215,9 +1215,9 @@ effPCPFlashPolySphere_tag *effPCPFlashPolySphereCreate(effPCPFlashPolySpherePara
     return work;
 }
 
-void effPCPFlashPolySphereCreatePCF(void *data)
+effPCPFlashPolySphere_tag *effPCPFlashPolySphereCreatePCF(void *data)
 {
-    effPCPFlashPolySphereCreate(dds3EffectPCPDataGetData(data, 0));
+    return effPCPFlashPolySphereCreate(dds3EffectPCPDataGetData(data, 0));
 }
 
 effPCPFlashPolySphere_tag *effPCPFlashPolySphereCopy(effPCPFlashPolySphereParam_t *src)
@@ -1484,9 +1484,9 @@ effPCPFlashPolyRing_tag *effPCPFlashPolyRingCreate(effPCPFlashPolyRingParam_t *p
     return work;
 }
 
-void effPCPFlashPolyRingCreatePCF(void *data)
+effPCPFlashPolyRing_tag *effPCPFlashPolyRingCreatePCF(void *data)
 {
-    effPCPFlashPolyRingCreate(dds3EffectPCPDataGetData(data, 0));
+    return effPCPFlashPolyRingCreate(dds3EffectPCPDataGetData(data, 0));
 }
 
 effPCPFlashPolyRing_tag *effPCPFlashPolyRingCopy(effPCPFlashPolyRingParam_t *params)
@@ -1723,9 +1723,9 @@ effPCPFlashPolyPipe_tag *effPCPFlashPolyPipeCreate(effPCPFlashPolyPipeParam_t *p
     return work;
 }
 
-void effPCPFlashPolyPipeCreatePCF(void *data)
+effPCPFlashPolyPipe_tag *effPCPFlashPolyPipeCreatePCF(void *data)
 {
-    effPCPFlashPolyPipeCreate(dds3EffectPCPDataGetData(data, 0));
+    return effPCPFlashPolyPipeCreate(dds3EffectPCPDataGetData(data, 0));
 }
 
 effPCPFlashPolyPipe_tag *effPCPFlashPolyPipeCopy(effPCPFlashPolyPipeParam_t *params)
@@ -1974,9 +1974,9 @@ effPCPFlashPolyRingExp_tag *effPCPFlashPolyRingExpCreate(effPCPFlashPolyRingExpP
     return ring;
 }
 
-void effPCPFlashPolyRingExpCreatePCF(void *data)
+effPCPFlashPolyRingExp_tag *effPCPFlashPolyRingExpCreatePCF(void *data)
 {
-    effPCPFlashPolyRingExpCreate(dds3EffectPCPDataGetData(data, 0));
+    return effPCPFlashPolyRingExpCreate(dds3EffectPCPDataGetData(data, 0));
 }
 
 effPCPFlashPolyRingExp_tag *effPCPFlashPolyRingExpCopy(effPCPFlashPolyRingExpParam_t *params)
@@ -2228,9 +2228,9 @@ effPCPFlashPolySphereExp_tag *effPCPFlashPolySphereExpCreate(effPCPFlashPolySphe
     return work;
 }
 
-void effPCPFlashPolySphereExpCreatePCF(void *data)
+effPCPFlashPolySphereExp_tag *effPCPFlashPolySphereExpCreatePCF(void *data)
 {
-    effPCPFlashPolySphereExpCreate(dds3EffectPCPDataGetData(data, 0));
+    return effPCPFlashPolySphereExpCreate(dds3EffectPCPDataGetData(data, 0));
 }
 
 effPCPFlashPolySphereExp_tag *effPCPFlashPolySphereExpCopy(effPCPFlashPolySphereExpParam_t *params)
@@ -2478,9 +2478,9 @@ effPCPFlashPolySphere2Exp_tag *effPCPFlashPolySphere2ExpCreate(effPCPFlashPolySp
     return work;
 }
 
-void effPCPFlashPolySphere2ExpCreatePCF(void *data)
+effPCPFlashPolySphere2Exp_tag *effPCPFlashPolySphere2ExpCreatePCF(void *data)
 {
-    effPCPFlashPolySphere2ExpCreate(dds3EffectPCPDataGetData(data, 0));
+    return effPCPFlashPolySphere2ExpCreate(dds3EffectPCPDataGetData(data, 0));
 }
 
 effPCPFlashPolySphere2Exp_tag *effPCPFlashPolySphere2ExpCopy(effPCPFlashPolySphere2ExpParam_t *params)
@@ -2674,9 +2674,9 @@ effPCPFlashPolySphere3_tag *effPCPFlashPolySphere3Create(effFlashRadialStripPara
     return work;
 }
 
-void effPCPFlashPolySphere3CreatePCF(void *data)
+effPCPFlashPolySphere3_tag *effPCPFlashPolySphere3CreatePCF(void *data)
 {
-    effPCPFlashPolySphere3Create(dds3EffectPCPDataGetData(data, 0));
+    return effPCPFlashPolySphere3Create(dds3EffectPCPDataGetData(data, 0));
 }
 
 effPCPFlashPolySphere3_tag *effPCPFlashPolySphere3Copy(effFlashRadialStripParam_t *params)
@@ -2939,9 +2939,9 @@ effPCPFlashPolyRingExp2_tag *effPCPFlashPolyRingExp2Create(effPCPFlashPolyRingEx
     return work;
 }
 
-void effPCPFlashPolyRingExp2CreatePCF(void *data)
+effPCPFlashPolyRingExp2_tag *effPCPFlashPolyRingExp2CreatePCF(void *data)
 {
-    effPCPFlashPolyRingExp2Create(dds3EffectPCPDataGetData(data, 0));
+    return effPCPFlashPolyRingExp2Create(dds3EffectPCPDataGetData(data, 0));
 }
 
 effPCPFlashPolyRingExp2_tag *effPCPFlashPolyRingExp2Copy(effPCPFlashPolyRingExp2Param_t *params)
@@ -3174,9 +3174,9 @@ effPCPFlashPolyCircle_tag *effPCPFlashPolyCircleCreate(effPCPFlashPolyCirclePara
     return work;
 }
 
-void effPCPFlashPolyCircleCreatePCF(void *data)
+effPCPFlashPolyCircle_tag *effPCPFlashPolyCircleCreatePCF(void *data)
 {
-    effPCPFlashPolyCircleCreate(dds3EffectPCPDataGetData(data, 0));
+    return effPCPFlashPolyCircleCreate(dds3EffectPCPDataGetData(data, 0));
 }
 
 effPCPFlashPolyCircle_tag *effPCPFlashPolyCircleCopy(effPCPFlashPolyCircleParam_t *params)
@@ -3383,11 +3383,11 @@ effPCPFlashPolyRingExpH_tag *effPCPFlashPolyRingExpHCreate(effPCPFlashPolyRingEx
     return ring;
 }
 
-void effPCPFlashPolyRingExpHCreatePCF(void *table) {
+effPCPFlashPolyRingExpH_tag *effPCPFlashPolyRingExpHCreatePCF(void *table) {
     void *parameterBlock;
 
     parameterBlock = dds3EffectPCPDataGetData(table, 0);
-    effPCPFlashPolyRingExpHCreate(parameterBlock);
+    return effPCPFlashPolyRingExpHCreate(parameterBlock);
 }
 
 effPCPFlashPolyRingExpH_tag *effPCPFlashPolyRingExpHCopy(effPCPFlashPolyRingExpH_tag *params)
