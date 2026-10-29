@@ -2,6 +2,7 @@
 #define EFFECT_H
 
 #include "common.h"
+#include "effPCPData.h"
 #include "libsdf.h"
 
 typedef struct effPCPBossBUNSIN2Param_t
