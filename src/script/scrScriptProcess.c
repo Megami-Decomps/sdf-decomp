@@ -51,10 +51,10 @@ scrProcessWork_s *scrLoadScriptFile(char *name, s32 messageHandle)
     return pw;
 }
 
-void scrStartScriptProcess(s32 priority, scrProcessWork_s *pw)
+dds3ProcessID_t *scrStartScriptProcess(s32 priority, scrProcessWork_s *pw)
 {
-    pw->ProcessID = dds3StartProcess((char *)pw->ProcTable[pw->StartProc].Name, priority, 1, 1,
-                                     scrScriptProcess, scrScriptShutdown, pw);
+    return pw->ProcessID = dds3StartProcess((char *)pw->ProcTable[pw->StartProc].Name, priority, 1, 1,
+                                            scrScriptProcess, scrScriptShutdown, pw);
 }
 
 void dds3GlobalWorkClearFlags(void)
@@ -77,9 +77,9 @@ scrProcessWork_s *scr_109D80(char *name)
     return scrLoadScriptFile(name, 0);
 }
 
-void scrStartScript2(s32 priority, void *scrdata, s32 startproc)
+dds3ProcessID_t *scrStartScript2(s32 priority, void *scrdata, s32 startproc)
 {
-    scrStartScriptProcess(priority, fldFlowParse(scrdata, startproc));
+    return scrStartScriptProcess(priority, fldFlowParse(scrdata, startproc));
 }
 
 scrProcessWork_s *scr_109DD0(void *data)

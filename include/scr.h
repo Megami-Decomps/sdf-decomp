@@ -18,6 +18,10 @@ typedef union scrStackData_u scrStackData_u;
 typedef struct scrCommandTable_t scrCommandTable_t;
 typedef struct scrProcessWork_s scrProcessWork_s;
 
+dds3ProcessID_t *scrStartScriptProcess(s32 priority, scrProcessWork_s *work);
+void scrStartScriptByName(s32 priority, char *name, s32 messageHandle);
+dds3ProcessID_t *scrStartScript2(s32 priority, void *data, s32 startproc);
+
 /* A command handler pops its own arguments with scrGetIntPara and friends and
  * returns non-zero to advance past the instruction. */
 typedef s32 (*scrCommandFunc_t)(void);
