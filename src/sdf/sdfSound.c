@@ -623,9 +623,10 @@ void p2sdPlayBGM(s32 MidiNo) {
 
 s32 p2sdSendStopCmd(s32 aId)
 {
-    s32 arg = aId;
+    s32 arg[4];
 
-    return sdfSndSendCmd(0x30, 0, &arg, 0x10);
+    arg[0] = aId;
+    return sdfSndSendCmd(0x30, 0, arg, sizeof(arg));
 }
 
 /* Starts the alternate track command, leaving the other packet fields untouched. */
@@ -907,24 +908,20 @@ void p2sdPlayBGMFade(s32 trackId) {
 
 s32 p2sdFadeOutBgm(s32 aId)
 {
-    struct
-    {
-        s32 id;
-        s32 unk4;
-        s16 fade;
-    } arg;
+    sdfSndTrackPacket_t arg;
 
-    arg.id = aId;
+    arg.trackId = aId;
     arg.unk4 = 0;
-    arg.fade = 0x17F;
-    return sdfSndSendCmd(0x20, 0, &arg, 0x10);
+    arg.setting = 0x17F;
+    return sdfSndSendCmd(0x20, 0, &arg, sizeof(arg));
 }
 
 s32 p2sdStopBGM(s32 aId)
 {
-    s32 arg = aId;
+    s32 arg[4];
 
-    return sdfSndSendCmd(0xD0, 0, &arg, 0x10);
+    arg[0] = aId;
+    return sdfSndSendCmd(0xD0, 0, arg, sizeof(arg));
 }
 
 s32 p2sdBgmVolDown(void)
