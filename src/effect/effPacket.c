@@ -28,7 +28,7 @@ extern sdfGrPacketHeader_t *sdf2DMakePrimPacketHeader(sdfGrPacketHeader_t *aPack
 extern void dds3RenderTextureOFF(void);
 extern void dds3FreeRenderTexture(void);
 extern void *memcpy(void *a, const void *b, u32 c);
-extern s32 printf(const char *fmt, ...);
+#include "sdk_libc.h"
 
 void *effPkt2DGetPrimPtr(void *pPkt) {
     return (void *)((u8 *)pPkt + 0x20);
