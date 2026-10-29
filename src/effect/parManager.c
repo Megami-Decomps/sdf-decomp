@@ -708,7 +708,7 @@ void dds3Particle_BlurClearItem(dds3Particle_BlurBuff_t *table, s32 slotIndex);
 void dds3Particle_TrackSetExp(parSystem_t *hTrackPoly, s32 index, const f32 *pPos, u32 abgr, dds3ParOffsetBuff_t *pOffBuff);
 void dds3Particle_Track2SetExp(parSystem_t *hTrackPoly, s32 index, const f32 *pPos, u32 abgr, dds3ParOffsetBuff_t *pOffBuff);
 u32 dds3ParticleColorBlend(u32 color0, u32 color1);
-void dds3ParticleCreate(s32 dispatchIndex, void *creationData);
+dds3Particle_Basic_t *dds3ParticleCreate(s32 dispatchIndex, void *creationData);
 void dds3ParticleDelete(dds3Particle_Basic_t *hData);
 void dds3ParticleDraw(dds3Particle_Basic_t *hData);
 dds3Particle_Basic_t *dds3ParticleCopy(dds3Particle_Basic_t *obj);
@@ -3788,17 +3788,19 @@ u32 dds3ParticleColorBlend(u32 color0, u32 color1) {
     return out;
 }
 
-/* Create through the selected dispatch entry and record its index; returns void. */
-void dds3ParticleCreate(s32 dispatchIndex, void *creationData) {
+/* Create through the selected dispatch entry and record its index; returns the
+ * new instance, which dds3EffectCreate keeps. */
+dds3Particle_Basic_t *dds3ParticleCreate(s32 dispatchIndex, void *creationData) {
     dds3Particle_Basic_t *createdObject;
 
     createdObject = dds3ParticleFuncTable[dispatchIndex].func(creationData);
     createdObject->type = dispatchIndex;
+    return createdObject;
 }
 
-/* Invoke the selected destructor with the existing empty argument list. */
+/* Invoke the selected destructor on the particle. */
 void dds3ParticleDelete(dds3Particle_Basic_t *hData) {
-    dds3ParticleFuncTable[hData->type].destroy();
+    dds3ParticleFuncTable[hData->type].destroy(hData);
 }
 
 /* Draw live particles after applying the requested number of emitter updates. */
@@ -3853,7 +3855,7 @@ dds3Particle_Basic_t *dds3ParticleCopy(dds3Particle_Basic_t *obj) {
 
 /* Reissue the callback, reload the native updater's repeat count, and arm restart. */
 void dds3ParticleReset(dds3Particle_Basic_t *hData) {
-    dds3ParticleAllBuffInitTable[hData->type]();
+    dds3ParticleAllBuffInitTable[hData->type](hData);
     hData->pendingRestartSteps = hData->d_frame;
     hData->state = 1;
 }
