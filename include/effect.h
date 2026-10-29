@@ -73,6 +73,15 @@ typedef struct effBlurPrimVertex_t {
     s16 unk1E;
 } effBlurPrimVertex_t;
 
+/* Nine A+D registers: one colour and four ST/XYZ2 pairs. */
+typedef struct effBlurPrimTriStrip_t {
+    s32 r;
+    s32 g;
+    s32 b;
+    s32 a;
+    effBlurPrimVertex_t vtx[4];
+} effBlurPrimTriStrip_t;
+
 /* Shared rectangle and sampling payload, copied as 0x28 bytes. */
 typedef struct dds3Effect_Blur_t {
     u32 abgr;
