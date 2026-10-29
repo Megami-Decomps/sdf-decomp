@@ -97,7 +97,6 @@ extern f32 sdf3DEyeOffset[4];
 
 extern u8 sdf3DScreenParam[];
 
-void corePktEmitTexTris();
 
 extern u8 corePktWorldLightMtxCache[];
 
@@ -132,6 +131,9 @@ typedef struct sdfMatPacket_t {
 } sdfMatPacket_t;
 
 #include "sdfCorePacketCb_t.h"
+
+void corePktEmitTexTris(sdfCorePacketCb_t *work);
+void corePktEmitTris(sdfCorePacketCb_t *work);
 
 extern void corePktXfmUV(void *vertices, s32 count, void *uv, void *transform);
 
@@ -1460,10 +1462,10 @@ void corePktEmitTris(work)
 
 void corePktEmitBase(sdfCorePacketCb_t *cb) {
     if ((cb->attrBits & SDF_VU_TEXTURED_FLAG) != 0) {
-        corePktEmitTexTris();
+        corePktEmitTexTris(cb);
         return;
     }
-    corePktEmitTris();
+    corePktEmitTris(cb);
 }
 
 void corePktEmitMultiTexPass(sdfCorePacketCb_t *cb) {
