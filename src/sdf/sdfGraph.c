@@ -13,7 +13,7 @@ typedef struct
     u64 bgcolor;
 } sceGsDispEnv;
 
-extern void sceGsResetGraph(s32 aMode, s32 aInter, s32 aOmode, s32 aFfmode);
+extern void sceGsResetGraph(s16 aMode, s16 aInter, s16 aOmode, s16 aFfmode);
 extern void sceGsSetDefDispEnv(sceGsDispEnv *aEnv, s32 aPsm, s32 aWidth, s32 aHeight, s32 aDx,
                                s32 aDy);
 extern void sceGsPutDispEnv(sceGsDispEnv *aEnv);
