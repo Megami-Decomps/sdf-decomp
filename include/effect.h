@@ -21,6 +21,16 @@ typedef struct effPCPBossBUNSINParam_t {
     union { s32 pEndBits; struct nbFormation_t *pEndForm; };
 } effPCPBossBUNSINParam_t;
 
+typedef struct nbCameraSkillPtr_t {
+    u32 ptr_shot_1;
+    u32 ptr_shot_23;
+    u32 ptr_angleH;
+    u32 ptr_angleW;
+    u32 ptr_H;
+    u32 ptr_W;
+    u32 anim;
+} nbCameraSkillPtr_t;
+
 /* Shared effect RNG and retained slot-array header. */
 typedef struct effRandState_t {
     u32 words[4];
