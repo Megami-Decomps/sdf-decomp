@@ -296,6 +296,13 @@ typedef struct sdfPreDrawChain_t {
     sdfPreDrawTag_t *tail;
 } sdfPreDrawChain_t;
 
+typedef struct sdfTexPacket_t {
+    sdfGifTag_t giftag;
+    sdfGrTagStdReg_t tex1;
+    sdfGrTagStdReg_t tex0;
+    sdfGrTagStdReg_t clamp;
+} sdfTexPacket_t;
+
 /* Linked draw environment, including its two frame-mask writes and textures. */
 typedef struct sdfGrStdDrawEnv_t {
     sdfPreDrawHook_t link;
@@ -312,7 +319,7 @@ typedef struct sdfGrStdDrawEnv_t {
     sdfGrTagStdReg_t alpha2;
     sdfGrTagStdReg_t frameContextOne;
     sdfGrTagStdReg_t frameContextTwo;
-    u8 texturePackets[0x80];
+    sdfTexPacket_t texturePackets[2];
 } sdfGrStdDrawEnv_t;
 
 void sdfGrStdDrawEnvPredraw(sdfGrStdDrawEnv_t *aPre, s32 aEvenOdd);
@@ -801,7 +808,41 @@ void sdfGrSetDrawEnv(sdfGrDrawEnv_t *aEnv, sdfGrFrameSet_t *aFrameSet, s32 aEven
     sdfGrSetDrawDefParmPacket(&aEnv->defParm);
 }
 
+extern void sdfTexSetPacket(sdfTexPacket_t *packet, s32 width, s32 height, s32 gsAddr,
+                            s32 pixelFormat, s32 clutAddr, s32 clutFormat, s32 colorComp,
+                            s32 mipmapCount, s32 mipmapParm, s32 wrapMode, s32 context);
+
+#ifdef NON_MATCHING
+void sdfGrStdDrawEnvPredraw(sdfGrStdDrawEnv_t *env, s32 evenOdd)
+{
+    sdfGrFrameSet_t *view = env->view;
+    s32 width = view->width;
+    s32 height = view->height;
+    s32 frameFormat = view->bufferFormat;
+    s32 depthFormat = view->auxiliaryFormat;
+    s32 frameAddress = view->buffers[evenOdd]->addr;
+    s32 depthAddress = view->buffers[2]->addr;
+    s64 frame;
+
+    sdfGrSetDrawFramePacket(&env->frame1, frameAddress, width, height, frameFormat,
+                            depthAddress, depthFormat, D_0055188A, 0);
+    sdfGrSetDrawFramePacket(&env->frame2, frameAddress, width, height, frameFormat,
+                            depthAddress, depthFormat, D_0055188A, 1);
+    frame = (s64)(s32)(((u32)(width >> 6) << 16) | ((u32)frameFormat << 24) |
+                       (u32)(frameAddress >> 11)) | 0x00FFFFFF00000000ULL;
+    env->frameContextOne.reg = SDF_GS_FRAME_1;
+    env->frameContextTwo.data = frame;
+    env->frameContextTwo.reg = SDF_GS_FRAME_2;
+    env->frameContextOne.data = frame;
+    if (frameFormat == 0) frameFormat = 1;
+    sdfTexSetPacket(&env->texturePackets[1], width, height, frameAddress, frameFormat,
+                    0, 0, 1, 0, 0, 5, 0);
+    sdfTexSetPacket(&env->texturePackets[0], width, height, view->buffers[evenOdd ^ 1]->addr,
+                    frameFormat, 0, 0, 1, 0, 0, 5, 0);
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfDraw", sdfGrStdDrawEnvPredraw);
+#endif
 
 void sdfGrSetStdDrawEnv(sdfGrStdDrawEnv_t *aEnv, sdfGrFrameSet_t *aFrameSet) {
     sdfGrSetRegsPacketHeader(&aEnv->header, SDF_TEXTURE_SCENE_PAYLOAD_QWORDS);
