@@ -87,11 +87,11 @@ scrProcessWork_s *scr_109DD0(void *data)
     return fldFlowParse(data, 0);
 }
 
-void scrRunScriptEx(s32 priority, scrHeader_t *header, scrTypeTable_t *typeTable,
+dds3ProcessID_t *scrRunScriptEx(s32 priority, scrHeader_t *header, scrTypeTable_t *typeTable,
                     scrProcTable_t *procTable, scrLabelTable_t *labelTable, scrCode_u *code,
                     u8 *messageData, u8 *stringData, s32 procNo)
 {
-    scrStartScriptProcess(priority, scrPrintProcedureStart(header, typeTable, procTable, labelTable,
+    return scrStartScriptProcess(priority, scrPrintProcedureStart(header, typeTable, procTable, labelTable,
                                                            code, messageData, stringData, procNo));
 }
 
