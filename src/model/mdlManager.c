@@ -120,7 +120,7 @@ typedef struct
 } filePacRequest_t;
 
 extern char *strcpy(char *dst, const char *src);
-extern void sdfTexListSetClutColor(sdfModelTexList_t *list, s32 a, s32 b, s32 c);
+extern void sdfTexListSetClutColor(sdfItemArray_t *list, s32 color, f32 ratio);
 extern void pacFileHandleFree_(void *pacHandle);
 
 s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode);
@@ -1301,9 +1301,9 @@ s32 mdlGetNumOfCut(mdlObj_t *aHandle, s32 aGroup)
     return matched->playbook->numOfCut;
 }
 
-void mdlSetClutColor(mdlObj_t *ctx, s32 a, s32 b, s32 c)
+void mdlSetClutColor(mdlObj_t *ctx, s32 color, f32 ratio)
 {
-    sdfTexListSetClutColor(ctx->inner->texList, a, b, c);
+    sdfTexListSetClutColor((sdfItemArray_t *)ctx->inner->texList, color, ratio);
 }
 
 void mdlGetFilebase(s32 aMajor, s32 aMinor, char *aName, s32 aNameLeng) {
