@@ -1,4 +1,5 @@
 #include "common.h"
+#include "eeregs.h"
 #include "sdfDevCons.h"
 #include "libsdf.h"
 
@@ -340,7 +341,7 @@ void sdfDevConsDrawFlush(sdfDevConsDrawCB_t *aCB) {
     if ((packetBytes >> 3) != 0) {
         channelRegisters = aCB->dmaCh;
         sceDmaSync(channelRegisters, 0, 0);
-        *(volatile u32 *)channelRegisters = *(volatile u32 *)channelRegisters | 0x40; /* CHCR bit 6: tag-transfer enable */
+        HW_WRITE((volatile u32 *)channelRegisters, HW_READ((volatile u32 *)channelRegisters) | 0x40); /* CHCR bit 6: tag-transfer enable */
         EE_SYNC_BARRIER();
         sceDmaSendN(channelRegisters, (void *)((u32)aCB->start & 0x0FFFFFFF), packetBytes >> 4);
         nextBufferIndex = aCB->dblBuffId ^ 1;
