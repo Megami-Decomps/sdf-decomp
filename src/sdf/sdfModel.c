@@ -957,7 +957,8 @@ typedef struct QWORD_ALIGNED
 } sdfModelTempDrawPacket_t;
 
 /* vu0 routine: each node's screen transform, and its w lane as the sort key. */
-/* NON_MATCHING: 228 of 282 words differ (first at +0x8). */
+/* NON_MATCHING: 163 of 282 words match at the exact size (first differing word
+ * at +0x60). */
 #ifdef NON_MATCHING
 void sdfModelTempPacketLinkOt(sdfGrOt_t **ot, sdfModelRootNode_t *root)
 {
@@ -1084,15 +1085,18 @@ void sdfModelTempPacketLinkOt(sdfGrOt_t **ot, sdfModelRootNode_t *root)
             packets = (sdfShapePacket_t **)header->packet;
             while ((pkt = *packets++) != NULL) {
                 if (pkt->packetType == PACKET_TYPE_NORMAL) {
-                    u32 packed = *(u32 *)&pkt->packetSize;
-                    u16 matIndex = packed >> 16;
-                    u16 qwc = packed;
-                    sdfDmaTag_t *buf = sdfGrAllocPacketBuff(0x30);
+                    u32 packed;
+                    u16 matIndex;
+                    sdfDmaTag_t *buf;
                     sdfDmaTag_t *body;
 
+                    buf = sdfGrAllocPacketBuff(0x30);
+                    packed = *(u32 *)&pkt->packetSize;
+                    matIndex = packed >> 16;
+                    packed &= 0xFFFF;
                     body = sdfModelSetMatRefPacket(root, matIndex, buf, frame);
                     *(u64 *)&body->dat0 = 0;
-                    *(u64 *)body = (qwc | 0x30000000) |
+                    *(u64 *)body = (packed | 0x30000000) |
                                    ((u64)((u32)pkt->dataBody & 0x0FFFFFFF) << 32);
                     body++;
                     *(u64 *)body = 0x20000000;
