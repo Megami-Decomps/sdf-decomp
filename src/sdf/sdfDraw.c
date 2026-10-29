@@ -1,4 +1,5 @@
 #include "common.h"
+#include "eeregs.h"
 #include "sdf_types.h"
 #include "sdf_resource.h"
 
@@ -1001,11 +1002,6 @@ extern void sdfDelayedResrcProc(void);
 
 void sdfGrDrawFrame(void)
 {
-    volatile u64 *csr = (volatile u64 *)0x12001000;
-    volatile u64 *busdir = (volatile u64 *)0x12001040;
-    volatile u32 *gifControl = (volatile u32 *)0x10003000;
-    volatile u32 *gifStatus = (volatile u32 *)0x10003020;
-    volatile u32 *vifStatus = (volatile u32 *)0x10003C00;
     sdfDrawReqRec_t *request = &sdfGrDrawState[sdfDrawReqQueueIndex];
     sdfDrawTag_t *drawTag = request->drawTag;
     sdfPreDrawHook_t *hook;
@@ -1034,16 +1030,17 @@ void sdfGrDrawFrame(void)
         }
         FlushCache(0);
         channel = sceDmaGetChan(1);
-        ((volatile sceDmaChan *)channel)->chcr |= 0xC0;
+        HW_WRITE(&((volatile sceDmaChan *)channel)->chcr,
+                 HW_READ(&((volatile sceDmaChan *)channel)->chcr) | 0xC0);
         sdfDispThreadFlag = 3;
         sceDmaSend(channel, (void *)(drawTag->head & SDF_DMA_ADDRESS_MASK));
         sdfGrDrawFrameTagHead = drawTag->head;
         for (;;) {
             SleepThread();
             if (sdfDrawFrameFlag != 0) return;
-            if ((((volatile u16 *)&channel->chcr)[1] & 0x7000) == 0x7000) {
-                while ((*vifStatus & 3) != 0) { }
-                while ((*gifStatus & 0x180) != 0) { }
+            if ((HW_READ(&((volatile u16 *)&channel->chcr)[1]) & 0x7000) == 0x7000) {
+                while ((HW_READ(VIF1_STAT) & 3) != 0) { }
+                while ((HW_READ(GIF_STAT) & 0x180) != 0) { }
                 sdfDeliverDrawEnd(request->drawCount, request->bufferIndex, request->bufferSlotIndex);
                 drawCount = request->drawCount;
                 frameId = sdfGrDrawFrameId;
@@ -1054,33 +1051,35 @@ void sdfGrDrawFrame(void)
             }
             mask = (u32)sceGsGetIMR();
             sceGsPutIMR(mask | 0x200);
-            *csr = 2;
-            ((volatile sceDmaChan *)channel)->chcr |= 0x100;
+            HW_WRITE(GS_CSR, 2);
+            HW_WRITE(&((volatile sceDmaChan *)channel)->chcr,
+                     HW_READ(&((volatile sceDmaChan *)channel)->chcr) | 0x100);
             SleepThread();
-            if ((*csr & 2) == 0) {
+            if ((HW_READ(GS_CSR) & 2) == 0) {
                 do {
                     if (sdfDrawFrameFlag != 0) {
                         sceGsPutIMR(mask);
                         return;
                     }
-                } while ((*csr & 2) == 0);
+                } while ((HW_READ(GS_CSR) & 2) == 0);
             }
-            *csr = 0;
+            HW_WRITE(GS_CSR, 0);
             sceGsPutIMR(mask);
-            ((volatile sceDmaChan *)channel)->chcr |= 0x100;
+            HW_WRITE(&((volatile sceDmaChan *)channel)->chcr,
+                     HW_READ(&((volatile sceDmaChan *)channel)->chcr) | 0x100);
             SleepThread();
-            resumeAddress = ((volatile sceDmaChan *)channel)->tadr;
-            transfer = (sdfStoreTransfer_t *)((volatile sceDmaChan *)channel)->madr;
-            while ((*vifStatus & 3) != 0) {
+            resumeAddress = HW_READ(&((volatile sceDmaChan *)channel)->tadr);
+            transfer = (sdfStoreTransfer_t *)HW_READ(&((volatile sceDmaChan *)channel)->madr);
+            while ((HW_READ(VIF1_STAT) & 3) != 0) {
                 if (sdfDrawFrameFlag != 0) return;
             }
-            while ((*gifStatus & 0x80) != 0) {
+            while ((HW_READ(GIF_STAT) & 0x80) != 0) {
                 if (sdfDrawFrameFlag != 0) return;
             }
-            *gifControl = 8;
-            *vifStatus = 0x800000;
-            *busdir = 1;
-            *gifControl = 0;
+            HW_WRITE(GIF_CTRL, 8);
+            HW_WRITE(VIF1_STAT, 0x800000);
+            HW_WRITE(GS_BUSDIR, 1);
+            HW_WRITE(GIF_CTRL, 0);
             remaining = transfer->length;
             address = transfer->address;
             while (remaining > 0) {
@@ -1091,9 +1090,10 @@ void sdfGrDrawFrame(void)
                 address += (u32)count * 16;
                 if (sdfDrawFrameFlag != 0) break;
             }
-            *vifStatus = 0;
-            *busdir = 0;
-            ((volatile sceDmaChan *)channel)->chcr &= ~1;
+            HW_WRITE(VIF1_STAT, 0);
+            HW_WRITE(GS_BUSDIR, 0);
+            HW_WRITE(&((volatile sceDmaChan *)channel)->chcr,
+                     HW_READ(&((volatile sceDmaChan *)channel)->chcr) & ~1);
             if (sdfDrawFrameFlag != 0) return;
             if (transfer->callback != NULL) transfer->callback(transfer->callbackParameter, resumeAddress);
             sceDmaSend(channel, (void *)resumeAddress);
