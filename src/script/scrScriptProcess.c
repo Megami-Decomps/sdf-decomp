@@ -26,7 +26,8 @@ extern void sdfChipFreeDirect(void *aPtr);
 extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
 extern void itfMesMngRelease(s32 id);
 extern s32 dds3KillProcess(dds3ProcessID_t *id, s32 shutdowntimer);
-extern s32 printf(const char *fmt, ...);
+#include "sdk_libc.h"
+
 extern void datDebugPrintf(const char *fmt, ...);
 extern s32 scrTraceCode(scrProcessWork_s *pwork);
 
