@@ -13,6 +13,8 @@
 
 #include "common.h"
 
+void *sdfDevLoadFileEx(const char *name, u32 *outData, u32 *outSize);
+
 struct sdfMatPacket_t;
 struct sdfTexPacket_t;
 
