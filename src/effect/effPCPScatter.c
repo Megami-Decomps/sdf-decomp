@@ -1,4 +1,5 @@
 #include "common.h"
+#include "effPCPData.h"
 #include "ps2asm.h"
 #include "sdf_resource.h"
 
@@ -744,7 +745,6 @@ extern void SetRotateMatrixXYZ(f32 *aAngles);
 
 
 /* Dependencies for the restored DDS effect implementations. */
-extern void *dds3EffectPCPDataGetData(void *table, s32 index);
 extern effPartHandle_t *dds3EffectPartCreate(s32 type, void *pData);
 extern effPartHandle_t *dds3EffectPartCopy(effPartHandle_t *hEffPartSrc);
 extern void dds3EffectPartDraw(effPartHandle_t *hEffPart);
