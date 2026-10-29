@@ -1,4 +1,5 @@
 #include "common.h"
+#include "sdk_libgcc.h"
 #include "kernel.h"
 #include "scr.h"
 #include "ps2asm.h"
@@ -33,7 +34,6 @@ extern char D_0052F5E8[];
 
 extern s32 printf(const char *fmt, ...);
 extern void datDebugPrintf(const char *fmt, ...);
-extern u64 fptodp(f32 value);
 
 
 extern s32 scrGetIntPara(s32 n);
