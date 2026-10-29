@@ -447,4 +447,6 @@ void mdlCreateEffectResrc_D3P(sdfItemArray_t *list, void *data);
 void mdlCreateEffectResrc_IPU(sdfItemArray_t *list, u8 *data,
                             sdfMemHandle_t *allocation, s32 size);
 
+void mdlSetClutColor(mdlObj_t *model, s32 color, f32 ratio);
+
 #endif /* MODEL_H */
