@@ -89,13 +89,14 @@ extern s32 CreateThreadSimple(void *entry, void *stack, s32 stackSize, s32 prior
 
 extern s32 StartThread(s32 threadId, void *arg);
 
-extern s32 sceCdPOffCallback(void *handler, s32 arg);
+typedef void (*cdvdPowerCallback_t)(void *argument);
+extern cdvdPowerCallback_t sceCdPOffCallback(cdvdPowerCallback_t handler, void *argument);
 
 extern s32 sceFsInit(void);
 
 extern s32 sceMount(char *mountPoint, char *device, s32 flag, void *arg, s32 arglen);
 
-void sdfHddPowerOffHandler(s32 aArg);
+void sdfHddPowerOffHandler(void *aArg);
 
 void sdfHddPowerOffTh(s32 aSemaId)
 {
@@ -110,9 +111,9 @@ void sdfHddPowerOffTh(s32 aSemaId)
     }
 }
 
-void sdfHddPowerOffHandler(s32 aArg)
+void sdfHddPowerOffHandler(void *aArg)
 {
-    iSignalSema(aArg);
+    iSignalSema((s32)aArg);
 }
 
 void sdfHddInit(void)
@@ -151,7 +152,7 @@ void sdfHddInit(void)
     }
     sema = sdfCreateSema(0, 1, 0);
     StartThread(CreateThreadSimple(sdfHddPowerOffTh, D_0058FFC0, 0x800, 1), (void *)sema);
-    sceCdPOffCallback(sdfHddPowerOffHandler, sema);
+    sceCdPOffCallback(sdfHddPowerOffHandler, (void *)sema);
     sceFsInit();
     sceMount(D_005519A0, "hdd0:dds3,", 0, NULL, 0);
     sdfHddValid = 1;
