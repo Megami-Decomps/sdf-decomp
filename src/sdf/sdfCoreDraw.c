@@ -24,7 +24,9 @@ extern void sdfMemFreeHandleDirect(sdfMemHandle_t **handle);
 extern void *sdfMemLock(sdfMemHandle_t *handle);
 extern u8 *sdfModelAllocTmPacket(sdfModelNode_t *node);
 
-/* NON_MATCHING: broad register/code-layout residual; see the unit draft guide. */
+/* NON_MATCHING: 70 of 583 words match, first difference at +0x18. The frame,
+ * stack slots, block layout and seven of the nine callee-saved roles are
+ * retail's; node and packetData hold each other's register. */
 #ifdef NON_MATCHING
 typedef struct sdfCorePacketPointBuff_tag sdfCorePacketPointBuff_tag;
 typedef struct sdfCorePacketFaceDivParm_t sdfCorePacketFaceDivParm_t;
@@ -72,7 +74,9 @@ void *sdfCorePacketGen(sdfModelNode_t *node, void *packetData, u32 attrMask,
     sdfCorePacketPointBuff_tag *points;
     u8 *cursor;
     volatile u128 *vu;
-    s32 inputHeaderBytes, inputPointStride;
+    u8 *vertices;
+    u32 savedAttrBits;
+    sdfMatPacket_t *matPacket2;
 
     __asm__ volatile (".set noreorder\n\tvaddw.xyz vf1, vf0, vf0w\n\t"
                       "vsubw.w vf1, vf0, vf0w\n\t.set reorder");
@@ -86,20 +90,19 @@ void *sdfCorePacketGen(sdfModelNode_t *node, void *packetData, u32 attrMask,
     cb.fdSoften = soften;
     cb.fdBias = bias;
     cb.matPacketPtr = node->root->matList->items[packet->header.matIndex]->packet[frame];
-    cb.matPacket2 = cb.matPacketPtr;
-    cb.savedAttrBits = cb.attrBits;
+    matPacket2 = cb.matPacketPtr;
+    savedAttrBits = cb.attrBits;
     faceCount = cb.faceCount;
     pointCount = cb.pointCount;
     packetBits = cb.packetBits;
     points = cb.pointBuff;
     corePktSetFaceDivParm(&corePktFaceDivParm, cb.matPacketPtr, color, soften, bias);
 
-    switch (packet->header.packetType) {
-    case 7: {
+    if (packet->header.packetType == 7) {
         u16 *indices = cb.dataPtr;
         u32 count = *indices++;
         sdfModelNode_t **nodes = node->root->nodeList->items;
-        volatile u128 *destination = (volatile u128 *)0x11004C00;
+        volatile u128 *destination;
         s32 i;
         cursor = CORE_ALIGN16(indices + count);
         cb.facePtr = cursor;
@@ -112,9 +115,10 @@ void *sdfCorePacketGen(sdfModelNode_t *node, void *packetData, u32 attrMask,
         vu[0xE0] = ((const u128 *)corePktCurrLight)[1];
         vu[0xE1] = ((const u128 *)corePktCurrLight)[2];
         vu[0xE2] = ((const u128 *)corePktCurrLight)[3];
-        CORE_STORE_UV_PAIR(&vu[0xE6], cb.matPacket2->texTm.q[0]);
-        CORE_STORE_UV_PAIR(&vu[0xE7], cb.matPacket2->texTm.q[1]);
-        CORE_STORE_UV_PAIR(&vu[0xE8], cb.matPacket2->texTm.q[2]);
+        CORE_STORE_UV_PAIR(&vu[0xE6], matPacket2->texTm.q[0]);
+        CORE_STORE_UV_PAIR(&vu[0xE7], matPacket2->texTm.q[1]);
+        CORE_STORE_UV_PAIR(&vu[0xE8], matPacket2->texTm.q[2]);
+        destination = vu + 0xC0;
         for (i = 0; i != count; i++) {
             const u128 *source = (const u128 *)((u8 *)nodes[*indices++]->tmPacket + frameOffset);
             destination[0] = source[0];
@@ -129,10 +133,9 @@ void *sdfCorePacketGen(sdfModelNode_t *node, void *packetData, u32 attrMask,
         vu[0xE3] = ((const u128 *)&corePktFaceDivParm)[0];
         vu[0xE4] = ((const u128 *)&corePktFaceDivParm)[1];
         vu[0xE5] = ((const u128 *)&corePktFaceDivParm)[2];
-        inputHeaderBytes = count * 12 + 0x14;
-        inputPointStride = count * 28 + 8;
-    } break;
-    case 8: {
+        cursor = corePktVu0Run(points, cursor, pointCount, count * 12 + 0x14,
+                               count * 28 + 8);
+    } else if (packet->header.packetType == 8) {
         SDF_VU0_LOADMATRIX(matrixPacket);
         MultMatrixRev(&sdf3DScreenTm);
         corePktLoadWorldLightMtx(matrixPacket);
@@ -141,20 +144,17 @@ void *sdfCorePacketGen(sdfModelNode_t *node, void *packetData, u32 attrMask,
         cb.facePtr = cursor;
         cursor = CORE_ALIGN16(cursor + faceCount * 6);
         vu = (volatile u128 *)0x11004000;
-        CORE_STORE_UV_PAIR(&vu[0xE6], cb.matPacket2->texTm.q[0]);
-        CORE_STORE_UV_PAIR(&vu[0xE7], cb.matPacket2->texTm.q[1]);
-        CORE_STORE_UV_PAIR(&vu[0xE8], cb.matPacket2->texTm.q[2]);
+        CORE_STORE_UV_PAIR(&vu[0xE6], matPacket2->texTm.q[0]);
+        CORE_STORE_UV_PAIR(&vu[0xE7], matPacket2->texTm.q[1]);
+        CORE_STORE_UV_PAIR(&vu[0xE8], matPacket2->texTm.q[2]);
         vu[0xE3] = ((const u128 *)&corePktFaceDivParm)[0];
         vu[0xE4] = coreLightConst1;
         vu[0xE5] = coreLightConst2;
-        inputHeaderBytes = 0x1C;
-        inputPointStride = 0x20;
-    } break;
-    default:
+        cursor = corePktVu0Run(points, cursor, pointCount, 0x1C, 0x20);
+    } else {
         goto ordinaryGeometry;
     }
 
-    cursor = corePktVu0Run(points, cursor, pointCount, inputHeaderBytes, inputPointStride);
     if (cb.orgAttrBits & SDF_ATTRBIT_MULTITEX) {
         cb.uv2Ptr = cursor;
         cursor = CORE_ALIGN16(cursor + pointCount * 8);
@@ -168,7 +168,6 @@ ordinaryGeometry:
         u16 *indices = cb.dataPtr;
         u32 count = *indices++;
         sdfModelNode_t **nodes = node->root->nodeList->items;
-        s32 normals = packetBits & SDF_PACKETBIT_NORMAL;
         s32 i;
         cursor = CORE_ALIGN16(indices + count);
         if (packetBits & SDF_PACKETBIT_FACE) {
@@ -176,13 +175,13 @@ ordinaryGeometry:
             cursor = CORE_ALIGN16(cursor + faceCount * 6);
         }
         for (i = 0; i != count; i++) {
-            u8 *vertices = cursor;
             u8 *normalData;
             u8 *transform;
+            vertices = cursor;
             cursor = CORE_ALIGN16(cursor + pointCount * 16);
             normalData = cursor;
             transform = (u8 *)nodes[*indices++]->tmPacket + frameOffset;
-            if (normals) {
+            if (packetBits & SDF_PACKETBIT_NORMAL) {
                 cursor = CORE_ALIGN16(cursor + pointCount * 12);
                 if (i == 0) {
                     corePktSkinPointsFirst(points, pointCount, (const f32 *)transform,
@@ -199,7 +198,7 @@ ordinaryGeometry:
                                      (const f32 *)vertices, (const u32 *)normalData);
             }
         }
-        if (normals) corePktNormalizeNorms(points, pointCount);
+        if (packetBits & SDF_PACKETBIT_NORMAL) corePktNormalizeNorms(points, pointCount);
         if (packetBits & SDF_PACKETBIT_ST) {
             cb.uvPtr = cursor;
             cursor = CORE_ALIGN16(cursor + pointCount * 8);
@@ -214,12 +213,13 @@ ordinaryGeometry:
                           "lqc2 vf25, 32(%0)\n\tlqc2 vf26, 48(%0)\n\t.set reorder"
                           : : "r" (corePktCurrLight));
     } else if (packetBits & SDF_PACKETBIT_BLENDGRP) {
-        u32 blendCount = packet->header.extData[0] & 0xFFFF;
-        u32 entry = packet->header.extData[0] >> 16;
+        u32 blendCount = packet->header.extData[0];
+        u32 entry = blendCount >> 16;
         sdfModelMorphList_t *morphs = node->root->morphList;
         sdfModelMorph_t *morph;
         s32 normals = packetBits & SDF_PACKETBIT_NORMAL;
         s32 stride, i;
+        blendCount &= 0xFFFF;
         cursor = CORE_ALIGN16(cb.dataPtr);
         if (morphs == NULL) return NULL;
         if (packetBits & SDF_PACKETBIT_FACE) {
@@ -266,44 +266,46 @@ ordinaryGeometry:
         MultMatrixRev(&sdf3DScreenTm);
         corePktLoadWorldLightMtx(matrixPacket);
     } else {
-        u8 *vertices;
-        cursor = CORE_ALIGN16(cb.dataPtr);
-        if (packetBits & SDF_PACKETBIT_FACE) {
-            cb.facePtr = cursor;
-            cursor = CORE_ALIGN16(cursor + faceCount * 6);
-        }
-        vertices = cursor;
-        cursor = CORE_ALIGN16(cursor + pointCount * 12);
-        if (packetBits & SDF_PACKETBIT_NORMAL) {
-            cb.normalPtr = cursor;
-            cursor = CORE_ALIGN16(cursor + pointCount * 12);
-        }
-        if (packetBits & SDF_PACKETBIT_ST) {
-            cb.uvPtr = cursor;
-            cursor = CORE_ALIGN16(cursor + pointCount * 8);
-            if (cb.orgAttrBits & SDF_ATTRBIT_MULTITEX) {
-                cb.uv2Ptr = cursor;
-                cursor = CORE_ALIGN16(cursor + pointCount * 8);
-            }
-        }
-        cb.vertColPtr = cursor;
-        SDF_VU0_LOADMATRIX(matrixPacket);
-        MultMatrixRev(&sdf3DScreenTm);
-        corePktLoadWorldLightMtx(matrixPacket);
-        if (cb.savedAttrBits & SDF_ATTRBIT_TEXMAP) {
-            corePktXfmLightClipUV(points, pointCount, (const u32 *)vertices,
-                                 cb.normalPtr, cb.uvPtr, cb.matPacket2->texTm.m);
-        } else {
-            corePktXfmLightClip(points, pointCount, (const u32 *)vertices, cb.normalPtr);
-        }
-        corePktOpenAndEmit(&cb);
-        return corePktClosePacket(&cb);
+        goto plainGeometry;
     }
 
-    if (cb.savedAttrBits & SDF_ATTRBIT_TEXMAP) {
-        corePktXfmLightClipUVPB(points, pointCount, cb.uvPtr, cb.matPacket2->texTm.m);
+    if (savedAttrBits & SDF_ATTRBIT_TEXMAP) {
+        corePktXfmLightClipUVPB(points, pointCount, cb.uvPtr, matPacket2->texTm.m);
     } else {
         corePktXfmLightClipPB(points, pointCount);
+    }
+    corePktOpenAndEmit(&cb);
+    return corePktClosePacket(&cb);
+
+plainGeometry:
+    cursor = CORE_ALIGN16(cb.dataPtr);
+    if (packetBits & SDF_PACKETBIT_FACE) {
+        cb.facePtr = cursor;
+        cursor = CORE_ALIGN16(cursor + faceCount * 6);
+    }
+    vertices = cursor;
+    cursor = CORE_ALIGN16(cursor + pointCount * 12);
+    if (packetBits & SDF_PACKETBIT_NORMAL) {
+        cb.normalPtr = cursor;
+        cursor = CORE_ALIGN16(cursor + pointCount * 12);
+    }
+    if (packetBits & SDF_PACKETBIT_ST) {
+        cb.uvPtr = cursor;
+        cursor = CORE_ALIGN16(cursor + pointCount * 8);
+        if (cb.orgAttrBits & SDF_ATTRBIT_MULTITEX) {
+            cb.uv2Ptr = cursor;
+            cursor = CORE_ALIGN16(cursor + pointCount * 8);
+        }
+    }
+    cb.vertColPtr = cursor;
+    SDF_VU0_LOADMATRIX(matrixPacket);
+    MultMatrixRev(&sdf3DScreenTm);
+    corePktLoadWorldLightMtx(matrixPacket);
+    if (savedAttrBits & SDF_ATTRBIT_TEXMAP) {
+        corePktXfmLightClipUV(points, pointCount, (const u32 *)vertices,
+                             cb.normalPtr, cb.uvPtr, matPacket2->texTm.m);
+    } else {
+        corePktXfmLightClip(points, pointCount, (const u32 *)vertices, cb.normalPtr);
     }
     corePktOpenAndEmit(&cb);
     return corePktClosePacket(&cb);

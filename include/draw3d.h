@@ -176,8 +176,10 @@ enum SDF_PACKETBIT_e
 };
 
 /* The draw state sdfCorePacketGen keeps on its stack and every corePkt*
- * routine works through. Every offset from tmSave to matPacket2 is proven from
- * code; the size is not, since no function but sdfCorePacketGen declares one.
+ * routine works through. Every offset from tmSave to backfaceSign is proven from
+ * code. The size is 0xB0: sdfCorePacketGen's first spill slot sits at 0xB0, so
+ * the block ends there once the 16-byte round-up is applied. The two words at
+ * 0xB0 and 0xB4 that earlier sat here are locals of that function.
  * See include/README.md. */
 typedef struct QWORD_ALIGNED
 {
@@ -221,11 +223,6 @@ typedef struct QWORD_ALIGNED
     void *uv2Ptr;
     void *vertColPtr;
     f32 backfaceSign; /* -1 when the draw is reversed, else 1 */
-    /* Past the HD struct's end. The first is the copy of attrBits
-     * sdfCorePacketGen tests for SDF_CORE_ATTR_TEXTURED, the second a copy of
-     * matPacketPtr it reads texTm through. */
-    u32 savedAttrBits;
-    sdfMatPacket_t *matPacket2;
 } corePktCb_t;
 
 /* sdfCorePacketGen's own threshold for a blend shape being worth applying. */
