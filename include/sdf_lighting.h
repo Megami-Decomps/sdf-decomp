@@ -3,6 +3,8 @@
 
 #include "sdf_types.h"
 
+typedef f32 (*sdfLightSources_t[3])[4];
+
 typedef struct sdf3DLightParallelPacket_t sdf3DLightParallelPacket_t;
 
 /* The parallel-light packet. normal is the three light directions held as a

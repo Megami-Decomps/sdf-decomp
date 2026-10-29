@@ -39,7 +39,6 @@ enum {
     SDF_GS_TRXDIR = 0x53
 };
 
-typedef f32 (*sdfLightSources_t[3])[4];
 
 struct sdfDrawTag_t;
 
