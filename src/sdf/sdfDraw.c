@@ -973,7 +973,140 @@ void sdfGrInitDraw(void) {
     sdfDrawReqQueueIndex = 0;
 }
 
+#ifdef NON_MATCHING
+#include "libdma.h"
+#include "sdfGsMemIO.h"
+
+extern volatile u8 sdfDrawFrameFlag;
+extern volatile u8 sdfDispThreadFlag;
+extern u8 sdfFrameEvenOdd;
+extern u8 sdfGrDrawFrameId;
+extern u8 sdfGrDrawFirstFlag;
+extern u8 D_00551888;
+extern u32 sdfGrDrawFrameTagHead;
+extern s32 dds3GsThreadId;
+extern s32 SignalSema(s32 sema);
+extern s32 SleepThread(void);
+extern void FlushCache(s32 mode);
+extern sceDmaChan *sceDmaGetChan(u32 channel);
+extern void sceDmaSend(sceDmaChan *channel, void *tag);
+extern void sceDmaRecvN(sceDmaChan *channel, void *data, u32 qwc);
+extern u64 sceGsGetIMR(void);
+extern u64 sceGsPutIMR(u64 mask);
+extern void sdfDeliverDrawStart(s32 frameId, s32 bufferId);
+extern void sdfDeliverDrawEnd(s32 mode, s32 frameId, s32 halfOffset);
+extern void sdfImageSetTrans(void);
+extern void sdfDevConsDrawAll(void);
+extern void sdfDelayedResrcProc(void);
+
+void sdfGrDrawFrame(void)
+{
+    volatile u64 *csr = (volatile u64 *)0x12001000;
+    volatile u64 *busdir = (volatile u64 *)0x12001040;
+    volatile u32 *gifControl = (volatile u32 *)0x10003000;
+    volatile u32 *gifStatus = (volatile u32 *)0x10003020;
+    volatile u32 *vifStatus = (volatile u32 *)0x10003C00;
+    sdfDrawReqRec_t *request = &sdfGrDrawState[sdfDrawReqQueueIndex];
+    sdfDrawTag_t *drawTag = request->drawTag;
+    sdfPreDrawHook_t *hook;
+    sceDmaChan *channel;
+    sdfStoreTransfer_t *transfer;
+    u32 mask, resumeAddress, address;
+    u8 bufferSlot, frameId, firstFlag, drawCount;
+    s32 remaining, count;
+
+    if (drawTag == NULL || request->drawCount == 2) {
+        SignalSema(dds3GsThreadId);
+    } else {
+        bufferSlot = (request->drawCount != 0 ? request->bufferSlotIndex : sdfFrameEvenOdd) ^ 1;
+        D_0055188A = bufferSlot;
+        request->bufferSlotIndex = bufferSlot;
+        frameId = sdfGrDrawFrameId;
+        request->bufferIndex = frameId;
+        sdfDeliverDrawStart(frameId, request->queuedBufferIndex);
+        SignalSema(dds3GsThreadId);
+        if (sdfDrawImageTrans != 0) {
+            sdfDrawImageTrans = 0;
+            sdfImageSetTrans();
+        }
+        for (hook = request->preDraw; hook != NULL; hook = hook->next) {
+            hook->predrawFunc(hook, request->bufferIndex);
+        }
+        FlushCache(0);
+        channel = sceDmaGetChan(1);
+        ((volatile sceDmaChan *)channel)->chcr |= 0xC0;
+        sdfDispThreadFlag = 3;
+        sceDmaSend(channel, (void *)(drawTag->head & SDF_DMA_ADDRESS_MASK));
+        sdfGrDrawFrameTagHead = drawTag->head;
+        for (;;) {
+            SleepThread();
+            if (sdfDrawFrameFlag != 0) return;
+            if ((((volatile u16 *)&channel->chcr)[1] & 0x7000) == 0x7000) {
+                while ((*vifStatus & 3) != 0) { }
+                while ((*gifStatus & 0x180) != 0) { }
+                sdfDeliverDrawEnd(request->drawCount, request->bufferIndex, request->bufferSlotIndex);
+                drawCount = request->drawCount;
+                frameId = sdfGrDrawFrameId;
+                sdfGrDrawFirstFlag = 1;
+                request->drawCount = drawCount + 1;
+                sdfGrDrawFrameId = frameId ^ 1;
+                break;
+            }
+            mask = (u32)sceGsGetIMR();
+            sceGsPutIMR(mask | 0x200);
+            *csr = 2;
+            ((volatile sceDmaChan *)channel)->chcr |= 0x100;
+            SleepThread();
+            if ((*csr & 2) == 0) {
+                do {
+                    if (sdfDrawFrameFlag != 0) {
+                        sceGsPutIMR(mask);
+                        return;
+                    }
+                } while ((*csr & 2) == 0);
+            }
+            *csr = 0;
+            sceGsPutIMR(mask);
+            ((volatile sceDmaChan *)channel)->chcr |= 0x100;
+            SleepThread();
+            resumeAddress = ((volatile sceDmaChan *)channel)->tadr;
+            transfer = (sdfStoreTransfer_t *)((volatile sceDmaChan *)channel)->madr;
+            while ((*vifStatus & 3) != 0) {
+                if (sdfDrawFrameFlag != 0) return;
+            }
+            while ((*gifStatus & 0x80) != 0) {
+                if (sdfDrawFrameFlag != 0) return;
+            }
+            *gifControl = 8;
+            *vifStatus = 0x800000;
+            *busdir = 1;
+            *gifControl = 0;
+            remaining = transfer->length;
+            address = transfer->address;
+            while (remaining > 0) {
+                count = remaining > 0xF000 ? 0xF000 : remaining;
+                remaining -= count;
+                sceDmaRecvN(channel, (void *)address, count);
+                SleepThread();
+                address += (u32)count * 16;
+                if (sdfDrawFrameFlag != 0) break;
+            }
+            *vifStatus = 0;
+            *busdir = 0;
+            ((volatile sceDmaChan *)channel)->chcr &= ~1;
+            if (sdfDrawFrameFlag != 0) return;
+            if (transfer->callback != NULL) transfer->callback(transfer->callbackParameter, resumeAddress);
+            sceDmaSend(channel, (void *)resumeAddress);
+        }
+    }
+    firstFlag = sdfGrDrawFirstFlag;
+    D_00551888 = 1;
+    if (firstFlag != 0) sdfDevConsDrawAll();
+    sdfDelayedResrcProc();
+}
+#else
 INCLUDE_ASM(const s32, "sdf/sdfDraw", sdfGrDrawFrame);
+#endif
 
 void sdfDrawSync(void) {
     sdfDrawReqRec_t *table = sdfGrDrawState;
