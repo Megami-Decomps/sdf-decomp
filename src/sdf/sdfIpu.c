@@ -708,9 +708,16 @@ s32 IpuWriteCommand(void) {
 
 extern u8 D_00529CE8[][2];
 
+/* Residual: 18 of 114 words, first differing at +0x10. ee-gcc schedules
+ * &cb->dma into the prologue exactly as retail does, then the delay-slot pass
+ * moves it into the bnez slot; retail's slot holds a `$4 = 0` that stands
+ * between that address and the test, which no argument of the calls inside the
+ * if-body reaches, and whose live range is what pushes retail's constants off
+ * $4. */
 #ifdef NON_MATCHING
 s32 sdfIpuDecode(sdfIpuDecodeCb_t *cb)
 {
+    sdfIpuDmaRegs_t *dma = &cb->dma;
     s32 decodedBits;
     s32 mode;
 
@@ -728,7 +735,7 @@ s32 sdfIpuDecode(sdfIpuDecodeCb_t *cb)
         sceIpuSync(0, 0);
         sdfIpuSetToIpuDma(cb);
         HW_WRITE(IPU_CTRL, 0);
-        sceIpuStopDMA(&cb->dma);
+        sceIpuStopDMA(dma);
     }
 
     sdfCurrIpuDecodeCb = cb;
@@ -738,7 +745,7 @@ s32 sdfIpuDecode(sdfIpuDecodeCb_t *cb)
     cb->dma.outputControl = 0x100;
     cb->bufferIndex ^= 1;
     cb->inputFeedEnabled = 1;
-    sceIpuRestartDMA(&cb->dma);
+    sceIpuRestartDMA(dma);
     if (cb->strmToIpuDmaStep == 0) {
         cb->strmToIpuDmaStep = 1;
     } else {
