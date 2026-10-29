@@ -292,10 +292,13 @@ void dds3EffectPartModelSetPosition(mdlObj_t *hData, sdfVector4_t *pPos)
 
 void dds3EffectPartModelSetScale(void *hData, f32 scale)
 {
-    f32 v[3];
+    sdfVector4_t v;
 
-    v[0] = v[1] = v[2] = scale;
-    SDF_VU0_LOADVECTOR_MEMOPS(v[0]);
+    v.x = v.y = v.z = scale;
+#ifdef NON_MATCHING
+    v.w = 1.0f;
+#endif
+    SDF_VU0_LOADVECTOR_MEMOPS(v);
     mdlSetScale(hData);
 }
 
