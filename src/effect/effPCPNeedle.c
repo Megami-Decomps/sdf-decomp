@@ -486,7 +486,7 @@ void dds3NeedleModelDraw(dds3NeedleModel_tag *hNModel)
     D_0031F550[hNModel->blend]->append(D_0031F550[hNModel->blend], packet);
 }
 
-extern s32 printf(const char *format, ...);
+#include "sdk_libc.h"
 
 /* Build a closed triangle fan: one outer vertex, the axis centre and the next
  * outer vertex per segment. */
@@ -591,6 +591,4 @@ void dds3NeedleModelSetColor(dds3NeedleModel_tag *hNModel, s32 index, u32 abgr)
 void dds3NeedleModelSetMatrix(dds3NeedleModel_tag *hNModel, const f32 *pMatrix) {
     VU0_COPY_MATRIX(hNModel->matrix, pMatrix);
 }
-
-
 
