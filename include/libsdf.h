@@ -288,6 +288,9 @@ typedef struct
     f32 param[4];
 } sdf3DLight_t;
 
+void sdf3DMakeLightParallelPacket(struct sdf3DLightParallelPacket_t *packet,
+                                  sdf3DLight_t **lights, sdfVector4_t *ambient);
+
 /* The .pac stream decoder. sdfPacInit memsets 56 bytes, and sdfPacDecode runs
  * phase as a three-state machine: 0 starts the next packet, 1 skips bytes, 2
  * hands the input to decodeFunc. */
