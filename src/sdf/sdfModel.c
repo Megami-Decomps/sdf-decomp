@@ -524,8 +524,8 @@ sdfDmaTag_t *sdfModelSetOneSkinDrawPacket(sdfModelNode_t *aNode, sdfShapeOneSkin
 INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelSetOneSkinDrawPacket);
 #endif
 
-/* NON_MATCHING: 90 of 150 words differ (first at +0x0); eight saved registers
- * where retail fits seven. */
+/* NON_MATCHING: 63 of 150 words match (first differing word at +0x0); eight
+ * saved registers where retail fits seven. */
 #ifdef NON_MATCHING
 void sdfModelLinkShapedDrawPacket(sdfModelNode_t *aNode, sdfShapeShapedPacket_t *aDataPtr,
                                   sdfDrawTag_t *aDrawTag, s32 aId)
@@ -537,7 +537,6 @@ void sdfModelLinkShapedDrawPacket(sdfModelNode_t *aNode, sdfShapeShapedPacket_t 
     s32 i;
     u32 packed;
     u16 matIndex;
-    u16 morphIndex;
     s32 listCount;
     sdfModelMorph_t *morph;
     void *buf;
@@ -545,10 +544,10 @@ void sdfModelLinkShapedDrawPacket(sdfModelNode_t *aNode, sdfShapeShapedPacket_t 
     sdfModelShapeList_t **cursor;
 
     packed = *(u32 *)&aDataPtr->morphIndex;
-    morphIndex = packed;
-    morph = &aNode->root->morphList->items[morphIndex];
-    listCount = aDataPtr->listCount;
     matIndex = packed >> 16;
+    packed &= 0xFFFF;
+    morph = &aNode->root->morphList->items[packed];
+    listCount = aDataPtr->listCount;
     do {
         if (1e-6f < morph->target[j].blend) {
             out[used] = morph->target[j];
