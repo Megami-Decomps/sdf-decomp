@@ -638,11 +638,12 @@ void p2sdResumeBgm(s32 trackId) {
     sdfSndSendCmd(0x130, 0, &packet, 0x10);
 }
 
-s32 p2sdStopSe(s32 aId)
-{
-    s32 arg = aId;
+/* Command 0x30 copies a full 16-byte payload; only its identifier is set. */
+void p2sdStopSe(u32 soundId) {
+    u32 packet[4];
 
-    return sdfSndSendCmd(0x30, 0, &arg, 0x10);
+    packet[0] = soundId;
+    sdfSndSendCmd(0x30, 0, packet, sizeof(packet));
 }
 
 s32 p2sdStopAllBgm(void)
