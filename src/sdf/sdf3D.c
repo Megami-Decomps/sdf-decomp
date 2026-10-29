@@ -3,6 +3,7 @@
 #include "fpu.h"
 #include "ps2asm.h"
 #include "sdf_lighting.h"
+#include "libsdf.h"
 #include "sdf_resource.h"
 
 /* Register selectors carried by GIF A+D writes in the two GS contexts. */
