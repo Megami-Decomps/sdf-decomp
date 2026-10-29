@@ -1073,8 +1073,8 @@ void sdfGrDrawFrame(void)
             sceGsPutIMR(mask);
             HW_FIELD_OR(channel->chcr, 0x100);
             SleepThread();
-            resumeAddress = channel->tadr;
-            transfer = (sdfStoreTransfer_t *)channel->madr;
+            resumeAddress = HW_FIELD_READ(channel->tadr);
+            transfer = (sdfStoreTransfer_t *)HW_FIELD_READ(channel->madr);
             while ((HW_READ(VIF1_STAT) & 3) != 0) {
                 if (sdfDrawFrameFlag != 0) return;
             }
