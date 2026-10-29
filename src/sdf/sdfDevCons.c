@@ -1,4 +1,5 @@
 #include "common.h"
+#include "sdfDevCons.h"
 #include "libsdf.h"
 
 #include "ps2asm.h"
