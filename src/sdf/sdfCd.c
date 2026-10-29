@@ -106,8 +106,7 @@ extern u8 *sdfCdImageOffset;
 
 extern u8 D_0058F7C0[0x800];
 
-
-extern s32 sceOpen();
+#include "sdk_libkernl.h"
 
 extern s32 sceLseek(s32 fileHandle, s32 offset, s32 origin);
 
@@ -117,7 +116,7 @@ extern s32 sceRead(s32 fileHandle, s32 buffer, s32 byteCount);
 
 extern const char *dds3ImgPath;
 
-extern s32 sceCdSearchFile(void *, const char *);
+#include "sdk_libcdvd.h"
 
 extern u32 sdfCdImageFileName;
 
@@ -136,7 +135,8 @@ void *sdfCdImageGetDirData(void)
     return sdfCdImageDirData;
 }
 
-extern s32 printf(const char *format, ...);
+#include "sdk_libc.h"
+
 extern s32 sceCdDiskReady(s32 mode);
 extern s32 sceCdGetDiskType(void);
 extern char D_005495D8[]; /* "wait tray close.\n" */
@@ -162,7 +162,7 @@ void sdfCdWaitTrayClose(void)
         } else if (status != 18) {
             continue;
         }
-        if (sceCdSearchFile(file, dds3ImgPath) != 0) {
+        if (sceCdSearchFile((sceCdlFILE *)file, (const char *)dds3ImgPath) != 0) {
             break;
         }
     }
@@ -197,8 +197,6 @@ void sdfCdStStart(s32 lsn) {
     D_0055210C = lsn;
 }
 
-extern s32 sceCdStRead(s32 sectors, void *buffer, s32 mode, s32 *status);
-
 INCLUDE_RODATA(const s32, "sdf/sdfCd", D_005495D8);
 
 INCLUDE_RODATA(const s32, "sdf/sdfCd", D_005495F0);
@@ -212,7 +210,7 @@ void sdfCdStRead(s32 sectors, void *buffer)
 
     for (;;) {
         WaitSema(sdfCdImageFd);
-        result = sceCdStRead(sectors, buffer, 1, &status);
+        result = sceCdStRead(sectors, (u32 *)buffer, 1, (u32 *)&status);
         SignalSema(sdfCdImageFd);
         if (status == 0 && result == sectors) {
             break;
@@ -266,7 +264,7 @@ sdfCdImageDirEntry_t *sdfCdImageSearchFileDirect(const char *filename, s32 *lsn,
     }
     for (;;) {
         WaitSema(sdfCdImageFd);
-        if (sceCdSearchFile(file, name) != 0) {
+        if (sceCdSearchFile((sceCdlFILE *)file, (const char *)name) != 0) {
             fd = sceOpen(path, 1);
             if (fd < 0) {
                 SignalSema(sdfCdImageFd);
@@ -500,7 +498,7 @@ void sdfCdImageInit(const char *imageFile, const char *dirFile) {
     s32 iopHeapAddress;
     dds3ImgPath = imageFile;
     sdfCdImageLoadDir(dirFile);
-    if (sceCdSearchFile(discFileRecord, imageFile) == 0) {
+    if (sceCdSearchFile((sceCdlFILE *)discFileRecord, (const char *)imageFile) == 0) {
         FatalError("%s couldn't open.", imageFile);
     }
     dds3ImgLsn = discFileRecord[0];

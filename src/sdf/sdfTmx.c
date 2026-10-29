@@ -54,8 +54,6 @@ enum SdfFileIOCmdClbk {
 
 extern u8 D_00594940[];
 
-extern void _StartThread();
-
 extern void SleepThread(void);
 
 extern char *mcModuleNames[];
@@ -135,7 +133,7 @@ extern void FlushCache(s32);
 
 extern s32 SignalSema(s32);
 
-extern s32 sceSifSetDma(void *, s32);
+#include "sdk_libkernl.h"
 
 extern s32 sceSifDmaStat(s32);
 
@@ -592,7 +590,7 @@ void SdfFileRpcServerThreadProc(void)
 
     state->semaphore = sdfCreateSema(0, 1, 0);
     sceSifSetRpcQueue(&queue, GetThreadId());
-    sceSifRegisterRpc(&server, 0x66504F49, sdfFileRpcHandler, D_00594800, NULL, NULL, &queue);
+    sceSifRegisterRpc((struct sifRpcServerData_t *)&server, 0x66504F49, (sceSifRpcFunc)sdfFileRpcHandler, D_00594800, NULL, NULL, (struct sifRpcDataQueue_t *)&queue);
     modulePath = D_0054A360;
     if (sdfHddValid != 0) {
         if (sceGetstat(D_0054A380, &stat) == 0) {

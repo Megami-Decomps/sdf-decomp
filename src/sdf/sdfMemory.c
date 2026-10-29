@@ -22,9 +22,7 @@ extern void *sdfChipAllocDirect(u32 aSize);
 extern void sdfChipFreeDirect(void *aPtr);
 extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, sdfDelayedResrcFreeFunc aFreeFunc);
 extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aItem);
-extern s32 sceSifMCallRpc(sdfIopRpcClient_t *client, s32 function, s32 mode, void *send,
-                          s32 sendSize, void *receive, s32 receiveSize, void (*end)(void *),
-                          void *endArgument);
+#include "sdk_libmrpc.h"
 
 extern sdfMemHandleCB_tag sdfMemCB;
 extern sdfIopRpcClient_t sdfIopRpcClient;
@@ -492,7 +490,7 @@ s32 SdfIopFileRpc(const char *aName, s32 aDataSize, const void *aData, s32 *aOut
     /* The two-word reply has to start on a 64-byte boundary for the SIF. */
     reply = (u32 *)(((u32)replyScratch + SDF_IOP_FILE_RPC_REPLY_ALIGN_MASK) &
                     ~SDF_IOP_FILE_RPC_REPLY_ALIGN_MASK);
-    result = sceSifMCallRpc(&sdfIopRpcClient, 1, 0, request, requestBytes, reply, 8, NULL, NULL);
+    result = sceSifMCallRpc((sceSifMClientData *)&sdfIopRpcClient, 1, 0, request, requestBytes, reply, 8, NULL, NULL);
     if (result >= 0) {
         if (aOutSize != NULL) {
             *aOutSize = reply[1];

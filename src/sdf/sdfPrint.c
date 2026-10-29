@@ -66,8 +66,7 @@ enum sdf_stream_playback {
 
 extern void *memcpy(void *, const void *, unsigned int);
 
-s32 sceSifMCallRpc(sifRpcClientDataPrefix_t *client, s32 function, s32 mode, void *send, s32 sendSize,
-                   void *receive, s32 receiveSize, sifMRpcEnd_t end, void *endArgument);
+#include "sdk_libmrpc.h"
 
 extern sifRpcClientContextView_t D_0058F310;
 
@@ -124,10 +123,8 @@ typedef char sifPrintRpcServerData_size_must_be_0x44[
 extern void *sdfPrintRpcFunc(s32 unused, sifCommand_t *packet);
 extern s32 GetThreadId(void);
 extern s32 sceSifSetRpcQueue(sifRpcDataQueue_t *queue, s32 threadId);
-extern s32 sceSifRegisterRpc(sifPrintRpcServerData_t *server, s32 serviceId,
-                             void *(*handler)(s32, sifCommand_t *), void *buffer,
-                             s32 bufferSize, void *callback,
-                             sifRpcDataQueue_t *queue);
+#include "sdk_libkernl.h"
+
 extern void sceSifRpcLoop(sifRpcDataQueue_t *queue);
 extern u8 sdfPrintRpcBuff[];
 
@@ -137,19 +134,16 @@ void sdfPrintRpcThread(void)
     sifPrintRpcServerData_t server;
 
     sceSifSetRpcQueue(&queue, GetThreadId());
-    sceSifRegisterRpc(&server, 0x32647270, sdfPrintRpcFunc,
-                      sdfPrintRpcBuff, 0, NULL, &queue);
+    sceSifRegisterRpc((struct sifRpcServerData_t *)&server, 0x32647270, (sceSifRpcFunc)sdfPrintRpcFunc, sdfPrintRpcBuff, 0, NULL, (struct sifRpcDataQueue_t *)&queue);
     sceSifRpcLoop(&queue);
 }
 
 
 extern char D_005495C8[];
 
-extern s32 printf(const char *format, ...);
+#include "sdk_libc.h"
 
 extern s32 sdfCreateThreadWithStack(void (*entryAddress)(), s32 stackBytes, s32 priority);
-
-extern void _StartThread();
 
 extern s32 sdfGetRunTimeCountBase(void);
 
@@ -189,7 +183,7 @@ void sdfPuts(const char *str) {
         if (length != 0) {
             alignedBuffer = (u8 *)(((u32)&buffer[0x3F]) & ~0x3F);
             memcpy(alignedBuffer, str, length);
-            sceSifMCallRpc(&D_0058F310.client, 0x7D1, 0, alignedBuffer, length, NULL, 0, NULL, NULL);
+            sceSifMCallRpc((sceSifMClientData *)&D_0058F310.client, 0x7D1, 0, alignedBuffer, length, NULL, 0, NULL, NULL);
         }
     } else {
         scePrintf(D_00551908, str);

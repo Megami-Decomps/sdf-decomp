@@ -8,7 +8,8 @@ typedef struct
     void *serve;
 } sdfIopRpcClient_t;
 
-extern s32 printf(const char *format, ...);
+#include "sdk_libc.h"
+
 extern s32 sceSifLoadModule(const char *a, s32 b, const char *c);
 extern void sceSifMInitRpc(s32 mode);
 extern s32 sceSifMBindRpc(sdfIopRpcClient_t *client, s32 number, s32 mode);

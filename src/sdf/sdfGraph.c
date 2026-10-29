@@ -80,7 +80,8 @@ extern void sdfGrInitDraw(void);
 extern void sdfTexInit(void);
 extern s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
 extern s32 CreateThreadSimple(void *entry, void *stack, s32 stackSize, s32 priority);
-extern s32 _StartThread(s32 thread, s32 arg);
+#include "sdk_libkernl.h"
+
 extern void sdfDispThread(void);
 extern void sdfGrSetupPacketBuff(s32 aFrameId);
 extern void sdfCoreDrawReset(void);

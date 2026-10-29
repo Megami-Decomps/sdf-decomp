@@ -135,7 +135,7 @@ extern s32 DIntr();
 
 extern void *memcpy(void *, const void *, unsigned int);
 
-extern s32 sceOpen();
+#include "sdk_libkernl.h"
 
 extern char D_00551928[];
 

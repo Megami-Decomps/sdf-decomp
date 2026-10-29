@@ -70,12 +70,11 @@ extern char D_00529B70[];
 
 extern u8 D_0058FFC0[];
 
-extern s32 printf(const char *format, ...);
+#include "sdk_libc.h"
 
 extern s32 WaitSema(s32 aSemaId);
 
-extern s32 sceDevctl(const char *device, s32 cmd, void *arg, s32 arglen, void *buf,
-                     s32 buflen);
+#include "sdk_libkernl.h"
 
 extern s32 sceCdPowerOff(s32 *result);
 
@@ -86,8 +85,6 @@ extern s32 sceSifLoadStartModule(const char *path, s32 arglen, char *args, s32 *
 extern s32 sdfCreateSema(s32 initial, s32 max, s32 option);
 
 extern s32 CreateThreadSimple(void *entry, void *stack, s32 stackSize, s32 priority);
-
-extern s32 _StartThread(s32 threadId, void *arg);
 
 typedef void (*cdvdPowerCallback_t)(void *argument);
 extern cdvdPowerCallback_t sceCdPOffCallback(cdvdPowerCallback_t handler, void *argument);

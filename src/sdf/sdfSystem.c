@@ -42,7 +42,7 @@ extern s32 CreateThread(sdfKernelThreadParam_t *parameter);
 
 extern s32 AddIntcHandler2(s32 channel, s32 handler, s32 argument, s32 next);
 
-extern s32 AddDmacHandler2(s32 channel, s32 handler, s32 argument, s32 next);
+#include "sdk_libkernl.h"
 
 extern s32 AddSbusIntcHandler(s32 channel, s32 handler);
 
@@ -59,8 +59,6 @@ extern s32 SetAlarm(u16 delay, void (*callback)(s32, s32, s32), void *argument);
 extern s32 WaitSema(s32 semaphore);
 
 extern s32 SignalSema(s32 semaphore);
-
-extern s32 _StartThread(s32 threadId, s32 argument);
 
 extern void ExitDeleteThread(void);
 
@@ -361,7 +359,7 @@ sdfHandlerNode_t *DmacAddHandler(s32 kind, s32 channel, s32 handler, s32 arg, s3
         id = AddIntcHandler2(channel, handler, arg, next);
         break;
     case 1:
-        id = AddDmacHandler2(channel, handler, arg, next);
+        id = AddDmacHandler2(channel, (s32 (*)(s32, void *, void *))handler, arg, (void *)next);
         break;
     case 2:
         id = AddSbusIntcHandler(channel, handler);
@@ -475,7 +473,7 @@ void sdfStartThreadAndWait(sdfThCB_t *node, void (*entry)(void), void *stack, s6
     node->next = sdfVblankThreadId;
     sdfVblankThreadId = node;
     SignalSema(sdfThreadSema);
-    _StartThread(node->thId, threadArgument);
+    _StartThread(node->thId, (void *)threadArgument);
 }
 
 void sdfWaitVblank(s32 count)

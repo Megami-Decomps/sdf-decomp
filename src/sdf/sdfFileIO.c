@@ -115,12 +115,10 @@ enum sdf_stream_playback {
     SDF_STREAM_PLAYBACK_CADENCED = 2
 };
 
-extern void _StartThread();
+#include "sdk_libkernl.h"
 
 extern void *memcpy(void *, const void *, unsigned int);
 
-
-extern s32 sceOpen();
 
 extern s32 sceLseek(s32 fileHandle, s32 offset, s32 origin);
 
@@ -151,8 +149,6 @@ extern sdfFileCmdHandle_t *D_00551958;
 extern s16 sdfFileCmdFreeCount;
 
 u32 sdfMemLock(sdfMemHandle_t *aHandle);
-
-extern s32 sceWrite(s32 a, s32 b, s32 c);
 
 extern char D_00551968[];
 
@@ -414,8 +410,7 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
             continue;
         case SDF_FILE_CMD_WRITE - SDF_FILE_CMD_READOPEN:
             state->stat = SDF_FILE_CMD_STAT_WRITE;
-            result = sceWrite(state->fd, (s32)state->buffer,
-                            state->length);
+            result = sceWrite(state->fd, (const void *)state->buffer, state->length);
             if (result < 0) {
                 sdfFileCmdFinish(state, result);
                 continue;
@@ -502,7 +497,7 @@ void sdfFileCmdThread(sdfFileDeviceCB_t *aCB) {
             transferResult = state->length;
             if (transferResult != 0) {
                 state->stat = SDF_FILE_CMD_STAT_WRITE;
-                transferResult = sceWrite(fileHandle, (s32)state->buffer, transferResult);
+                transferResult = sceWrite(fileHandle, (const void *)state->buffer, transferResult);
                 if (transferResult < 0) {
                     sdfFileCmdFinish(state, transferResult);
                     continue;
@@ -949,6 +944,6 @@ void sdfFileCmdStartThread(s32 deviceType) {
         sdfFileCmdThreadPrio = 0x48;
         thread = sdfCreateThreadWithStack(entry, 0x4000, 0x48);
         worker->thId = thread;
-        _StartThread(thread, (s32)worker);
+        _StartThread(thread, worker);
     }
 }

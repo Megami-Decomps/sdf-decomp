@@ -219,7 +219,7 @@ extern s32 p2sdLoadCheckMidi(s32 MidiNo);
 
 extern s32 p2sdSmgHandle;
 
-extern s32 sprintf();
+#include "sdk_libc.h"
 
 extern sndFileRequestState_t D_00593E20;
 
@@ -308,7 +308,6 @@ extern s32 sceSifAllocIopHeap(s32 size);
 extern s32 sceSifQueryMaxFreeMemSize(void);
 extern s32 sceSifQueryMemSize(void);
 extern s32 sceSifQueryTotalFreeMemSize(void);
-extern s32 printf(const char *format, ...);
 
 s32 sdfSndIopAlloc(s32 size) {
     s32 address;
@@ -376,7 +375,7 @@ extern s32 D_005519D4;
 extern s32 _gp;
 extern s32 sceSifGetSreg(s32 index);
 extern s32 CreateThread(sdfSndInitThreadParam_t *parameter);
-extern s32 _StartThread(s32 threadId, s32 argument);
+
 extern s32 CreateThreadSimple(void *entryAddress, void *workspace, s32 stackBytes, s32 priority);
 extern void SifRpcServerThreadProc(void);
 
@@ -467,7 +466,7 @@ extern struct
     s32 attributes;
 } sdfSndTransBuf;
 
-extern s32 sceSifSetDma(void *aRequest, s32 aCount);
+#include "sdk_libkernl.h"
 
 extern s32 sceSifDmaStat(s32 aId);
 
@@ -1161,8 +1160,7 @@ void SifRpcServerThreadProc(void)
         }
     }
     sceSifSetRpcQueue(&queue, GetThreadId());
-    sceSifRegisterRpc(&server, 0x54524E53, sdfFileRpcHandleCmd,
-                      sdfFileRpcQueue, 0, NULL, &queue);
+    sceSifRegisterRpc((struct sifRpcServerData_t *)&server, 0x54524E53, (sceSifRpcFunc)sdfFileRpcHandleCmd, sdfFileRpcQueue, 0, NULL, (struct sifRpcDataQueue_t *)&queue);
     sceSifRpcLoop(&queue);
 }
 

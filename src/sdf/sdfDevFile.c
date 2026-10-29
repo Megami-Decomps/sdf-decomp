@@ -103,7 +103,7 @@ enum sdf_stream_playback {
 
 u32 sdfMemLock(sdfMemHandle_t *aHandle);
 
-s32 printf(const char *format, ...);
+#include "sdk_libc.h"
 
 extern char D_0054A2D8[];
 

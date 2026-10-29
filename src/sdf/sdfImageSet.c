@@ -91,7 +91,7 @@ extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
 
 extern s32 GetThreadId(void);
 
-extern s32 AddDmacHandler2(s32 channel, s32 (*handler)(s32, s32), s32 next, s32 arg);
+#include "sdk_libkernl.h"
 
 extern s32 RemoveDmacHandler(s32 channel, s32 handlerId);
 
@@ -319,7 +319,7 @@ void sdfImageSetTrans(void)
 
     if (dmaAddr != 0) {
         s32 threadId = GetThreadId();
-        s32 handlerId = AddDmacHandler2(1, sdfImageSetDmacHandler, 0, threadId);
+        s32 handlerId = AddDmacHandler2(1, (s32 (*)(s32, void *, void *))sdfImageSetDmacHandler, 0, (void *)threadId);
         u64 tag = ((u64)((u32)D_005293A0 & 0x0FFFFFFF) << 32) | 0x20000000;
         u32 *chan;
 

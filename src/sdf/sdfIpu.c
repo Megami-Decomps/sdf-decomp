@@ -162,7 +162,7 @@ enum sdf_stream_playback {
 
 extern s32 DIntr();
 
-extern void _StartThread();
+#include "sdk_libkernl.h"
 
 extern void *memcpy(void *, const void *, unsigned int);
 

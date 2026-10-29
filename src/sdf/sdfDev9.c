@@ -64,7 +64,7 @@ extern u8 sdfDev9Ready;
 
 extern s32 sceSifLoadStartModule(const char *modulePath, s32 flags, void *moduleArguments, s32 *resident);
 
-s32 printf(const char *format, ...);
+#include "sdk_libc.h"
 
 extern s32 (*p2sdSmgBuf)(void);
 

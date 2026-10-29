@@ -23,7 +23,7 @@ struct sdfGrOt_t;
 
 #define SDF_POOL_FREE_KIND 0xFFFF
 
-extern void _StartThread();
+#include "sdk_libkernl.h"
 
 extern void SleepThread(void);
 
@@ -75,8 +75,6 @@ extern s32 WaitSema(s32);
 extern void FlushCache(s32);
 
 extern s32 SignalSema(s32);
-
-extern s32 sceSifSetDma(void *, s32);
 
 extern s32 sceSifDmaStat(s32);
 
