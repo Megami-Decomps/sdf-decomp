@@ -41,29 +41,33 @@ void movie_2C5080(const char *aStr)
     puts(aStr);
 }
 
-/* NON_MATCHING: 39 of 53 words differ (first at +0xC). */
+/* NON_MATCHING: 21 of 52 words match, one word short (first differing word
+ * at +0x44); the +0x70 arm needs retail's movn, which gcc folds away. */
 #ifdef NON_MATCHING
 u8 *movieWaitSema(s32 aSize)
 {
     sdfMovieCb_t *mov = movieSemaId;
     sdfMovieStrmPac_t *obj = mov->readCb.pac;
-    u8 *ptr = NULL;
+    u8 *ptr;
 
     WaitSema(movieStreamSema);
     if (obj->scratchSize > 0) {
         ptr = obj->scratch;
         obj->scratchSize -= aSize;
         obj->scratch = ptr + aSize;
-    } else if (obj->ringLength < aSize) {
-        if (movieSemaCount != mov->decodeCb.frame) {
-            movieSemaCount = mov->decodeCb.frame;
-        }
     } else {
         ptr = obj->ringBuffer + obj->ringOffset;
-        obj->ringLength -= aSize;
-        obj->ringOffset += aSize;
-        if (obj->ringOffset > 0xFFFF) {
-            obj->ringOffset -= 0x10000;
+        if (obj->ringLength < aSize) {
+            ptr = NULL;
+            if (movieSemaCount != mov->decodeCb.frame) {
+                movieSemaCount = mov->decodeCb.frame;
+            }
+        } else {
+            obj->ringLength -= aSize;
+            obj->ringOffset += aSize;
+            if (obj->ringOffset > 0xFFFF) {
+                obj->ringOffset -= 0x10000;
+            }
         }
     }
     SignalSema(movieStreamSema);
