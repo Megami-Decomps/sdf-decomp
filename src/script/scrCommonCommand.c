@@ -33,9 +33,8 @@ extern char D_0052F5E8[];
 
 extern s32 printf(const char *fmt, ...);
 extern void datDebugPrintf(const char *fmt, ...);
-extern u64 sdfFloatToULong(f32 value);
+extern u64 fptodp(f32 value);
 
-EQUATE_FPTODP();
 
 extern s32 scrGetIntPara(s32 n);
 extern f32 scrGetFloatPara(s32 n);
