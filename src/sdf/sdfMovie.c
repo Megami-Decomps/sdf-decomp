@@ -73,31 +73,39 @@ u8 *movieWaitSema(s32 aSize)
 INCLUDE_ASM(const s32, "sdf/sdfMovie", movieWaitSema);
 #endif
 
-/* NON_MATCHING: draft, not yet measured as a near miss. It is ordinary C apart
- * from the two bit-length idioms, which PS2_WORD_BIT_LENGTH covers; what is
- * unverified is the order cc1 reassociates the TEX0 chain into and the
- * schedule of the twenty packet stores. */
-#ifdef NON_MATCHING
+/* DMA/VIF/GIF header followed by nine real A+D writes for one movie sprite. */
+typedef struct sdfMovieDrawPacket_t {
+    u64 dmaTag;
+    u64 vifCommands;
+    sdfGifTag_t gifTag;
+    sdfGrTagStdReg_t sampling;
+    sdfGrTagStdReg_t texture;
+    sdfGrTagStdReg_t clamp;
+    sdfGrTagStdReg_t textureAlpha;
+    sdfGrTagStdReg_t color;
+    sdfGrTagStdReg_t sourceOrigin;
+    sdfGrTagStdReg_t vertexOrigin;
+    sdfGrTagStdReg_t sourceExtent;
+    sdfGrTagStdReg_t vertexExtent;
+} sdfMovieDrawPacket_t;
+
+extern u8 *movieWaitSema(s32 size);
+extern s32 sdfGrAllocPacketBuff(s32 size);
+extern sdfDrawTag_t *sdfPrimAllocDrawTag(s32 (*allocator)(s32));
+extern void sdfDrawTagLink(sdfDrawTag_t *tag, u32 packet);
+extern u32 p2sdSetPcmCallback(u32 callback);
 extern s32 p2sdPlayPcm(u8 channel);
-extern s32 sdfGrAllocPacketBuff(s32 aSize);
-extern sdfDrawTag_t *sdfPrimAllocDrawTag(s32 (*aAllocator)(s32));
-extern u32 p2sdSetPcmCallback(u32 aCallback);
-extern void sdfDrawTagLink(sdfDrawTag_t *aTag, u32 aPacket);
 
 void release_movieobj2(sdfMovieCb_t *obj, sdfGrOt_t *ot)
 {
-    u64 *packet;
+    sdfMovieDrawPacket_t *packet;
     sdfDrawTag_t *tag;
-    s64 tbp0;
-    s64 tbw;
-    s64 tw;
-    s64 th;
-    s64 psm;
-    s64 tex0;
-    s32 width;
-    s32 height;
-    s32 x;
-    s32 y;
+    u16 width;
+    u16 height;
+    s32 widthLog2;
+    s32 heightLog2;
+    u32 bufferWidth;
+    u32 basePointer;
 
     if (obj->decodeCb.playbackPhase < 2) {
         return;
@@ -105,61 +113,53 @@ void release_movieobj2(sdfMovieCb_t *obj, sdfGrOt_t *ot)
     if (obj->sndActive != 0 && obj->sndPlaying == 0 && obj->readCb.pac->ringLength >= 0x1000) {
         obj->sndPlaying = 1;
         movieSemaId = obj;
-        p2sdSetPcmCallback(movieWaitSema);
+        p2sdSetPcmCallback((u32)movieWaitSema);
         p2sdPlayPcm(obj->sndVolume);
     }
 
-    packet = sdfGrAllocPacketBuff(0xB0);
-    width = obj->decodeCb.width;
+    packet = (sdfMovieDrawPacket_t *)sdfGrAllocPacketBuff(sizeof(sdfMovieDrawPacket_t));
+    packet->dmaTag = 0x100000A;
     height = obj->decodeCb.height;
-    tw = (s64)PS2_WORD_BIT_LENGTH(width - 1) << 26;
-    th = (s64)PS2_WORD_BIT_LENGTH(height - 1) << 30;
-    tbw = (u32)width >> 6;
-    if (tbw == 0) {
-        tbw = 1;
+    width = obj->decodeCb.width;
+    packet->vifCommands = 0x5000000A00000000ULL;
+    packet->gifTag.parm = 0x108B400000008009ULL;
+    packet->gifTag.regs = 0x0E;
+    packet->sampling.data = 0x21;
+    packet->sampling.reg = 0x14;
+    heightLog2 = height - 1;
+    widthLog2 = width - 1;
+    bufferWidth = width >> 6;
+    heightLog2 = PS2_WORD_BIT_LENGTH(heightLog2);
+    widthLog2 = PS2_WORD_BIT_LENGTH(widthLog2);
+    basePointer = (u32)obj->decodeCb.resourceWord >> 6;
+    if (bufferWidth == 0) {
+        bufferWidth = 1;
     }
-    tbw <<= 14;
-    tbp0 = (u32)obj->decodeCb.resourceWord >> 6;
-    psm = 0;
-    if (obj->decodeCb.rgbMode != 0) {
-        psm = 0x200000; /* PSMCT16 */
-    }
-    /* TCC is set, so the IPU output is sampled with its alpha. */
-    tex0 = ((u64)0x8000 << 19) | th | tw | tbw | tbp0 | psm;
-
-    x = obj->x;
-    y = obj->y;
-    packet[0] = 0x0100000A;                   /* DMAtag, CNT, 10 quadwords */
-    packet[1] = (u64)0x5000000A << 32;        /* VIF DIRECT, 10 quadwords */
-    packet[2] = 0x108B400000008009;           /* GIFtag: sprite, TME, FST, 9 A+D */
-    packet[3] = 0x0E /* A+D */;
-    packet[4] = 0x21;
-    packet[5] = 0x14 /* TEX1_1 */;
-    packet[6] = tex0;
-    packet[7] = 0x06 /* TEX0_1 */;
-    packet[8] = 5;
-    packet[9] = 0x08 /* CLAMP_1 */;
-    packet[10] = 0x4000000000000080;
-    packet[11] = 0x3B /* TEXA */;
-    packet[12] = 0x80808080;
-    packet[13] = 0x01 /* RGBAQ */;
-    packet[14] = 0;
-    packet[15] = 0x03 /* UV */;
-    packet[16] = ((u64)obj->z << 32) | (u32)(y << 16) | (u32)x;
-    packet[17] = 0x05 /* XYZ2 */;
-    packet[18] = (height << 20) | (width << 4);
-    packet[19] = 0x03 /* UV */;
-    packet[20] = ((u64)obj->z << 32) | (u32)((y + obj->height) << 16) |
-                 (u32)(x + obj->width);
-    packet[21] = 0x05 /* XYZ2 */;
-
+    packet->texture.data = ((u64)1 << 34) | ((u64)heightLog2 << 30) |
+        (widthLog2 << 26) | (obj->decodeCb.rgbMode != 0 ? 0x200000 : 0) |
+        ((u64)bufferWidth << 14) | (u64)basePointer;
+    packet->texture.reg = 0x06;
+    packet->clamp.data = 5;
+    packet->clamp.reg = 0x08;
+    packet->textureAlpha.data = 0x4000000080ULL;
+    packet->textureAlpha.reg = 0x3B;
+    packet->color.data = (s32)0x80808080;
+    packet->color.reg = 0x01;
+    packet->sourceOrigin.data = 0;
+    packet->sourceOrigin.reg = 0x03;
+    packet->vertexOrigin.data = ((u64)obj->z << 32) |
+        ((u32)(s16)obj->y << 16) | (u32)(s16)obj->x;
+    packet->vertexOrigin.reg = 0x05;
+    packet->sourceExtent.data = (s32)(((u32)height << 20) | ((u32)width << 4));
+    packet->sourceExtent.reg = 0x03;
+    packet->vertexExtent.data = ((u64)obj->z << 32) |
+        ((u32)((s16)obj->y + (s16)obj->height) << 16) |
+        (u32)((s16)obj->x + (s16)obj->width);
+    packet->vertexExtent.reg = 0x05;
     tag = sdfPrimAllocDrawTag(NULL);
-    sdfDrawTagLink(tag, packet);
+    sdfDrawTagLink(tag, (u32)packet);
     ot->regFunc(ot, tag);
 }
-#else
-INCLUDE_ASM(const s32, "sdf/sdfMovie", release_movieobj2);
-#endif
 
 void movieReadNextChunk(sdfMovieCb_t *aMov)
 {
