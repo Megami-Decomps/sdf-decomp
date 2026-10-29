@@ -443,6 +443,9 @@ typedef struct sdfThCB_t
     s32 thId;
 } sdfThCB_t;
 
+void sdfStartThreadAndWait(sdfThCB_t *thread, void (*entry)(void), void *stack,
+                           s64 stackSize, s32 priority, s32 argument);
+
 
 
 /* Serialized texture-offset table passed with an in-memory scene resource.

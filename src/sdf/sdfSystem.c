@@ -114,8 +114,6 @@ void sdfAlarmWakeup(s32 unused0, s32 unused1, s32 threadId);
 
 void sdfWaitVblank(s32 count);
 
-void sdfStartThreadAndWait(sdfThCB_t *node, void (*entry)(void), void *stack,
-                           s64 stackBytes, s32 priority, s32 argument);
 
 s32 sdfInitThreadSystem(void);
 

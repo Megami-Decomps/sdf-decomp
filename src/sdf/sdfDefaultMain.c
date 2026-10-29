@@ -53,8 +53,6 @@ extern void SdfIopInit(const char *driverPath, const char *modulePath);
 
 extern void sdfStartFileRpcServer(void);
 
-extern void sdfStartThreadAndWait(sdfThCB_t *thread, void (*entry)(void), void *stack,
-                                  s32 stackSize, s32 priority, s32 arg);
 
 extern void sdfSetMainThreadPriority(void);
 

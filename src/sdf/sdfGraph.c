@@ -81,8 +81,6 @@ extern void sdfTexInit(void);
 extern s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
 extern s32 CreateThreadSimple(void *entry, void *stack, s32 stackSize, s32 priority);
 extern s32 _StartThread(s32 thread, s32 arg);
-extern void sdfStartThreadAndWait(sdfThCB_t *thread, void (*entry)(void), void *stack,
-                                  s32 stackSize, s32 priority, s32 arg);
 extern void sdfDispThread(void);
 extern void sdfGrSetupPacketBuff(s32 aFrameId);
 extern void sdfCoreDrawReset(void);
