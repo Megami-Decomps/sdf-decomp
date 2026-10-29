@@ -280,7 +280,7 @@ struct sdfGrOt_t
 };
 
 /* Four quadwords: colour, direction, position and the falloff parameters. */
-typedef struct
+typedef struct sdf3DLight_t
 {
     sdfVector4_t color;
     sdfVector4_t v;
