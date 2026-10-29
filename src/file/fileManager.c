@@ -1,6 +1,7 @@
 #include "common.h"
 #include "libsdf.h"
 #include "kernel.h"
+#include "fileManager.h"
 
 /* All three views share the 0x30-byte request header. Their differently
  * typed links distinguish transfer work from the queue and PAC callbacks. */
@@ -27,9 +28,6 @@ typedef void (*fileTransferCallback_t)(void *request, u32 arg);
     u16 slot; \
     Link *cbnext;
 
-typedef struct fileRequest {
-    FILE_REQUEST_FIELDS(struct fileRequest, void *)
-} fileRequest_t;
 
 typedef struct fileTransferJob {
     FILE_REQUEST_FIELDS(struct fileTransferJob, fileTransferCallback_t)
