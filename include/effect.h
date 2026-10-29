@@ -4,6 +4,11 @@
 #include "common.h"
 #include "libsdf.h"
 
+typedef struct effPCPBossBUNSINParam_t {
+    union { s32 pStartBits; struct nbFormation_t *pStartForm; };
+    union { s32 pEndBits; struct nbFormation_t *pEndForm; };
+} effPCPBossBUNSINParam_t;
+
 /* Shared effect RNG and retained slot-array header. */
 typedef struct effRandState_t {
     u32 words[4];
