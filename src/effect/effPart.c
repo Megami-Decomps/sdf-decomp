@@ -25,22 +25,7 @@ typedef struct
     void *pHandle;
 } dds3EffectPCP_t;
 
-typedef struct
-{
-    u32 size;
-    u32 offset;
-    u32 type;
-    u32 reserve;
-} dds3EffectPCPData_Part_t;
 
-typedef struct
-{
-    u32 kateg;
-    u32 param;
-    u32 part;
-    u32 reserve;
-    dds3EffectPCPData_Part_t pcpData[1];
-} dds3EffectPCPData_t;
 
 typedef struct
 {
@@ -110,13 +95,9 @@ void dds3EffectPartModelInit(mdlObj_t *hModel);
 
 effPartHandle_t *dds3EffectPartCreate(u16 type, void *pData);
 
-u32 dds3EffectPCPDataGetKateg(dds3EffectPCPData_t *hPCPData);
 
-u32 dds3EffectPCPDataGetParam(dds3EffectPCPData_t *hPCPData);
 
-u32 dds3EffectPCPDataGetType(dds3EffectPCPData_t *hPCPData, u32 number);
 
-void *dds3EffectPCPDataGetData(dds3EffectPCPData_t *hPCPData, u32 number);
 
 extern u32 effBTLPointLightProcess;
 
@@ -142,7 +123,6 @@ void *dds3EffectPartGetHandle(effPartHandle_t *hEffPart);
 
 u16 dds3EffectPartGetType(effPartHandle_t *hEffPart);
 
-u32 dds3EffectPCPDataGetSize(dds3EffectPCPData_t *hPCPData, u32 number);
 
 void dds3EffectPartDelete(effPartHandle_t *hEffPart);
 
