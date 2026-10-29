@@ -251,7 +251,7 @@ extern const char D_0054F630[]; /* padded unit-owned ".PB" suffix */
 extern const mdlWorkPrefix_t D_0054F640[]; /* padded unit-owned "work/" prefix */
 extern mdlHddFileEntry_t *mdlHddFileCount; /* retail name: linked directory entries */
 extern u8 sdfHddValid;
-extern const char D_0054B550[]; /* newlib character classes: EOF slot, then 256 bytes */
+extern const char _ctype_[]; /* newlib character classes: EOF slot, then 256 bytes */
 extern s32 sceDopen(const char *name);
 extern s32 sceDread(s32 handle, mdlDirectoryEntry_t *entry);
 extern s32 sceDclose(s32 handle);
@@ -276,7 +276,7 @@ extern void MultMatrixRev(sdfMatrix4_t *aMatrix);
 extern void MultMatrixRevNoArg(void);
 s32 mdlFileLoad(s32 major, s32 minor, s32 regFlags, const char *filename, void (*callback)(u32), u32 parm);
 
-#define MDL_CHAR_IS_LOWER(c) ((D_0054B550 + 1)[(unsigned)(c)] & 2)
+#define MDL_CHAR_IS_LOWER(c) ((_ctype_ + 1)[(unsigned)(c)] & 2)
 
 static inline s32 FileUpper(s32 c)
 {
