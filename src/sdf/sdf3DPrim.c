@@ -162,8 +162,8 @@ typedef struct sdf3DPrimPolyParm_t {
     const void *uv;
     const void *multiUv;
     const void *vertexColor;
-    void *(*allocate)(s32);
-    f32 allocator;
+    void *(*allocator)(s32);
+    f32 zBias;
 } sdf3DPrimPolyParm_t;
 
 /* Reserve size bytes from the active packet buffer, rounded up to 16 bytes.
@@ -241,7 +241,7 @@ u32 *sdf3DPrimMakePoly(sdf3DPrimPolyParm_t *aParm) {
     u32 primitive = aParm->attr | 0x68;
     u32 format = 0x60;
     s32 bytes;
-    void *(*allocate)(s32);
+    void *(*allocator)(s32);
     u32 *packet;
     u32 *cursor;
     const u128 *vector;
@@ -273,9 +273,9 @@ u32 *sdf3DPrimMakePoly(sdf3DPrimPolyParm_t *aParm) {
     }
     bytes = (headerWords + stripWords + wordsPerVertex * count) * 4;
     bytes = (bytes + 15) & ~15;
-    allocate = aParm->allocate;
-    if (allocate == NULL) allocate = sdfGrAllocPacketBuff;
-    packet = allocate(bytes);
+    allocator = aParm->allocator;
+    if (allocator == NULL) allocator = sdfGrAllocPacketBuff;
+    packet = allocator(bytes);
     *(u64 *)packet = (u64)(u16)((bytes >> 4) - 1) | 0x20000000ULL;
     packet[2] = 0x6102C000;
     packet[3] = (~aParm->attrInhibit) & 0xFFFF;
@@ -283,7 +283,7 @@ u32 *sdf3DPrimMakePoly(sdf3DPrimPolyParm_t *aParm) {
     packet[5] = aParm->color;
     packet[6] = 0x6003C003;
     cursor = packet + 7;
-    *cursor++ = (u32)aParm->allocator;
+    *cursor++ = (u32)aParm->zBias;
     *cursor++ = (u32)sdfFaceDivSoften;
     *cursor++ = (u32)sdfFaceDivBias;
     *cursor++ = 0x04000004;
