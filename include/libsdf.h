@@ -9,6 +9,11 @@
 #include "sdf_resource.h"
 #include "sdf_types.h"
 
+typedef struct
+{
+    s32 pm[4];
+} sdfIVector4_t;
+
 typedef struct sdfChipPageInfo_tag sdfChipPageInfo_tag;
 typedef struct sdfChipCB_tag sdfChipCB_tag;
 typedef struct sdfTexPacket_t sdfTexPacket_t;
