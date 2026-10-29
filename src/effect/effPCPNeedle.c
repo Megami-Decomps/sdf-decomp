@@ -198,15 +198,15 @@ void effPCPNeedleSpiralDelete(effPCPNeedleSpiral_tag *hData) {
     sdfMemFreeDirect(hData->hMem);
 }
 
-void effPCPNeedleSpiralCreatePCF(void *data) {
+effPCPNeedleSpiral_tag *effPCPNeedleSpiralCreatePCF(void *data) {
     effPCPNeedleSpiralParam_t *work;
 
     work = dds3EffectPCPDataGetData(data, 0);
-    effPCPNeedleSpiralCreate(work);
+    return effPCPNeedleSpiralCreate(work);
 }
 
-void effPCPNeedleSpiralCopy(effPCPNeedleSpiralParam_t *work) {
-    effPCPNeedleSpiralCreate(work);
+effPCPNeedleSpiral_tag *effPCPNeedleSpiralCopy(effPCPNeedleSpiralParam_t *work) {
+    return effPCPNeedleSpiralCreate(work);
 }
 
 void effPCPNeedleSpiralDraw(effPCPNeedleSpiral_tag *hData) {
