@@ -1,4 +1,5 @@
 #include "common.h"
+#include "eeregs.h"
 #include "libsdf.h"
 #include "draw.h"
 
@@ -86,13 +87,7 @@ extern void sdfDispThread(void);
 extern void sdfGrSetupPacketBuff(s32 aFrameId);
 extern void sdfCoreDrawReset(void);
 
-#define D_ENABLER ((volatile u32 *)0x1000F520)
-#define D_ENABLEW ((volatile u32 *)0x1000F590)
-#define D1_CHCR ((volatile u32 *)0x10009000)
-#define GS_CSR ((volatile u64 *)0x12001000)
-#define GS_BUSDIR ((volatile u64 *)0x12001040)
-#define HW_READ(reg) (*(reg))
-#define HW_WRITE(reg, value) (*(reg) = (value))
+
 
 
 /* NON_MATCHING: 11 of 22 words differ (first at +0x1C). */

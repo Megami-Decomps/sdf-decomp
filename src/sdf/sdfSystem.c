@@ -1,5 +1,6 @@
 #include "fpu.h"
 #include "common.h"
+#include "eeregs.h"
 #include "pipe.h"
 #include "ps2asm.h"
 #include "basic.h"
@@ -117,11 +118,7 @@ s32 sdfInitThreadSystem(void);
 
 s32 VblankIntcHandler(s32 cause);
 
-#define T0_COUNT ((volatile u32 *)0x10000000)
 
-#define T0_MODE ((volatile u32 *)0x10000010)
-
-#define HW_WRITE(reg, value) (*(reg) = (value))
 
 
 
@@ -428,12 +425,12 @@ void sdfDelayThread(u32 delay) {
 
 s32 sdfGetRunTimeCountBase(void)
 {
-    return *(volatile u32 *)0x10000000;
+    return HW_READ(T0_COUNT);
 }
 
 s32 sdfGetRunTimeCount(s32 aBaseTime)
 {
-    return (*(volatile u32 *)0x10000000 - aBaseTime) & 0xFFFF;
+    return (HW_READ(T0_COUNT) - aBaseTime) & 0xFFFF;
 }
 
 void sdfSystemThreadProc(void) {
