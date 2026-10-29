@@ -1,4 +1,5 @@
 #include "common.h"
+#include "sdk_libgcc.h"
 #include "newdata.h"
 #include "scr.h"
 
@@ -259,10 +260,6 @@ extern f32 CodeFunc_2Operation_f2;
 extern f32 CodeFunc_2Operation_rf;
 extern s32 CodeFunc_2Operation_t1;
 extern s32 CodeFunc_2Operation_t2;
-
-/* Recovered symbol names for ee-gcc's fptodp/dpcmp runtime entry points. */
-extern f64 fptodp(f32 value) __attribute__((const));
-extern long dpcmp(f64 left, f64 right) __attribute__((const));
 
 void CodeFunc_2Operation(scrProcessWork_s *pwork, s32 type)
 {
