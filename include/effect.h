@@ -60,6 +60,19 @@ typedef struct effBezierCurve_t {
     f32 parameterStep;
 } effBezierCurve_t;
 
+/* One ST/XYZ2 vertex in a blur tri-strip packet. */
+typedef struct effBlurPrimVertex_t {
+    f32 s;
+    f32 t;
+    f32 q;
+    s32 unk0C;
+    s32 x;
+    s32 y;
+    s32 z;
+    s16 adc;
+    s16 unk1E;
+} effBlurPrimVertex_t;
+
 /* Shared rectangle and sampling payload, copied as 0x28 bytes. */
 typedef struct dds3Effect_Blur_t {
     u32 abgr;
