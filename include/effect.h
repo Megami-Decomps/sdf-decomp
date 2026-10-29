@@ -4,6 +4,14 @@
 #include "common.h"
 #include "libsdf.h"
 
+typedef struct effPCPBossBUNSIN2Param_t
+{
+    struct nbFormation_t *pStartForm;
+    struct nbFormation_t *pForm1;
+    struct nbFormation_t *pForm2L;
+    struct nbFormation_t *pForm2R;
+} effPCPBossBUNSIN2Param_t;
+
 typedef struct effPCPBossONGYParam_t {
     struct nbFormation_t *pFormation;
 } effPCPBossONGYParam_t;
