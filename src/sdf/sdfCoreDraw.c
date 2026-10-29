@@ -1,10 +1,9 @@
 #include "common.h"
+#include "eeregs.h"
 #include "ps2asm.h"
 #include "model.h"
 #include "draw3d.h"
 
-#define HW_READ(reg) (*(reg))
-#define HW_WRITE(reg, value) (*(reg) = (value))
 #define SDF_DMA_QWORD_SHIFT 4
 #define SDF_DMA_CHCR_TTE 0x40
 
