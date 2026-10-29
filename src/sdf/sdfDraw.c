@@ -1038,7 +1038,7 @@ void sdfGrDrawFrame(void)
         for (;;) {
             SleepThread();
             if (sdfDrawFrameFlag != 0) return;
-            if ((HW_READ(&((volatile u16 *)&channel->chcr)[1]) & 0x7000) == 0x7000) {
+            if (((HW_READ(&((volatile sceDmaChan *)channel)->chcr) >> 16) & 0x7000) == 0x7000) {
                 while ((HW_READ(VIF1_STAT) & 3) != 0) { }
                 while ((HW_READ(GIF_STAT) & 0x180) != 0) { }
                 sdfDeliverDrawEnd(request->drawCount, request->bufferIndex, request->bufferSlotIndex);
