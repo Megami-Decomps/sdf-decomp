@@ -17,6 +17,12 @@ typedef struct effPCPBossONGYParam_t {
     struct nbFormation_t *pFormation;
 } effPCPBossONGYParam_t;
 
+struct effPCPBossONGY_t;
+struct effPCPBossBUNSIN2_t;
+struct effPCPBossONGY_t *effPCPBossONGYCreate(effPCPBossONGYParam_t *param);
+struct effPCPBossONGY_t *effPCPBossONGY2Create(effPCPBossONGYParam_t *param);
+struct effPCPBossBUNSIN2_t *effPCPBossBUNSIN2Create(effPCPBossBUNSIN2Param_t *param);
+
 typedef struct effPCPBossBUNSINParam_t {
     union { s32 pStartBits; struct nbFormation_t *pStartForm; };
     union { s32 pEndBits; struct nbFormation_t *pEndForm; };
