@@ -92,6 +92,12 @@ typedef struct dds3Effect_Blur_t {
     s32 xy[2][2];
 } dds3Effect_Blur_t;
 
+/* The stored screen record keeps eight bytes beyond the copied blur quad. */
+typedef struct effScreenDrawParams_t {
+    dds3Effect_Blur_t source;
+    u8 pad28[8];
+} effScreenDrawParams_t;
+
 /* Phase-driven blur parameters and the scale-slot allocation they own. */
 typedef struct dds3Effect_RippleBlurParam_t {
     s32 number;
