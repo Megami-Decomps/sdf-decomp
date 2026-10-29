@@ -25,7 +25,7 @@ extern s32 sceSifRebootIop(const char *image);
 
 extern s32 sceSifSyncIop(void);
 
-extern void sceSifLoadFileReset(void);
+extern s32 sceSifLoadFileReset(void);
 
 extern void sceFsReset(void);
 
