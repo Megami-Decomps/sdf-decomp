@@ -176,18 +176,18 @@ typedef struct {
     u8 *uv2Ptr; /* 0xA4 */
     u8 *vertColPtr;      /* 0xA8 */
     f32 backfaceSign;             /* 0xAC */
-} corePktCb_t;
+} sdfCorePacketCb_t;
 
 extern void corePktXfmUV(void *vertices, s32 count, void *uv, void *transform);
 
-extern void corePktApplyFaceDivColor(corePktCb_t *cb, void *parameters);
+extern void corePktApplyFaceDivColor(sdfCorePacketCb_t *cb, void *parameters);
 
 extern void sdfGrClosePacketBuff(u32 aBuffPtr);
 
-void corePktEmitTexTrisCtx2(corePktCb_t *cb, u64 samplingState, u64 textureState,
+void corePktEmitTexTrisCtx2(sdfCorePacketCb_t *cb, u64 samplingState, u64 textureState,
                           u64 clampState, u64 alphaState, s32 clearPrimitiveFlags);
 
-/* Finish the selected node's transformed rows and emit its textured geometry. */ void corePktEmitMultiTexPass(corePktCb_t *work);
+/* Finish the selected node's transformed rows and emit its textured geometry. */ void corePktEmitMultiTexPass(sdfCorePacketCb_t *work);
 
 /* Per-texture reference count and non-owning clone source (0x8). */
 /* Texture buffer GPU command words (0x40); DDS1/2 game/code_002D10B0/00329F60.c. */
@@ -214,7 +214,7 @@ struct sdfTexHandle_t *sdfTexSetDirect(const TMX_HEADER_t *aTex);
 /* Read the active packet cursor or restore it at a quadword boundary. */
 s32 sdfGrOpenPacketBuff(void);
 
-static inline sdfCorePacketPointBuff_tag *AllocNode(corePktCb_t *work) {
+static inline sdfCorePacketPointBuff_tag *AllocNode(sdfCorePacketCb_t *work) {
     sdfCorePacketPointBuff_tag *node = work->freePointBuff;
 
     if (--work->freePointCount == 0) {
@@ -232,9 +232,9 @@ extern s32 corePktPointBuff;
 
 extern void corePktRelightBackFaces(u32 cb, s32 count);
 
-void corePktSetupPointBuff(corePktCb_t *cb, s32 vertCount);
+void corePktSetupPointBuff(sdfCorePacketCb_t *cb, s32 vertCount);
 
-void corePktInitCb(corePktCb_t *cb, u16 *packetHdr, u32 attrMask);
+void corePktInitCb(sdfCorePacketCb_t *cb, u16 *packetHdr, u32 attrMask);
 
 void corePktLoadWorldLightMtx(void *vectors);
 
@@ -246,26 +246,26 @@ void corePktSetFaceDivParm(sdfCorePacketFaceDivParm_t *out, sdfMatPacket_t *work
 
 void corePktLerpUVColorChain(sdfCorePacketPointBuff_tag *node);
 
-void corePktSetConstColor(corePktCb_t *cb, u32 color);
+void corePktSetConstColor(sdfCorePacketCb_t *cb, u32 color);
 
 void corePktMakeEdgePoint(sdfCorePacketPointBuff_tag *out, sdfCorePacketPointBuff_tag *first, sdfCorePacketPointBuff_tag *second);
 
-void corePktClipFace(corePktCb_t *cb);
+void corePktClipFace(sdfCorePacketCb_t *cb);
 
-void corePktBuildFaceList(corePktCb_t *cb);
+void corePktBuildFaceList(sdfCorePacketCb_t *cb);
 
-void corePktBuildBackFaceList(corePktCb_t *cb);
+void corePktBuildBackFaceList(sdfCorePacketCb_t *cb);
 
-void corePktEmitBase(corePktCb_t *cb);
+void corePktEmitBase(sdfCorePacketCb_t *cb);
 
-void corePktEmitAllPasses(corePktCb_t *cb);
+void corePktEmitAllPasses(sdfCorePacketCb_t *cb);
 
-void corePktOpenAndEmit(corePktCb_t *cb);
+void corePktOpenAndEmit(sdfCorePacketCb_t *cb);
 
 void sdfVu1Init(void) {
 }
 
-void corePktSetupPointBuff(corePktCb_t *cb, s32 vertCount) {
+void corePktSetupPointBuff(sdfCorePacketCb_t *cb, s32 vertCount) {
     void *ringEnd = (u8 *)cb + 0x78;
     if (vertCount < 0x80) {
         cb->freePointCount = 0x80 - vertCount;
@@ -289,7 +289,7 @@ void corePktSetupPointBuff(corePktCb_t *cb, s32 vertCount) {
     cb->extPointLink = ringEnd;
 }
 
-void corePktInitCb(corePktCb_t *cb, u16 *packetHdr, u32 attrMask) {
+void corePktInitCb(sdfCorePacketCb_t *cb, u16 *packetHdr, u32 attrMask) {
     u8 *payload = (u8 *)(packetHdr + 4);
     u16 ringPosition;
     u16 parameterFlags;
@@ -814,7 +814,7 @@ void corePktLerpUVColorChain(sdfCorePacketPointBuff_tag *node) {
  * is rotated so each record's colour is stored one iteration late, and the
  * chain copy is a single lq/sq. */
 #ifdef NON_MATCHING
-void corePktApplyFaceDivColor(corePktCb_t *cb, void *parameters)
+void corePktApplyFaceDivColor(sdfCorePacketCb_t *cb, void *parameters)
 {
     const sdfCorePacketFaceDivParm_t *parm = parameters;
     sdfCorePacketPointBuff_tag *point = (sdfCorePacketPointBuff_tag *)cb->pointBuff;
@@ -851,7 +851,7 @@ void corePktApplyFaceDivColor(corePktCb_t *cb, void *parameters)
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktApplyFaceDivColor);
 #endif
 
-void corePktSetConstColor(corePktCb_t *cb, u32 color) {
+void corePktSetConstColor(sdfCorePacketCb_t *cb, u32 color) {
     f32 colorScale = 1.0f / 128.0f;
     sdfCorePacketPointBuff_tag *node;
     s32 remaining;
@@ -885,7 +885,7 @@ void corePktMakeEdgePoint(sdfCorePacketPointBuff_tag *out, sdfCorePacketPointBuf
 }
 
 /* vu0 routine: native clip facing and ordinary triangle fans. */
-void corePktClipFace(corePktCb_t *cb) {
+void corePktClipFace(sdfCorePacketCb_t *cb) {
     s32 triangleCount;
     s32 i;
     u16 *triangles;
@@ -1038,7 +1038,7 @@ void corePktClipFace(corePktCb_t *cb) {
 }
 
 /* vu0 routine: native clip-plane setup and ordinary triangle fans. */
-void corePktBuildFaceList(corePktCb_t *cb) {
+void corePktBuildFaceList(sdfCorePacketCb_t *cb) {
     s32 triangleCount;
     u16 *triangles;
     sdfCorePacketPointBuff_tag *nodes;
@@ -1191,7 +1191,7 @@ void corePktBuildFaceList(corePktCb_t *cb) {
     *cb->extPointLink = NULL;
 }
 
-void corePktBuildBackFaceList(corePktCb_t *cb) {
+void corePktBuildBackFaceList(sdfCorePacketCb_t *cb) {
     /* DDS1 node region uses the tail byte at +0x50. */
     f32 scale = corePktZBias;
     s32 remaining;
@@ -1325,7 +1325,7 @@ void corePktBuildBackFaceList(corePktCb_t *cb) {
 }
 
 void corePktEmitTexTris(work)
-    corePktCb_t *work;
+    sdfCorePacketCb_t *work;
 {
     s32 remaining = work->drawFaceCount;
     if (remaining != 0) {
@@ -1392,7 +1392,7 @@ void corePktEmitTexTris(work)
     }
 }
 
-void corePktEmitTexTrisCtx2(corePktCb_t *cb, u64 samplingState, u64 textureState, u64 clampState, u64 alphaState, s32 clearPrimitiveFlags) {
+void corePktEmitTexTrisCtx2(sdfCorePacketCb_t *cb, u64 samplingState, u64 textureState, u64 clampState, u64 alphaState, s32 clearPrimitiveFlags) {
     s32 remainingTriangles = cb->drawFaceCount;
     if (remainingTriangles != 0) {
         u128 *(*triangleRefs)[3] = corePktFaceList;
@@ -1465,7 +1465,7 @@ void corePktEmitTexTrisCtx2(corePktCb_t *cb, u64 samplingState, u64 textureState
 }
 
 void corePktEmitTris(work)
-    corePktCb_t *work;
+    sdfCorePacketCb_t *work;
 {
     s32 remainingTriangles = work->drawFaceCount;
     if (remainingTriangles != 0) {
@@ -1503,7 +1503,7 @@ void corePktEmitTris(work)
     }
 }
 
-void corePktEmitBase(corePktCb_t *cb) {
+void corePktEmitBase(sdfCorePacketCb_t *cb) {
     if ((cb->attrBits & SDF_VU_TEXTURED_FLAG) != 0) {
         corePktEmitTexTris();
         return;
@@ -1511,7 +1511,7 @@ void corePktEmitBase(corePktCb_t *cb) {
     corePktEmitTris();
 }
 
-void corePktEmitMultiTexPass(corePktCb_t *cb) {
+void corePktEmitMultiTexPass(sdfCorePacketCb_t *cb) {
     sdfMatPacket_t *node;
     u32 mode;
     u32 secondaryColor;
@@ -1549,7 +1549,7 @@ void corePktEmitMultiTexPass(corePktCb_t *cb) {
 #ifdef NON_MATCHING
 extern u64 sdf3DRefMapParam;
 
-void corePktEmitRefMapPass(corePktCb_t *work)
+void corePktEmitRefMapPass(sdfCorePacketCb_t *work)
 {
     sdf3DLightParallelPacket_t *light = (sdf3DLightParallelPacket_t *)corePktCurrLight;
     sdfCorePacketPointBuff_tag *point = (sdfCorePacketPointBuff_tag *)work->pointBuff;
@@ -1574,7 +1574,7 @@ void corePktEmitRefMapPass(corePktCb_t *work)
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktEmitRefMapPass);
 #endif
 
-void corePktEmitAllPasses(corePktCb_t *cb) {
+void corePktEmitAllPasses(sdfCorePacketCb_t *cb) {
     u32 selectedFlags;
 
     corePktEmitBase(cb);
@@ -1589,7 +1589,7 @@ void corePktEmitAllPasses(corePktCb_t *cb) {
     }
 }
 
-void corePktOpenAndEmit(corePktCb_t *cb) {
+void corePktOpenAndEmit(sdfCorePacketCb_t *cb) {
     u32 packetStart = sdfGrOpenPacketBuff();
     u32 alignedStart = (packetStart + 0x3F) & ~0x3F;
     u32 ringAddress = ((alignedStart + 0x40) & SDF_DMA_ADDRESS_MASK) | 0x30000000;
@@ -1613,7 +1613,7 @@ void corePktOpenAndEmit(corePktCb_t *cb) {
     }
 }
 
-u64 *corePktClosePacket(corePktCb_t *cb) {
+u64 *corePktClosePacket(sdfCorePacketCb_t *cb) {
     u32 cursor;
     u32 start;
     s32 quadwords;
