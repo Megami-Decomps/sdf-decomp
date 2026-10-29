@@ -6,7 +6,7 @@
 typedef struct sdfStoreTransfer_t {
     s32 length;
     u32 address;
-    void (*callback)(u32 parameter, u32 resumeAddress);
+    void (*callback)(u32 parameter);
     u32 callbackParameter;
 } sdfStoreTransfer_t;
 
