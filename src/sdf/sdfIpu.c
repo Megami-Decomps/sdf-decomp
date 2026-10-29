@@ -9,78 +9,7 @@ enum {
     SDF_STREAM_READ_RESUME = 2
 };
 
-struct sdfMovieCb_t;
-
-struct sdfIpuInitParm_t;
-
-struct sdfGsMemSlice_t;
-
-struct sdfIpuDmaTag_t;
-
-/* The to-IPU and from-IPU DMA channel words the decoder keeps, plus the bit
- * position and IPU_CTRL it restores. The remaster's control block stops before
- * these. */
-typedef struct sdfIpuDmaRegs_t
-{
-    u32 inputAddress;
-    u32 inputTagAddress;
-    u32 inputQwords;
-    u32 inputControl;
-    u32 outputAddress;
-    u32 outputQwords;
-    u32 outputControl;
-    u32 bitPointer;
-    u32 ipuControl;
-} sdfIpuDmaRegs_t;
-
-typedef struct sdfIpuDecodeCb_t
-{
-    struct sdfIpuDecodeCb_t *prev;
-    struct sdfIpuDecodeCb_t *streamNext;
-    struct sdfIpuDecodeCb_t *next;
-    u8 active;
-    u8 queueLinked;
-    u8 ipuCycleInitialized;
-    u8 drained;
-    u8 playbackPhase;
-    u8 inputFeedEnabled;
-    u8 inputDmaStartPending;
-    u8 imageTrans;
-    u8 rgbMode;
-    u8 loopMode;
-    u8 fps;
-    u8 playbackCadenceRemainder;
-    u8 bufferIndex;
-    u8 getBuffId;
-    u8 activeBuffCount;
-    u8 pad1B;
-    s32 buffSize;
-    void *frameBuffers[2];
-    void *transferPacketBuffers[2];
-    u32 transferPacketBytes;
-    s32 resourceWord;
-    struct sdfGsMemSlice_t *textureHead;
-    u16 width;
-    u16 height;
-    u32 frameCount;
-    u32 tickCount;
-    s32 frame;
-    struct sdfIpuDmaTag_t *inputDmaChain;
-    u8 headerReady;
-    u8 done;
-    u8 filledSlots;
-    u8 firstSlot;
-    u8 *scratchBuffer;
-    u8 pad58[4];
-    s32 (*read)(struct sdfIpuDecodeCb_t *, struct sdfMovieCb_t *, s32, void *, s32);
-    struct sdfMovieCb_t *strmCallbackParm;
-    u8 inputFeedDmaInFlight;
-    u8 unk65;
-    u8 pad66[2];
-    sdfIpuDmaRegs_t dma;
-} sdfIpuDecodeCb_t;
-
-typedef s32 (*SdfStreamRead)(sdfIpuDecodeCb_t *, struct sdfMovieCb_t *, s32, void *, s32);
+#include "sdf_movie_types.h"
 
 void sdfIpuStrmDecodeInit(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct sdfMovieCb_t *aContext);
 
@@ -216,13 +145,6 @@ enum sdf_stream_output {
     SDF_STREAM_OUTPUT_RGBA32 = 0,
     SDF_STREAM_OUTPUT_RGBA16 = 1,
     SDF_STREAM_OUTPUT_RGBA16_DITHERED = 2
-};
-
-struct sdfIpuInitParm_t {
-    u8 rgbMode;
-    u8 ditherMode;
-    u8 loopMode;
-    u8 fps;
 };
 
 typedef struct sdfStreamFrameHeader_t {
@@ -836,8 +758,8 @@ s32 sdfIpuDecode(sdfIpuDecodeCb_t *cb)
     cb->bufferIndex ^= 1;
     cb->inputFeedEnabled = 1;
     sceIpuRestartDMA(&cb->dma);
-    if (cb->unk65 == 0) {
-        cb->unk65 = 1;
+    if (cb->strmToIpuDmaStep == 0) {
+        cb->strmToIpuDmaStep = 1;
     } else {
         SDF_IPU_CMD = 0x40000020;
         sceIpuSync(0, 0);
@@ -903,7 +825,7 @@ void sdfIpuDecodeThread(void) {
             if (work->loopMode != 0) {
                 work->ipuCycleInitialized = 0;
                 work->tickCount = 0;
-                work->unk65 = 0;
+                work->strmToIpuDmaStep = 0;
             } else {
                 work->drained = 1;
             }
