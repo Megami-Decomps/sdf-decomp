@@ -25,4 +25,6 @@ typedef struct fileRequest {
     struct fileRequest *cbnext;
 } fileRequest_t;
 
+fileRequest_t *fileLoad(const char *filename);
+
 #endif
