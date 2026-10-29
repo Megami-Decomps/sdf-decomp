@@ -240,7 +240,7 @@ enum sdf_stream_playback {
 
 extern s32 DIntr();
 
-extern void StartThread();
+extern void _StartThread();
 
 extern void *memcpy(void *, const void *, unsigned int);
 
@@ -1045,7 +1045,7 @@ void sdfIpuInit(void) {
     EnableDmac(4);
     thread = CreateThreadSimple((void *)sdfIpuDecodeThread, sdfIpuDecodeThStack, 0x800, 0x46);
     sdfIpuDecodeThId = thread;
-    StartThread(thread, 0);
+    _StartThread(thread, 0);
 }
 
 s32 sdfIpuClose(void) {

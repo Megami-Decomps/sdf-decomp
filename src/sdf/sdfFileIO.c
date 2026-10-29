@@ -115,7 +115,7 @@ enum sdf_stream_playback {
     SDF_STREAM_PLAYBACK_CADENCED = 2
 };
 
-extern void StartThread();
+extern void _StartThread();
 
 extern void *memcpy(void *, const void *, unsigned int);
 
@@ -949,6 +949,6 @@ void sdfFileCmdStartThread(s32 deviceType) {
         sdfFileCmdThreadPrio = 0x48;
         thread = sdfCreateThreadWithStack(entry, 0x4000, 0x48);
         worker->thId = thread;
-        StartThread(thread, (s32)worker);
+        _StartThread(thread, (s32)worker);
     }
 }

@@ -59,13 +59,13 @@ extern s32 WaitSema(s32 semaphore);
 
 extern s32 SignalSema(s32 semaphore);
 
-extern s32 StartThread(s32 threadId, s32 argument);
+extern s32 _StartThread(s32 threadId, s32 argument);
 
 extern void ExitDeleteThread(void);
 
 extern void TerminateThread(s32 threadId);
 
-extern void libc_2DBCB0(s32 threadId);
+extern void DeleteThread(s32 threadId);
 
 extern void EnableIntc(s32 channel);
 
@@ -504,7 +504,7 @@ void sdfStartThreadAndWait(sdfThCB_t *node, void (*entry)(void), void *stack, s6
     node->next = sdfVblankThreadId;
     sdfVblankThreadId = node;
     SignalSema(sdfThreadSema);
-    StartThread(node->thId, threadArgument);
+    _StartThread(node->thId, threadArgument);
 }
 
 void sdfWaitVblank(s32 count)
@@ -537,7 +537,7 @@ void func_002A8758(sdfThCB_t *node) {
         return;
     }
     TerminateThread(threadId);
-    libc_2DBCB0(threadId);
+    DeleteThread(threadId);
 }
 
 sdfThCB_t *func_002A87F0(s32 threadId) {
@@ -602,7 +602,7 @@ s32 sdfInitThreadSystem(void) {
     sdfThreadSema = sdfCreateSema(1, 1, 0);
     threadId = CreateThreadSimple((void *)VblankThreadProc, D_005776C0, 0x800, 0x3E);
     sdfVblankSema = threadId;
-    return StartThread(threadId, 0);
+    return _StartThread(threadId, 0);
 }
 
 void sdfSetMainThreadPriority(void)

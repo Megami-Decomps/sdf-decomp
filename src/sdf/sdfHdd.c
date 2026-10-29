@@ -87,7 +87,7 @@ extern s32 sdfCreateSema(s32 initial, s32 max, s32 option);
 
 extern s32 CreateThreadSimple(void *entry, void *stack, s32 stackSize, s32 priority);
 
-extern s32 StartThread(s32 threadId, void *arg);
+extern s32 _StartThread(s32 threadId, void *arg);
 
 typedef void (*cdvdPowerCallback_t)(void *argument);
 extern cdvdPowerCallback_t sceCdPOffCallback(cdvdPowerCallback_t handler, void *argument);
@@ -151,7 +151,7 @@ void sdfHddInit(void)
         return;
     }
     sema = sdfCreateSema(0, 1, 0);
-    StartThread(CreateThreadSimple(sdfHddPowerOffTh, D_0058FFC0, 0x800, 1), (void *)sema);
+    _StartThread(CreateThreadSimple(sdfHddPowerOffTh, D_0058FFC0, 0x800, 1), (void *)sema);
     sceCdPOffCallback(sdfHddPowerOffHandler, (void *)sema);
     sceFsInit();
     sceMount(D_005519A0, "hdd0:dds3,", 0, NULL, 0);

@@ -376,7 +376,7 @@ extern s32 D_005519D4;
 extern s32 _gp;
 extern s32 sceSifGetSreg(s32 index);
 extern s32 CreateThread(sdfSndInitThreadParam_t *parameter);
-extern s32 StartThread(s32 threadId, s32 argument);
+extern s32 _StartThread(s32 threadId, s32 argument);
 extern s32 CreateThreadSimple(void *entryAddress, void *workspace, s32 stackBytes, s32 priority);
 extern void SifRpcServerThreadProc(void);
 
@@ -402,10 +402,10 @@ void sdfSndInitCmdIF(void)
     sdfSndCmdTailIndex = 0;
     threadId = CreateThread(&D_005907C0);
     sdfSndCmdBuf = threadId;
-    StartThread(threadId, 0);
+    _StartThread(threadId, 0);
     threadId = CreateThreadSimple(SifRpcServerThreadProc, D_00592880, 0x1000, 0x43);
     D_005519D4 = threadId;
-    StartThread(threadId, 0);
+    _StartThread(threadId, 0);
 }
 
 s32 sdfSndSendCmd(s32 aCmd, s32 aParam, void *aExDataPtr, s32 aExDataSize) {

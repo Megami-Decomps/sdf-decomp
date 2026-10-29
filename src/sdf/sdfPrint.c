@@ -149,7 +149,7 @@ extern s32 printf(const char *format, ...);
 
 extern s32 sdfCreateThreadWithStack(void (*entryAddress)(), s32 stackBytes, s32 priority);
 
-extern void StartThread();
+extern void _StartThread();
 
 extern s32 sdfGetRunTimeCountBase(void);
 
@@ -163,7 +163,7 @@ void sdfPrintIopInit(void)
     s32 startTicks;
 
     threadId = sdfCreateThreadWithStack(sdfPrintRpcThread, 0x1000, 0x4C);
-    StartThread(threadId, 0);
+    _StartThread(threadId, 0);
     while (1) {
         if (sceSifMBindRpc(&D_0058F310.client, 0x646E7270, 0) < 0) {
             printf(D_005495C8);

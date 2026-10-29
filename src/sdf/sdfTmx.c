@@ -54,7 +54,7 @@ enum SdfFileIOCmdClbk {
 
 extern u8 D_00594940[];
 
-extern void StartThread();
+extern void _StartThread();
 
 extern void SleepThread(void);
 
@@ -526,7 +526,7 @@ extern void sdfUnpackFloat(const void *x, fp_number_type *u);
 
 extern f32 sdfPackFloat(const fp_number_type *u);
 
-extern long dptoul(s32 kind, s32 sign, s32 exp, long mant);
+extern long __make_dp(s32 kind, s32 sign, s32 exp, long mant);
 
 #define va_start(ap, last) __builtin_stdarg_start((ap), last)
 
@@ -610,7 +610,7 @@ void SdfFileRpcServerThreadProc(void)
 void sdfStartFileRpcServer(void) {
     s32 workerId = sdfCreateThreadWithStack(SdfFileRpcServerThreadProc, 0x1000, 0x4C);
 
-    StartThread(workerId, 0);
+    _StartThread(workerId, 0);
     sdfFileRpcThreadId = GetThreadId();
     SleepThread();
 }

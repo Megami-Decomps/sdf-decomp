@@ -80,7 +80,7 @@ extern void sdfGrInitDraw(void);
 extern void sdfTexInit(void);
 extern s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
 extern s32 CreateThreadSimple(void *entry, void *stack, s32 stackSize, s32 priority);
-extern s32 StartThread(s32 thread, s32 arg);
+extern s32 _StartThread(s32 thread, s32 arg);
 extern void sdfStartThreadAndWait(sdfThCB_t *thread, void (*entry)(void), void *stack,
                                   s32 stackSize, s32 priority, s32 arg);
 extern void sdfDispThread(void);
@@ -374,7 +374,7 @@ void sdfGrInit(s32 aPacketBuffSize) {
     dds3GsThreadId = sdfCreateSema(0, 0x20, 0);
     thread = CreateThreadSimple((void *)sdfDrawThread, D_00578FF0, 0x8000, 0x44);
     sdfDrawThreadId = thread;
-    StartThread(thread, 0);
+    _StartThread(thread, 0);
     sdfStartThreadAndWait(&D_00552080, sdfDispThread, D_00577FF0,
                           0x1000, 0x40, 0);
 }
