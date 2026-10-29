@@ -383,7 +383,7 @@ struct _reent {
     FILE __sf[3];
 };
 
-extern _reent *D_0052BE28 __attribute__((section(".data")));
+extern _reent *_impure_ptr __attribute__((section(".data")));
 
 extern s32 _puts_r(_reent *r, const char *s);
 
