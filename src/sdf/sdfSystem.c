@@ -1,5 +1,6 @@
 #include "fpu.h"
 #include "common.h"
+#include "pipe.h"
 #include "ps2asm.h"
 #include "basic.h"
 #include "motion.h"
@@ -136,18 +137,7 @@ typedef struct tagpipeBasic {
     f32 scl[4];
 } tagpipeBasic;
 
-typedef struct tagPipeObject {
-    s32 offset;
-    f32 w;
-    f32 pos[2];
-    f32 vpos[2];
-    s8 id;
-    u8 action;
-    u8 enabled;
-    u8 mdl;
-    s16 count;
-    u16 flags;
-} tagPipeObject;
+
 
 typedef struct tagPipeTexture {
     sdfTexHandle_t *th;
