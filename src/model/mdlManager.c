@@ -120,7 +120,6 @@ typedef struct
 } filePacRequest_t;
 
 extern char *strcpy(char *dst, const char *src);
-extern void sdfTexListSetClutColor(sdfItemArray_t *list, s32 color, f32 ratio);
 extern void pacFileHandleFree_(void *pacHandle);
 
 s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode);
