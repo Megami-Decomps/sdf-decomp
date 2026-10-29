@@ -1,4 +1,5 @@
 #include "common.h"
+#include "effPCPData.h"
 #include "ps2asm.h"
 #include "sdf_resource.h"
 #include "sdf_types.h"
@@ -967,7 +968,6 @@ typedef struct effRingBlock_t {
 #define EFF_RING_VERTEX_BYTES 16
 #define EFFECT_RING_START_ANGLE (-1.5707963f)
 #define EFFECT_RING_FULL_TURN (6.2831853f)
-extern void *dds3EffectPCPDataGetData(void *table, s32 index);
 extern u32 effColorBlend(u32 abgr0, u32 abgr1, f32 rate);
 extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
 extern void sdfMatFreeDelayed(sdfMat_t *aMat);
