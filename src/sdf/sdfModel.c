@@ -466,8 +466,8 @@ sdfDmaTag_t *sdfModelSetNormalDrawPacket(sdfModelNode_t *aNode, sdfShapePacket_t
     return body + 1;
 }
 
-/* NON_MATCHING: 87 of 90 words differ, six words short; the 0x0FFFFFFF mask
- * takes a saved register where retail spills it and keeps qwc. */
+/* NON_MATCHING: 82 of 96 words match at the exact size (first differing word
+ * at +0x38); aDataPtr and the 0x6C07C000 constant swap $23 and $30. */
 #ifdef NON_MATCHING
 sdfDmaTag_t *sdfModelSetOneSkinDrawPacket(sdfModelNode_t *aNode, sdfShapeOneSkinPacket_t *aDataPtr,
                                           sdfDmaTag_t *aBuffer, s32 aId)
@@ -475,27 +475,31 @@ sdfDmaTag_t *sdfModelSetOneSkinDrawPacket(sdfModelNode_t *aNode, sdfShapeOneSkin
     u32 mask = 0x0FFFFFFF;
     u32 packed = *(u32 *)&aDataPtr->packetSize;
     u16 matIndex = packed >> 16;
-    u16 qwc = packed;
-    s32 ofs = aId << 7;
-    s32 i = 0;
+    s32 ofs;
     u32 vuAddr = 1;
+    s32 i = 0;
     sdfDmaTag_t *tag;
     s32 count;
     u16 *boneId;
     u32 *words;
 
+    packed &= 0xFFFF;
     tag = sdfModelSetMatRefPacket(aNode->root, matIndex, aBuffer, aId);
+    ofs = aId << 7;
     count = aDataPtr->boneCount;
     boneId = aDataPtr->boneId;
     do {
         sdfModelNode_t *node = sdfModelSearchNode(aNode->root, *boneId++);
 
+        u32 addr;
+
         i++;
         tag->qwc = 7;
         tag->id = 0x30;
+        addr = (u32)sdfModelAllocTmPacket(node);
         tag->dat0 = 0;
         tag->dat1 = vuAddr | 0x6C07C000;
-        tag->addr = (void *)(((u32)sdfModelAllocTmPacket(node) + ofs) & mask);
+        tag->addr = (void *)((addr + ofs) & mask);
         vuAddr += 7;
         tag++;
     } while (i != count);
@@ -509,11 +513,11 @@ sdfDmaTag_t *sdfModelSetOneSkinDrawPacket(sdfModelNode_t *aNode, sdfShapeOneSkin
     words[2] = 0x0400000E;
     words[3] = 0x14000000;
     tag += 2;
-    tag->qwc = qwc;
+    tag->qwc = packed;
     tag->id = 0x30;
     tag->dat0 = 0;
     tag->dat1 = 0;
-    tag->addr = (void *)((u32)aDataPtr->dataBody & mask);
+    tag->addr = (void *)((u32)aDataPtr->dataBody & 0x0FFFFFFF);
     return tag + 1;
 }
 #else
