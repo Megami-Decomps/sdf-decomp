@@ -261,7 +261,7 @@ extern s32 CodeFunc_2Operation_t1;
 extern s32 CodeFunc_2Operation_t2;
 
 /* Recovered symbol names for ee-gcc's fptodp/dpcmp runtime entry points. */
-extern f64 sdfFloatToULong(f32 value) __attribute__((const));
+extern f64 fptodp(f32 value) __attribute__((const));
 extern long dpcmp(f64 left, f64 right) __attribute__((const));
 
 void CodeFunc_2Operation(scrProcessWork_s *pwork, s32 type)
@@ -359,8 +359,8 @@ void CodeFunc_2Operation(scrProcessWork_s *pwork, s32 type)
             CodeFunc_2Operation_rf = CodeFunc_2Operation_f1 / CodeFunc_2Operation_f2;
             break;
         case 4:
-            if (dpcmp(sdfFloatToULong(CodeFunc_2Operation_f1), 0.0) != 0 ||
-                dpcmp(sdfFloatToULong(CodeFunc_2Operation_f2), 0.0) != 0) {
+            if (dpcmp(fptodp(CodeFunc_2Operation_f1), 0.0) != 0 ||
+                dpcmp(fptodp(CodeFunc_2Operation_f2), 0.0) != 0) {
                 CodeFunc_2Operation_ri = 1;
             } else {
                 CodeFunc_2Operation_ri = 0;
@@ -368,8 +368,8 @@ void CodeFunc_2Operation(scrProcessWork_s *pwork, s32 type)
             PushInt(pwork, CodeFunc_2Operation_ri);
             return;
         case 5:
-            if (dpcmp(sdfFloatToULong(CodeFunc_2Operation_f1), 0.0) != 0 &&
-                dpcmp(sdfFloatToULong(CodeFunc_2Operation_f2), 0.0) != 0) {
+            if (dpcmp(fptodp(CodeFunc_2Operation_f1), 0.0) != 0 &&
+                dpcmp(fptodp(CodeFunc_2Operation_f2), 0.0) != 0) {
                 CodeFunc_2Operation_ri = 1;
             } else {
                 CodeFunc_2Operation_ri = 0;
