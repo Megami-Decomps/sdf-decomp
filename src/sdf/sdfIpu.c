@@ -1,5 +1,6 @@
 #include "fpu.h"
 #include "common.h"
+#include "eeregs.h"
 #include "libsdf.h"
 #include "ps2asm.h"
 
@@ -36,26 +37,6 @@ extern u32 p2sdPcmState;
 extern u32 p2sdPcmBusy;
 
 extern sdfIpuDecodeCb_t *sdfIpuTaskLink;
-
-#define SDF_IPU_CMD (*(volatile u32 *)0x10002000)
-
-#define SDF_IPU_CTRL (*(volatile u32 *)0x10002010)
-
-#define SDF_FROM_IPU_CHCR (*(volatile u32 *)0x1000B000)
-
-#define SDF_FROM_IPU_MADR (*(volatile u32 *)0x1000B010)
-
-#define SDF_FROM_IPU_QWC (*(volatile u32 *)0x1000B020)
-
-#define SDF_TO_IPU_CHCR (*(volatile u32 *)0x1000B400)
-
-#define SDF_TO_IPU_MADR (*(volatile u32 *)0x1000B410)
-
-#define SDF_TO_IPU_QWC (*(volatile u32 *)0x1000B420)
-
-#define SDF_TO_IPU_TADR (*(volatile u32 *)0x1000B430)
-
-#define SDF_DMAC_ENABLE (*(volatile u32 *)0x1000F520)
 
 typedef struct sdfHostPrefix_t {
     s8 b[7];
@@ -602,13 +583,13 @@ void sdfIpuFree(sdfIpuDecodeCb_t *cb) {
     sdfIpuDetachTask(cb);
     sdfIpuDetachQueue(cb, 1);
     if (sdfCurrIpuDecodeCb == cb) {
-        SDF_IPU_CTRL = 0x40000000;
+        HW_WRITE(IPU_CTRL, 0x40000000);
         sceIpuSync(0, 0);
-        dmaEnable = SDF_DMAC_ENABLE;
-        SDF_DMAC_ENABLE = 0x10000;
-        SDF_TO_IPU_CHCR = 1;
-        SDF_FROM_IPU_CHCR = 0;
-        SDF_DMAC_ENABLE = dmaEnable;
+        dmaEnable = HW_READ(D_ENABLER);
+        HW_WRITE(D_ENABLER, 0x10000);
+        HW_WRITE(D4_CHCR, 1);
+        HW_WRITE(D3_CHCR, 0);
+        HW_WRITE(D_ENABLER, dmaEnable);
         sdfCurrIpuDecodeCb = NULL;
         wasActive = 1;
     }
@@ -687,9 +668,9 @@ void sdfIpuHandleDmaEnd(sdfIpuDecodeCb_t *feed) {
 void sdfIpuSetToIpuDma(sdfIpuDecodeCb_t *cb) {
     if (cb->active == 0) {
         D_00552158 = cb;
-        SDF_TO_IPU_TADR = (u32)cb->inputDmaChain & 0x0FFFFFFF;
-        SDF_TO_IPU_QWC = 0;
-        SDF_TO_IPU_CHCR = 0x105;
+        HW_WRITE(D4_TADR, (u32)cb->inputDmaChain & 0x0FFFFFFF);
+        HW_WRITE(D4_QWC, 0);
+        HW_WRITE(D4_CHCR, 0x105);
     } else {
         if (cb->filledSlots == 0) {
             cb->inputDmaStartPending = 1;
@@ -697,9 +678,9 @@ void sdfIpuSetToIpuDma(sdfIpuDecodeCb_t *cb) {
         }
         D_00552158 = cb;
         cb->inputFeedDmaInFlight = 1;
-        SDF_TO_IPU_MADR = ((u32)cb->scratchBuffer + (cb->firstSlot << 13)) & 0x0FFFFFFF;
-        SDF_TO_IPU_QWC = 0x2000 / 16;
-        SDF_TO_IPU_CHCR = 0x101;
+        HW_WRITE(D4_MADR, ((u32)cb->scratchBuffer + (cb->firstSlot << 13)) & 0x0FFFFFFF);
+        HW_WRITE(D4_QWC, 0x2000 / 16);
+        HW_WRITE(D4_CHCR, 0x101);
     }
     cb->inputDmaStartPending = 0;
 }
@@ -707,20 +688,20 @@ void sdfIpuSetToIpuDma(sdfIpuDecodeCb_t *cb) {
 /* Start DMA from the IPU into the selected buffer, then toggle the byte index. */
 void sdfIpuSetFromIpuDma(sdfIpuDecodeCb_t *cb) {
     u8 bufferIndex = cb->bufferIndex;
-    SDF_FROM_IPU_MADR = (u32)cb->frameBuffers[bufferIndex] & 0x0FFFFFFF;
-    SDF_FROM_IPU_QWC = cb->buffSize / 16;
-    SDF_FROM_IPU_CHCR = 0x100;
+    HW_WRITE(D3_MADR, (u32)cb->frameBuffers[bufferIndex] & 0x0FFFFFFF);
+    HW_WRITE(D3_QWC, cb->buffSize / 16);
+    HW_WRITE(D3_CHCR, 0x100);
     cb->bufferIndex = bufferIndex ^ 1;
 }
 
 /* Read the FDEC result, then issue FDEC with an eight-bit advance; return the earlier result. */
 s32 IpuWriteCommand(void) {
     s32 decodedBits;
-    SDF_IPU_CMD = 0x40000000;
+    HW_WRITE(IPU_CMD, 0x40000000);
     sceIpuSync(0, 0);
-    decodedBits = SDF_IPU_CMD;
+    decodedBits = HW_READ(IPU_CMD);
     sceIpuSync(0, 0);
-    SDF_IPU_CMD = 0x40000008;
+    HW_WRITE(IPU_CMD, 0x40000008);
     sceIpuSync(0, 0);
     return decodedBits;
 }
@@ -737,16 +718,16 @@ s32 sdfIpuDecode(sdfIpuDecodeCb_t *cb)
         u32 dmaEnable;
 
         cb->ipuCycleInitialized = 1;
-        dmaEnable = SDF_DMAC_ENABLE;
-        SDF_DMAC_ENABLE = 0x10000;
-        SDF_TO_IPU_CHCR = 1;
-        SDF_DMAC_ENABLE = dmaEnable;
-        SDF_IPU_CTRL = 0x40000000;
+        dmaEnable = HW_READ(D_ENABLER);
+        HW_WRITE(D_ENABLER, 0x10000);
+        HW_WRITE(D4_CHCR, 1);
+        HW_WRITE(D_ENABLER, dmaEnable);
+        HW_WRITE(IPU_CTRL, 0x40000000);
         sceIpuSync(0, 0);
-        SDF_IPU_CMD = 0;
+        HW_WRITE(IPU_CMD, 0);
         sceIpuSync(0, 0);
         sdfIpuSetToIpuDma(cb);
-        SDF_IPU_CTRL = 0;
+        HW_WRITE(IPU_CTRL, 0);
         sceIpuStopDMA(&cb->dma);
     }
 
@@ -761,14 +742,14 @@ s32 sdfIpuDecode(sdfIpuDecodeCb_t *cb)
     if (cb->strmToIpuDmaStep == 0) {
         cb->strmToIpuDmaStep = 1;
     } else {
-        SDF_IPU_CMD = 0x40000020;
+        HW_WRITE(IPU_CMD, 0x40000020);
         sceIpuSync(0, 0);
     }
     decodedBits = IpuWriteCommand();
-    SDF_IPU_CTRL = (decodedBits >> 8) & 0x00FB0000;
+    HW_WRITE(IPU_CTRL, (decodedBits >> 8) & 0x00FB0000);
     mode = (decodedBits & 0x04000000) ? 0x01010000 : 0x00010000;
-    SDF_IPU_CMD = 0x10000000 | ((u32)D_00529CE8[cb->rgbMode][0] << 27) |
-                  ((u32)D_00529CE8[cb->rgbMode][1] << 26) | mode;
+    HW_WRITE(IPU_CMD, 0x10000000 | ((u32)D_00529CE8[cb->rgbMode][0] << 27) |
+                  ((u32)D_00529CE8[cb->rgbMode][1] << 26) | mode);
     return mode;
 }
 #else
@@ -1007,7 +988,7 @@ void movieAttachDecodeTask(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFo
 void sdfIpuInit(void) {
     s32 thread;
     sceIpuInit();
-    SDF_IPU_CMD = 0x90000000;
+    HW_WRITE(IPU_CMD, 0x90000000);
     sdfIpuTaskLink = 0;
     sdfCurrIpuDecodeCb = NULL;
     sdfFromIpuDmacHandlerHandle = DmacAddHandler(1, 3, sdfIpuFromDmacHandler, -1, 0);
