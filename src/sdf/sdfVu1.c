@@ -547,12 +547,15 @@ void corePktNormalizeNorms(sdfCorePacketPointBuff_tag *dst, s32 count)
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktNormalizeNorms);
 #endif
 
-/* NON_MATCHING: reference implementations, not match candidates. The five
- * routines below are assembly, and two of their inputs are VU0 register state
- * no C expression reaches: vf28-vf31 hold the screen transform MultMatrixRev left
+/* NON_MATCHING: retail's own VU0 sequences, not match candidates. These five
+ * routines are assembly, and two of their inputs are VU0 register state no C
+ * expression reaches: vf28-vf31 hold the screen transform MultMatrixRev left
  * behind, and vf24-vf26 hold the world light basis from
- * corePktLoadWorldLightMtx, whose W lanes retail rescales by
- * corePktFaceDivParm.scale on entry. They appear below under notional names.
+ * corePktLoadWorldLightMtx, whose W lanes each rescales by corePktFaceDivParm
+ * on entry. So each loop body runs retail's instructions, in retail's order,
+ * for VU0's rounding, accumulator and clip flags; C runs the loop. Retail
+ * pipelines the loops, loading the next vertex before storing this one, which
+ * does not change the results. dds-decomp's hand/vu kernels are the same.
  *
  * Each writes one 96-byte record per vertex: the transformed position at
  * +0x00, the normal with the diffuse term in its W lane at +0x10, the
@@ -566,51 +569,67 @@ INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktNormalizeNorms);
  * stored at +0x51 also carries the low two bits of the preceding clip in its
  * top two bits.
  *
- * The notional state and the two shared steps come first; each routine then
- * gets its own guard so the drafts and the INCLUDE_ASM lines stay paired. */
+ * The two shared steps come first; each routine then gets its own guard so
+ * the drafts and the INCLUDE_ASM lines stay paired. */
 #ifdef NON_MATCHING
 extern sdfCorePacketFaceDivParm_t corePktFaceDivParm;
-static f32 corePktScreenMtx[4][4]; /* vf28-vf31 */
-static f32 corePktLightRowW[3];    /* vf24-vf26, W lane only, already scaled */
 
-static void corePktShadeAndClip(sdfCorePacketPointBuff_tag *dst, const f32 *n)
+/* $3 = a packed xyz at p as (x, y, z, z's sign): ldr/ldl the first two words,
+ * lw (sign-extending) the third, pcpyld them together. */
+#define CORE_VU_LOAD_XYZ(p) \
+    "ldr $2, 0(" p ")\n\tldl $2, 7(" p ")\n\tlw $3, 8(" p ")\n\tpcpyld $3, $3, $2\n\t"
+
+/* vf19-vf21 = the light; the basis rows' W = light.W * row.x. */
+static void corePktLoadLight(void)
 {
-    f32 *lighting = (f32 *)dst->opaque10;
-    f32 diffuse = corePktFaceDivParm.scaledY + corePktLightRowW[0] * n[0] +
-                  corePktLightRowW[1] * n[1] + corePktLightRowW[2] * n[2];
-    f32 shade = diffuse;
-    s32 lane;
-
-    if (shade < 0.0f) {
-        shade = 0.0f;
-    }
-    if (shade > 1.0f) {
-        shade = 1.0f;
-    }
-    lighting[3] = diffuse + diffuse - 1.0f;
-    for (lane = 0; lane < 4; lane++) {
-        dst->color[lane] = corePktFaceDivParm.colorBase[lane] +
-                           corePktFaceDivParm.colorDelta[lane] * shade;
-    }
-    /* vclipw of (2 * diffuse - 1) against 1.0: over, then under. */
-    dst->region = (u8)((diffuse > 1.0f) | ((diffuse < 0.0f) << 1));
+    __asm__ volatile(
+        "lqc2 vf19, 0(%0)\n\tlqc2 vf20, 16(%0)\n\tlqc2 vf21, 32(%0)\n\t"
+        "vmulx.w vf24, vf19, vf24x\n\tvmulx.w vf25, vf19, vf25x\n\tvmulx.w vf26, vf19, vf26x"
+        : : "r"(&corePktFaceDivParm));
 }
 
-static void corePktXfmAndClip(sdfCorePacketPointBuff_tag *dst, const f32 *v)
+/* vf16-vf18 = a texture transform's three 64-bit rows. */
+static void corePktLoadUvTransform(const f32 *rows)
 {
-    s32 lane;
-    u32 flags = 0;
+    __asm__ volatile(
+        "ld $2, 0(%0)\n\tqmtc2.ni $2, vf16\n\tld $3, 8(%0)\n\tqmtc2.ni $3, vf17\n\t"
+        "ld $2, 16(%0)\n\tqmtc2.ni $2, vf18"
+        : : "r"(rows) : "$2", "$3");
+}
 
-    for (lane = 0; lane < 4; lane++) {
-        dst->position[lane] = corePktScreenMtx[0][lane] * v[0] +
-                              corePktScreenMtx[1][lane] * v[1] +
-                              corePktScreenMtx[2][lane] * v[2] + corePktScreenMtx[3][lane];
+/* A lit vertex from vf2 (position) and vf6 (normal): its position, normal
+ * (W = the light's 2d - 1), colour and clip bytes. With uv, vf4's coordinates
+ * through vf16-vf18 as well. */
+static void corePktLightVertex(sdfCorePacketPointBuff_tag *dst, s32 uv)
+{
+    if (uv) {
+        __asm__ volatile(
+            "vmulay.w ACC, vf0, vf19y\n\tvmaddax.w ACC, vf24, vf6x\n\tvmadday.w ACC, vf25, vf6y\n\t"
+            "vmaddz.w vf7, vf26, vf6z\n\t"
+            "vmulax.xyzw ACC, vf28, vf2x\n\tvmadday.xyzw ACC, vf29, vf2y\n\tvmaddaz.xyzw ACC, vf30, vf2z\n\t"
+            "vmaddw.xyzw vf3, vf31, vf0w\n\t"
+            "vaddaw.w ACC, vf7, vf7w\n\tvmsubw.w vf6, vf0, vf0w\n\tvmaxx.w vf8, vf7, vf0x\n\t"
+            "vclipw.xyzw vf3, vf3w\n\t"
+            "vmulax.xy ACC, vf16, vf4x\n\tvaddw.x vf9, vf0, vf6w\n\tvmadday.xy ACC, vf17, vf4y\n\t"
+            "vminiw.w vf8, vf8, vf0w\n\tvmaddw.xy vf5, vf18, vf0w\n\tcfc2.ni $2, $vi18\n\t"
+            "vclipw.xyzw vf9, vf0w\n\tvmulaw.xyzw ACC, vf20, vf0w\n\tvmaddw.xyzw vf8, vf21, vf8w\n\t"
+            "sqc2 vf3, 0(%0)\n\tsqc2 vf6, 16(%0)\n\tsqc2 vf5, 48(%0)\n\tsqc2 vf8, 32(%0)\n\tsb $2, 81(%0)\n\t"
+            "cfc2.ni $2, $vi18\n\tandi $2, $2, 3\n\tsb $2, 80(%0)"
+            : : "r"(dst) : "$2", "memory");
+    } else {
+        __asm__ volatile(
+            "vmulay.w ACC, vf0, vf19y\n\tvmaddax.w ACC, vf24, vf6x\n\tvmadday.w ACC, vf25, vf6y\n\t"
+            "vmaddz.w vf7, vf26, vf6z\n\t"
+            "vmulax.xyzw ACC, vf28, vf2x\n\tvmadday.xyzw ACC, vf29, vf2y\n\tvmaddaz.xyzw ACC, vf30, vf2z\n\t"
+            "vmaddw.xyzw vf3, vf31, vf0w\n\t"
+            "vaddaw.w ACC, vf7, vf7w\n\tvmsubw.w vf6, vf0, vf0w\n\tvmaxx.w vf8, vf7, vf0x\n\t"
+            "vclipw.xyzw vf3, vf3w\n\tsqc2 vf3, 0(%0)\n\t"
+            "vaddw.x vf9, vf0, vf6w\n\tvminiw.w vf8, vf8, vf0w\n\tsqc2 vf6, 16(%0)\n\t"
+            "vmulaw.xyzw ACC, vf20, vf0w\n\tcfc2.ni $2, $vi18\n\tvmaddw.xyzw vf8, vf21, vf8w\n\t"
+            "vclipw.xyzw vf9, vf0w\n\tvnop\n\tvnop\n\t"
+            "sqc2 vf8, 32(%0)\n\tsb $2, 81(%0)\n\tcfc2.ni $2, $vi18\n\tandi $2, $2, 3\n\tsb $2, 80(%0)"
+            : : "r"(dst) : "$2", "memory");
     }
-    for (lane = 0; lane < 3; lane++) {
-        flags |= (dst->position[lane] > dst->position[3]) << (lane * 2);
-        flags |= (dst->position[lane] < -dst->position[3]) << (lane * 2 + 1);
-    }
-    dst->clipFlags = (u8)flags;
 }
 #endif
 
@@ -618,14 +637,11 @@ static void corePktXfmAndClip(sdfCorePacketPointBuff_tag *dst, const f32 *v)
 void corePktXfmLightClip(sdfCorePacketPointBuff_tag *dst, s32 count, const u32 *vert,
                          const u32 *norm)
 {
+    corePktLoadLight();
     do {
-        f32 *lighting = (f32 *)dst->opaque10;
-
-        lighting[0] = ((const f32 *)norm)[0];
-        lighting[1] = ((const f32 *)norm)[1];
-        lighting[2] = ((const f32 *)norm)[2];
-        corePktXfmAndClip(dst, (const f32 *)vert);
-        corePktShadeAndClip(dst, lighting);
+        __asm__ volatile(CORE_VU_LOAD_XYZ("%1") "qmtc2.ni $3, vf6\n\t" CORE_VU_LOAD_XYZ("%0") "qmtc2.ni $3, vf2"
+                         : : "r"(vert), "r"(norm) : "$2", "$3");
+        corePktLightVertex(dst, 0);
         vert += 3;
         norm += 3;
         dst++;
@@ -638,17 +654,10 @@ INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClip);
 #ifdef NON_MATCHING
 void corePktXfmLightClipPB(sdfCorePacketPointBuff_tag *dst, s32 count)
 {
-    /* The point buffer is already filled, so the position and the normal come
-     * back out of the record instead of out of two source streams. */
+    corePktLoadLight();
     do {
-        f32 position[4];
-        s32 lane;
-
-        for (lane = 0; lane < 4; lane++) {
-            position[lane] = dst->position[lane];
-        }
-        corePktXfmAndClip(dst, position);
-        corePktShadeAndClip(dst, (f32 *)dst->opaque10);
+        __asm__ volatile("lqc2 vf6, 16(%0)\n\tlqc2 vf2, 0(%0)" : : "r"(dst));
+        corePktLightVertex(dst, 0);
         dst++;
     } while (--count != 0);
 }
@@ -660,16 +669,13 @@ INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClipPB);
 void corePktXfmLightClipUV(sdfCorePacketPointBuff_tag *dst, s32 count, const u32 *vert,
                            const u32 *norm, const f32 *uv, const f32 *uvMtx)
 {
+    corePktLoadLight();
+    corePktLoadUvTransform(uvMtx);
     do {
-        f32 *lighting = (f32 *)dst->opaque10;
-
-        lighting[0] = ((const f32 *)norm)[0];
-        lighting[1] = ((const f32 *)norm)[1];
-        lighting[2] = ((const f32 *)norm)[2];
-        corePktXfmAndClip(dst, (const f32 *)vert);
-        corePktShadeAndClip(dst, lighting);
-        dst->xy[0] = uvMtx[4] + uvMtx[0] * uv[0] + uvMtx[2] * uv[1];
-        dst->xy[1] = uvMtx[5] + uvMtx[1] * uv[0] + uvMtx[3] * uv[1];
+        __asm__ volatile(CORE_VU_LOAD_XYZ("%1") "qmtc2.ni $3, vf6\n\t" CORE_VU_LOAD_XYZ("%0") "qmtc2.ni $3, vf2\n\t"
+                         "ld $2, 0(%2)\n\tqmtc2.ni $2, vf4"
+                         : : "r"(vert), "r"(norm), "r"(uv) : "$2", "$3");
+        corePktLightVertex(dst, 1);
         vert += 3;
         norm += 3;
         uv += 2;
@@ -684,17 +690,12 @@ INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClipUV);
 void corePktXfmLightClipUVPB(sdfCorePacketPointBuff_tag *dst, s32 count, const f32 *uv,
                              const f32 *uvMtx)
 {
+    corePktLoadLight();
+    corePktLoadUvTransform(uvMtx);
     do {
-        f32 position[4];
-        s32 lane;
-
-        for (lane = 0; lane < 4; lane++) {
-            position[lane] = dst->position[lane];
-        }
-        corePktXfmAndClip(dst, position);
-        corePktShadeAndClip(dst, (f32 *)dst->opaque10);
-        dst->xy[0] = uvMtx[4] + uvMtx[0] * uv[0] + uvMtx[2] * uv[1];
-        dst->xy[1] = uvMtx[5] + uvMtx[1] * uv[0] + uvMtx[3] * uv[1];
+        __asm__ volatile("lqc2 vf6, 16(%0)\n\tlqc2 vf2, 0(%0)\n\tld $2, 0(%1)\n\tqmtc2.ni $2, vf4"
+                         : : "r"(dst), "r"(uv) : "$2");
+        corePktLightVertex(dst, 1);
         uv += 2;
         dst++;
     } while (--count != 0);
@@ -710,13 +711,17 @@ void corePktRelightBackFaces(u32 pointBuff, s32 count)
 
     /* The position and its clip flags are left alone; only the normal is
      * flipped and the shade and the over/under bits recomputed from it. */
+    corePktLoadLight();
     do {
-        f32 *lighting = (f32 *)dst->opaque10;
-
-        lighting[0] = -lighting[0];
-        lighting[1] = -lighting[1];
-        lighting[2] = -lighting[2];
-        corePktShadeAndClip(dst, lighting);
+        __asm__ volatile(
+            "lqc2 vf6, 16(%0)\n\tvsub.xyz vf6, vf0, vf6\n\t"
+            "vmulay.w ACC, vf0, vf19y\n\tvmaddax.w ACC, vf24, vf6x\n\tvmadday.w ACC, vf25, vf6y\n\t"
+            "vmaddz.w vf7, vf26, vf6z\n\tvaddaw.w ACC, vf7, vf7w\n\tvmsubw.w vf6, vf0, vf0w\n\t"
+            "vmaxx.w vf8, vf7, vf0x\n\tvaddw.x vf9, vf0, vf6w\n\tvminiw.w vf8, vf8, vf0w\n\t"
+            "vclipw.xyzw vf9, vf0w\n\tsqc2 vf6, 16(%0)\n\t"
+            "vmulaw.xyzw ACC, vf20, vf0w\n\tvmaddw.xyzw vf8, vf21, vf8w\n\tvnop\n\tvnop\n\tvnop\n\t"
+            "cfc2.ni $2, $vi18\n\tsqc2 vf8, 32(%0)\n\tandi $2, $2, 3\n\tsb $2, 80(%0)"
+            : : "r"(dst) : "$2", "memory");
         dst++;
     } while (--count != 0);
 }
