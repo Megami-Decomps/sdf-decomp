@@ -524,22 +524,18 @@ void corePktMorphVerts(sdfCorePacketPointBuff_tag *dst, s32 count, const u32 *de
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktMorphVerts);
 #endif
 
-/* NON_MATCHING: reference implementation, not a match candidate. The retail
- * body is assembly: a VU0 vrsqrt and vwaitq around the Q register. */
+/* NON_MATCHING: retail's own VU0 sequence, not a match candidate. vf1.x is the
+ * 1.0 the engine keeps there, and vrsqrt clamps where a C division would turn a
+ * zero normal into NaN. vmulq is xyz only, so the fourth word survives. */
 #ifdef NON_MATCHING
 void corePktNormalizeNorms(sdfCorePacketPointBuff_tag *dst, s32 count)
 {
     do {
-        f32 *lighting = (f32 *)dst->opaque10;
-        /* vmaddz.x against vf1.x, which the engine keeps at 1.0. */
-        f32 lengthSq = lighting[0] * lighting[0] + lighting[1] * lighting[1] +
-                       lighting[2] * lighting[2];
-        f32 scale = 1.0f / sdfSqrt(lengthSq);
-
-        lighting[0] *= scale;
-        lighting[1] *= scale;
-        lighting[2] *= scale;
-        /* vmulq is xyz only, so the fourth word survives untouched. */
+        __asm__ volatile(
+            "lqc2 vf2, 16(%0)\n\tvmul.xyz vf3, vf2, vf2\n\tvadday.x ACC, vf3, vf3y\n\t"
+            "vmaddz.x vf4, vf1, vf3z\n\tvrsqrt Q, vf0w, vf4x\n\tvwaitq\n\t"
+            "vmulq.xyz vf2, vf2, Q\n\tsqc2 vf2, 16(%0)"
+            : : "r"(dst));
         dst++;
     } while (--count != 0);
 }
