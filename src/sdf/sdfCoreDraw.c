@@ -56,12 +56,6 @@ void corePktXfmLightClipPB(sdfCorePacketPointBuff_tag *, s32);
 void corePktXfmLightClipUVPB(sdfCorePacketPointBuff_tag *, s32, const f32 *, const f32 *);
 
 
-/* Only the two low float lanes of these VU0 UV rows are consumed.
- * SQ stores the GPR directly; this is not a C 64-to-128-bit extension. */
-#define CORE_STORE_UV_PAIR(dst, value) __asm__ volatile ( \
-    ".set noreorder\n\tsq %1, %0\n\t.set reorder" \
-    : "=m" (*(volatile u128 *)(dst)) : "r" ((u64)(value)))
-
 /* Native driver for generated, skinned and morphing model packets. */
 void *sdfCorePacketGen(sdfModelNode_t *node, void *packetData, u32 attrMask,
                        u32 color, f32 soften, f32 bias, s32 frame, s32 reverse)
@@ -78,8 +72,7 @@ void *sdfCorePacketGen(sdfModelNode_t *node, void *packetData, u32 attrMask,
     u32 savedAttrBits;
     sdfMatPacket_t *matPacket2;
 
-    __asm__ volatile (".set noreorder\n\tvaddw.xyz vf1, vf0, vf0w\n\t"
-                      "vsubw.w vf1, vf0, vf0w\n\t.set reorder");
+    VU0_VF1_ONES_XYZ_ZERO_W();
     corePktInitCb(&cb, (u16 *)&packet->prim, attrMask);
     if (reverse == 0) {
         cb.backfaceSign = 1.0f;
@@ -115,9 +108,9 @@ void *sdfCorePacketGen(sdfModelNode_t *node, void *packetData, u32 attrMask,
         vu[0xE0] = ((const u128 *)corePktCurrLight)[1];
         vu[0xE1] = ((const u128 *)corePktCurrLight)[2];
         vu[0xE2] = ((const u128 *)corePktCurrLight)[3];
-        CORE_STORE_UV_PAIR(&vu[0xE6], matPacket2->texTm.q[0]);
-        CORE_STORE_UV_PAIR(&vu[0xE7], matPacket2->texTm.q[1]);
-        CORE_STORE_UV_PAIR(&vu[0xE8], matPacket2->texTm.q[2]);
+        PS2_STORE_QUAD_GPR(&vu[0xE6], matPacket2->texTm.q[0]);
+        PS2_STORE_QUAD_GPR(&vu[0xE7], matPacket2->texTm.q[1]);
+        PS2_STORE_QUAD_GPR(&vu[0xE8], matPacket2->texTm.q[2]);
         destination = vu + 0xC0;
         for (i = 0; i != count; i++) {
             const u128 *source = (const u128 *)((u8 *)nodes[*indices++]->tmPacket + frameOffset);
@@ -144,9 +137,9 @@ void *sdfCorePacketGen(sdfModelNode_t *node, void *packetData, u32 attrMask,
         cb.facePtr = cursor;
         cursor = CORE_ALIGN16(cursor + faceCount * 6);
         vu = SDF_VU0_DATA_MEMORY;
-        CORE_STORE_UV_PAIR(&vu[0xE6], matPacket2->texTm.q[0]);
-        CORE_STORE_UV_PAIR(&vu[0xE7], matPacket2->texTm.q[1]);
-        CORE_STORE_UV_PAIR(&vu[0xE8], matPacket2->texTm.q[2]);
+        PS2_STORE_QUAD_GPR(&vu[0xE6], matPacket2->texTm.q[0]);
+        PS2_STORE_QUAD_GPR(&vu[0xE7], matPacket2->texTm.q[1]);
+        PS2_STORE_QUAD_GPR(&vu[0xE8], matPacket2->texTm.q[2]);
         vu[0xE3] = ((const u128 *)&corePktFaceDivParm)[0];
         vu[0xE4] = coreLightConst1;
         vu[0xE5] = coreLightConst2;
@@ -209,9 +202,7 @@ ordinaryGeometry:
         }
         cb.vertColPtr = cursor;
         SDF_VU0_LOADMATRIX(&sdf3DScreenTm);
-        __asm__ volatile (".set noreorder\n\tlqc2 vf24, 16(%0)\n\t"
-                          "lqc2 vf25, 32(%0)\n\tlqc2 vf26, 48(%0)\n\t.set reorder"
-                          : : "r" (corePktCurrLight));
+        VU0_LOAD_VF24_VF25_VF26_AT16(corePktCurrLight);
     } else if (packetBits & SDF_PACKETBIT_BLENDGRP) {
         u32 blendCount = packet->header.extData[0];
         u32 entry = blendCount >> 16;
@@ -311,7 +302,6 @@ plainGeometry:
     return corePktClosePacket(&cb);
 }
 #undef CORE_ALIGN16
-#undef CORE_STORE_UV_PAIR
 #else
 INCLUDE_ASM(const s32, "sdf/sdfCoreDraw", sdfCorePacketGen);
 #endif
