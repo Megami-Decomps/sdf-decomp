@@ -228,11 +228,11 @@ void corePktSetupPointBuff(sdfCorePacketCb_t *cb, s32 vertCount) {
     if (vertCount < 0x80) {
         cb->freePointCount = 0x80 - vertCount;
         cb->extPointBuff = corePktPointBuff;
-        cb->freePointBuff = vertCount * 96 + 0x70001000;
+        cb->freePointBuff = vertCount * 96 + SDF_SCRATCHPAD_POINT_BUFFER;
         cb->extPointCount = 0x2000;
-        cb->pointBuff = 0x70001000;
+        cb->pointBuff = SDF_SCRATCHPAD_POINT_BUFFER;
     } else if (vertCount == 0x80) {
-        cb->pointBuff = 0x70001000;
+        cb->pointBuff = SDF_SCRATCHPAD_POINT_BUFFER;
         cb->freePointBuff = corePktPointBuff;
         cb->freePointCount = 0x2000;
         cb->extPointBuff = 0;
@@ -240,7 +240,7 @@ void corePktSetupPointBuff(sdfCorePacketCb_t *cb, s32 vertCount) {
     } else {
         cb->freePointCount = 0x80;
         cb->pointBuff = corePktPointBuff;
-        cb->freePointBuff = 0x70001000;
+        cb->freePointBuff = SDF_SCRATCHPAD_POINT_BUFFER;
         cb->extPointBuff = corePktPointBuff + vertCount * 96;
         cb->extPointCount = 0x2000 - vertCount;
     }
