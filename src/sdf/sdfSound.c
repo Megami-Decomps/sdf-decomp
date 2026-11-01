@@ -485,7 +485,7 @@ void sdfSndTransToIOP(s32 aIOPAddr, void *aEEAddr, s32 aSize)
         delay = 0x186A0;
         while (delay != 0) {
             delay -= 0x271;
-            __asm__ volatile("nop");
+            EE_SPIN_NOP();
         }
     }
     while (sceSifDmaStat(dmaId) >= 0) {
