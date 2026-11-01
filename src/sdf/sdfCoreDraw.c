@@ -107,7 +107,7 @@ void *sdfCorePacketGen(sdfModelNode_t *node, void *packetData, u32 attrMask,
         cursor = CORE_ALIGN16(indices + count);
         cb.facePtr = cursor;
         cursor = CORE_ALIGN16(cursor + faceCount * 6);
-        vu = (volatile u128 *)0x11004000;
+        vu = SDF_VU0_DATA_MEMORY;
         vu[0xDC] = ((const u128 *)&sdf3DScreenTm)[0];
         vu[0xDD] = ((const u128 *)&sdf3DScreenTm)[1];
         vu[0xDE] = ((const u128 *)&sdf3DScreenTm)[2];
@@ -143,7 +143,7 @@ void *sdfCorePacketGen(sdfModelNode_t *node, void *packetData, u32 attrMask,
         cursor = CORE_ALIGN16(cb.dataPtr);
         cb.facePtr = cursor;
         cursor = CORE_ALIGN16(cursor + faceCount * 6);
-        vu = (volatile u128 *)0x11004000;
+        vu = SDF_VU0_DATA_MEMORY;
         CORE_STORE_UV_PAIR(&vu[0xE6], matPacket2->texTm.q[0]);
         CORE_STORE_UV_PAIR(&vu[0xE7], matPacket2->texTm.q[1]);
         CORE_STORE_UV_PAIR(&vu[0xE8], matPacket2->texTm.q[2]);
