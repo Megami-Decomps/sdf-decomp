@@ -265,8 +265,8 @@ extern fileRequest_t *fileLoadEx(const char *filename, s32 headOrTail, u32 endCa
 extern void sdfModelCopyStat(sdfModelRootNode_t *aDstRoot, sdfModelRootNode_t *aSrcRoot);
 extern void sdfMotionChangeBlend(sdfMotionCtrlr_t *aCtrlr, s32 aCutNum, s32 aType, f32 aPreFrame, f32 aBlendLeng);
 extern void mdlStopEffect(mdlObj_t *aHandle, s32 aPlayGroup);
-extern s32 mdlPibGetEffectCount(mdlPibRecord_t *record);
-extern s32 mdlPibGetMotionCount(mdlPibRecord_t *record);
+extern u16 mdlPibGetEffectCount(mdlPibRecord_t *record);
+extern u16 mdlPibGetMotionCount(mdlPibRecord_t *record);
 extern s32 mdlPibGetVersion(mdlPibRecord_t *record);
 extern sdfPacDecodeResrc_t *sdfPacFreeResrc(sdfPacDecodeResrc_t *resrc);
 extern sdfMatrix4_t D_002FA240;
