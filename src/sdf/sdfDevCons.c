@@ -449,7 +449,7 @@ void sdfDevConsDrawInit(sdfDevConsDrawCB_t *aCB, void *aPacketBuffer, s32 aBuffe
     u64 textureState;
     s32 halfBufferBytes = aBufferSize >> 1;
 
-    ringAddress = ((u32)aPacketBuffer & 0x0FFFFFFF) | 0x30000000;
+    ringAddress = EE_UNCACHED_RING((u32)aPacketBuffer & 0x0FFFFFFF);
     ring = (u8 *)ringAddress;
     aCB->buffSize = halfBufferBytes;
     aCB->buf[0] = ring;

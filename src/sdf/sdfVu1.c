@@ -1551,7 +1551,7 @@ void corePktEmitAllPasses(sdfCorePacketCb_t *cb) {
 void corePktOpenAndEmit(sdfCorePacketCb_t *cb) {
     u32 packetStart = sdfGrOpenPacketBuff();
     u32 alignedStart = (packetStart + 0x3F) & ~0x3F;
-    u32 ringAddress = ((alignedStart + 0x40) & SDF_DMA_ADDRESS_MASK) | 0x30000000;
+    u32 ringAddress = EE_UNCACHED_RING((alignedStart + 0x40) & SDF_DMA_ADDRESS_MASK);
     cb->packetOpenPtr = packetStart;
     cb->packetTopPtr = alignedStart + 0x30;
     cb->packetStartPtr = (u32 *)ringAddress;

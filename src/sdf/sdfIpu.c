@@ -633,7 +633,7 @@ void sdfIpuHandleDmaEnd(sdfIpuDecodeCb_t *feed) {
                 writeSlot -= 8;
             }
             destinationAddress += writeSlot << 13;
-            destinationAddress = (destinationAddress & 0x0FFFFFFF) | 0x20000000;
+            destinationAddress = EE_UNCACHED(destinationAddress & 0x0FFFFFFF);
             availableBytes = feed->read(feed, feed->strmCallbackParm, SDF_STREAM_READ_QUERY, &endOfStream, 0);
             if (availableBytes < 0x2000) {
                 if (endOfStream == 0) {
@@ -654,7 +654,7 @@ void sdfIpuHandleDmaEnd(sdfIpuDecodeCb_t *feed) {
                 filledSlots++;
             }
             if (writeSlot == 7) {
-                memcpy((void *)(((u32)(feed->scratchBuffer - 0x100) & 0x0FFFFFFF) | 0x20000000), (void *)(destinationAddress + 0x1F00), 0x100);
+                memcpy((void *)EE_UNCACHED((u32)(feed->scratchBuffer - 0x100) & 0x0FFFFFFF), (void *)(destinationAddress + 0x1F00), 0x100);
             }
             feed->filledSlots = filledSlots;
             if (feed->done != 0) {
