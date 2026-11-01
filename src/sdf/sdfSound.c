@@ -153,7 +153,7 @@ typedef struct sndMergedWork_t {
     sndMidiStateGroup_t stateGroups[2];
 } sndMergedWork_t;
 
-extern sndMergedWork_t sdfSndWork asm("sdfSndMap");
+extern sndMergedWork_t sdfSndWork FAKEMATCH_ASM_NAME("sdfSndMap");
 
 typedef struct sdfSoundRpcRequest_t {
     u8 opaque00[8];

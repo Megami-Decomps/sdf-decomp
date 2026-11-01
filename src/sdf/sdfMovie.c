@@ -434,7 +434,7 @@ s32 movieCopyChunk(sdfIpuDecodeCb_t *aNode, sdfMovieCb_t *aMov, s32 aOp, void *a
 s32 movieParseHeader(sdfIpuDecodeCb_t *aNode, sdfMovieCb_t *aMov, s32 aOp, void *aBuf, s32 aSize)
 {
     /* Keep the retail helper symbol while retaining GCC's nested static chain. */
-    auto void movieMemcpy(void *, const void *, s32) __asm__("movieMemcpy");
+    auto void movieMemcpy(void *, const void *, s32) FAKEMATCH_ASM_NAME("movieMemcpy");
     void movieMemcpy(void *aDst, const void *aSrc, s32 aCount)
     {
         memcpy(aDst, aSrc, aCount);

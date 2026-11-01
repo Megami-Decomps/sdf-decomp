@@ -60,7 +60,7 @@ extern void dds3KernelMain(void);
 
 /* Named around `main` so cc1 does not emit the __main call it adds to a
    function of that name. */
-s32 sdfDefaultMain(void) asm("main");
+s32 sdfDefaultMain(void) FAKEMATCH_ASM_NAME("main");
 
 s32 sdfDefaultMain(void)
 {
