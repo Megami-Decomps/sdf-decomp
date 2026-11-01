@@ -532,11 +532,14 @@ INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktMorphVerts);
 void corePktNormalizeNorms(sdfCorePacketPointBuff_tag *dst, s32 count)
 {
     do {
-        __asm__ volatile(
-            "lqc2 vf2, 16(%0)\n\tvmul.xyz vf3, vf2, vf2\n\tvadday.x ACC, vf3, vf3y\n\t"
-            "vmaddz.x vf4, vf1, vf3z\n\tvrsqrt Q, vf0w, vf4x\n\tvwaitq\n\t"
-            "vmulq.xyz vf2, vf2, Q\n\tsqc2 vf2, 16(%0)"
-            : : "r"(dst));
+        VU0_LOAD_VF2_AT16(dst);
+        VU0_MUL_XYZ_VF3_VF2_VF2();
+        VU0_ADDAY_X_ACC_VF3_VF3Y();
+        VU0_MADDZ_X_VF4_VF1_VF3Z();
+        VU0_RSQRT_Q_VF0W_VF4X();
+        VU0_WAITQ();
+        VU0_MULQ_XYZ_VF2_VF2_Q();
+        VU0_STORE_VF2_AT16(dst);
         dst++;
     } while (--count != 0);
 }
@@ -593,27 +596,21 @@ INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktNormalizeNorms);
 #ifdef NON_MATCHING
 extern sdfCorePacketFaceDivParm_t corePktFaceDivParm;
 
-/* $3 = a packed xyz at p as (x, y, z, z's sign): ldr/ldl the first two words,
- * lw (sign-extending) the third, pcpyld them together. */
-#define CORE_VU_LOAD_XYZ(p) \
-    "ldr $2, 0(" p ")\n\tldl $2, 7(" p ")\n\tlw $3, 8(" p ")\n\tpcpyld $3, $3, $2\n\t"
-
 /* vf19-vf21 = the light; the basis rows' W = light.W * row.x. */
 static void corePktLoadLight(void)
 {
-    __asm__ volatile(
-        "lqc2 vf19, 0(%0)\n\tlqc2 vf20, 16(%0)\n\tlqc2 vf21, 32(%0)\n\t"
-        "vmulx.w vf24, vf19, vf24x\n\tvmulx.w vf25, vf19, vf25x\n\tvmulx.w vf26, vf19, vf26x"
-        : : "r"(&corePktFaceDivParm));
+    VU0_LOAD_VF19_VF20_VF21(&corePktFaceDivParm);
+    VU0_MULX_W_VF24_VF19();
+    VU0_MULX_W_VF25_VF19();
+    VU0_MULX_W_VF26_VF19();
 }
 
 /* vf16-vf18 = a texture transform's three 64-bit rows. */
 static void corePktLoadUvTransform(const f32 *rows)
 {
-    __asm__ volatile(
-        "ld $2, 0(%0)\n\tqmtc2.ni $2, vf16\n\tld $3, 8(%0)\n\tqmtc2.ni $3, vf17\n\t"
-        "ld $2, 16(%0)\n\tqmtc2.ni $2, vf18"
-        : : "r"(rows) : "$2", "$3");
+    VU0_LOAD_VF16_AT0(rows);
+    VU0_LOAD_VF17_AT8(rows);
+    VU0_LOAD_VF18_AT16(rows);
 }
 
 /* A lit vertex from vf2 (position) and vf6 (normal): its position, normal
@@ -622,32 +619,45 @@ static void corePktLoadUvTransform(const f32 *rows)
 static void corePktLightVertex(sdfCorePacketPointBuff_tag *dst, s32 uv)
 {
     if (uv) {
-        __asm__ volatile(
-            "vmulay.w ACC, vf0, vf19y\n\tvmaddax.w ACC, vf24, vf6x\n\tvmadday.w ACC, vf25, vf6y\n\t"
-            "vmaddz.w vf7, vf26, vf6z\n\t"
-            "vmulax.xyzw ACC, vf28, vf2x\n\tvmadday.xyzw ACC, vf29, vf2y\n\tvmaddaz.xyzw ACC, vf30, vf2z\n\t"
-            "vmaddw.xyzw vf3, vf31, vf0w\n\t"
-            "vaddaw.w ACC, vf7, vf7w\n\tvmsubw.w vf6, vf0, vf0w\n\tvmaxx.w vf8, vf7, vf0x\n\t"
-            "vclipw.xyzw vf3, vf3w\n\t"
-            "vmulax.xy ACC, vf16, vf4x\n\tvaddw.x vf9, vf0, vf6w\n\tvmadday.xy ACC, vf17, vf4y\n\t"
-            "vminiw.w vf8, vf8, vf0w\n\tvmaddw.xy vf5, vf18, vf0w\n\tcfc2.ni $2, $vi18\n\t"
-            "vclipw.xyzw vf9, vf0w\n\tvmulaw.xyzw ACC, vf20, vf0w\n\tvmaddw.xyzw vf8, vf21, vf8w\n\t"
-            "sqc2 vf3, 0(%0)\n\tsqc2 vf6, 16(%0)\n\tsqc2 vf5, 48(%0)\n\tsqc2 vf8, 32(%0)\n\tsb $2, 81(%0)\n\t"
-            "cfc2.ni $2, $vi18\n\tandi $2, $2, 3\n\tsb $2, 80(%0)"
-            : : "r"(dst) : "$2", "memory");
+        VU0_MULAY_W_ACC_VF0_VF19Y();
+        VU0_MADDAX_W_ACC_VF24_VF6X();
+        VU0_MADDAY_W_ACC_VF25_VF6Y();
+        VU0_MADDZ_W_VF7_VF26_VF6Z();
+        VU0_MULAX_XYZW_ACC_VF28_VF2X();
+        VU0_MADDAY_XYZW_ACC_VF29_VF2Y();
+        VU0_MADDAZ_XYZW_ACC_VF30_VF2Z();
+        VU0_MADDW_XYZW_VF3_VF31_VF0W();
+        VU0_ADDAW_W_ACC_VF7_VF7W();
+        VU0_MSUBW_W_VF6_VF0_VF0W();
+        VU0_MAXX_W_VF8_VF7_VF0X();
+        VU0_CLIPW_XYZW_VF3_VF3W();
+        VU0_MULAX_XY_ACC_VF16_VF4X();
+        VU0_ADDW_X_VF9_VF0_VF6W();
+        VU0_MADDAY_XY_ACC_VF17_VF4Y();
+        VU0_MINIW_W_VF8_VF8_VF0W();
+        VU0_MADDW_XY_VF5_VF18_VF0W();
+        VU0_CLIP_VF9_STORE_VERTEX_UV(dst);
+        VU0_STORE_CLIP_UNDEROVER_AT80(dst);
     } else {
-        __asm__ volatile(
-            "vmulay.w ACC, vf0, vf19y\n\tvmaddax.w ACC, vf24, vf6x\n\tvmadday.w ACC, vf25, vf6y\n\t"
-            "vmaddz.w vf7, vf26, vf6z\n\t"
-            "vmulax.xyzw ACC, vf28, vf2x\n\tvmadday.xyzw ACC, vf29, vf2y\n\tvmaddaz.xyzw ACC, vf30, vf2z\n\t"
-            "vmaddw.xyzw vf3, vf31, vf0w\n\t"
-            "vaddaw.w ACC, vf7, vf7w\n\tvmsubw.w vf6, vf0, vf0w\n\tvmaxx.w vf8, vf7, vf0x\n\t"
-            "vclipw.xyzw vf3, vf3w\n\tsqc2 vf3, 0(%0)\n\t"
-            "vaddw.x vf9, vf0, vf6w\n\tvminiw.w vf8, vf8, vf0w\n\tsqc2 vf6, 16(%0)\n\t"
-            "vmulaw.xyzw ACC, vf20, vf0w\n\tcfc2.ni $2, $vi18\n\tvmaddw.xyzw vf8, vf21, vf8w\n\t"
-            "vclipw.xyzw vf9, vf0w\n\tvnop\n\tvnop\n\t"
-            "sqc2 vf8, 32(%0)\n\tsb $2, 81(%0)\n\tcfc2.ni $2, $vi18\n\tandi $2, $2, 3\n\tsb $2, 80(%0)"
-            : : "r"(dst) : "$2", "memory");
+        VU0_MULAY_W_ACC_VF0_VF19Y();
+        VU0_MADDAX_W_ACC_VF24_VF6X();
+        VU0_MADDAY_W_ACC_VF25_VF6Y();
+        VU0_MADDZ_W_VF7_VF26_VF6Z();
+        VU0_MULAX_XYZW_ACC_VF28_VF2X();
+        VU0_MADDAY_XYZW_ACC_VF29_VF2Y();
+        VU0_MADDAZ_XYZW_ACC_VF30_VF2Z();
+        VU0_MADDW_XYZW_VF3_VF31_VF0W();
+        VU0_ADDAW_W_ACC_VF7_VF7W();
+        VU0_MSUBW_W_VF6_VF0_VF0W();
+        VU0_MAXX_W_VF8_VF7_VF0X();
+        VU0_CLIPW_XYZW_VF3_VF3W();
+        VU0_STORE_VF3_AT0(dst);
+        VU0_ADDW_X_VF9_VF0_VF6W();
+        VU0_MINIW_W_VF8_VF8_VF0W();
+        VU0_STORE_VF6_AT16(dst);
+        VU0_MULAW_XYZW_ACC_VF20_VF0W();
+        VU0_CLIP_VF9_STORE_VF8_VI18(dst);
+        VU0_STORE_CLIP_UNDEROVER_AT80(dst);
     }
 }
 #endif
@@ -658,8 +668,7 @@ void corePktXfmLightClip(sdfCorePacketPointBuff_tag *dst, s32 count, const u32 *
 {
     corePktLoadLight();
     do {
-        __asm__ volatile(CORE_VU_LOAD_XYZ("%1") "qmtc2.ni $3, vf6\n\t" CORE_VU_LOAD_XYZ("%0") "qmtc2.ni $3, vf2"
-                         : : "r"(vert), "r"(norm) : "$2", "$3");
+        VU0_LOAD_NORM_VF6_VERT_VF2(vert, norm);
         corePktLightVertex(dst, 0);
         vert += 3;
         norm += 3;
@@ -675,7 +684,8 @@ void corePktXfmLightClipPB(sdfCorePacketPointBuff_tag *dst, s32 count)
 {
     corePktLoadLight();
     do {
-        __asm__ volatile("lqc2 vf6, 16(%0)\n\tlqc2 vf2, 0(%0)" : : "r"(dst));
+        VU0_LOAD_VF6_AT16(dst);
+        VU0_LOAD_VF2_AT0(dst);
         corePktLightVertex(dst, 0);
         dst++;
     } while (--count != 0);
@@ -691,9 +701,8 @@ void corePktXfmLightClipUV(sdfCorePacketPointBuff_tag *dst, s32 count, const u32
     corePktLoadLight();
     corePktLoadUvTransform(uvMtx);
     do {
-        __asm__ volatile(CORE_VU_LOAD_XYZ("%1") "qmtc2.ni $3, vf6\n\t" CORE_VU_LOAD_XYZ("%0") "qmtc2.ni $3, vf2\n\t"
-                         "ld $2, 0(%2)\n\tqmtc2.ni $2, vf4"
-                         : : "r"(vert), "r"(norm), "r"(uv) : "$2", "$3");
+        VU0_LOAD_NORM_VF6_VERT_VF2(vert, norm);
+        VU0_LOAD_UV_VF4(uv);
         corePktLightVertex(dst, 1);
         vert += 3;
         norm += 3;
@@ -712,8 +721,9 @@ void corePktXfmLightClipUVPB(sdfCorePacketPointBuff_tag *dst, s32 count, const f
     corePktLoadLight();
     corePktLoadUvTransform(uvMtx);
     do {
-        __asm__ volatile("lqc2 vf6, 16(%0)\n\tlqc2 vf2, 0(%0)\n\tld $2, 0(%1)\n\tqmtc2.ni $2, vf4"
-                         : : "r"(dst), "r"(uv) : "$2");
+        VU0_LOAD_VF6_AT16(dst);
+        VU0_LOAD_VF2_AT0(dst);
+        VU0_LOAD_UV_VF4(uv);
         corePktLightVertex(dst, 1);
         uv += 2;
         dst++;
@@ -732,15 +742,25 @@ void corePktRelightBackFaces(u32 pointBuff, s32 count)
      * flipped and the shade and the over/under bits recomputed from it. */
     corePktLoadLight();
     do {
-        __asm__ volatile(
-            "lqc2 vf6, 16(%0)\n\tvsub.xyz vf6, vf0, vf6\n\t"
-            "vmulay.w ACC, vf0, vf19y\n\tvmaddax.w ACC, vf24, vf6x\n\tvmadday.w ACC, vf25, vf6y\n\t"
-            "vmaddz.w vf7, vf26, vf6z\n\tvaddaw.w ACC, vf7, vf7w\n\tvmsubw.w vf6, vf0, vf0w\n\t"
-            "vmaxx.w vf8, vf7, vf0x\n\tvaddw.x vf9, vf0, vf6w\n\tvminiw.w vf8, vf8, vf0w\n\t"
-            "vclipw.xyzw vf9, vf0w\n\tsqc2 vf6, 16(%0)\n\t"
-            "vmulaw.xyzw ACC, vf20, vf0w\n\tvmaddw.xyzw vf8, vf21, vf8w\n\tvnop\n\tvnop\n\tvnop\n\t"
-            "cfc2.ni $2, $vi18\n\tsqc2 vf8, 32(%0)\n\tandi $2, $2, 3\n\tsb $2, 80(%0)"
-            : : "r"(dst) : "$2", "memory");
+        VU0_LOAD_VF6_AT16(dst);
+        VU0_SUB_XYZ_VF6_VF0_VF6();
+        VU0_MULAY_W_ACC_VF0_VF19Y();
+        VU0_MADDAX_W_ACC_VF24_VF6X();
+        VU0_MADDAY_W_ACC_VF25_VF6Y();
+        VU0_MADDZ_W_VF7_VF26_VF6Z();
+        VU0_ADDAW_W_ACC_VF7_VF7W();
+        VU0_MSUBW_W_VF6_VF0_VF0W();
+        VU0_MAXX_W_VF8_VF7_VF0X();
+        VU0_ADDW_X_VF9_VF0_VF6W();
+        VU0_MINIW_W_VF8_VF8_VF0W();
+        VU0_CLIPW_XYZW_VF9_VF0W();
+        VU0_STORE_VF6_AT16(dst);
+        VU0_MULAW_XYZW_ACC_VF20_VF0W();
+        VU0_MADDW_XYZW_VF8_VF21_VF8W();
+        VU0_NOP();
+        VU0_NOP();
+        VU0_NOP();
+        VU0_STORE_CLIP_VF8_AT80(dst);
         dst++;
     } while (--count != 0);
 }
