@@ -58,6 +58,22 @@
   earlier `.lit4` DATA line).
 - dds-decomp e3fc94014: the placement tools also resolve a C definition's name
   through the unit's `#define` (sdfRand defines `D_005519B8` for DDS).
+- DDS headers (dds-decomp c07ed90ed): `include/ps2asm.h`, `sif_rpc.h`,
+  `sdk_libmrpc.h`, `libdma.h` copied from smt3-decomp 0be37933 (no later
+  upstream change to them), and `common.h` replaced by SMT3's, which is DDS's
+  plus `QUAD_ZERO`, `PS2_SYMBOL_AT` and the `FAKEMATCH_*` macros. check_unit
+  on all 536 DDS units (both games, shared ones included) gave the same
+  result line before and after; the four that differ did before too
+  (devbuild in both games, code_002E7C20 and code_00340AC8's `.lit4` DATA).
+  `pipe.h` is not copied: only sdfSystem includes it, and it includes
+  `model.h` and `libsdf.h`.
+- Overlap, not merged: DDS's `sdf_vu0.h` defines 96 macros, 95 of them also in
+  `ps2asm.h` with identical bodies; `pcp_vu0.h` defines 123, 37 shared, 34
+  identical. 121 DDS1 units include one of the two. A unit including both
+  `ps2asm.h` and either would see the three differing redefinitions.
+- More data names: DDS1 `D_00398580`/DDS2 `D_0040B730` to
+  `sdf3DPrimIdentityTm`, DDS1 `D_00398500`/DDS2 `D_0040B6B0` to
+  `sdf3DPrimDefaultFaceIndex` (5b6517731).
 
 ## Units moved
 
@@ -71,36 +87,61 @@ both games, all three games byte-identical.
 | sdfMath | dea183c | 9eba07f73 | same, and `#define D_0052D944 sdfNormalizedAsinSamples` for DDS |
 | sdfPrim | 0ff30f4 | 184d8dae5 | same, and `D_00529388` defined to DDS1 `D_003980E0`, DDS2 `D_0040B290` |
 | sdfRand | e38c6d7 | 65a71918c | unused `ps2asm.h` dropped; `D_00529BB0`, `D_005519B8` defined per game to DDS placeholders, and DDS defines the clock cache (`sdfClock_t D_005519B8 = {0};`) in the unit |
+| sdfBillBoard | none | 5368a2aa7 | nothing once DDS had `ps2asm.h` |
+| sdf3DPrim | none | f813b3fc0 | the two data renames above |
 | sdfPacketBuff, sdfDelayedResrc | 6e1669c | 546ff6a5a | `D_00551870` defined to `sdfPacketBuffers`, `D_005520A8` to `sdfPendingQueueSlots`; DDS's INCLUDE_SDATA lines at the end under `#if defined(SDF_DDS1) \|\| defined(SDF_DDS2)` |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
 per-symbol asm files and leaves its source alone.
 
-Final state, verified: DDS from `configure.py --clean`, ninja exit 0 with
-both check lines (DDS1 6d18898e2724bf1d145392766e8ba1e678487419, DDS2
-9be91ee1b4a535a4cb6ec89237b5a6ba41be2add), `ninja dds1 dds2 dds1-dev
+Final state, verified from committed state (sdf-decomp e38c6d7 in both
+submodules): SMT3 clone `configure.py --clean`, ninja exit 0, `[860/860]
+check config/smt3/checksum.sha1`, 5facfbf7916836613449c922e26a4ec412207b32;
+28 tools/test_*.py pass, check_nonmatching and check_irx_nonmatching exit 0,
+progress unchanged (8567/9045). DDS `configure.py --clean`, ninja exit 0 with
+both check lines, DDS1 6d18898e2724bf1d145392766e8ba1e678487419, DDS2
+9be91ee1b4a535a4cb6ec89237b5a6ba41be2add; `ninja dds1 dds2 dds1-dev
 dds2-dev`, the four reports, progress.py unchanged (DDS1 9501/9573, DDS2
-10767/10855), CI's report scope check, run_tests.py 442 OK,
-check_nonmatching 89 units 0 failed. SMT3 clone: ninja exit 0,
-5facfbf7916836613449c922e26a4ec412207b32, 27 tools/test_*.py pass,
-check_nonmatching exit 0 (145 units).
+10767/10855), CI's report scope check, run_tests.py 445 OK,
+check_nonmatching 89 units 0 failed.
 
 ## Units not moved
 
-Probe (each unit listed in `sdf_shared.txt`, unused `ps2asm.h` dropped,
-check_unit in both games), with what blocks it:
+Probe after the headers landed (unit listed in `sdf_shared.txt`
+temporarily, check_unit in both games; DDS1 and DDS2 agree unless noted):
 
-| unit | probe | blocker |
+| unit | probe | first blockers |
 |---|---|---|
-| sdfGsMemory | 14 match, sdfGsErrorHandler UNDEF | SMT3 INCLUDE_ASM name; DDS needs the rename or a name for it |
-| sdfGsMemIO | 2 DIFF (D_00529388), NOASM, UNDEF | SMT3 INCLUDE_SDATA of `D_00551870` belongs to SMT3's split |
-| sdfMisc, sdfHdd, sdfDevFile, sdfPacDecode, sdfMat, sdf_PadManager | MISSING/ORDER | DDS-only functions between or inside the run need `#ifdef` bodies |
-| sdfDefaultMain, sdfImageSet, sdfTex, sdfDraw, sdfModel, sdfMotion, sdfVu0, sdfCoreDraw, sdf3D, sdf3DPrim, sdfBillBoard, sdfDevCons, sdfPrint, sdfCd, sdfFile, sdfFileIO, sdfQuat, sdfSound, sdfIpu, sdfMovie, sdf_Decomp, sdfTmx, sdfSortOt | does not compile for DDS | missing `ps2asm.h` (14 use its macros), `sif_rpc.h`, `sdk_libmrpc.h`, `libdma.h`, `pipe.h`; SMT3 local SDK prototypes (`SleepThread`, `sceGetstat`) conflict with DDS `sdk_libkernl.h`; SMT3 `common.h` macros (`FAKEMATCH_*`, `PS2_SYMBOL_AT`, `QUAD_ZERO`) DDS's `common.h` lacks |
+| sdfGsMemory | 14 match, 2 differ | UNDEF `sdfGsErrorHandler` (SMT3 INCLUDE_ASM name), NOASM |
+| sdfGsMemIO | 4 match, 4 differ | `D_00529388` (define as sdfPrim does), NOASM; SMT3's INCLUDE_SDATA of `D_00551870` belongs to SMT3's split |
+| sdfQuat | 8 match, 14 differ | UNDEF `D_00529B90`, `D_00529BA0`, `D_00529BB0` (placeholders both sides: define per game) |
+| sdfVu0 | 34 match, 9 differ | MISSING DDS functions (`sdfVuLoadSecondaryRotationMatrixY`), NOASM |
+| sdfTex | 29 match, 17 differ | MISSING DDS function names (`sdfTexDestroy`, `sdfTexReleaseReference...`) |
+| sdf3D | 7 match, 17 differ | UNDEF `vu1Tex0Slot0..2` and more names |
+| sdf_Decomp | 4 match, 5 differ | UNDEF `sdfDrawFaceListParam`, `MultMatrixRev`, `D_00594780` |
+| sdfMisc | 1 match, 6 differ | ORDER, MISSING DDS-only functions (`sdfDevCreateBufferedRequest`, `sdfDevResizeBufferedRequest`) |
+| sdfHdd | 1 match, 13 differ | UNDEF `sdfDev9Ready`, `D_0058FFC0`, `D_005519A0` |
+| sdfDevFile | 5 match, 10 differ | MISSING `sndLoadNamedOffsetResourceList`, UNDEF `D_0054A2D8`, NOASM |
+| sdfPacDecode | 28 match, 10 differ | ORDER, MISSING DDS-only `sdfPacResetOutputToAllocationEntry` |
+| sdfMat | 35 match, 22 differ | UNDEF sdfTex function names (`sdfTexDup`, `sdfTexFreeDelayed`, `sdfTexSetClutColor`) |
+| sdf_PadManager | 6 match, 9 (DDS2 10) differ | `D_005298E8` is DDS `sdfPadButtonPressure`, `D_0058F0C0` DDS `sdfPadPortBuffers` (owed to SMT3); UNDEF `sdfPadManagerMode`, `D_005298A0`, `D_005518D8`, `D_005518E0`; MISSING `sdfPadBuildButtonStates` |
+| sdfDefaultMain | 0 match, 12 differ | UNDEF `sdfPadManagerMode`, `SdfIopInit`, `sdfCdTrayMode` |
+| sdfDraw | 35 match, 14 differ | UNDEF `sdfDrawFrameCount`, `sdfDrawSyncFlag`, `sdfReqDrawDelaySleepCount` |
+| sdfModel | 46 match, 17 differ | UNDEF `ToMatrix`, `MultMatrixRev`, `sdfItemArrayNew` |
+| sdfMotion | 85 match, 26 differ | UNDEF `ToMatrix`, `sdfMotModelVisibleTable`, `sdfMotModelLinerScaleTable` |
+| sdfCoreDraw | 5 match, 9 differ | UNDEF `corePktCurrFog`, `corePktFogParm`, `corePktPointBuff`, `corePktZBias`, `sdfCoreDrawBuffHandle`, `vu0MicroPacket`, `vu1MicroPacket`; MISSING `sdfVuClearTransformCache` |
+| sdfDevCons | 25 match, 10 differ | UNDEF `sdfDebugFontTex`, `devConsTop`, `EE_UNCACHED_RING` |
+| sdfMovie | 9 match, 11 differ | UNDEF `sdfDummyFunc`, `D_00551B50`, NOASM |
+| sdfSortOt, sdfImageSet, sdfIpu, sdfFileIO, sdfFile | compile fails | not yet read |
+| sdfPrint, sdfCd, sdfSound, sdfTmx | parse errors (sdfPrint:137, sdfCd:287/501/507, sdfSound:1160, sdfTmx:593) | likely SMT3 local SDK prototypes against DDS's `sdk_libkernl.h`; DDS guards each prototype with `SDK_SKIP_<name>` |
 
+UNDEF of an SMT3 real name usually means a DDS rename is owed (step 1 below);
+UNDEF of a function name means stage 5 withheld or never paired it.
 Not attempted: sdfSystem, sdfChip, sdfMemory, sdfIop, sdfGraph, sdfVu1,
 sdfDev9 (stage 4 did not split them for DDS).
 
-`/tmp/s6-names.py <unit>` (not committed) printed, from check_unit -v, each
+`/tmp/s7/probe.sh <unit>...` and `/tmp/s7/names.sh <unit>` (not committed)
+wrap the probe and `/tmp/s6-names.py`, which printed, from check_unit -v, each
 SMT3 name's DDS address and symbol: HI16/LO16 pairs give the address plus the
 field offset, so check the base (sdfPrim's first guess was the object at +8).
 
@@ -109,9 +150,13 @@ field offset, so check the base (sdfPrim's first guess was the object at +8).
 1. Data names, per unit as it moves: where SMT3 has a real name and DDS a
    placeholder, rename in DDS as above rather than define. Where SMT3 has a
    placeholder and DDS a name, define it and add it to "Owed to smt3-decomp".
-2. DDS headers: a DDS `ps2asm.h` (copy of smt3-decomp's, a dds-decomp
-   decision), the SDK headers above, and SMT3's local SDK prototypes guarded
-   or matched to DDS's.
+2. SDK prototypes: read the parse errors in sdfPrint, sdfCd, sdfSound and
+   sdfTmx. Prefer making DDS's `sdk_libkernl.h` prototype match SMT3's where
+   the retail call sites allow it (check_unit every unit including it, as
+   for common.h); otherwise `#define SDK_SKIP_<name>` under the DDS games.
+3. Move units in roughly the table's order: the ones blocked only by names
+   first (sdfQuat, sdfGsMemIO, sdfDraw, sdfCoreDraw, sdfDevCons), then the
+   ones with DDS-only functions, which need their DDS bodies under `#ifdef`.
 
 ## Owed to smt3-decomp
 
@@ -123,6 +168,8 @@ under the DDS games; the define goes when smt3-decomp takes the name.
 | `D_0052D944` | `sdfNormalizedAsinSamples` | sdfMath |
 | `D_00551870` | `sdfPacketBuffers` | sdfPacketBuff |
 | `D_005520A8` | `sdfPendingQueueSlots` | sdfDelayedResrc |
+| `D_005298E8` | `sdfPadButtonPressure` | sdf_PadManager (not moved) |
+| `D_0058F0C0` | `sdfPadPortBuffers` | sdf_PadManager (not moved) |
 
 ## Traps
 
@@ -136,6 +183,8 @@ under the DDS games; the define goes when smt3-decomp takes the name.
   the full build.
 - Defines are per game when DDS names are placeholders (they differ between
   DDS1 and DDS2); DDS real names are usually the same in both.
+- `/tmp/s7-verify.sh` builds all three games from `--clean` with the
+  submodules as checked out (no copying).
 - Verification: `/tmp/s6-verify.sh` copied sdf-decomp's working `src/` and
   `include/` into both submodules, ran ninja in the SMT3 clone and configure
   plus ninja in the DDS worktree (`CLEAN=1` for --clean). After committing,
