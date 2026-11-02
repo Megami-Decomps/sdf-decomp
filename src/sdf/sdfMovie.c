@@ -431,14 +431,27 @@ s32 movieCopyChunk(sdfIpuDecodeCb_t *aNode, sdfMovieCb_t *aMov, s32 aOp, void *a
     return 0;
 }
 
+#ifdef NON_MATCHING
+/* clang has no GNU nested functions. The matching build below keeps the
+ * nested form: ee-gcc loads the (unused) static chain pointer before each
+ * call, and lifting the function to file scope drops that load, moving the
+ * retail image. */
+static void movieMemcpy(void *aDst, const void *aSrc, s32 aCount)
+{
+    memcpy(aDst, aSrc, aCount);
+}
+#endif
+
 s32 movieParseHeader(sdfIpuDecodeCb_t *aNode, sdfMovieCb_t *aMov, s32 aOp, void *aBuf, s32 aSize)
 {
+#ifndef NON_MATCHING
     /* Keep the retail helper symbol while retaining GCC's nested static chain. */
     auto void movieMemcpy(void *, const void *, s32) FAKEMATCH_ASM_NAME("movieMemcpy");
     void movieMemcpy(void *aDst, const void *aSrc, s32 aCount)
     {
         memcpy(aDst, aSrc, aCount);
     }
+#endif
     sdfMovieStrmPac_t *stream = aMov->readCb.pac;
     u8 *body;
     s32 off;
