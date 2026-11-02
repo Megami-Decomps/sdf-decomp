@@ -241,7 +241,7 @@ void SetRotateMatrixAxis_B(const sdfVector3_t* aAngle, f32 aAxis)
     SDF_VU0_LOADMATRIX_B(&matrix);
 }
 
-/* vu0 routine: rotate the vf29/vf30 pair by angle (vf29 = vf29*c + vf30*s, vf30 = vf29*s - vf30*c) */
+/* vu0 routine: rotate the vf29/vf30 pair by angle (vf29 = vf29*c + vf30*s, vf30 = vf30*c - vf29*s) */
 void RotateMatrixX(f32 aAngle)
 {
     f32 c = cosf(aAngle);
@@ -250,7 +250,7 @@ void RotateMatrixX(f32 aAngle)
     VU0_ROTATE_BASIS_X(c, s);
 }
 
-/* vu0 routine: rotate the vf28/vf30 pair by angle (vf28 = vf30*s - vf28*c, vf30 = vf30*c + vf28*s) */
+/* vu0 routine: rotate the vf28/vf30 pair by angle (vf28 = vf28*c - vf30*s, vf30 = vf30*c + vf28*s) */
 void RotateMatrixY(f32 aAngle)
 {
     f32 c = cosf(aAngle);
@@ -259,7 +259,7 @@ void RotateMatrixY(f32 aAngle)
     VU0_ROTATE_BASIS_Y(c, s);
 }
 
-/* vu0 routine: rotate the vf28/vf29 pair by angle (vf28 = vf29*s + vf28*c, vf29 = vf28*s - vf29*c) */
+/* vu0 routine: rotate the vf28/vf29 pair by angle (vf28 = vf28*c + vf29*s, vf29 = vf29*c - vf28*s) */
 void RotateMatrixZ(f32 aAngle)
 {
     f32 c = cosf(aAngle);
