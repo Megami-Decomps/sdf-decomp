@@ -4,6 +4,16 @@
 #include "draw.h"
 #include "ps2asm.h"
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define func_002BFF98 sdfDevResizeBufferedRequest
+#define func_002B2628 sdfChunkFindById
+#endif
+#if defined(SDF_DDS1)
+#define D_00529428 D_00398188
+#elif defined(SDF_DDS2)
+#define D_00529428 D_0040B338
+#endif
+
 /* Audited SDK COP2/MMI operations: ee-gcc cannot express packed
  * vector transfers or the implicit VU matrix-register convention in C. */
 
@@ -612,46 +622,48 @@ sdfModelPacketHeader_tag *sdfModelNewPacketHeader(sdfModelNode_t *aNode, s32 aOt
     return packet;
 }
 
-/* NON_MATCHING: 104 of 122 words differ (first at +0x14). */
-#ifdef NON_MATCHING
 void sdfModelLinkDrawPacket(sdfModelNode_t *aNode, void *aShape, s32 aOtIndex, s32 aIndexFrom, s32 aId)
 {
     s32 numOfSkin;
     s32 tempQwc;
     s32 bytes;
-    u32 *cursor;
-    u32 packed;
-    s32 count;
-    sdfDmaTag_t *tag = NULL;
-    sdfShapePacket_t *packet;
+    u32 count;
     sdfModelPacketHeader_tag *header;
+    sdfDmaTag_t *tag = NULL;
+    const u32 *cursor;
+    sdfShapePacket_t *packet;
+    sdfMemHandle_t *handle;
+    void *next;
+    void **head;
 
     bytes = sdfModelGetDrawPacketSize(aShape, &numOfSkin, &tempQwc);
-    cursor = aShape;
     if (bytes == 0 && numOfSkin == 0 && tempQwc == 0) {
         return;
     }
+    cursor = aShape;
     sdfModelAllocTmPacket(aNode);
-    packed = *cursor++;
-    count = packed & 0xFFFF;
+    count = *cursor++;
     if (aIndexFrom != 0) {
-        aOtIndex = packed >> 16;
+        u16 otIndex = count >> 16;
+        aOtIndex = otIndex;
     }
+    count &= 0xFFFF;
     if (bytes != 0) {
-        sdfMemHandle_t *handle = sdfMemAllocDirect(bytes);
-        sdfModelPacketHeader_tag *chunk = (sdfModelPacketHeader_tag *)sdfMemLock(handle);
-        sdfModelPacketHeader_tag **head =
-            (sdfModelPacketHeader_tag **)((u32)aId * sizeof(*aNode->drawPacket) + (u32)aNode +
-                                        (u32)&((sdfModelNode_t *)0)->drawPacket);
-
-        tag = (sdfDmaTag_t *)(chunk + 1);
-        chunk->otIndex = aOtIndex;
-        chunk->dataPtr = tag;
-        chunk->size = (bytes + 0xF) >> 4;
-        chunk->next = *head;
-        chunk->memHandle = handle;
-        *head = chunk;
-        chunk->type = 1;
+        handle = sdfMemAllocDirect(bytes);
+        header = (sdfModelPacketHeader_tag *)sdfMemLock(handle);
+        /* void ** so its alias set conflicts with the dataPtr store; that keeps
+         * retail's store order. */
+        head = (void **)((u32)aId * sizeof(*aNode->drawPacket) + (u32)aNode +
+                         (u32)&((sdfModelNode_t *)0)->drawPacket);
+        next = *head;
+        tag = (sdfDmaTag_t *)(header + 1);
+        header->type = 1;
+        header->otIndex = aOtIndex;
+        header->dataPtr = tag;
+        header->size = (bytes + 0xF) >> 4;
+        header->next = next;
+        header->memHandle = handle;
+        *head = header;
     }
     do {
         packet = (sdfShapePacket_t *)*cursor++;
@@ -682,14 +694,12 @@ void sdfModelLinkDrawPacket(sdfModelNode_t *aNode, void *aShape, s32 aOtIndex, s
             header->dataPtr = packet;
             break;
         }
-    } while (--count != 0);
+        count--;
+    } while (count != 0);
     if (bytes != 0) {
         sdfModelSetTermPacket(tag);
     }
 }
-#else
-INCLUDE_ASM(const s32, "sdf/sdfModel", sdfModelLinkDrawPacket);
-#endif
 
 /* vu0 routine: native SDK vector/matrix operations around model state. */
 void sdfModelMakeLocalTm(sdfModelNode_t *aNode) {
@@ -933,6 +943,10 @@ s32 sdfModelCheckBounds(const f32 *aMinMax) {
 }
 
 extern void sdfMatListUpdatePacket(sdfMatList_t *aMatList, s32 aId);
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+extern void sdfResourceListApplyEntryChanges(sdfMatList_t *aMatList, s32 aId);
+extern void sdfSetForcedAssetTextureMode(s32 aMode);
+#endif
 extern void *sdf3DLightDefault;
 extern void *sdf3DFogDefault;
 extern u8 corePktSoftenBias;
@@ -1149,7 +1163,21 @@ void sdfModelLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
         sdfModelTempPacketLinkOt(aOt, aRoot);
     }
     frame = (s8)sdfFrameId;
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+    if (aRoot->flags & SDF_MODEL_FLAG_FORCE_TEX_NO_SPECULAR) {
+        sdfSetForcedAssetTextureMode(1);
+        sdfMatListUpdatePacket(aRoot->matList, frame);
+        sdfSetForcedAssetTextureMode(0);
+    } else if (aRoot->flags & SDF_MODEL_FLAG_FORCE_TEX) {
+        sdfSetForcedAssetTextureMode(2);
+        sdfMatListUpdatePacket(aRoot->matList, frame);
+        sdfSetForcedAssetTextureMode(0);
+    } else {
+        sdfResourceListApplyEntryChanges(aRoot->matList, frame);
+    }
+#else
     sdfMatListUpdatePacket(aRoot->matList, frame);
+#endif
     rootColor = aRoot->color;
     light = aRoot->light;
     if (light == NULL) {
@@ -1213,10 +1241,19 @@ void sdfModelLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
         }
         parmTag = ((u64)(attr | softenParm) << 32) | 0x6102C000;
         do {
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+            j = header->otIndex;
+            if ((j >> 4) != aRoot->lod) {
+                continue;
+            }
+            j &= 0x0F;
+            j = j == 0 ? semiTrans == 0 : j;
+#else
             j = header->otIndex;
             if (j == 0) {
                 j = semiTrans == 0;
             }
+#endif
             tag = tags[j];
             if (tag == NULL) {
                 sdfModelNodeDrawPacket_t *buf;
@@ -1270,8 +1307,12 @@ void sdfModelLinkOt(sdfGrOt_t **aOt, sdfModelRootNode_t *aRoot)
                 break;
             }
             }
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+        } while ((header = header->next) != NULL);
+#else
             header = header->next;
         } while (header != NULL);
+#endif
         j = 0;
         do {
             tag = tags[j];
@@ -1545,6 +1586,28 @@ s32 sdfModelGetMarkPos(sdfModelRootNode_t *aRoot, s32 aId)
     return 0;
 }
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+u32 sdfGetUniqueChunkValue(sdfModelRootNode_t *aRoot)
+{
+    u32 *chunk = sdfModelGetExtraChunk(aRoot, 0x51494E55); /* "UNIQ" */
+
+    if (chunk != NULL) {
+        return chunk[2];
+    }
+    return 0;
+}
+
+u32 sdfGetLodChunkValue(sdfModelRootNode_t *aRoot)
+{
+    u32 *chunk = sdfModelGetExtraChunk(aRoot, 0x43444F4C); /* "LODC" */
+
+    if (chunk != NULL) {
+        return chunk[2];
+    }
+    return 0;
+}
+#endif
+
 void sdfModelSetFaceDivParm(sdfModelRootNode_t *aRoot, f32 aSoften, f32 aBias)
 {
     aRoot->faceDivSoften = aSoften;
@@ -1572,7 +1635,11 @@ f32 sdfModelGetFaceDivBias(sdfModelRootNode_t *aRoot)
     }
     return sdfFaceDivBias;
 }
+#ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "sdf/sdfModel", sdf3DLightDefault);
 
 INCLUDE_SDATA(const s32, "sdf/sdfModel", sdf3DFogDefault);
+#else
+INCLUDE_SDATA(const s32, "sdf/sdfModel", corePktSoftenBias);
+#endif
 
