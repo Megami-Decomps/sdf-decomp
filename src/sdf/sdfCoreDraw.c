@@ -349,3 +349,11 @@ void sdfCoreDrawInit(s32 buffSize) {
     sdfCoreDrawBuffHandle = sdfMemAllocDirect(buffSize);
     corePktPointBuff = (u32)sdfMemLock(sdfCoreDrawBuffHandle);
 }
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "sdf/sdfCoreDraw", sdfCoreDrawBuffHandle);
+
+INCLUDE_SDATA(const s32, "sdf/sdfCoreDraw", sdfFaceDivSoften);
+
+INCLUDE_SDATA(const s32, "sdf/sdfCoreDraw", sdfFaceDivBias);
+#endif
