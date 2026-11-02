@@ -23,7 +23,7 @@ repo keeps its own splat yaml, symbol table, checksum and build.
 ## Measurements (2026-11-02)
 
 Functions hashed from the three retail ELFs, with jump targets and gp- and
-`lui`-relative immediates masked and struct offsets kept:
+`lui`-relative immediates masked and struct offsets kept (`tools/twins.py table`):
 
 | SMT3 group | functions | identical in all 3 | bytes |
 |---|---|---|---|
@@ -35,13 +35,13 @@ Functions hashed from the three retail ELFs, with jump targets and gp- and
 | `newbattle/` | 1560 | 59 | 1% |
 
 SMT3's 45 `sdf/` units map onto DDS1 and DDS2 as unbroken runs in the same
-order. Five units have one or two DDS-only functions inside the run
-(`sdfSystem`, `sdfMat`, `sdfDevCons`, `sdfMovie`, `sdfPacDecode`); a few
-functions are SMT3-only (`sdfHdd`, `sdfMisc`). `sdfDevFile` only looks
+order (`tools/twins.py contig`). Six units have one or two DDS-only functions
+inside the run (`sdfSystem`, `sdfModel`, `sdfMat`, `sdfDevCons`, `sdfMovie`,
+`sdfPacDecode`); a few functions are SMT3-only (`sdfHdd`, `sdfMisc`). `sdfDevFile` only looks
 scattered, because tiny wrappers hash equal to unrelated functions.
 
 Matching is not the payoff: SMT3 has 792 of 822 sdf functions in C, and DDS1
-has 773 of their twins in C. The payoff is one set of names and types, and a
+has 767 of their 777 twins in C. The payoff is one set of names and types, and a
 path for smt3-port and sdfport to reach DDS.
 
 ## Stages
@@ -57,8 +57,8 @@ path for smt3-port and sdfport to reach DDS.
    per-unit contiguity check above, rerunnable.
 4. **DDS re-split.** dds-decomp's yaml for both games takes SMT3's 45 sdf unit
    boundaries. A dds-decomp change, byte-identical.
-5. **DDS rename.** The 171 identical twins whose DDS names differ from SMT3's
-   take SMT3's names (dds-decomp `tools/rename_refs.py`).
+5. **DDS rename.** The 59 identical sdf twins where no DDS1 twin has SMT3's
+   name take SMT3's names (dds-decomp `tools/rename_refs.py`).
 6. **DDS consumes it, one unit at a time.** Replace the unit's DDS source with
    the shared one under `-DSDF_DDS1`/`-DSDF_DDS2`, adding `#ifdef`s until both
    DDS games checksum. Units with no DDS-only code first.
