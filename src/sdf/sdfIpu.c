@@ -244,6 +244,11 @@ extern void sdfImageSetChainReleaseMem(s32);
 
 extern void sdfGsMemFreeDelayed(sdfGsMemSlice_t *aHandle);
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_00552158 sdfIpuInputStream
+/* DDS keeps its own name: the shorter one shifts DDS1 code_001DEFE0. */
+#define sdfIpuRunDecode sdfAdvanceStreamPlayback
+#endif
 extern sdfIpuDecodeCb_t *D_00552158;
 
 extern s32 sdfIpuDecode(sdfIpuDecodeCb_t *);
@@ -255,6 +260,11 @@ extern s32 sdfIpuDecodeThId;
 
 extern s32 iWakeupThread(s32 threadId);
 
+#if defined(SDF_DDS1)
+#define D_00552144 D_003BDA94
+#elif defined(SDF_DDS2)
+#define D_00552144 D_004391F4
+#endif
 extern s32 D_00552144;
 
 u32 sdfTexGetPixelAddr(sdfTexHandle_t *aHandle);
@@ -920,6 +930,66 @@ s32 sdfIpuSetChainTag(sdfIpuDecodeCb_t *cb)
     return 1;
 }
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* DDS skips the cadence and the refill while the movie is paused. */
+#if defined(SDF_DDS1)
+#define sdfIpuPaused D_003BD614
+#elif defined(SDF_DDS2)
+#define sdfIpuPaused D_00438D04
+#endif
+extern u32 sdfIpuPaused;
+
+void sdfIpuRunDecode(s32 frames)
+{
+    sdfIpuDecodeCb_t *node = sdfCurrIpuDecodeCb;
+    s32 cadence;
+    s32 interruptsEnabled;
+
+    if (node != NULL && node->inputDmaStartPending != 0) {
+        sdfIpuSetToIpuDma(node);
+    }
+    node = sdfIpuTaskLink;
+    while (node != NULL) {
+        if (node->imageTrans != 0) {
+            node->imageTrans--;
+        }
+        cadence = node->playbackCadenceRemainder;
+        switch (node->playbackPhase) {
+        case SDF_STREAM_PLAYBACK_FIRST_COMPLETION:
+            sdfIpuSetChainTag(node);
+            node->playbackPhase = SDF_STREAM_PLAYBACK_CADENCED;
+            node->playbackCadenceRemainder = node->fps;
+            break;
+        case SDF_STREAM_PLAYBACK_CADENCED:
+            if (sdfIpuPaused != 1) {
+                cadence += node->fps;
+                if (cadence >= frames) {
+                    if (sdfIpuSetChainTag(node) != 0) {
+                        cadence -= frames;
+                    }
+                }
+                node->playbackCadenceRemainder = cadence;
+            }
+            break;
+        }
+        if (node->active == 1) {
+            sdfIpuAllocGsRect(node);
+            if (sdfIpuPaused != 1) {
+                if (node->filledSlots < 8) {
+                    interruptsEnabled = DIntr();
+                    sdfIpuHandleDmaEnd(node);
+                    if (interruptsEnabled != 0) {
+                        EIntr();
+                    }
+                }
+                node->read(node, node->strmCallbackParm, SDF_STREAM_READ_RESUME, NULL, 0);
+            }
+        }
+        node = node->next;
+    }
+    sdfIpuExecQueue(0);
+}
+#else
 void sdfIpuRunDecode(s32 frames)
 {
     sdfIpuDecodeCb_t *node;
@@ -968,6 +1038,7 @@ void sdfIpuRunDecode(s32 frames)
     }
     sdfIpuExecQueue(0);
 }
+#endif
 
 void sdfIpuStartDecodeTask(sdfIpuDecodeCb_t *aNode, struct sdfIpuInitParm_t *aFormat, SdfStreamRead aRead, struct sdfMovieCb_t *aContext, s32 aResourceWord)
 {
@@ -1024,3 +1095,9 @@ s32 sdfIpuClose(void) {
     return DisableDmac(4);
 }
 
+
+#if defined(SDF_DDS1)
+INCLUDE_SDATA(const s32, "sdf/sdfIpu", D_003BD614);
+#elif defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "sdf/sdfIpu", D_00438D04);
+#endif
