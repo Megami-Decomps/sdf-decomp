@@ -1,6 +1,17 @@
 #include "common.h"
 #include "libsdf.h"
 #include "kernel.h"
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#include "kwln.h"
+#endif
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define fileHandleFree fileRequestFreeIfComplete
+#define D_00551650 fileManagerTaskName
+#endif
+#if defined(SDF_DDS2)
+#define pacLoadEx fileCreatePacLoadWork
+#endif
 #include "fileManager.h"
 
 /* All three views share the 0x30-byte request header. Their differently
@@ -101,6 +112,9 @@ s32 sdfFileCmdClose(void *aHandle);
 s32 sdfFileCmdFree(void *aHandle);
 void sdfFileCmdThreadSetHiPrio(void);
 s32 sdfPrintf(const char *str, ...);
+#if defined(SDF_DDS2)
+s32 printf(const char *str, ...);
+#endif
 void *memset(void *a, s32 b, u32 c);
 void sdfChipFreeDirect(void *aPtr);
 void sdfPacFree(sdfPacDecodeCb_t *cb);
@@ -218,8 +232,12 @@ void fileUnlinkCloseWait(fileMngCb_tag *cb, fileRequest_t *fileHandle) {
 }
 
 fileRequest_t *pacLoadEx(const char *filename, u32 headOrTail, u32 callback, u32 pendCallback, u32 callbackParm) {
-    fileRequest_t *req = sdfChipAllocZeroDirect(sizeof(fileRequest_t));
+    fileRequest_t *req;
 
+#if defined(SDF_DDS2)
+    printf("pac load %s\n", filename);
+#endif
+    req = sdfChipAllocZeroDirect(sizeof(fileRequest_t));
     sdfPacInit(&req->pac, (void *)callback);
     if (headOrTail != 0) {
         sdfPacSetFromTail(&req->pac);
@@ -237,8 +255,12 @@ fileRequest_t *pacLoadUseTail(const char *filename) {
 }
 
 fileRequest_t *fileLoadEx(const char *filename, u32 headOrTail, u32 endCallback, u32 callbackParm) {
-    fileRequest_t *req = sdfChipAllocZeroDirect(0x30);
+    fileRequest_t *req;
 
+#if defined(SDF_DDS2)
+    printf("file load %s\n", filename);
+#endif
+    req = sdfChipAllocZeroDirect(0x30);
     req->mode = headOrTail;
     fileLinkQueue(req, 0, filename, (void *)endCallback, (void *)callbackParm);
     return req;
@@ -734,6 +756,7 @@ void fileSysInit(void) {
     p2sdSmgBuf = fileManager;
 }
 
+#if defined(SDF_SMT3)
 INCLUDE_RODATA(const s32, "file/fileManager", D_00546900);
 
 INCLUDE_RODATA(const s32, "file/fileManager", D_00546918);
@@ -759,4 +782,8 @@ INCLUDE_SDATA(const s32, "file/fileManager", fileCallbackStatus);
 INCLUDE_SDATA(const s32, "file/fileManager", D_0055164C);
 
 INCLUDE_SDATA(const s32, "file/fileManager", D_00551650);
+#else
+u32 fileCallbackStatus __attribute__((section(".sdata"))) = 0;
 
+char D_00551650[8] __attribute__((section(".sdata"))) = "fileMan";
+#endif
