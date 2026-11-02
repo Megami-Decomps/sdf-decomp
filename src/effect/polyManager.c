@@ -98,7 +98,7 @@ extern u32 D_00317540[];
 extern u32 D_00317470[];
 extern u32 D_003174F0[];
 extern sdfGrOt_t *D_00317640[];
-extern sdfGrOt_t D_002F64B8;
+extern sdfGrOt_t sdfGrOtTable[85];
 
 void dds3TrackPolyListInit(dds3TrackPoly_t *hTrackPoly, s32 number);
 extern dds3TrackPoly_t *dds3TrackPolyTag;
@@ -425,6 +425,7 @@ void dds3PolygonDraw(dds3Polygon_t *hPolygon) {
 }
 
 extern sdfGrOt_t sdfGrOtTable[85];
+PS2_SYMBOL_AT(sdfGrOt_t, D_002F64B8, sdfGrOtTable, 0x5A0);
 
 static inline void parAppendDrawSurfacePool(sdfGrOt_t *pool, sdfDrawTag_t *packet) {
     pool->regFunc(pool, packet);
