@@ -277,10 +277,9 @@ INCLUDE_SDATA lines need `#ifdef SDF_SMT3` before the probe can count. UNDEF
 of an SMT3 real name usually means a DDS rename is owed.
 In progress: sdfVu1 and sdfDev9 (fold the `hand/` segments).
 
-configure checks a shared unit's INCLUDE_SDATA placement only when it
-re-splits, so a misplaced line can pass a move and fail at the next rename.
-It wants the lines after any trailing DDS-only definitions (sdfMemory's
-`sdfMemCB` block had to move above them).
+configure passed sdfMemory's move, then `tools/include_sdata.py` rejected
+its INCLUDE_SDATA placement after the next rename re-split. It wants the
+lines after any trailing DDS-only definitions, so `sdfMemCB` moved above them.
 
 ## Next
 
