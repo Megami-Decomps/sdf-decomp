@@ -500,14 +500,13 @@ s32 SdfIopFileRpc(const char *aName, s32 aDataSize, const void *aData, s32 *aOut
     return result;
 }
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* DDS's build defines the heap root in this unit. */
+sdfMemHandleCB_tag sdfMemCB __attribute__((section(".bss"), aligned(8)));
+#endif
+
 INCLUDE_SDATA(const s32, "sdf/sdfMemory", sdfMemFullCallback);
 
 INCLUDE_SDATA(const s32, "sdf/sdfMemory", sdfGrDrawFirstFlag);
 
 INCLUDE_SDATA(const s32, "sdf/sdfMemory", sdfFrameEvenOdd);
-
-
-#if defined(SDF_DDS1) || defined(SDF_DDS2)
-/* DDS's build defines the heap root in this unit. */
-sdfMemHandleCB_tag sdfMemCB __attribute__((section(".bss"), aligned(8)));
-#endif

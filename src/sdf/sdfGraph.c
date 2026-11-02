@@ -4,6 +4,19 @@
 #include "draw.h"
 
 #include "ps2asm.h"
+
+#if defined(SDF_DDS1)
+#define D_00529388 D_003980E0
+#elif defined(SDF_DDS2)
+#define D_00529388 D_0040B290
+#endif
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_00552080 sdfGraphicsBufferThread
+#define D_00577F80 sdfGsCaptureStoreImage
+#define D_00577FF0 sdfGraphicsBufferThreadStack
+#define D_00578FF0 sdfGraphicsTransferThreadStack
+#define D_00580FF0 sdfDisplayEnvironment
+#endif
 typedef struct
 {
     u64 pmode;
@@ -82,6 +95,10 @@ extern void sdfTexInit(void);
 extern s32 sdfCreateSema(s32 initCount, s32 maxCount, s32 option);
 extern s32 CreateThreadSimple(void *entry, void *stack, s32 stackSize, s32 priority);
 #include "sdk_libkernl.h"
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+extern void sdfDevSignalPendingSemaphore(void);
+#endif
 
 extern void sdfDispThread(void);
 extern void sdfGrSetupPacketBuff(s32 aFrameId);
@@ -195,6 +212,14 @@ s32 sdfDrawThIntHandler(s32 channel) {
     EE_SYNC_EI_BARRIER();
     return 0;
 }
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* DDS defines the first four .sdata words here. */
+u8 sdfGrScreenMode __attribute__((section(".sdata"))) = 0;
+u8 sdfGrGsResetDone __attribute__((section(".sdata"))) = 0;
+vu8 sdfFrameId __attribute__((section(".sdata"))) = 0;
+volatile s32 dds3GsSema __attribute__((section(".sdata"))) = 0;
+#endif
 
 void sdfGrReqCapture(s32 aBuff, s32 aCallback)
 {
@@ -332,6 +357,11 @@ void sdfDispThread(void) {
 
     for (;;) {
         sdfWaitVblank(0);
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+        if ((sdfFrameEvenOdd & 1) == 0) {
+            sdfDevSignalPendingSemaphore();
+        }
+#endif
         field = (~HW_READ(GS_CSR) >> 13) & 1;
         sdfFrameEvenOdd = field ^ 1;
         if (sdfDispThreadFlag == 1) {
@@ -383,6 +413,7 @@ void sdfGrInitNewFrame(void) {
     sdfGrSetupPacketBuff((s8)sdfFrameId);
     sdfCoreDrawReset();
 }
+#ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "sdf/sdfGraph", sdfGrScreenMode);
 
 INCLUDE_SDATA(const s32, "sdf/sdfGraph", sdfGrGsResetDone);
@@ -390,6 +421,7 @@ INCLUDE_SDATA(const s32, "sdf/sdfGraph", sdfGrGsResetDone);
 INCLUDE_SDATA(const s32, "sdf/sdfGraph", sdfFrameId);
 
 INCLUDE_SDATA(const s32, "sdf/sdfGraph", dds3GsSema);
+#endif
 
 INCLUDE_SDATA(const s32, "sdf/sdfGraph", sdfGrCaptureBuff);
 

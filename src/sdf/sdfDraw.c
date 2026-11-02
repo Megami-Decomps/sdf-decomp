@@ -1156,11 +1156,7 @@ INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfDrawFrameFlag);
 
 INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfDrawSyncFlag);
 
-#ifdef SDF_DDS1
-INCLUDE_SDATA(const s32, "sdf/sdfDraw", D_003BD32E);
-#else
-INCLUDE_SDATA(const s32, "sdf/sdfDraw", D_00438A1E);
-#endif
+INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfDrawFrameCounter);
 
 INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfGrFrameComplete);
 
