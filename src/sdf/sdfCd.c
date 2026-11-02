@@ -116,6 +116,9 @@ extern s32 sceRead(s32 fileHandle, s32 buffer, s32 byteCount);
 
 extern const char *dds3ImgPath;
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+typedef struct sceCdlFILE sceCdlFILE;
+#endif
 #include "sdk_libcdvd.h"
 
 extern u32 sdfCdImageFileName;
