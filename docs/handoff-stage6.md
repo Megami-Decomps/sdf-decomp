@@ -99,7 +99,7 @@
 
 ## Units moved
 
-32 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
+33 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
 report of 11 was wrong; there were 9 before this session). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -136,6 +136,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfPacDecode | fb609e7 | ba44e80dd | `func_002C60E0`, `func_002C6D58` defined to DDS `sdfPacMarkPhaseFinished`, `sdfPacResetOutputToAllocationEntry` (the ORDER and MISSING lines were the same two functions, not DDS-only code) |
 | sdfTex | 9f17ead | 8a9c4b67f | renames `sdfTexNew`, `sdfTexDup`, `sdfTexSetEx`, `sdfTexSetClutColor` (911c2a4b7). DDS reference-counts textures: `sdf_resource.h` has `sdfTexRef_t` and a `ref` field in place of `origin` under the DDS games; DDS bodies of `sdfTexNew`, `sdfTexDup`, `sdfTexFree` plus DDS-only `sdfTexReleaseReference`; the id lookup in `sdfTexSetEx` and the origin in `sdfTexSetClutColor` inline. `sdfTexFree`, `sdfTexFreeDelayed` stay DDS `sdfTexDestroy`, `sdfTexReleaseReferenceViaHandler` by `#define` (code_002DE248 trap) |
 | sdfHdd | 5f78ff4 | b106dcaa6 | renames `sdfHddPowerOffTh`, `sdfHddInit` (ec6715055) and `sdfDev9Ready` (2b5ac2a98); DDS's two bodies under the DDS games (no printf, `sdfHddInit` takes the mount path); sdata lists per game |
+| sdfMat | 224205c | 1529fdc74 | renames `sdfMatSetTexUvw`, `sdfMatUpdatePacketBasic` (954ae4902); `sdfMatSetRefMap`, `sdfMatSetTex` stay DDS `sdfSetPrimaryStateWordFourth`, `sdfSetAssetPrimaryTextureAddress` by `#define` (code_002DE248 trap); DDS-only `sdfSetForcedAssetTextureMode`, `sdfApplyAssetEntryChangesWithForcedTexture`, `sdfResourceListApplyEntryChanges`; the forced mode in `sdfMatUpdatePacketBasic`; `D_00529438` per game; sdata list under the DDS games |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
 per-symbol asm files and leaves its source alone.
@@ -185,7 +186,6 @@ Probe at the final state (`tools/sdf_probe.py`); DDS1 and DDS2 agree:
 | unit | probe | first blockers |
 |---|---|---|
 | sdfCd | NOASM (SMT3's rodata), 6 match | DDS has its own disc layer: `sdfDevWaitForDisc` (0x98, SMT3 `sdfCdWaitTrayClose` 0xC8), DDS-only `sdfDevSignalPendingSemaphore` and `sdfDevSeekDiscWithRequestGate`, `sdfDevReadDiscUntilComplete` against `sdfCdStRead`, `sdfDevFindDiscFileRecordByCdromPath` against `sdfCdImageSearchFileDirect`; `sdfCdImageLoadStart` and `sdfCdInit` bodies differ; placeholders `D_00551910`, `D_0055210C`, `D_00552110`, `D_0058F7C0` and `dds3ImgLsn`, `sdfCdImageCurrRemain`, `sdfCdImageDirData`, `sdfCdImageFileName` unnamed in DDS |
-| sdfMat | 35 match, 17 differ | MISSING `sdfSetForcedAssetTextureMode`, `sdfSetPrimaryStateWordFourth` (SMT3 `sdfMatSetRefMap`), `sdfSetAssetPrimaryTextureAddress`; `sdfTexFreeDelayed` now resolves through sdfTex's `#define` |
 | sdf3D | 7 match, 15 differ | MISSING `sdfCameraBuildProjection`; UNDEF `vu1Tex0Slot0..2` and code labels `D_002E8ED0`, `D_002ECF10` |
 | sdfModel | NOASM (SMT3's sdata), 46 match | MISSING `sdfChunkFindById`, `sdfGetUniqueChunkValue`, `sdfGetLodChunkValue`; UNDEF `ToMatrix`, `MultMatrixRev` |
 | sdfMotion | 85 match, 23 differ | UNDEF `D_00529448`, `D_00529470`, `D_00529600`, `sdfMotModelVisibleTable`, `sdfMotModelLinerScaleTable` |
@@ -200,7 +200,7 @@ sdfDev9 (stage 4 did not split them for DDS).
 
 ## Next
 
-1. sdfMat, then sdfModel and sdfMotion (renames and placeholders, as for
+1. sdfModel and sdfMotion (renames and placeholders, as for
    sdfTex), sdf3D, then sdfCd (several DDS-only or DDS-different functions,
    about the size of sdfTex's work), sdfSound last.
 2. Per unit: `sdf_resolve.py` and `sdf_probe.py`, rename DDS to SMT3's real
@@ -300,7 +300,10 @@ from the SDK (`void SleepThread`, `void EIntr`, `s32 sceSifSetRpcQueue`).
   working copy (`/tmp/s8/fixmixed.py`).
 - SMT3's `check_inline_asm.py` rejects `__asm__` in a shared unit even inside
   a DDS-only branch; alias a function with `#define` instead.
-- DDS2 `game/code_002DE248.c` also flips on a rename: `sdfTexDestroy` to
+- DDS2 `game/code_002DE248.c` also flips on a rename. In `sdf_asset_state.h`,
+  renaming any one of `sdfSetPrimaryStateWordFourth`, `sdfSetPrimaryTextScalars`
+  was fine but any two of those and `sdfSetAssetPrimaryTextureAddress` failed.
+  Earlier: `sdfTexDestroy` to
   `sdfTexFree` (`sdf_tex_lifetime.h`) and `sdfTexReleaseReferenceViaHandler`
   to `sdfTexFreeDelayed` (`sdf.h`, `sdf_texture_file.h`, and called there)
   each cost it a word. check_unit on it after any rename of a header-declared
