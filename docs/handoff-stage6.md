@@ -188,7 +188,7 @@ Probe at the final state (`tools/sdf_probe.py`); DDS1 and DDS2 agree:
 
 | unit | probe | first blockers |
 |---|---|---|
-| sdfCd | NOASM (SMT3's rodata), 6 match | DDS has its own disc layer: `sdfDevWaitForDisc` (0x98, SMT3 `sdfCdWaitTrayClose` 0xC8), DDS-only `sdfDevSignalPendingSemaphore` and `sdfDevSeekDiscWithRequestGate`, `sdfDevReadDiscUntilComplete` against `sdfCdStRead`, `sdfDevFindDiscFileRecordByCdromPath` against `sdfCdImageSearchFileDirect`; `sdfCdImageLoadStart` and `sdfCdInit` bodies differ; placeholders `D_00551910`, `D_0055210C`, `D_00552110`, `D_0058F7C0` and `dds3ImgLsn`, `sdfCdImageCurrRemain`, `sdfCdImageDirData`, `sdfCdImageFileName` unnamed in DDS |
+| sdfCd | NOASM (SMT3's rodata), 6 match | DDS has its own disc layer: `sdfDevWaitForDisc` (0x98, SMT3 `sdfCdWaitTrayClose` 0xC8), DDS-only `sdfDevSignalPendingSemaphore` and `sdfDevSeekDiscWithRequestGate`, `sdfDevReadDiscUntilComplete` against `sdfCdStRead`, `sdfDevFindDiscFileRecordByCdromPath` against `sdfCdImageSearchFileDirect`; `sdfCdImageLoadStart` and `sdfCdInit` bodies differ; `sdfCdStStart`, `sdfCdImageSearchFile`, `sdfCdImageRead`, `sdfCdImageLoadDir` differ by a few words; placeholders `D_005495D8`, `D_005495F0`, `D_00549600` (rodata), `D_00551910`, `D_0055210C`, `D_00552110` (DDS `sdfDiscReadMode`), `D_0058F7C0`, and `sdfCdImageSearchFileDirect_ent` unresolved. The four image state names are carried (dds-decomp 4a6ea4ca8) |
 | sdfSound | NOASM (SMT3's rodata), 29 match | MISSING `sndReserveIopWorkMemory`, `sndTryDispatchQueuedCommand`, `sndStartIopCommandAndRpcWorkers`; UNDEF `sdfSndSendCmd_cmd_id`, `sdfSndMakeFilename`, `sdfFileRpcResult` |
 
 NOASM means the unit's SMT3 INCLUDE_RODATA or INCLUDE_SDATA lines need
