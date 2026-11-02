@@ -1,4 +1,4 @@
-From 2e1edadc07786ca7f48d294ce6871df05a3190e1 Mon Sep 17 00:00:00 2001
+From 1fac379b27a3dd51bcbea246e7ea315b43ba14d7 Mon Sep 17 00:00:00 2001
 From: tge-was-taken <tge-was-taken@outlook.com>
 Date: Mon, 2 Nov 2026 04:16:42 +0100
 Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
@@ -19,14 +19,14 @@ Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
  tools/include_sdata.py         |  30 ++++--
  tools/production_report.py     |  11 +-
  tools/progress.py              |   7 +-
- tools/sources.py               | 179 +++++++++++++++++++++++++++++++++
+ tools/sources.py               | 180 +++++++++++++++++++++++++++++++++
  tools/splat_split.py           |  39 +++++++
  tools/test_check_inline_asm.py |   4 +-
  tools/test_configure.py        |   6 +-
  tools/test_sources.py          |  76 ++++++++++++++
  tools/test_vuas.py             |   3 +-
  tools/vu_include.py            |   5 +-
- 22 files changed, 424 insertions(+), 68 deletions(-)
+ 22 files changed, 425 insertions(+), 68 deletions(-)
  create mode 100644 .gitmodules
  create mode 160000 external/sdf-decomp
  create mode 100644 tools/sources.py
@@ -687,10 +687,10 @@ index daa5ab64..6d8de7e0 100755
              n = 4 * len(INSN.findall(body))
 diff --git a/tools/sources.py b/tools/sources.py
 new file mode 100644
-index 00000000..f7f514de
+index 00000000..b0eb3b1b
 --- /dev/null
 +++ b/tools/sources.py
-@@ -0,0 +1,179 @@
+@@ -0,0 +1,180 @@
 +"""Where a unit's source lives.
 +
 +A unit keeps its name and its src/<version>/<unit>.c path everywhere else
@@ -722,6 +722,7 @@ index 00000000..f7f514de
 +        "effect/effPCPScatter.c": Path("external/sdf-decomp/src/effect/effPCPScatter.c"),
 +        "effect/parManager.c": Path("external/sdf-decomp/src/effect/parManager.c"),
 +        "effect/effMath.c": Path("external/sdf-decomp/src/effect/effMath.c"),
++        "effect/effPacket.c": Path("external/sdf-decomp/src/effect/effPacket.c"),
 +    },
 +}
 +

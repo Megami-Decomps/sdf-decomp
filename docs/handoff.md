@@ -82,7 +82,7 @@ relative to smt3-decomp's remote (on GitHub: Megami-Decomps/sdf-decomp):
 
 ```sh
 git am /path/to/sdf-decomp/docs/smt3-decomp-consume.patch
-git rm -r -q src/smt3/sdf src/smt3/mc/mcManager.c src/smt3/model src/smt3/file/fileManager.c src/smt3/script/scrScriptProcess.c src/smt3/script/scrTraceCode.c src/smt3/script/scrCommonCommand.c src/smt3/effect/effPCPNeedle.c src/smt3/effect/polyManager.c src/smt3/effect/effPart.c src/smt3/effect/effPCPFlash.c src/smt3/effect/effPCPScatter.c src/smt3/effect/parManager.c src/smt3/effect/effMath.c include/{libsdf.h,sdf_types.h,sdf_resource.h,sdf_lighting.h,sdf_movie_types.h,sdfGsMemIO.h,sdfDevCons.h,sdfCorePacketCb_t.h,sdfCorePacketPointBuff_tag.h,model.h,motion.h,draw.h,draw3d.h,billboard.h,fileManager.h,scr.h,effPCPData.h,effect.h}
+git rm -r -q src/smt3/sdf src/smt3/mc/mcManager.c src/smt3/model src/smt3/file/fileManager.c src/smt3/script/scrScriptProcess.c src/smt3/script/scrTraceCode.c src/smt3/script/scrCommonCommand.c src/smt3/effect/effPCPNeedle.c src/smt3/effect/polyManager.c src/smt3/effect/effPart.c src/smt3/effect/effPCPFlash.c src/smt3/effect/effPCPScatter.c src/smt3/effect/parManager.c src/smt3/effect/effMath.c src/smt3/effect/effPacket.c include/{libsdf.h,sdf_types.h,sdf_resource.h,sdf_lighting.h,sdf_movie_types.h,sdfGsMemIO.h,sdfDevCons.h,sdfCorePacketCb_t.h,sdfCorePacketPointBuff_tag.h,model.h,motion.h,draw.h,draw3d.h,billboard.h,fileManager.h,scr.h,effPCPData.h,effect.h}
 git commit --amend --no-edit
 git submodule update --init
 ```

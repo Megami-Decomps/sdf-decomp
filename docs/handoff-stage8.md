@@ -21,6 +21,7 @@ one consume commit amended per unit and exported to
 | `effect/effPCPFlash`, `effect/effPCPScatter` | shared, all three games | DDS names aliased in the units; Flash's OT slot per game (`sdfGrOtTable[45]`, DDS `[56]`) |
 | `effect/parManager` | shared, all three games | DDS names aliased; SMT3's two NON_MATCHING drafts (`dds3Particle_SparkBuffInit`, `dds3Particle_SparkOffsetBuffInit`) are DDS's matching C, compiled for DDS by `#if defined(NON_MATCHING) \|\| defined(SDF_DDS1) \|\| defined(SDF_DDS2)`; `effect.h` moved here |
 | `effect/effMath` | shared, all three games | SMT3's text; DDS's `sdfViewMatrix`, `sdfViewTargetVector` and `effMathResetBezierSlot` (SMT3's `func_001AC068`) aliased |
+| `effect/effPacket` | shared, all three games | DDS's four textured quad and triangle writers under the DDS macros; the draw bank's head and the crossfade's second OT slot per game; DDS keeps the end message as INCLUDE_RODATA |
 
 dds-decomp commits, in order: e76182af8 (probe and resolve take `dir/unit`),
 878bc0130 (model re-split), ed9e2911e (model names), 79f089aa1 (mdlManager
@@ -130,7 +131,7 @@ SMT3's functions in order.
 | effPCPScatter | 90 | 0x001708A0..0x001760F8 | shared |
 | parManager | 126 | 0x00153680..0x0015B228 | shared |
 | effMath | 11 | 0x0018DBD8..0x0018E218 | shared |
-| effPacket | 7 | 0x0015F810..0x001606C0 | 6 twins in 11, inside `game/code_0015F4D0` |
+| effPacket | 7 | 0x0015F810..0x001606C0 | shared |
 | effSpline | 11 | 0x00192CC8..0x001937E0 | 4 DDS-only, inside `game/code_00192488` |
 | effDebug | 12 | 0x0018DF90..0x0018F3A0 | 9 extra, overlaps effMath's run |
 | effEvent | 84 | 0x0018F3A0..0x00192CC8 | 82 twins in 93; SMT3 has 1 INCLUDE_ASM |
@@ -215,8 +216,25 @@ aa3077da4; sdf-decomp 81061c0 (history), 5798765. SMT3's
 `D_00324660` by address, so the struct needed no alias. Matched on the first
 build in all three games.
 
+effPacket, effDebug, effEvent, effSpline: dds-decomp 78069a46f re-split all
+four in one run (DDS1 0x0015F810, end 0x001606C0; 0x0018E218, 0x0018F3A0,
+0x00192CC8, end 0x00193900; DDS2 0x00167400, 0x001682B0; 0x00195E50,
+0x00196FD8, 0x0019A900, 0x0019B538). Nothing needed fixing by hand but the
+`# Nocturne __FILE__` comments. DDS's counts: effPacket 11 (SMT3 7),
+effDebug 16, effEvent 93 (SMT3 84), effSpline 18; all C.
+
+effPacket: dds-decomp 5dae51e8f carries `dds3CrossfadeEnd` (was
+`dds3EndCrossfade`), `dds3CrossfadeRunFlag`, `dds3CrossfadeFrame`,
+`dds3CrossfadeFrameMax`, `dds3RenderDrawEnv` and `dds3DrawEnv` (DDS1
+`D_00325870`, whose interior `kwlnFrameDrawPacketRecords` stays), ed7b35eca;
+sdf-decomp 294ce25 (history), a30397b. DDS's draw bank is 0x1F40 to SMT3's
+0x1BE0, all of it before the frame mask source, and the crossfade draws into
+OT slot 82 where SMT3 uses 70. The probe's PAD line was real: compiling the
+end message as a literal drops 8 bytes of DDS's rodata and shifts the next
+unit's, so DDS prints it from its INCLUDE_RODATA symbol.
+
 ## Next
 
-1. effect/: effPacket, effSpline, effDebug, effEvent, effBlur_Filter, in the
-   table's order. effDebug overlaps effMath's old run; measure it again.
+1. effect/: effDebug, effEvent, effSpline (re-split already), then
+   effBlur_Filter.
 2. mdlEffect, by bringing its viewer code in under the DDS macros.
