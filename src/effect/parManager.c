@@ -4,6 +4,32 @@
 #include "effect.h"
 #include "billboard.h"
 
+/* DDS's names for the same objects. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define Eff_ModelTrackPolyListColorSet effTrackPolySetIndexedColor
+#define ParRand effEmitterDelayRandomState
+#define aViewEye sdfViewTargetVector
+#define dds3BillboardGeneral effCreateBillboardSharingIndexedResource
+#define dds3EffectBase effDefaultRandomState
+#define func_001621A0 effScaleSingleParticleTemplate
+#define func_001621C8 effCloneSingleParticleTemplate
+#define func_00162248 effFreeSingleParticleTemplate
+#define func_00162270 effInitParticleRecord
+#endif
+#if defined(SDF_DDS1)
+#define D_003170E0 D_0034E0C0
+#define D_003171A0 D_0034E180
+#define D_003171B0 D_0034E190
+#define dds3ParticleAllBuffInitTable D_0034E2F0
+#define dds3ParticleSetScaleTable D_0034E328
+#elif defined(SDF_DDS2)
+#define D_003170E0 D_003AA9F0
+#define D_003171A0 D_003AAAB0
+#define D_003171B0 D_003AAAC0
+#define dds3ParticleAllBuffInitTable D_003AAC20
+#define dds3ParticleSetScaleTable D_003AAC58
+#endif
+
 /* Particle emitters, history ribbons and billboard dispatch, reconstructed from
  * the shared DDS engine and checked against SLUS_209.11. All emitter views
  * retain the native 0x150-byte prefix; the kind-specific tail follows it. */
@@ -1306,8 +1332,8 @@ void dds3Particle_SparkDelete(void *hData) {
 
 /* vu0 routine: seed a ballistic packet; positions are emitter-relative and
  * then offset by the origin. */
-/* NON_MATCHING: 22 of 512 words differ (first at +0x90). */
-#ifdef NON_MATCHING
+/* NON_MATCHING in SMT3: 22 of 512 words differ (first at +0x90). */
+#if defined(NON_MATCHING) || defined(SDF_DDS1) || defined(SDF_DDS2)
 void dds3Particle_SparkBuffInit(dds3Particle_Spark_t3 *pSpark, s32 number) {
     parSparkPacket_t *packet = (parSparkPacket_t *)pSpark->head.buffer->pPhysics;
     f32 position[4];
@@ -2729,8 +2755,8 @@ void dds3Particle_SparkOffsetDelete(void *hData) {
 
 /* vu0 routine: seed an offset-gravity packet; the displacement is tracked
  * apart from the emitter origin. */
-/* NON_MATCHING: 22 of 484 words differ (first at +0x90). */
-#ifdef NON_MATCHING
+/* NON_MATCHING in SMT3: 22 of 484 words differ (first at +0x90). */
+#if defined(NON_MATCHING) || defined(SDF_DDS1) || defined(SDF_DDS2)
 void dds3Particle_SparkOffsetBuffInit(dds3Particle_SparkOffset_t3 *pSparkOffset, s32 number) {
     parSparkOffsetPacket_t *packet = (parSparkOffsetPacket_t *)pSparkOffset->head.buffer->pPhysics;
     f32 position[4];
