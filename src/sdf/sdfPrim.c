@@ -441,6 +441,12 @@ extern s32 sdfDelayedResrcSemaId;
 
 extern s32 sdfDrawReqQueueIndex;
 
+#if defined(SDF_DDS1)
+#define D_00529388 D_003980E0
+#elif defined(SDF_DDS2)
+#define D_00529388 D_0040B290
+#endif
+
 extern sdfGrFrameSet_t D_00529388;
 
 typedef struct effDebugPolyParams_t {
