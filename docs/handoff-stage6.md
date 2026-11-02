@@ -148,23 +148,22 @@ Later, sdf-decomp c6c2ba5 ports DDS's NON_MATCHING draft of
 `sdfMovieQueueFrameSprite` to SMT3's types (dds-decomp 137191fac): DDS's
 check_nonmatching failed on it in the shared file.
 
-Final state, verified from committed state (sdf-decomp 9f17ead in both
-submodules, dds-decomp 8a9c4b67f for the build; b1aa6dbe4 adds only tools):
-SMT3 clone `configure.py --clean`, ninja exit 0, `[860/861] check
-config/smt3/checksum.sha1`, 5facfbf7916836613449c922e26a4ec412207b32. DDS
-`configure.py --clean`, ninja exit 0 with both check lines, DDS1
-6d18898e2724bf1d145392766e8ba1e678487419, DDS2
-9be91ee1b4a535a4cb6ec89237b5a6ba41be2add. check_unit over every DDS unit
-(528, shared ones by logical path): only the four known differences
-(devbuild in both games, and the orphans code_002E7C20 and code_00340AC8, see
-Traps).
+Final state, verified from committed state (sdf-decomp efcf7da in both
+submodules, dds-decomp 4a6ea4ca8): SMT3 clone `configure.py --clean`, ninja
+exit 0, `[860/861] check config/smt3/checksum.sha1`,
+5facfbf7916836613449c922e26a4ec412207b32. DDS `configure.py --clean`, ninja
+exit 0 with both check lines, DDS1 6d18898e2724bf1d145392766e8ba1e678487419,
+DDS2 9be91ee1b4a535a4cb6ec89237b5a6ba41be2add. check_unit over every DDS unit
+(528, shared ones by logical path): only the four known differences (devbuild
+in both games, and the orphans code_002E7C20 and code_00340AC8, see Traps).
 
 CI-equivalent checks at that state. DDS: run_tests.py 445 OK,
 test_c_aliases OK, check_nonmatching 89 units 0 failed, `ninja dds1 dds2
-dds1-dev dds2-dev` exit 0, the five report targets built, progress dds1
+dds1-dev dds2-dev` exit 0, the four report.json targets built, progress dds1
 9502/9573 functions, dds2 10768/10855 (unchanged). SMT3 clone: every
 `tools/test_*.py` passes, check_nonmatching (exit 0) and
-check_irx_nonmatching pass, progress 8567/9045.
+check_irx_nonmatching pass, progress 8568/9045 (one more than before:
+`sdfModelLinkDrawPacket` is C now).
 
 ## Tools
 
