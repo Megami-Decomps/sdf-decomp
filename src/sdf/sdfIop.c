@@ -24,11 +24,15 @@ void SdfIopInit(const char *driverPath, const char *modulePath)
 
     if (modulePath != NULL) {
         while (sceSifLoadModule(modulePath, 0, NULL) < 0) {
+#ifdef SDF_SMT3
             printf("%s can't load.\n", modulePath);
+#endif
         }
     }
     while (sceSifLoadModule(driverPath, 0, NULL) < 0) {
+#ifdef SDF_SMT3
         printf("%s can't load.\n", driverPath);
+#endif
     }
     if (modulePath != NULL) {
         sceSifMInitRpc(0);
