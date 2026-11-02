@@ -99,7 +99,7 @@
 
 ## Units moved
 
-24 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
+25 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
 report of 11 was wrong; there were 9 before this session). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -127,6 +127,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfMovie | 346ea33 | c72f8d6c6 | DDS-only `sdfSetStreamFrameDrawMode`, `sdfSetGridScaledDrawBounds`, `sdfMovieQueueFrameSprite` (INCLUDE_ASM plus DDS's NON_MATCHING draft) after `movieWaitSema`; the draw-mode check in `release_movieobj2` under the DDS games; sdata lists per game |
 | sdfTmx | 1180181 | 00bf3e064 | renames `mcModuleNames`, `sdfFileRpcBuf`, `sdfFileRpcState`, `sdfFileRpcThreadId` (4651fd56b); DDS compiles the two module paths from literals, so `D_0054A360`, `D_0054A380` are defined to them; rodata lists per game |
 | sdfDevFile | 8142c1f | 6d336f307 | renames `sdfDevLoadTex`, `sdfDevLoadTexList`, `sdfDevLoadModel`, `sdfDevLoadMotion` (7d13153dc); the loaders' `printf` and its rodata under `SDF_SMT3` |
+| sdfFileIO | 3cb189b | f59f53853 | renames `sdfFileCmdFreeList`, `sdfFileCmdCount`, `sdfFileCmdFreeCount`, `sdfFileCmdDefaultDevice`, `sdfCdImageLoadStart` (d958019ac); eight placeholders per game; DDS's `/movie2/` check in `sdfFileCmdAnalyzeFileName`; DDS's sdata lists per game |
 | sdfHdd | 5f78ff4 | b106dcaa6 | renames `sdfHddPowerOffTh`, `sdfHddInit` (ec6715055) and `sdfDev9Ready` (2b5ac2a98); DDS's two bodies under the DDS games (no printf, `sdfHddInit` takes the mount path); sdata lists per game |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
@@ -170,7 +171,6 @@ temporarily, check_unit in both games; DDS1 and DDS2 agree unless noted):
 | sdfDefaultMain | 0 match, 12 differ | UNDEF `sdfPadManagerMode`, `SdfIopInit`, `sdfCdTrayMode` |
 | sdfModel | 46 match, 17 differ | UNDEF `ToMatrix`, `MultMatrixRev`, `sdfItemArrayNew` |
 | sdfMotion | 85 match, 26 differ | UNDEF `ToMatrix`, `sdfMotModelVisibleTable`, `sdfMotModelLinerScaleTable` |
-| sdfFileIO | 21 match, 17 differ | UNDEF `sdfFileCmdFreeList`, `sdfFileCmdFreeCount`, `sdfFileCmdDefaultDevice` |
 | sdfFile | 11 match, 18 differ | UNDEF `sdfFileDefaultSrcType`, `sdfFileCmdFreeList`, `sdfFileCmdFreeCount` |
 | sdfCd | 6 (DDS2 7) match, 31 differ | UNDEF `sdfCdTrayMode`, `sdfCdImageSearchFileDirect_ent`, `sdfCdImageFileName` |
 | sdfSound | 29 match, 114 differ | UNDEF `sdfSndSendCmd_cmd_id`, `sdfSndMakeFilename`, `sdfFileRpcResult` |
@@ -272,7 +272,8 @@ from the SDK (`void SleepThread`, `void EIntr`, `s32 sceSifSetRpcQueue`).
   orphans: no yaml entry, not built. They are old copies of sdfQuat and the
   source of their check_unit difference.
 - A rename needs `configure.py` before check_unit sees the new name in the
-  split asm.
+  split asm, and a renamed INCLUDE_SDATA symbol also needs `ninja` (the
+  `build/eeasm` copy) before a probe compiles.
 - `names.py apply` renames in every DDS source, including files configure
   has just rewritten; stage such a file as HEAD plus the renames, not as the
   working copy (`/tmp/s8/fixmixed.py`).
