@@ -34,7 +34,26 @@ s32 movieParseHeader(sdfIpuDecodeCb_t *aNode, sdfMovieCb_t *stream, s32 aOp, voi
 extern s32 movieStreamSema;
 extern u32 movieSemaCount;
 extern sdfMovieCb_t *movieSemaId;
+#if defined(SDF_DDS1)
+#define D_00551B50 D_003BD638
+#define movieDrawMode D_003BD61C
+#elif defined(SDF_DDS2)
+#define D_00551B50 D_00438D28
+#define movieDrawMode D_00438D0C
+#endif
 extern const char D_00551B50[];
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define movie_2C5080 sdfPrintTextLine
+#define release_movieobj2 sdfMovieDrawFrame
+
+extern u32 movieDrawMode;
+extern s32 sdfMovieDrawLeft;
+extern s32 sdfMovieDrawTop;
+extern s32 sdfMovieDrawRight;
+extern s32 sdfMovieDrawBottom;
+extern u32 sdfMovieDrawColor;
+#endif
 
 void movie_2C5080(const char *aStr)
 {
@@ -77,6 +96,154 @@ u8 *movieWaitSema(s32 aSize)
 INCLUDE_ASM(const s32, "sdf/sdfMovie", movieWaitSema);
 #endif
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* Store the stream-frame draw-path mode; movie viewport setup selects 1. */
+void sdfSetStreamFrameDrawMode(u32 value) {
+    movieDrawMode = value;
+}
+
+void sdfSetGridScaledDrawBounds(s32 column, s32 row, s32 width, s32 height, u32 mode) {
+    sdfMovieDrawLeft = column * 0x10 + 0x7000;
+    sdfMovieDrawTop = row * 8 + 0x7900;
+    sdfMovieDrawRight = sdfMovieDrawLeft + width * 0x10;
+    sdfMovieDrawBottom = sdfMovieDrawTop + height * 8;
+    sdfMovieDrawColor = mode;
+}
+
+#ifdef NON_MATCHING
+#include "common.h"
+#include "eeregs.h"
+#include "snd_command_packet.h"
+#include "mnu_voice_resource_path_api.h"
+#include "ee_mmi.h"
+#include "sdf_resource.h"
+#include "sdf_packed_resource.h"
+#include "sdf_pac_reloc.h"
+#include "sdf.h"
+#include "sdf_texture_lists.h"
+#include "sdf_draw.h"
+#include "sdf_resource_list_item.h"
+#include "sdf_stream_read.h"
+#include "sdf_dev_event.h"
+#include "sdf_dev_state.h"
+#include "mdl_object_stream.h"
+#include "sdf_texture_offset_list.h"
+#include "sdf_texture_file.h"
+#include "sdf_texture_queue.h"
+#include "sdf_stream_input_dma.h"
+#include "sdf_sound_rpc_records.h"
+#include "snd_midi_state_views.h"
+#include "sdf_movie_stream.h"
+#include "sdf_packet_alloc.h"
+#include "sdf_packet_list.h"
+extern s32 p2sdPlayPcm(u8 channel);
+
+extern s32 sdfMovieDrawLeft;
+extern s32 sdfMovieDrawTop;
+extern s32 sdfMovieDrawRight;
+extern s32 sdfMovieDrawBottom;
+extern u32 sdfMovieDrawColor;
+
+extern movieStream_t *movieSemaId;
+
+
+/* The bit length of x > 0: 31 - plzcw(x). For x = size - 1 it is the size's
+ * exponent rounded up, as TEX0's TW and TH take it. */
+static inline s32 bitLength(s32 x) {
+    s32 leading;
+
+    EE_MMI_PLZCW(leading, x);
+    return 31 - (leading & 0xFF);
+}
+
+static inline u64 movieVertexWord(s32 x, s32 y, u32 depth) {
+    return ((u64)depth << 32) | ((u32)y << 16) | (u32)x;
+}
+
+/* Queue the decoded movie frame as a sprite over the viewport bounds and color
+ * set by sdfSetGridScaledDrawBounds, once playback has begun; with the PAC
+ * stream enabled, start its sound once the ring holds a page. sdfMovieDrawFrame
+ * calls it when the stream-frame draw mode is 1. Upstream: INCLUDE_ASM in
+ * both games; written from the retail routine. It differs from retail
+ * only in register allocation, scheduling, the way the color word is masked,
+ * and the handwritten addi that loads 31 for the texture sizes. */
+void sdfMovieQueueFrameSprite(movieStream_t *movie, sdfGrOt_t *pool) {
+    u64 *packet;
+    sdfDrawTag_t *packetList;
+    u32 width;
+    u32 height;
+    s32 heightLog2;
+    s32 widthLog2;
+    u32 pageCount;
+    u64 pageBase;
+    u64 textureWord;
+
+    if (movie->soundNode.playbackPhase < 2) {
+        return;
+    }
+
+    if (movie->pacEnabled != 0 && movie->pad21 == 0 &&
+        movie->stream.pac->ringLength >= 0x1000) {
+        movie->pad21 = 1;
+        movieSemaId = movie;
+        p2sdSetPcmCallback(movieWaitSema);
+        p2sdPlayPcm(movie->packetLimit);
+    }
+
+    packet = (u64 *)(u32)sdfGrAllocPacketBuff(0xC0);
+    packet[0] = 0x0100000BULL;
+    packet[1] = 0x5000000B00000000ULL;
+    packet[2] = 0x10AB40000000800AULL;
+    packet[3] = 0xE;
+    packet[4] = 0x21;
+    packet[5] = 0x14;
+
+    height = movie->soundNode.height;
+    width = movie->soundNode.width;
+    heightLog2 = bitLength(height - 1);
+    widthLog2 = bitLength(width - 1);
+    pageCount = width >> 6;
+    if (pageCount == 0) {
+        pageCount = 1;
+    }
+    pageBase = (u32)movie->soundNode.resourceWord >> 6;
+    textureWord = ((u64)pageCount << 14) | ((u64)heightLog2 << 30) |
+                  (u64)(widthLog2 << 26) | (1ULL << 34);
+    if (movie->soundNode.audioMode != 0) {
+        textureWord |= pageBase;
+        pageBase = 0x200000;
+    }
+    packet[6] = textureWord | pageBase;
+
+    packet[7] = 6;
+    packet[8] = 5;
+    packet[9] = 8;
+    packet[10] = 0x0000004000000080ULL;
+    packet[11] = 0x3B;
+    packet[12] = ((u64)(sdfMovieDrawColor >> 24) << 32) | 0x64;
+    packet[13] = 0x42;
+    packet[14] = (u64)(s64)(s32)(0x80000000U | (sdfMovieDrawColor & 0xFFFFFF));
+    packet[15] = 1;
+    packet[16] = 0;
+    packet[17] = 3;
+    packet[18] = movieVertexWord(sdfMovieDrawLeft, sdfMovieDrawTop, movie->drawZ);
+    packet[19] = 5;
+    packet[20] = (u64)(s64)(s32)((height << 20) | (width << 4));
+    packet[21] = 3;
+    packet[22] = movieVertexWord(sdfMovieDrawRight, sdfMovieDrawBottom, movie->drawZ);
+    packet[23] = 5;
+
+    packetList = sdfPrimAllocDrawTag(NULL);
+    sdfDrawTagLink(packetList, (u32)packet);
+    pool->append(pool, packetList);
+}
+#else
+INCLUDE_ASM(const s32, "sdf/sdfMovie", sdfMovieQueueFrameSprite);
+#endif
+
+extern void sdfMovieQueueFrameSprite(sdfMovieCb_t *movie, sdfGrOt_t *ot);
+#endif
+
 /* DMA/VIF/GIF header followed by nine real A+D writes for one movie sprite. */
 typedef struct sdfMovieDrawPacket_t {
     u64 dmaTag;
@@ -114,6 +281,12 @@ void release_movieobj2(sdfMovieCb_t *obj, sdfGrOt_t *ot)
     if (obj->decodeCb.playbackPhase < 2) {
         return;
     }
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+    if (movieDrawMode == 1) {
+        sdfMovieQueueFrameSprite(obj, ot);
+        return;
+    }
+#endif
     if (obj->sndActive != 0 && obj->sndPlaying == 0 && obj->readCb.pac->ringLength >= 0x1000) {
         obj->sndPlaying = 1;
         movieSemaId = obj;
@@ -620,9 +793,46 @@ s32 sdfMovieIsFinished(sdfMovieCb_t *aMov)
     }
     return aMov->decodeCb.activeBuffCount == 0;
 }
+#ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "sdf/sdfMovie", movieStreamSema);
 
 INCLUDE_SDATA(const s32, "sdf/sdfMovie", D_00551B4C);
 
 INCLUDE_SDATA(const s32, "sdf/sdfMovie", D_00551B50);
+#elif defined(SDF_DDS1)
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", movieStreamSema);
 
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", D_003BD61C);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", sdfMovieDrawLeft);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", sdfMovieDrawTop);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", sdfMovieDrawRight);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", sdfMovieDrawBottom);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", sdfMovieDrawColor);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", D_003BD634);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", D_003BD638);
+#else
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", movieStreamSema);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", D_00438D0C);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", sdfMovieDrawLeft);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", sdfMovieDrawTop);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", sdfMovieDrawRight);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", sdfMovieDrawBottom);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", sdfMovieDrawColor);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", D_00438D24);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMovie", D_00438D28);
+#endif
