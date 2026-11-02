@@ -2,6 +2,11 @@
 #include "libsdf.h"
 
 #include "ps2asm.h"
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define sdfTexFree sdfTexDestroy
+#define sdfTexFreeDelayed sdfTexReleaseReferenceViaHandler
+#endif
 extern sdfTexHandle_t *sdfTexHandleLink;
 extern sdfDelayedResrcCB_t sdfTexDelayedResrcCB;
 
@@ -256,6 +261,7 @@ void sdfTexLink(sdfTexHandle_t *handle)
     sdfTexHandleLink = handle;
 }
 
+#ifdef SDF_SMT3
 sdfTexHandle_t *sdfTexNew(s32 aWidth, s32 aHeight, s32 aPixelFormat, s32 aNumOfMipmap,
                           sdfGsMemSlice_t *aPixelGsHandle, s32 aCLUTFormat, s32 aNumOfCLUT,
                           sdfGsMemSlice_t *aCLUTGsHandle)
@@ -275,7 +281,31 @@ sdfTexHandle_t *sdfTexNew(s32 aWidth, s32 aHeight, s32 aPixelFormat, s32 aNumOfM
     handle->clutColor = 0x80808080;
     return handle;
 }
+#else
+sdfTexHandle_t *sdfTexNew(s32 aWidth, s32 aHeight, s32 aPixelFormat, s32 aNumOfMipmap,
+                          sdfGsMemSlice_t *aPixelGsHandle, s32 aCLUTFormat, s32 aNumOfCLUT,
+                          sdfGsMemSlice_t *aCLUTGsHandle)
+{
+    sdfTexHandle_t *handle = sdfChipAllocZeroDirect(sizeof(sdfTexHandle_t));
+    sdfTexRef_t *ref = sdfChipAllocZeroDirect(sizeof(sdfTexRef_t));
 
+    ref->refCount = 1;
+    handle->numOfCLUT = aNumOfCLUT;
+    handle->CLUTFormat = aCLUTFormat;
+    handle->width = aWidth;
+    handle->height = aHeight;
+    handle->pixelFormat = aPixelFormat;
+    handle->numOfMipmap = aNumOfMipmap;
+    handle->clutGsHandle = aCLUTGsHandle;
+    handle->pixelGsHandle = aPixelGsHandle;
+    handle->ref = ref;
+    sdfTexLink(handle);
+    handle->clutColor = 0x80808080;
+    return handle;
+}
+#endif
+
+#ifdef SDF_SMT3
 sdfTexHandle_t *sdfTexDup(sdfTexHandle_t *aHandle)
 {
     sdfTexHandle_t *dup;
@@ -303,6 +333,39 @@ sdfTexHandle_t *sdfTexDup(sdfTexHandle_t *aHandle)
     sdfTexClutToGs(dup);
     return dup;
 }
+#else
+sdfTexHandle_t *sdfTexDup(sdfTexHandle_t *aHandle)
+{
+    sdfTexHandle_t *dup;
+    sdfTexRef_t *ref;
+    sdfTexHandle_t *origin;
+
+    dup = sdfChipAllocDirect(64);
+    *dup = *aHandle;
+    ref = sdfChipAllocZeroDirect(sizeof(*ref));
+    origin = ref->origin;
+    ref->refCount = 1;
+    dup->ref = ref;
+    if (origin == NULL) {
+        origin = aHandle;
+        ref->origin = origin;
+    }
+    dup->packet = NULL;
+    dup->packetCtx2 = NULL;
+    dup->clutData = NULL;
+    dup->monoClutData = NULL;
+    sdfTexLink(dup);
+    if (dup->clutGsHandle != NULL) {
+        dup->clutGsHandle = sdfTexAllocClut(dup->pixelFormat, dup->CLUTFormat, dup->numOfCLUT);
+        sdfTexAllocClutBuff(dup);
+        sdfTexCopyClutData(dup, origin->clutData);
+        dup->clutColor = 0x80808080;
+    }
+    sdfTexMakeGIFPacket(dup);
+    sdfTexClutToGs(dup);
+    return dup;
+}
+#endif
 
 sdfGsMemSlice_t *sdfTexAllocClut(s32 aPixelFormat, s32 aCLUTFormat, s32 aNumOfCLUT)
 {
@@ -430,6 +493,7 @@ sdfTexHandle_t *sdfTexAlloc(s32 aWidth, s32 aHeight, s32 aPixelFormat, s32 aNumO
                      aNumOfCLUT, clutSlice);
 }
 
+#ifdef SDF_SMT3
 void sdfTexFree(sdfTexHandle_t *aHandle)
 {
     sdfTexHandle_t *next;
@@ -462,6 +526,66 @@ void sdfTexFreeDelayed(sdfTexHandle_t *aHandle)
 {
     sdfDelayedResrcEntry(&sdfTexDelayedResrcCB, aHandle);
 }
+#else
+void sdfTexFree(sdfTexHandle_t *aHandle)
+{
+    sdfTexHandle_t *next;
+    sdfTexHandle_t *prev;
+
+    if (aHandle->ref->origin == NULL) {
+        sdfGsMemFree(aHandle->pixelGsHandle);
+    }
+    sdfGsMemFree(aHandle->clutGsHandle);
+    sdfChipFreeDirect(aHandle->packet);
+    sdfChipFreeDirect(aHandle->packetCtx2);
+    prev = aHandle->prev;
+    next = aHandle->next;
+    if (next != NULL) {
+        next->prev = prev;
+    }
+    if (prev != NULL) {
+        prev->next = next;
+    } else {
+        sdfTexHandleLink = next;
+    }
+    sdfFreeAuto(aHandle->clutData);
+    sdfFreeAuto(aHandle->monoClutData);
+    sdfChipFreeDirect(aHandle->ref);
+    sdfChipFreeDirect(aHandle);
+}
+
+void sdfTexReleaseReference(sdfTexHandle_t *aHandle)
+{
+    sdfTexRef_t *ref;
+    s32 count;
+
+    if (aHandle != NULL) {
+        ref = aHandle->ref;
+        count = ref->refCount - 1;
+        ref->refCount = count;
+        if (count == 0) {
+            aHandle->texId = 0;
+            sdfTexFree(aHandle);
+        }
+    }
+}
+
+void sdfTexFreeDelayed(sdfTexHandle_t *aHandle)
+{
+    sdfTexRef_t *ref;
+    s32 count;
+
+    if (aHandle != NULL) {
+        ref = aHandle->ref;
+        count = ref->refCount - 1;
+        ref->refCount = count;
+        if (count == 0) {
+            aHandle->texId = 0;
+            sdfDelayedResrcEntry(&sdfTexDelayedResrcCB, aHandle);
+        }
+    }
+}
+#endif
 
 /* NON_MATCHING: reference draft. 15 of 90 words, first differing at +0x0;
  * same 360 bytes, same instruction mix, and every GS field and both OR trees
@@ -570,6 +694,20 @@ sdfTexHandle_t *sdfTexSetEx(TMX_HEADER_t *aTex, s32 aMemMode)
     s32 level;
     s32 pixelFormat;
     s32 bitCount;
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+    s32 key = aTex->resourceKey;
+
+    if (key != 0) {
+        sdfTexHandle_t *existing = sdfTexHandleLink;
+        while (existing != NULL) {
+            if (existing->texId == key) {
+                existing->ref->refCount++;
+                return existing;
+            }
+            existing = existing->next;
+        }
+    }
+#endif
 
     handle = sdfTexAlloc(aTex->width, aTex->height, aTex->pixelFormat, aTex->numOfMipmap,
                          aTex->CLUTFormat, aTex->numOfCLUT);
@@ -659,7 +797,11 @@ void sdfTexSetMonoClut(sdfTexHandle_t *aHandle)
 
 void sdfTexSetClutColor(sdfTexHandle_t *texture, s32 tint, f32 amount)
 {
+#ifdef SDF_SMT3
     sdfTexHandle_t *source = texture->origin;
+#else
+    sdfTexHandle_t *source = texture->ref->origin;
+#endif
     u32 count;
     u8 *intensity;
 
