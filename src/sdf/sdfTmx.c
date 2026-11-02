@@ -59,6 +59,14 @@ enum SdfFileIOCmdClbk {
     SDF_FILE_CMD_CLBK_FREE = 9
 };
 
+#if defined(SDF_DDS1)
+#define D_00594940 D_003FF4C0
+#define D_00594800 D_003FF380
+#elif defined(SDF_DDS2)
+#define D_00594940 D_0047BE40
+#define D_00594800 D_0047BD00
+#endif
+
 extern u8 D_00594940[];
 
 extern void SleepThread(void);
@@ -583,8 +591,14 @@ extern s32 sceGetstat(const char *path, sdfSceIoStat_t *stat);
 extern s32 SdfIopFileRpc(const char *name, s32 dataSize, const void *data, s32 *outSize);
 extern s32 WakeupThread(s32 threadId);
 extern u8 sdfHddValid;
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* DDS compiles the two module paths from string literals. */
+#define D_0054A360 "cdrom0:\\USERIRX\\SDFIOPFL.IRX;1"
+#define D_0054A380 "pfs0:/userirx/sdfiopfl.irx"
+#else
 extern char D_0054A360[];
 extern char D_0054A380[];
+#endif
 extern u8 D_00594800[];
 
 void SdfFileRpcServerThreadProc(void)
@@ -633,6 +647,7 @@ void LoadMcModules(const char *prefix, s32 moduleGroup) {
     sceMcInit();
 }
 
+#ifdef SDF_SMT3
 INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0054A360);
 
 INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0054A380);
@@ -644,4 +659,20 @@ INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0054A3B0);
 INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0054A3C0);
 
 INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0054A3D0);
+#elif defined(SDF_DDS1)
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_003B50C0);
 
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_003B50D0);
+
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_003B50E0);
+
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_003B50F0);
+#else
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0042EDD0);
+
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0042EDE0);
+
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0042EDF0);
+
+INCLUDE_RODATA(const s32, "sdf/sdfTmx", D_0042EE00);
+#endif
