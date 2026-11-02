@@ -20,6 +20,7 @@ one consume commit amended per unit and exported to
 | `effect/effPart` | shared, all three games | SMT3's `event.h`, `nb.h`, `effBattle.h` under `SDF_SMT3`, `effPCPData.h` for DDS; the model id counter is u16 in DDS and DDS2 skips ids in use; `D_002F69B8` is DDS's `kwlnSceneSurfaceSets[10]` |
 | `effect/effPCPFlash`, `effect/effPCPScatter` | shared, all three games | DDS names aliased in the units; Flash's OT slot per game (`sdfGrOtTable[45]`, DDS `[56]`) |
 | `effect/parManager` | shared, all three games | DDS names aliased; SMT3's two NON_MATCHING drafts (`dds3Particle_SparkBuffInit`, `dds3Particle_SparkOffsetBuffInit`) are DDS's matching C, compiled for DDS by `#if defined(NON_MATCHING) \|\| defined(SDF_DDS1) \|\| defined(SDF_DDS2)`; `effect.h` moved here |
+| `effect/effMath` | shared, all three games | SMT3's text; DDS's `sdfViewMatrix`, `sdfViewTargetVector` and `effMathResetBezierSlot` (SMT3's `func_001AC068`) aliased |
 
 dds-decomp commits, in order: e76182af8 (probe and resolve take `dir/unit`),
 878bc0130 (model re-split), ed9e2911e (model names), 79f089aa1 (mdlManager
@@ -128,7 +129,7 @@ SMT3's functions in order.
 | effPCPFlash | 148 | 0x0016A088..0x001708A0 | shared |
 | effPCPScatter | 90 | 0x001708A0..0x001760F8 | shared |
 | parManager | 126 | 0x00153680..0x0015B228 | shared |
-| effMath | 10 | 0x0018DBD8..0x0018E218 | 1 extra |
+| effMath | 11 | 0x0018DBD8..0x0018E218 | shared |
 | effPacket | 7 | 0x0015F810..0x001606C0 | 6 twins in 11, inside `game/code_0015F4D0` |
 | effSpline | 11 | 0x00192CC8..0x001937E0 | 4 DDS-only, inside `game/code_00192488` |
 | effDebug | 12 | 0x0018DF90..0x0018F3A0 | 9 extra, overlaps effMath's run |
@@ -207,8 +208,15 @@ sdf-decomp 6a79c02, 4e084ea, 8ebfaf4):
    after a rename there (all 135 were clean for effPCPNeedle). Data and
    widely used names stay DDS's, aliased by `#define` at the top of the unit.
 
+effMath: dds-decomp 35eef0cef (re-split; the "extra" function was SMT3's
+`func_001AC068` past SMT3's measured run, so DDS's run is the whole unit),
+aa3077da4; sdf-decomp 81061c0 (history), 5798765. SMT3's
+`dds3ScreenParam.matrix` and `.offset` are DDS's `sdfProjectionMatrix` and
+`D_00324660` by address, so the struct needed no alias. Matched on the first
+build in all three games.
+
 ## Next
 
-1. effect/: polyManager, effPart, effPCPFlash, effPCPScatter, then
-   parManager, then the near ones in the table.
+1. effect/: effPacket, effSpline, effDebug, effEvent, effBlur_Filter, in the
+   table's order. effDebug overlaps effMath's old run; measure it again.
 2. mdlEffect, by bringing its viewer code in under the DDS macros.
