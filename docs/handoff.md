@@ -16,9 +16,30 @@
   reports (`report.json`, `report.all.json`) equal a baseline clone's, and the
   CI report scope check passes.
 
+- Stage 3, `tools/twins.py` (e3cee99). `table` and `contig` subcommands, stdlib
+  only, `python3 -I`, `--smt3` and `--dds` default to the sibling checkouts.
+  `--loose` reproduces the prototype scripts in
+  `/home/wsl/projects/sdf-decomp-scratch/` exactly (`strict.py` table,
+  `contig.py` flags, `units.py`'s 773). The default hash keeps struct offsets,
+  as the plan says it does, and three plan numbers moved with it (a5101b0):
+  - DDS1 twins in C: 767 of 777, not 773 (773 was the loose hash).
+  - DDS-only functions: `sdfModel` has 2 and `sdfMat` 2. The loose hash paired
+    fewer functions uniquely and so measured a shorter run.
+  - Renames: 59, not 171. `units.py` compared against the first DDS1 twin by
+    address; 111 of the 171 have a same-named twin too (small wrappers hash
+    alike). 59 is the count with no same-named DDS1 twin.
+
 ## In progress
 
-- Stage 3, `tools/twins.py`.
+Nothing. Stages 1 to 3 are done.
+
+## Next
+
+- Land the patch in smt3-decomp (a session there), after sdf-decomp has a remote.
+- Stage 4, DDS re-split: `twins.py contig -v` lists each flagged unit's DDS
+  functions without an SMT3 twin, the candidates for the DDS-only code.
+- Stage 5 can take its list from `twins.py`'s `Game.twin()`; no subcommand
+  prints the rename pairs yet.
 
 ## Applying the patch in smt3-decomp
 
