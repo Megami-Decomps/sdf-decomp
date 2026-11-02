@@ -109,6 +109,12 @@ extern void SleepThread(void);
 
 extern sdfImageSetCb_t sdfImageSetCb;
 
+#if defined(SDF_DDS1)
+#define D_005293A0 D_00398100
+#elif defined(SDF_DDS2)
+#define D_005293A0 D_0040B2B0
+#endif
+
 extern u64 D_005293A0[];
 
 s32 sdfImageDataSize(u32 format, s32 width, s32 height);
