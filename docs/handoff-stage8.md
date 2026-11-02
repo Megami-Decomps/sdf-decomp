@@ -19,6 +19,7 @@ one consume commit amended per unit and exported to
 | `effect/polyManager` | shared, all three games | DDS names aliased in the unit; the OT slots and `D_002F64B8`'s offset per game; DDS's `dds3SpPoly_RollRingDraw` body (keeps a one-frame record running) under the DDS macros |
 | `effect/effPart` | shared, all three games | SMT3's `event.h`, `nb.h`, `effBattle.h` under `SDF_SMT3`, `effPCPData.h` for DDS; the model id counter is u16 in DDS and DDS2 skips ids in use; `D_002F69B8` is DDS's `kwlnSceneSurfaceSets[10]` |
 | `effect/effPCPFlash`, `effect/effPCPScatter` | shared, all three games | DDS names aliased in the units; Flash's OT slot per game (`sdfGrOtTable[45]`, DDS `[56]`) |
+| `effect/parManager` | shared, all three games | DDS names aliased; SMT3's two NON_MATCHING drafts (`dds3Particle_SparkBuffInit`, `dds3Particle_SparkOffsetBuffInit`) are DDS's matching C, compiled for DDS by `#if defined(NON_MATCHING) \|\| defined(SDF_DDS1) \|\| defined(SDF_DDS2)`; `effect.h` moved here |
 
 dds-decomp commits, in order: e76182af8 (probe and resolve take `dir/unit`),
 878bc0130 (model re-split), ed9e2911e (model names), 79f089aa1 (mdlManager
@@ -126,7 +127,7 @@ SMT3's functions in order.
 | effPart | 40 | 0x00162970..0x001632E0 | shared |
 | effPCPFlash | 148 | 0x0016A088..0x001708A0 | shared |
 | effPCPScatter | 90 | 0x001708A0..0x001760F8 | shared |
-| parManager | 126 | 0x00153680..0x0015B228 | clean; SMT3 has 2 INCLUDE_ASM |
+| parManager | 126 | 0x00153680..0x0015B228 | shared |
 | effMath | 10 | 0x0018DBD8..0x0018E218 | 1 extra |
 | effPacket | 7 | 0x0015F810..0x001606C0 | 6 twins in 11, inside `game/code_0015F4D0` |
 | effSpline | 11 | 0x00192CC8..0x001937E0 | 4 DDS-only, inside `game/code_00192488` |
@@ -172,6 +173,21 @@ effPCPFlash, effPCPScatter: names already agreed. dds-decomp f4b87312c,
 5f453c1a1; sdf-decomp a081a76, 46cc20f, c54a62f, and the Scatter commit
 after it. SMT3's OT slot 45 (0x5A0) is DDS's 56 (0x700) in polyManager and
 Flash alike.
+
+parManager: dds-decomp 3749cb8af (game_source), ecd892f7c
+(`dds3ParticleExpSetLoop`, `dds3Particle_EffectSet`, `dds3Particle_EffectReset`
+in `par_kind_api.h`, 6 includers clean), 70b6dc6f1; sdf-decomp f3200fe
+(`effect.h`'s history), merge of parManager's, 53e4f84. SMT3's drafts of the
+two Spark functions are 22 words off in SMT3 and match DDS exactly: with
+DDS's names (`effDefaultRandomState`, `effEmitterDelayRandomState`) gcse
+orders the two RNG pseudos the other way (DDS's old PARK note on the
+function, which hashed SYMBOL_REF names). They stay INCLUDE_ASM in SMT3.
+
+`game_source` (both repos, with a test) reads `#if defined(NON_MATCHING) ||
+defined(SDF_DDS1) || defined(SDF_DDS2)` as plain C for a game it names and
+as `#ifdef NON_MATCHING` for the others, so every tool sees a draft in SMT3
+and C in DDS, and the text is written once. SMT3's `check_nonmatching.py`
+now picks and counts drafts on SMT3's view (in the consume patch).
 
 Recipe, as effPCPNeedle went (dds-decomp 68256150f, 23f77cb01, 26cf8c8b3;
 sdf-decomp 6a79c02, 4e084ea, 8ebfaf4):

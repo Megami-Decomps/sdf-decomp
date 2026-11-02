@@ -1,4 +1,4 @@
-From 390c56b9ed8e97ba59cc51d40308873f2e3a04f3 Mon Sep 17 00:00:00 2001
+From a2c9535ee187168eecad5a8e14ea1ac70b1a963e Mon Sep 17 00:00:00 2001
 From: tge-was-taken <tge-was-taken@outlook.com>
 Date: Mon, 2 Nov 2026 04:16:42 +0100
 Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
@@ -7,26 +7,26 @@ Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
  .github/workflows/build.yml    |   1 +
  .gitmodules                    |   3 +
  README.md                      |   1 +
- configure.py                   |  37 +++++---
+ configure.py                   |  37 ++++---
  docs/building.md               |   7 ++
  external/sdf-decomp            |   1 +
  tools/cc.sh                    |   5 +-
  tools/check_drift.py           |   5 +-
  tools/check_inline_asm.py      |   6 +-
- tools/check_nonmatching.py     |  17 ++--
- tools/check_unit.py            |  25 ++---
- tools/include_rodata.py        |  22 +++--
+ tools/check_nonmatching.py     |  19 ++--
+ tools/check_unit.py            |  25 +++--
+ tools/include_rodata.py        |  22 ++--
  tools/include_sdata.py         |  30 ++++--
- tools/production_report.py     |  11 ++-
+ tools/production_report.py     |  11 +-
  tools/progress.py              |   7 +-
- tools/sources.py               | 168 +++++++++++++++++++++++++++++++++
+ tools/sources.py               | 178 +++++++++++++++++++++++++++++++++
  tools/splat_split.py           |  39 ++++++++
  tools/test_check_inline_asm.py |   4 +-
  tools/test_configure.py        |   6 +-
- tools/test_sources.py          |  68 +++++++++++++
+ tools/test_sources.py          |  76 ++++++++++++++
  tools/test_vuas.py             |   3 +-
  tools/vu_include.py            |   5 +-
- 22 files changed, 404 insertions(+), 67 deletions(-)
+ 22 files changed, 423 insertions(+), 68 deletions(-)
  create mode 100644 .gitmodules
  create mode 160000 external/sdf-decomp
  create mode 100644 tools/sources.py
@@ -310,7 +310,7 @@ index a13628a3..f07514b1 100644
          for line in violations(path):
              print(f"{path}:{line}: a C unit does not spell asm itself; emitted "
 diff --git a/tools/check_nonmatching.py b/tools/check_nonmatching.py
-index b6e20863..87c6e113 100644
+index b6e20863..55439420 100644
 --- a/tools/check_nonmatching.py
 +++ b/tools/check_nonmatching.py
 @@ -11,12 +11,14 @@ SKIP_ASM defined, which selects the drafts and drops the asm fallbacks.
@@ -335,7 +335,7 @@ index b6e20863..87c6e113 100644
          return [Path(a) for a in args]
 -    return [Path(p) for p in sorted(glob.glob(str(ROOT / "src/smt3/**/*.c"), recursive=True))
 -            if GUARD in Path(p).read_text()]
-+    return [p for p in c_sources("smt3", ROOT) if GUARD in p.read_text()]
++    return [p for p in c_sources("smt3", ROOT) if GUARD in game_source(p.read_text(), "smt3")]
  
  
  def draft_functions(version: str = "smt3") -> dict[str, set[str]]:
@@ -363,6 +363,15 @@ index b6e20863..87c6e113 100644
           # Old GCC needs this spelling; -Werror=... is silently ignored.
           "-Werror-implicit-function-declaration",
           "-quiet", "-O2", str(path), "-o", "/dev/null"],
+@@ -89,7 +90,7 @@ if __name__ == "__main__":
+         sys.exit(0)
+     bad = 0
+     for path in todo:
+-        text = path.read_text()
++        text = game_source(path.read_text(), "smt3")
+         names = draft_names(text)
+         err = compile_unit(path)
+         rel = path.relative_to(ROOT) if path.is_absolute() else path
 diff --git a/tools/check_unit.py b/tools/check_unit.py
 index bbdd9ada..491c512b 100755
 --- a/tools/check_unit.py
@@ -678,10 +687,10 @@ index daa5ab64..6d8de7e0 100755
              n = 4 * len(INSN.findall(body))
 diff --git a/tools/sources.py b/tools/sources.py
 new file mode 100644
-index 00000000..8b67396a
+index 00000000..10081a3d
 --- /dev/null
 +++ b/tools/sources.py
-@@ -0,0 +1,168 @@
+@@ -0,0 +1,178 @@
 +"""Where a unit's source lives.
 +
 +A unit keeps its name and its src/<version>/<unit>.c path everywhere else
@@ -711,6 +720,7 @@ index 00000000..8b67396a
 +        "effect/effPart.c": Path("external/sdf-decomp/src/effect/effPart.c"),
 +        "effect/effPCPFlash.c": Path("external/sdf-decomp/src/effect/effPCPFlash.c"),
 +        "effect/effPCPScatter.c": Path("external/sdf-decomp/src/effect/effPCPScatter.c"),
++        "effect/parManager.c": Path("external/sdf-decomp/src/effect/parManager.c"),
 +    },
 +}
 +
@@ -792,6 +802,9 @@ index 00000000..8b67396a
 +GAME_MACROS = ("SDF_SMT3", "SDF_DDS1", "SDF_DDS2")
 +DIRECTIVE = re.compile(r"\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b(.*)")
 +GAME_MACRO = re.compile(r"\b(?:defined\s*\(\s*(SDF_\w+)\s*\)|defined\s+(SDF_\w+)|(SDF_\w+))")
++# `#if defined(NON_MATCHING) || defined(SDF_DDS1) ...`: C for the games named, a
++# draft behind NON_MATCHING for the others.
++NON_MATCHING_OR = re.compile(r"defined\s*\(\s*NON_MATCHING\s*\)((?:\s*\|\|\s*defined\s*\(\s*SDF_\w+\s*\))+)")
 +
 +
 +def game_condition(kind: str, argument: str, version: str) -> bool | None:
@@ -833,7 +846,13 @@ index 00000000..8b67396a
 +        if directive:
 +            kind, argument = directive.groups()
 +            if kind in ("if", "ifdef", "ifndef"):
-+                value = game_condition(kind, argument, version)
++                games = NON_MATCHING_OR.fullmatch(re.sub(r"/\*.*?\*/|//.*", "", argument).strip())
++                if games and f"SDF_{version.upper()}" not in re.findall(r"SDF_\w+", games.group(1)):
++                    stack.append((False, False, True))
++                    out.append("#ifdef NON_MATCHING".ljust(len(line.rstrip("\r\n"))) + line[len(line.rstrip("\r\n")):]
++                               if not hidden else re.sub(r"[^\r\n]", " ", line))
++                    continue
++                value = True if games else game_condition(kind, argument, version)
 +                stack.append((value is not None, bool(value), value is not False))
 +                control = value is not None
 +            elif stack:
@@ -943,10 +962,10 @@ index 2a08ba60..cf5ffa7a 100644
                  self.source.write_text(self.fallback)
 diff --git a/tools/test_sources.py b/tools/test_sources.py
 new file mode 100755
-index 00000000..ec090fdf
+index 00000000..b96e93c6
 --- /dev/null
 +++ b/tools/test_sources.py
-@@ -0,0 +1,68 @@
+@@ -0,0 +1,76 @@
 +#!/usr/bin/env python3
 +"""Tests for game_source, the per-game view of a shared unit."""
 +import sys
@@ -990,6 +1009,14 @@ index 00000000..ec090fdf
 +    def test_offsets_kept(self):
 +        self.assertEqual(len(game_source(SOURCE, "dds1")), len(SOURCE))
 +        self.assertEqual(game_source(SOURCE, "dds1").count("\n"), SOURCE.count("\n"))
++
++    def test_draft_or_games(self):
++        text = "#if defined(NON_MATCHING) || defined(SDF_DDS1) || defined(SDF_DDS2)\nc\n#else\nasm\n#endif\n"
++        self.assertEqual(game_source(text, "dds1").split("\n")[1:4], ["c", "     ", "   "])
++        smt3 = game_source(text, "smt3")
++        self.assertEqual(smt3.split("\n")[0].rstrip(), "#ifdef NON_MATCHING")
++        self.assertEqual(smt3.split("\n")[1:4], ["c", "#else", "asm"])
++        self.assertEqual(len(smt3), len(text))
 +
 +    def test_mixed_condition_fails(self):
 +        with self.assertRaises(ValueError):
