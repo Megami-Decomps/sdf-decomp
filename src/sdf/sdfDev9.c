@@ -76,6 +76,10 @@ extern s32 sceSifLoadStartModule(const char *modulePath, s32 flags, void *module
 
 #include "sdk_libc.h"
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+s32 printf(const char *format, ...);
+#endif
+
 extern s32 (*p2sdSmgBuf)(void);
 
 void sdfDev9LoadModule(void) {
