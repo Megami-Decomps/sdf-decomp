@@ -353,6 +353,7 @@ void LookAtMatrix(const void *aTarget, const void *aEye, const void *aDown) {
     SDF_VU0_SET_ROW1();
     ReverseMatrix();
 }
+#ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "sdf/sdfVu0", D_005518B8);
 
 INCLUDE_SDATA(const s32, "sdf/sdfVu0", sdf3DSpecularTex);
@@ -374,4 +375,4 @@ INCLUDE_SDATA(const s32, "sdf/sdfVu0", D_005518E0);
 INCLUDE_SDATA(const s32, "sdf/sdfVu0", D_005518E1);
 
 INCLUDE_SDATA(const s32, "sdf/sdfVu0", D_005518E2);
-
+#endif
