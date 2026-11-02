@@ -99,7 +99,7 @@
 
 ## Units moved
 
-29 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
+30 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
 report of 11 was wrong; there were 9 before this session). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -132,6 +132,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdf_PadManager | 1ad12b5 | 8a04b1ab5 | renames `sdfPadManagerMode`, `sdfPadWork`, DDS2 `sdfPadPortSlotPairs` and `sdfPadButtonMasks` (30d385c2f); four SMT3 placeholders defined to DDS names, `D_005518D8` per game; DDS's rodata and sdata lists per game |
 | sdfDefaultMain | e5cec6e | dc059deed | renames `sdfCdInit`, `sdfCdTrayMode`, `SdfIopInit` (0797fed4c); DDS's own `main` body under the DDS games (pad drivers before the disc image, DDS1 boots `IOPRP255`, packet buffer per game) with string literals; `D_00551B88`, `dds3KernelMain` defined to DDS's `kwlnMainLoopThreadNode`, `kwlnRunMainLoop`; c_aliases reads `FAKEMATCH_ASM_NAME` (e9972a1ae) |
 | sdfVu0 | 852eeb6 | 8ab80ff80 | renames `SetRotateMatrixY_B`, `MultMatrixNoArg` (29d6aa1f4; both header-declared, `MultMatrixNoArg` is 15 characters, and code_001DEFE0 stayed clean); SMT3's sdata list under `SDF_SMT3` |
+| sdfMisc | e28b90d | 9b5a9fc34 | rename `sdfItemArrayNew` (0f27b4f56; in `sdf_draw.h`, 15 characters, code_001DEFE0 clean); `#define func_002BFF98 sdfDevResizeBufferedRequest` |
 | sdfHdd | 5f78ff4 | b106dcaa6 | renames `sdfHddPowerOffTh`, `sdfHddInit` (ec6715055) and `sdfDev9Ready` (2b5ac2a98); DDS's two bodies under the DDS games (no printf, `sdfHddInit` takes the mount path); sdata lists per game |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
@@ -167,7 +168,6 @@ temporarily, check_unit in both games; DDS1 and DDS2 agree unless noted):
 |---|---|---|
 | sdfTex | 29 match, 17 differ | MISSING DDS function names (`sdfTexDestroy`, `sdfTexReleaseReference...`) |
 | sdf3D | 7 match, 17 differ | UNDEF `vu1Tex0Slot0..2` and more names |
-| sdfMisc | 1 match, 6 differ | ORDER, MISSING DDS-only functions (`sdfDevCreateBufferedRequest`, `sdfDevResizeBufferedRequest`) |
 | sdfPacDecode | 28 match, 10 differ | ORDER, MISSING DDS-only `sdfPacResetOutputToAllocationEntry` |
 | sdfMat | 35 match, 22 differ | UNDEF sdfTex function names (`sdfTexDup`, `sdfTexFreeDelayed`, `sdfTexSetClutColor`) |
 | sdfModel | 46 match, 17 differ | UNDEF `ToMatrix`, `MultMatrixRev`, `sdfItemArrayNew` |
@@ -228,6 +228,7 @@ under the DDS games; the define goes when smt3-decomp takes the name.
 | `D_0058F0C0` | `sdfPadPortBuffers` | sdf_PadManager |
 | `sdf_2C0510` | `effMiscQuatLengthSqVU` | sdfQuat |
 | `func_002BD300` | `sdfPktSetCmd` | sdfDevCons |
+| `func_002BFF98` | `sdfDevResizeBufferedRequest` | sdfMisc |
 | `D_00551888` | `sdfGrFrameComplete` | sdfDraw |
 | `D_0055188A` | `sdfGrBufferSlotIndex` | sdfDraw |
 | `D_00552158` | `sdfIpuInputStream` | sdfIpu |
