@@ -140,6 +140,20 @@ extern void *memcpy(void *, const void *, unsigned int);
 #endif
 #include "sdk_libkernl.h"
 
+#if defined(SDF_DDS1)
+#define D_00551930 D_003BD400
+#define D_00551940 D_003BD410
+#define D_00551948 D_003BD418
+#elif defined(SDF_DDS2)
+#define D_00551930 D_00438AF0
+#define D_00551940 D_00438B00
+#define D_00551948 D_00438B08
+#endif
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_00551928 sdfDiscPathPrefix
+#define D_00551938 sdfPfsPathPrefix
+#endif
+
 extern char D_00551928[];
 
 extern char * strcpy(char *, const char *);
@@ -397,3 +411,41 @@ void sdfFileCmdAllocHandle(sdfFileCmdHandle_t *state) {
         SignalSema(worker->semaId);
     }
 }
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+char sdfFileHostRootPath[64] = "host0:";
+#endif
+
+#if defined(SDF_DDS1)
+INCLUDE_SDATA(const s32, "sdf/sdfFile", sdfFileDefaultSrcType);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", sdfFileSemaId);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", sdfDiscPathPrefix);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", D_003BD400);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", sdfPfsPathPrefix);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", D_003BD410);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", D_003BD418);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", sdfFileCmdFreeList);
+#elif defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "sdf/sdfFile", sdfFileDefaultSrcType);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", sdfFileSemaId);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", sdfDiscPathPrefix);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", D_00438AF0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", sdfPfsPathPrefix);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", D_00438B00);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", D_00438B08);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFile", sdfFileCmdFreeList);
+#endif
