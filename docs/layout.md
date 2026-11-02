@@ -42,6 +42,7 @@ repo if it is toolchain, SDK or game layer, and the game repo puts its own
 | `motion.h` | sdfMotion |
 | `model.h` | sdfModel; lines from `mdlObj_t` on are the game's `model/` group |
 | `billboard.h` | sdfBillBoard VIF packets; also effect's `dds3Billboard*` and `bill*` types |
+| `fileManager.h` | `fileRequest_t` and `fileLoad`, the engine's queued file loader (stage 8) |
 
 `model.h` and `billboard.h` are mixed. They moved whole because the sdf units
 need them and `model/` and `effect/` are planned to move here later (plan
@@ -62,6 +63,11 @@ declaration does not change code).
 The game-layer headers are used only by `sdfSystem.c` (pipe objects, config
 backup) and `sdfDefaultMain.c` (`dds3KernelMain`), which hold SMT3 game code.
 Those parts become `#ifdef SDF_SMT3` when DDS consumes the units.
+
+Stage 8's units include `kernel.h` (`mdlEffect.c`, `fileManager.c`) and
+`newdata.h` (`mdlEffect.c`) from the game repo. They are game layer and stay.
+DDS's `kernel.h` does not declare `dds3ProcessID_t`; `fileManager.c` takes it
+from DDS's `kwln.h` under the DDS macros.
 
 ### Left behind, unused
 

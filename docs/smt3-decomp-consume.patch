@@ -1,4 +1,4 @@
-From 51b893d7361112d5ed7b42d06c3a8c5ee0e9f581 Mon Sep 17 00:00:00 2001
+From c8b0cb90dcd402f474d45644f8782ee70c277ee9 Mon Sep 17 00:00:00 2001
 From: tge-was-taken <tge-was-taken@outlook.com>
 Date: Mon, 2 Nov 2026 04:16:42 +0100
 Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
@@ -228,11 +228,11 @@ index 3e788386..3c9b4887 100644
  [TU recovery](tu-recovery.md).
 diff --git a/external/sdf-decomp b/external/sdf-decomp
 new file mode 160000
-index 00000000..39e125f6
+index 00000000..5a7cf47a
 --- /dev/null
 +++ b/external/sdf-decomp
 @@ -0,0 +1 @@
-+Subproject commit 39e125f6aff8436eb03aadcc8a0364769eb7481c
++Subproject commit 5a7cf47aa6f23f8849cbfa217abadb85cba980c4
 diff --git a/tools/cc.sh b/tools/cc.sh
 index c4fee6c8..7f94b807 100755
 --- a/tools/cc.sh
