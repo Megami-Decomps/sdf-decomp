@@ -3,6 +3,18 @@
 #include "kernel.h"
 #include "libsdf.h"
 
+#if defined(SDF_DDS1)
+#define D_0054E8BC D_003BA83C
+#define D_00552310 D_003BDC90
+#elif defined(SDF_DDS2)
+#define D_0054E8BC D_00435C0C
+#define D_00552310 D_00439410
+#endif
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_00551B88 kwlnMainLoopThreadNode
+#define dds3KernelMain kwlnRunMainLoop
+#endif
+
 extern u32 D_0054E8BC;
 
 extern u32 sdfCdTrayMode;
@@ -62,6 +74,7 @@ extern void dds3KernelMain(void);
    function of that name. */
 s32 sdfDefaultMain(void) FAKEMATCH_ASM_NAME("main");
 
+#ifdef SDF_SMT3
 s32 sdfDefaultMain(void)
 {
     __main();
@@ -99,8 +112,67 @@ s32 sdfDefaultMain(void)
     sdfSetMainThreadPriority();
     return 0;
 }
+#else
+/* DDS loads the pad drivers before the disc image; DDS1 boots another IOP
+   image and the packet buffer differs per game. */
+s32 sdfDefaultMain(void)
+{
+    __main();
+    sceSifInitRpc(0);
+    sceSifInitIopHeap();
+    sdfCdTrayMode = D_0054E8BC;
+    sdfCdInit();
+#if defined(SDF_DDS1)
+    while (sceSifRebootIop("cdrom0:\\IRX\\IOPRP255.IMG;1") == 0) {
+    }
+#else
+    while (sceSifRebootIop("cdrom0:\\IRX\\IOPRP250.IMG;1") == 0) {
+    }
+#endif
+    while (sceSifSyncIop() == 0) {
+    }
+    sceSifInitRpc(0);
+    sceSifInitIopHeap();
+    sceSifLoadFileReset();
+    sceFsReset();
+    sceCdInit(0);
+    sceCdMmode(D_0054E8BC);
+    while (sceSifLoadModule("cdrom0:\\IRX\\SIO2MAN.IRX;1", 0, NULL) < 0) {
+    }
+    while (sceSifLoadModule("cdrom0:\\IRX\\PADMAN.IRX;1", 0, NULL) < 0) {
+    }
+    sdfCdImageInit("\\DDS3.IMG;1", "cdrom0:\\DDS3.DDT;1");
+    LoadMcModules("cdrom0:\\IRX", 1);
+#if defined(SDF_DDS1)
+    dds3InitSubsystems(0x17C0000, 0x200000, 0x380000);
+#else
+    dds3InitSubsystems(0x17C0000, 0x200000, 0x335000);
+#endif
+    sdfPadManagerMode = 1;
+    sdfPadChangeMode(0, 3);
+    sdfPadChangeMode(1, 3);
+    sdfFileSetHostRoot("../../../dds3data");
+    sdfFileSetDefaultSrc(3);
+    sdfFileCmdStartThread(3);
+    sdfFileCmdStartThread(0);
+    SdfIopInit("cdrom0:\\USERIRX\\SDFIOP.IRX;1", "cdrom0:\\IRX\\MSIFRPC.IRX;1");
+    sdfStartFileRpcServer();
+    sdfStartThreadAndWait(&D_00551B88, dds3KernelMain, D_00552310, 0x4000, 0x60, 0);
+    sdfSetMainThreadPriority();
+    return 0;
+}
+#endif
 
+#ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "sdf/sdfDefaultMain", D_0054E8BC);
 
 INCLUDE_SDATA(const s32, "sdf/sdfDefaultMain", dds3ClosedDrawTag);
+#elif defined(SDF_DDS1)
+INCLUDE_RODATA(const s32, "sdf/sdfDefaultMain", D_0039E018);
 
+INCLUDE_SDATA(const s32, "sdf/sdfDefaultMain", D_003BA83C);
+#elif defined(SDF_DDS2)
+INCLUDE_RODATA(const s32, "sdf/sdfDefaultMain", D_00411198);
+
+INCLUDE_SDATA(const s32, "sdf/sdfDefaultMain", D_00435C0C);
+#endif
