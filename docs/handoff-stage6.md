@@ -99,7 +99,7 @@
 
 ## Units moved
 
-44 units, as listed in dds-decomp's `config/sdf_shared.txt` (43 `sdf/` and
+All 46 units, as listed in dds-decomp's `config/sdf_shared.txt` (45 `sdf/` and
 `mc/mcManager`). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -148,6 +148,8 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfMemory | 62b1d04 | 810ba9758 | rename `sdfMemFullCallback` (bb6ccb341); DDS defines the `sdfMemCB` heap root in the unit, under the DDS games at the end |
 | sdfSystem | e295ce6 | 1803ecb96 | Unused pipe declarations dropped; DDS1 .sdata and DDS .sbss defined under the game macros; check_unit skips a func_ name the unit #defines away |
 | sdfGraph | 13ba61d | ccd8786cf | SMT3HD names sdfDispThread, sdfGrGsResetDone, sdfDrawFrameCounter carried to DDS; DDS1 and DDS2 define the first four .sdata words in C; sdfDispThread's DDS-only semaphore call under the game macros |
+| sdfVu1 | none | e19dadcff, 6584e4138 | SMT3HD data names `corePktBackFaceList`, `corePktPrimBase`, `corePktWorldLightMtxCache` (was `sdfVuObjectBasisCache`); the yaml drops the four `hand/vu/` segments and the three `game/code_*` units between them, so the unit is SMT3's span; its 18 handwritten functions are INCLUDE_ASM and listed in `config/<v>/handwritten.txt` |
+| sdfDev9 | ea857c3, 22b705e | 863a7199d, 6b1c8ccb7 | the yaml drops `hand/mem/sdfMemClearBlocks` and the `game/code_*` unit after it; `sdf_2BFC58`'s INCLUDE_ASM per game (DDS1 `func_002E73F0`, DDS2 `func_00340298`, listed as handwritten); `sdf_2BFE08` defined to DDS `sdfDecimalToPackedDigits`; `D_00549878` and its INCLUDE_RODATA per game; a `printf` prototype under the DDS games (DDS's `sdk_libc.h` has none, and check_nonmatching rejects the implicit one) |
 
 mc/mcManager, the engine's `sdfMc*` memory card layer:
 
@@ -253,6 +255,53 @@ dds1-dev dds2-dev` exit 0, the four report.json targets built, progress dds1
 `tools/test_*.py` pass, check_nonmatching and check_irx_nonmatching pass,
 progress 8568/9045 (unchanged).
 
+## sdfVu1, sdfDev9: the handwritten functions
+
+The user decided to fold DDS's `hand/` segments into the C units, as SMT3
+has them, and keep the 19 functions out of DDS's game-code totals.
+
+- dds-decomp 5127ea07b: `config/<v>/handwritten.txt` lists `<unit>
+  <function>` rows (`tools/handwritten.py` reads it). `tools/progress.py`
+  skips them; `tools/production_report.py`'s reconcile verifies them with the
+  rest of the unit, then moves them into a `hand/<unit>` report unit in the
+  `handwritten` category (`report.all.json`) or drops them (`report.json`).
+  Both fail if a listed function is missing, is C, or names a unit with no
+  report. Four tests in `test_production_report.py`.
+- Merging a unit's yaml rows: delete the rows between the unit and the next
+  SMT3 unit, list the unit in `sdf_shared.txt` and `git rm` the DDS sources
+  before `configure.py --force-split`, since configure writes per-function
+  asm only for the INCLUDE_ASM names the unit's source has. `resplit.py`
+  skips `hand/` segments and does not help here.
+- `game_source` rejects `#elif defined(SDF_DDS1)` after `#ifdef
+  NON_MATCHING`; nest the per-game INCLUDE_ASM inside the `#else`.
+- A `#define` alias must come before the `extern` it renames.
+- dds-decomp ee6c40847 updates `docs/idioms.md` (handwritten segments section
+  and its table) and `docs/progress.md`.
+
+Numbers, unchanged as decided: progress.py DDS1 9502/9573 functions,
+1912664/2009980 bytes; DDS2 10768/10855, 2254904/2372108. The reports'
+denominators (DDS1 9573/2009980, DDS2 10855/2372108) and the `handwritten`
+category (23 functions, 3280 bytes in each game) are unchanged too. The
+production-exact count rose by one function, 128 bytes, in each game:
+`corePktMakeEdgePoint` was an inline-asm body in DDS's C (not eligible) and
+is plain C in SMT3's (DDS1 9500 to 9501, 1911676 to 1911804; DDS2 10766 to
+10767, 2253916 to 2254044).
+
+Final state, verified from committed state (sdf-decomp 22b705e in both
+submodules, dds-decomp 6b1c8ccb7): SMT3 clone `configure.py --clean`, ninja
+exit 0, `[860/861] check config/smt3/checksum.sha1`,
+5facfbf7916836613449c922e26a4ec412207b32. DDS `configure.py --clean`, ninja
+exit 0 with both check lines, DDS1 6d18898e2724bf1d145392766e8ba1e678487419,
+DDS2 9be91ee1b4a535a4cb6ec89237b5a6ba41be2add. check_unit clean on sdfVu1
+and sdfDev9 in both games, code_001DEFE0 and code_002DE248.
+
+CI-equivalent checks at that state. DDS: run_tests.py 449 OK,
+test_c_aliases OK, check_nonmatching 87 units 0 failed, `ninja dds1 dds2
+dds1-dev dds2-dev` exit 0, the four report targets built, the CI report
+scope check passes. SMT3 clone: all 28 `tools/test_*.py` pass,
+check_nonmatching, check_irx_nonmatching and check_inline_asm pass, progress
+8568/9045 (unchanged).
+
 ## Tools
 
 dds-decomp `tools/` now has the helpers this stage used (3dd9e4fff):
@@ -271,11 +320,12 @@ configure, ninja), `smt3.sh`, `sweep.sh`, `stage_renames.sh`; and
 
 ## Units not moved
 
-Every unit stage 4 split for DDS is shared. `tools/sdf_probe.py <unit>`
-probes the next one; NOASM means the unit's SMT3 INCLUDE_RODATA or
-INCLUDE_SDATA lines need `#ifdef SDF_SMT3` before the probe can count. UNDEF
-of an SMT3 real name usually means a DDS rename is owed.
-In progress: sdfVu1 and sdfDev9 (fold the `hand/` segments).
+None in `sdf/`: all 45 of SMT3's sdf units and `mc/mcManager` are shared.
+`tools/sdf_probe.py <unit>` probes a unit; NOASM means the unit's SMT3
+INCLUDE_RODATA or INCLUDE_SDATA lines need `#ifdef SDF_SMT3` before the probe
+can count, or (for a unit whose yaml was just merged) that it is not yet
+listed as shared, so configure wrote no per-function asm. UNDEF of an SMT3
+real name usually means a DDS rename is owed.
 
 configure passed sdfMemory's move, then `tools/include_sdata.py` rejected
 its INCLUDE_SDATA placement after the next rename re-split. It wants the
@@ -299,8 +349,7 @@ lines after any trailing DDS-only definitions, so `sdfMemCB` moved above them.
    commit. `sdf_probe.py` and `/tmp/s8/probe.sh` assume `sdf/`; for another
    directory append the unit to `config/sdf_shared.txt` by hand for the run.
    `sdf_rename.py` does not rewrite `tools/test_*.py`; grep them.
-3. Remaining of the seven: sdfVu1, sdfDev9.
-4. mc/slMain stays in each game (see above).
+3. mc/slMain stays in each game (see above).
 
 ## Owed to smt3-decomp
 
@@ -335,6 +384,7 @@ under the DDS games; the define goes when smt3-decomp takes the name.
 | `D_0055210C` | `sdfDiscReadPosition` | sdfCd |
 | `D_00552110` | `sdfDiscReadMode` | sdfCd |
 | `D_0058F7C0` | `sdfDevReadSectorBuffer` | sdfCd |
+| `sdf_2BFE08` | `sdfDecimalToPackedDigits` | sdfDev9 |
 | `p2sd_2C1788`, `p2sd_2C17D8`, `p2sd_2C1D78`, `p2sd_2C1E10`, `p2sd_2C1E40`, `func_002C1E70`, `p2sd_2C1EA0`, `p2sd_2C1EF8`, `p2sd_2C1F10`, `p2sd_2C1F28`, `p2sd_2C1F50`, `p2sd_2C1F60`, `p2sd_2C1F70`, `p2sd_2C1F90`, `p2sd_2C21A8`, `p2sd_2C21D8`, `p2sd_2C2280`, `p2sd_2C22B0`, `sdf_2C2618`, `sdf_2C27F8` | DDS's `snd*` and `sdfSound*` names, listed at the top of the unit | sdfSound |
 | `D_0054A088`, `D_0054A100`, `D_00551B40` | `sdfGsMemoryDumpHeader`, `sdfGsMemoryDumpRowFormat`, `sdfGsMemoryTypeFormat` | sdfSound |
 | `D_005907C0`, `D_005907F0`, `D_00590840`, `D_00591840`, `D_00592880` | `sndCommandThreadParameters`, `sndCachedListenerState`, `sndCommandRing`, `sndCommandThreadStack`, `sndRpcServerThreadStack` | sdfSound |
