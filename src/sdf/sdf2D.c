@@ -1,5 +1,4 @@
 #include "common.h"
-#include "ps2asm.h"
 #include "sdf_lighting.h"
 #include "sdf_resource.h"
 
