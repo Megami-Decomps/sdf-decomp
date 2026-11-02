@@ -52,10 +52,10 @@
 - smt3-decomp main has no commits touching shared files since 98b9d355,
   the base of the current consume patch (rebased from 0be37933 on 2026-11-02;
   5353c126 and e7483423 touched polyManager and effEvent before they moved).
-- Nothing is pushed. Waiting on the user: the GitHub home for sdf-decomp
-  (suggested Megami-Decomps/sdf-decomp). Then: push, set dds-decomp's
-  `.gitmodules` URL to `../sdf-decomp`, bump the smt3-decomp patch's pin,
-  land both.
+- sdf-decomp is pushed to github.com/Megami-Decomps/sdf-decomp (`main` and
+  `sdf-only`, hashes unchanged, so existing pins stay valid). dds-decomp and
+  smt3-decomp are not pushed: set dds-decomp's `.gitmodules` URL to
+  `../sdf-decomp`, rebase onto their current main, rerun the checks, land both.
 - Stopped 2026-11-02 on the user's request after effSpline, at a verified
   committed point. Next: the CI-equivalent checks, then effEvent (measured,
   plan in `docs/handoff-stage8.md`), effBlur_Filter, mdlEffect. `mc/slMain` and `script/scrParameterCommand` are game code and
