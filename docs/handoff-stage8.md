@@ -22,6 +22,7 @@ one consume commit amended per unit and exported to
 | `effect/parManager` | shared, all three games | DDS names aliased; SMT3's two NON_MATCHING drafts (`dds3Particle_SparkBuffInit`, `dds3Particle_SparkOffsetBuffInit`) are DDS's matching C, compiled for DDS by `#if defined(NON_MATCHING) \|\| defined(SDF_DDS1) \|\| defined(SDF_DDS2)`; `effect.h` moved here |
 | `effect/effMath` | shared, all three games | SMT3's text; DDS's `sdfViewMatrix`, `sdfViewTargetVector` and `effMathResetBezierSlot` (SMT3's `func_001AC068`) aliased |
 | `effect/effPacket` | shared, all three games | DDS's four textured quad and triangle writers under the DDS macros; the draw bank's head and the crossfade's second OT slot per game; DDS keeps the end message as INCLUDE_RODATA |
+| `effect/effDebug` | shared, all three games | DDS names aliased; the overlay's OT slots per game (SMT3 44 and 83, DDS 55 and 96) |
 
 dds-decomp commits, in order: e76182af8 (probe and resolve take `dir/unit`),
 878bc0130 (model re-split), ed9e2911e (model names), 79f089aa1 (mdlManager
@@ -133,7 +134,7 @@ SMT3's functions in order.
 | effMath | 11 | 0x0018DBD8..0x0018E218 | shared |
 | effPacket | 7 | 0x0015F810..0x001606C0 | shared |
 | effSpline | 11 | 0x00192CC8..0x001937E0 | 4 DDS-only, inside `game/code_00192488` |
-| effDebug | 12 | 0x0018DF90..0x0018F3A0 | 9 extra, overlaps effMath's run |
+| effDebug | 16 | 0x0018E218..0x0018F3A0 | shared |
 | effEvent | 84 | 0x0018F3A0..0x00192CC8 | 82 twins in 93; SMT3 has 1 INCLUDE_ASM |
 | effBlur_Filter | 30 | 0x00186BC8..0x00188068 | 18 twins in 27; SMT3 has 1 INCLUDE_ASM |
 | effManager, effPCPBezier, effPCPThunder, billManager, effModelTrackPoly, effMagatuhi, effPCPBoss | | | runs widened by small functions that twin far away; pair by position (`/tmp/s8/py/mclist.py` shape) before cutting |
@@ -233,8 +234,16 @@ OT slot 82 where SMT3 uses 70. The probe's PAD line was real: compiling the
 end message as a literal drops 8 bytes of DDS's rodata and shifts the next
 unit's, so DDS prints it from its INCLUDE_RODATA symbol.
 
+effDebug: sdf-decomp a6743fb (history) and the share commit after it,
+dds-decomp's "Build effDebug from sdf-decomp". The "9 extra" were small
+functions twinning far away; by position the run is clean. SMT3's six
+placeholders (`dds3_1AC0A8` to `func_001AC4F0`) are DDS's `effCreateSlotArray`,
+`effReleaseSlotArrayAllocation`, `effStepActiveBezierSlot`,
+`effEvaluateSlotBezierPosition`, `effInitSlotTail`, `effGetSlotAt`, aliased.
+DDS's OT slots run 11 to 13 above SMT3's from slot 44 on (39 is the same).
+
 ## Next
 
-1. effect/: effDebug, effEvent, effSpline (re-split already), then
+1. effect/: effEvent, effSpline (re-split already), then
    effBlur_Filter.
 2. mdlEffect, by bringing its viewer code in under the DDS macros.
