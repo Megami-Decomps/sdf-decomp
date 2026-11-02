@@ -99,7 +99,7 @@
 
 ## Units moved
 
-18 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
+22 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
 report of 11 was wrong; there were 9 before this session). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -122,6 +122,10 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfDraw | 53d9599 | a337a9853 | `D_0055188A`, `D_00551888` defined to DDS names, `#define sdfGrOtClose sdfFlushPoolNodes` (see Traps), DDS's INCLUDE_SDATA lines at the end, one per game |
 | sdfDevCons | 62ea4f6 | a337a9853 | `#define func_002BD300 sdfPktSetCmd`; DDS's `sdfDevConsFontUvTable` and `sdfDevConsColorTable` definitions under the DDS games |
 | sdfIpu | 1a3eb57 | e639d4d22 | SDK skips, `D_00552158` and `D_00552144` defined, `#define sdfIpuRunDecode sdfAdvanceStreamPlayback`, DDS's own `sdfIpuRunDecode` body (pause checks) under the DDS games, its INCLUDE_SDATA line per game |
+| sdf_Decomp | 5a2fdfe | 3ffd46925 | `D_00594780`, `D_00552170` per game; `sdfDrawFaceListParam` defined as `sdf3DScreenParam + 0x70` for DDS, which has no symbol there |
+| sdfPrint | 43887e8 | 43397b6bb | rename to `sdfPrintIopInit` (4844a7423); DDS's body under the DDS games (it retries the bind instead of printing); `D_0058F310`, `D_00551908` defined; SMT3's INCLUDE_RODATA and INCLUDE_SDATA under `SDF_SMT3`, DDS's two per game |
+| sdfMovie | 346ea33 | c72f8d6c6 | DDS-only `sdfSetStreamFrameDrawMode`, `sdfSetGridScaledDrawBounds`, `sdfMovieQueueFrameSprite` (INCLUDE_ASM plus DDS's NON_MATCHING draft) after `movieWaitSema`; the draw-mode check in `release_movieobj2` under the DDS games; sdata lists per game |
+| sdfTmx | 1180181 | 00bf3e064 | renames `mcModuleNames`, `sdfFileRpcBuf`, `sdfFileRpcState`, `sdfFileRpcThreadId` (4651fd56b); DDS compiles the two module paths from literals, so `D_0054A360`, `D_0054A380` are defined to them; rodata lists per game |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
 per-symbol asm files and leaves its source alone.
@@ -146,7 +150,6 @@ temporarily, check_unit in both games; DDS1 and DDS2 agree unless noted):
 | sdfVu0 | 34 match, 9 differ | MISSING DDS functions (`sdfVuLoadSecondaryRotationMatrixY`), NOASM |
 | sdfTex | 29 match, 17 differ | MISSING DDS function names (`sdfTexDestroy`, `sdfTexReleaseReference...`) |
 | sdf3D | 7 match, 17 differ | UNDEF `vu1Tex0Slot0..2` and more names |
-| sdf_Decomp | 4 match, 5 differ | UNDEF `sdfDrawFaceListParam`, `MultMatrixRev`, `D_00594780` |
 | sdfMisc | 1 match, 6 differ | ORDER, MISSING DDS-only functions (`sdfDevCreateBufferedRequest`, `sdfDevResizeBufferedRequest`) |
 | sdfHdd | 1 match, 13 differ | UNDEF `sdfDev9Ready`, `D_0058FFC0`, `D_005519A0` |
 | sdfDevFile | 5 match, 10 differ | MISSING `sndLoadNamedOffsetResourceList`, UNDEF `D_0054A2D8`, NOASM |
@@ -156,9 +159,10 @@ temporarily, check_unit in both games; DDS1 and DDS2 agree unless noted):
 | sdfDefaultMain | 0 match, 12 differ | UNDEF `sdfPadManagerMode`, `SdfIopInit`, `sdfCdTrayMode` |
 | sdfModel | 46 match, 17 differ | UNDEF `ToMatrix`, `MultMatrixRev`, `sdfItemArrayNew` |
 | sdfMotion | 85 match, 26 differ | UNDEF `ToMatrix`, `sdfMotModelVisibleTable`, `sdfMotModelLinerScaleTable` |
-| sdfMovie | 9 match, 11 differ | UNDEF `sdfDummyFunc`, `D_00551B50`, NOASM |
-| sdfPrint | compiles | UNDEF `D_005495C8`, `D_00551908` (DDS1 `D_003BD3D0`), `D_0058F310` (DDS `sdfDevRpcClient`); MISSING `sdfStartDevRpcServerAndBindClient` (SMT3 `sdfPrintIopInit`); NOASM; `sdfPuts` differs |
-| sdfFileIO, sdfFile, sdfCd, sdfSound, sdfTmx | compile | not yet probed in detail |
+| sdfFileIO | 21 match, 17 differ | UNDEF `sdfFileCmdFreeList`, `sdfFileCmdFreeCount`, `sdfFileCmdDefaultDevice` |
+| sdfFile | 11 match, 18 differ | UNDEF `sdfFileDefaultSrcType`, `sdfFileCmdFreeList`, `sdfFileCmdFreeCount` |
+| sdfCd | 6 (DDS2 7) match, 31 differ | UNDEF `sdfCdTrayMode`, `sdfCdImageSearchFileDirect_ent`, `sdfCdImageFileName` |
+| sdfSound | 29 match, 114 differ | UNDEF `sdfSndSendCmd_cmd_id`, `sdfSndMakeFilename`, `sdfFileRpcResult` |
 
 UNDEF of an SMT3 real name usually means a DDS rename is owed (step 1 below);
 UNDEF of a function name means stage 5 withheld or never paired it.
@@ -200,11 +204,18 @@ under the DDS games; the define goes when smt3-decomp takes the name.
 | `D_00551888` | `sdfGrFrameComplete` | sdfDraw |
 | `D_0055188A` | `sdfGrBufferSlotIndex` | sdfDraw |
 | `D_00552158` | `sdfIpuInputStream` | sdfIpu |
+| `D_0058F310` | `sdfDevRpcClient` | sdfPrint |
+| `movie_2C5080` | `sdfPrintTextLine` | sdfMovie |
+| `release_movieobj2` | `sdfMovieDrawFrame` | sdfMovie (IDB name with a one-argument `dds3MovieTable_t` prototype; the function takes the movie and an OT) |
 
 Also owed: SMT3's units declare SDK functions locally with types that differ
 from the SDK (`void SleepThread`, `void EIntr`, `s32 sceSifSetRpcQueue`).
 
 ## Traps
+
+- `INCLUDE_SDATA` and `INCLUDE_RODATA` take the symbol name literally (the
+  asm path is built from it), so a `#define` alias does not reach them: list
+  the DDS names per game.
 
 - `git rm` stages the deletion: commit the DDS tool change before it, or
   the deletions ride along in the wrong commit.
