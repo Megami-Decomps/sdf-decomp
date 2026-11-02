@@ -1,7 +1,6 @@
 #include "fpu.h"
 #include "common.h"
 #include "libsdf.h"
-#include "ps2asm.h"
 
 #define SDF_PI_2 1.5707963f
 
@@ -53,6 +52,11 @@ enum sdf_stream_playback {
     SDF_STREAM_PLAYBACK_FIRST_COMPLETION = 1,
     SDF_STREAM_PLAYBACK_CADENCED = 2
 };
+
+/* DDS names the asin table; SMT3 has no name for it yet. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_0052D944 sdfNormalizedAsinSamples
+#endif
 
 extern f32 D_0052D944[];
 
