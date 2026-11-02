@@ -6,6 +6,22 @@
 #include "libsdf.h"
 #include "sdf_resource.h"
 
+#if defined(SDF_DDS1)
+#define D_002E8ED0 D_00317C20
+#define D_002ECF10 D_0031BC60
+#define D_002F5600 D_00324350
+#define D_00529630 D_00398390
+#define D_005518B8 D_003BD37C
+#define D_005518C8 D_003BD390
+#elif defined(SDF_DDS2)
+#define D_002E8ED0 D_00372C00
+#define D_002ECF10 D_00376C40
+#define D_002F5600 D_0037F330
+#define D_00529630 D_0040B540
+#define D_005518B8 D_00438A6C
+#define D_005518C8 D_00438A80
+#endif
+
 /* Register selectors carried by GIF A+D writes in the two GS contexts. */
 enum {
     SDF_GS_PRIM = 0x00,
@@ -305,6 +321,28 @@ void sdf3DSetDefaultFog(u8 *aFog) {
 extern f32 tanf(f32 angle);
 extern void MultMatrix(const void *matrix);
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#if defined(SDF_DDS1)
+#define sdf3DScreenAdjust D_003BD360
+#define sdf3DScreenAdjustScaleX D_003BD364
+#define sdf3DScreenAdjustScaleY D_003BD368
+#define sdf3DScreenAdjustOffsetX D_003BD36C
+#define sdf3DScreenAdjustOffsetY D_003BD370
+#else
+#define sdf3DScreenAdjust D_00438A50
+#define sdf3DScreenAdjustScaleX D_00438A54
+#define sdf3DScreenAdjustScaleY D_00438A58
+#define sdf3DScreenAdjustOffsetX D_00438A5C
+#define sdf3DScreenAdjustOffsetY D_00438A60
+#endif
+/* Nonzero scales and offsets every screen sdf3DMakeScreenParam builds. */
+extern s8 sdf3DScreenAdjust;
+extern f32 sdf3DScreenAdjustScaleX;
+extern f32 sdf3DScreenAdjustScaleY;
+extern f32 sdf3DScreenAdjustOffsetX;
+extern f32 sdf3DScreenAdjustOffsetY;
+#endif
+
 /* vu0 routine: compose the perspective matrix and clip-to-screen mapping. */
 void sdf3DMakeScreenParam(sdf3DScreenParam_t *camera)
 {
@@ -348,6 +386,14 @@ void sdf3DMakeScreenParam(sdf3DScreenParam_t *camera)
     camera->trans[1] = camera->oy;
     camera->trans[2] = centerY + camera->zMin;
     camera->trans[3] = 0;
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+    if (sdf3DScreenAdjust != 0) {
+        camera->scale[0] *= sdf3DScreenAdjustScaleX;
+        camera->scale[1] *= sdf3DScreenAdjustScaleY;
+        camera->trans[0] += sdf3DScreenAdjustOffsetX;
+        camera->trans[1] += sdf3DScreenAdjustOffsetY;
+    }
+#endif
 }
 
 
@@ -533,3 +579,53 @@ void sdf3DInit(void) {
     sdfModelInitSystem();
     sdfMatInitSystem();
 }
+
+#if defined(SDF_DDS1)
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_003BD360);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_003BD364);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_003BD368);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_003BD36C);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_003BD370);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", sdf3DLightDefault);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", sdf3DFogDefault);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_003BD37C);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", sdf3DSpecularTex);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", sdf3DRefMapParam);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_003BD390);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", sdfPadPortSlotPairs);
+#elif defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_00438A50);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_00438A54);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_00438A58);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_00438A5C);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_00438A60);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", sdf3DLightDefault);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", sdf3DFogDefault);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_00438A6C);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", sdf3DSpecularTex);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", sdf3DRefMapParam);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", D_00438A80);
+
+INCLUDE_SDATA(const s32, "sdf/sdf3D", sdfPadPortSlotPairs);
+#endif
