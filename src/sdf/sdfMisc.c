@@ -89,6 +89,10 @@ void sdfMemUnlock(sdfMemHandle_t *aHandle);
 
 void sdfMemReallocRecord(sdfMemHandle_t *aHandle, s32 aSize);
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define func_002BFF98 sdfDevResizeBufferedRequest
+#endif
+
 void func_002BFF98(sdfItemArray_t *aArray, s32 aCapacity);
 
 void sdfItemArrayGrow(sdfItemArray_t *aArray)
