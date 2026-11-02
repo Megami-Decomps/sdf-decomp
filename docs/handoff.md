@@ -34,8 +34,9 @@
 - Stages 4 to 6: `docs/handoff-dds.md` (re-split, renames) and
   `docs/handoff-stage6.md` (shared units, traps, owed names). Stage 8:
   `docs/handoff-stage8.md`.
-- 48 units are shared by all three games: SMT3's 45 `sdf/` units,
-  `mc/mcManager`, `model/mdlManager` and `file/fileManager`, as dds-decomp's
+- 52 units are shared by all three games: SMT3's 45 `sdf/` units,
+  `mc/mcManager`, `model/mdlManager`, `file/fileManager`, the three
+  `script/` engine units and `effect/effPCPNeedle`, as dds-decomp's
   `config/sdf_shared.txt` lists. `model/mdlEffect` is here for SMT3 only.
   dds-decomp branch `sdf-shared` in the worktree
   `/home/wsl/projects/dds-decomp-sdf`. All three games byte-identical from
@@ -44,15 +45,15 @@
   SMT3 does; `config/<v>/handwritten.txt` keeps those 19 functions out of
   DDS's game-code totals (`tools/progress.py`, `production_report.py`).
   SMT3 counts the same functions as game code and was left as it is.
-- smt3-decomp origin/main has no commits touching shared files since 0be37933,
-  the base of the current consume patch.
+- smt3-decomp main has no commits touching shared files since 0be37933,
+  the base of the current consume patch (checked at a69f68e3).
 - Nothing is pushed. Waiting on the user: the GitHub home for sdf-decomp
   (suggested Megami-Decomps/sdf-decomp). Then: push, set dds-decomp's
   `.gitmodules` URL to `../sdf-decomp`, bump the smt3-decomp patch's pin,
   land both.
-- Next: `script/` (scrScriptProcess, scrTraceCode), blocked first on the DDS
-  dev build descriptor; then mdlEffect, then `effect/`. `mc/slMain` and
-  `script/scrParameterCommand` are game code and stay per game.
+- Next: the rest of `effect/` by the plan in `docs/handoff-stage8.md`, then
+  mdlEffect. `mc/slMain` and `script/scrParameterCommand` are game code and
+  stay per game.
 
 ## Next
 
@@ -79,7 +80,7 @@ relative to smt3-decomp's remote (on GitHub: Megami-Decomps/sdf-decomp):
 
 ```sh
 git am /path/to/sdf-decomp/docs/smt3-decomp-consume.patch
-git rm -r -q src/smt3/sdf src/smt3/mc/mcManager.c src/smt3/model src/smt3/file/fileManager.c src/smt3/script/scrScriptProcess.c src/smt3/script/scrTraceCode.c src/smt3/script/scrCommonCommand.c include/{libsdf.h,sdf_types.h,sdf_resource.h,sdf_lighting.h,sdf_movie_types.h,sdfGsMemIO.h,sdfDevCons.h,sdfCorePacketCb_t.h,sdfCorePacketPointBuff_tag.h,model.h,motion.h,draw.h,draw3d.h,billboard.h,fileManager.h,scr.h}
+git rm -r -q src/smt3/sdf src/smt3/mc/mcManager.c src/smt3/model src/smt3/file/fileManager.c src/smt3/script/scrScriptProcess.c src/smt3/script/scrTraceCode.c src/smt3/script/scrCommonCommand.c src/smt3/effect/effPCPNeedle.c include/{libsdf.h,sdf_types.h,sdf_resource.h,sdf_lighting.h,sdf_movie_types.h,sdfGsMemIO.h,sdfDevCons.h,sdfCorePacketCb_t.h,sdfCorePacketPointBuff_tag.h,model.h,motion.h,draw.h,draw3d.h,billboard.h,fileManager.h,scr.h,effPCPData.h}
 git commit --amend --no-edit
 git submodule update --init
 ```

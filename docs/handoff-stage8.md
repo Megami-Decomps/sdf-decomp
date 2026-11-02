@@ -1,4 +1,4 @@
-# Handoff: stage 8, model/, file/, script/
+# Handoff: stage 8, model/, file/, script/, effect/
 
 dds-decomp work is on `sdf-shared` in `/home/wsl/projects/dds-decomp-sdf`; the
 SMT3 check is the clone `/home/wsl/projects/sdf-decomp-work/smt3-decomp`, its
@@ -15,6 +15,7 @@ one consume commit amended per unit and exported to
 | `script/scrScriptProcess`, `script/scrTraceCode` | shared, all three games | the script VM; DDS defines the command table in C, its rows in DDS's `include/scr_command_table.h` |
 | `script/scrCommonCommand` | shared, all three games | DDS's extra commands and its additions to `BLUR_ALLOFF`, `FILTER_ALLOFF` under the DDS macros |
 | `script/scrParameterCommand` | SMT3 only | game code, no twins in DDS |
+| `effect/effPCPNeedle` | shared, all three games | DDS names aliased in the unit; SMT3's two `printf`s under `SDF_SMT3` |
 
 dds-decomp commits, in order: e76182af8 (probe and resolve take `dir/unit`),
 878bc0130 (model re-split), ed9e2911e (model names), 79f089aa1 (mdlManager
@@ -23,13 +24,16 @@ shared), be74ecd02 (file re-split), 44ee9e9f8 (`fileCallbackStatus`),
 
 ## mdlEffect, deferred
 
-SMT3's mdlEffect is 42 functions; DDS's span at the same place holds them plus
-54 viewer functions (about 2000 lines) written against DDS's own headers.
-Compiling the shared unit for DDS needs `newdata.h` (DDS has none) and pulling
-DDS's viewer code in brings 15 struct redefinitions and 27 conflicting
-prototypes against the engine headers. Sharing it means first moving the
-viewer functions to their own DDS unit (they are not engine code by SMT3's
-split) or reconciling those types. The DDS re-split at SMT3's boundary stays.
+SMT3's mdlEffect is 42 functions. In DDS1 the first 36 run 0x002192C0 to
+0x0021A608, then 54 viewer functions to 0x0021E450, then SMT3's last six
+(`mdlSetDebugMatrix` to `soften_bias_Process`) to 0x0021F4B8; DDS2 has the
+same shape. The viewer code sits inside the unit, so it cannot be a DDS unit
+of its own: an object is one contiguous run. Sharing mdlEffect means the
+viewer functions go into the shared file under the DDS macros (or into a DDS
+file the shared one includes there), which brings the 15 struct
+redefinitions and 27 conflicting prototypes against the engine headers that
+the viewer code's DDS headers carry, plus `newdata.h`, which DDS lacks. The
+DDS re-split at SMT3's outer boundary stays.
 
 ## Traps
 
@@ -98,7 +102,53 @@ commands at the end and `scrCommand_SCR_EXISTS` are under the DDS macros, with e
 written in the unit rather than DDS's headers. `config/sdf_shared.txt` lists
 51 units.
 
+## effect/
+
+Measured with `twins.py contig --prefix effect/` and the twin ranges (DDS1
+addresses; DDS2 has the same shape). "Clean" means the DDS run holds exactly
+SMT3's functions in order.
+
+| unit | SMT3 | DDS1 run | state |
+|---|---|---|---|
+| effPCPNeedle | 17 | 0x001760F8..0x00177120 | shared |
+| polyManager | 87 | 0x0015B228..0x0015F810 | clean |
+| effPart | 40 | 0x00162970..0x001632E0 | clean, now inside `game/code_001624D0` |
+| effPCPFlash | 148 | 0x0016A088..0x001708A0 | clean |
+| effPCPScatter | 90 | 0x001708A0..0x001760F8 | clean |
+| parManager | 126 | 0x00153680..0x0015B228 | clean; SMT3 has 2 INCLUDE_ASM |
+| effMath | 10 | 0x0018DBD8..0x0018E218 | 1 extra |
+| effPacket | 7 | 0x0015F810..0x001606C0 | 6 twins in 11, inside `game/code_0015F4D0` |
+| effSpline | 11 | 0x00192CC8..0x001937E0 | 4 DDS-only, inside `game/code_00192488` |
+| effDebug | 12 | 0x0018DF90..0x0018F3A0 | 9 extra, overlaps effMath's run |
+| effEvent | 84 | 0x0018F3A0..0x00192CC8 | 82 twins in 93; SMT3 has 1 INCLUDE_ASM |
+| effBlur_Filter | 30 | 0x00186BC8..0x00188068 | 18 twins in 27; SMT3 has 1 INCLUDE_ASM |
+| effManager, effPCPBezier, effPCPThunder, billManager, effModelTrackPoly, effMagatuhi, effPCPBoss | | | runs widened by small functions that twin far away; pair by position (`/tmp/s8/py/mclist.py` shape) before cutting |
+| effPCPMisc | 387 | 0x00177120..0x00184420 | DDS has 369 after the effPCPNeedle re-split |
+| effBattle, effBattleMisc, effBattleSystem, effBattleLight | | | battle code, few or no twins; per game |
+
+Where SMT3 still has INCLUDE_ASM and DDS has C, the shared unit should take
+DDS's C for that function (it may match SMT3 too) rather than lose it.
+
+Recipe, as effPCPNeedle went (dds-decomp 68256150f, 23f77cb01, 26cf8c8b3;
+sdf-decomp 6a79c02, 4e084ea, 8ebfaf4):
+
+1. Add the boundaries to `config/<v>/effect_units.txt`, run
+   `tools/resplit.py <v> config/<v>/effect_units.txt`, drop the stale yaml
+   row and restore the `# Nocturne __FILE__` comments, `configure.py
+   --force-split`, build, `check_unit` the cut units, commit.
+2. Merge the unit's history: `git clone --no-local` of smt3-decomp, reset to
+   the consume patch's base, `fr/bin/git-filter-repo --path
+   src/smt3/effect/<unit>.c --path-rename src/smt3/effect/:src/effect/`,
+   then `git merge --allow-unrelated-histories`. Headers only SMT3 has
+   (`effPCPData.h`) come the same way.
+3. `tools/sdf_probe.py effect/<unit>`, `tools/sdf_resolve.py effect/<unit>`.
+   Rename DDS functions to SMT3's with `tools/sdf_rename.py` when they are the
+   same function; `eff.h` is in 67 units per game, so `check_unit` them all
+   after a rename there (all 135 were clean for effPCPNeedle). Data and
+   widely used names stay DDS's, aliased by `#define` at the top of the unit.
+
 ## Next
 
-1. mdlEffect, after its DDS viewer functions have a unit of their own.
-2. effect/.
+1. effect/: polyManager, effPart, effPCPFlash, effPCPScatter, then
+   parManager, then the near ones in the table.
+2. mdlEffect, by bringing its viewer code in under the DDS macros.

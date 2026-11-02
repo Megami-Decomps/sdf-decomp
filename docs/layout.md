@@ -44,6 +44,7 @@ repo if it is toolchain, SDK or game layer, and the game repo puts its own
 | `billboard.h` | sdfBillBoard VIF packets; also effect's `dds3Billboard*` and `bill*` types |
 | `fileManager.h` | `fileRequest_t` and `fileLoad`, the engine's queued file loader (stage 8) |
 | `scr.h` | the script VM's file tables and process work block (stage 8); SMT3's game commands include it too |
+| `effPCPData.h` | the PCP effect data block (stage 8); SMT3's other PCP effect units include it too |
 
 `model.h` and `billboard.h` are mixed. They moved whole because the sdf units
 need them and `model/` and `effect/` are planned to move here later (plan
