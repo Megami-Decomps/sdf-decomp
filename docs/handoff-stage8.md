@@ -48,17 +48,46 @@ split) or reconciling those types. The DDS re-split at SMT3's boundary stays.
 - A resplit-deleted unit can come back as a stub file from configure; `git rm`
   it with the re-split.
 
-## script/, measured
+## script/, measured, reverted
 
-From `/tmp/s8b/runs-*.txt` (`twins.py runs`), not yet re-split:
-scrParameterCommand has no unique twins; scrCommonCommand has 46 unpaired
-functions plus 5 between runs. DDS already has `script/scrScriptProcess`,
-`scrTraceCode` and `scrCommonCommand` units under those names. The headers they
-use (`kernel.h`, `scr.h`, `newdata.h`, `basic.h`) differ in DDS.
+Stopped here at the user's request. scrScriptProcess and scrTraceCode are the
+script VM; scrCommonCommand is mostly game commands (46 of SMT3's 67 functions
+unpaired, 5 more between runs); scrParameterCommand is SMT3 game code with no
+twins in DDS and stays in smt3-decomp.
+
+SMT3's boundaries in DDS, from `twins.py runs --prefix script/`:
+
+| unit | DDS1 | DDS2 |
+|---|---|---|
+| scrScriptProcess | 0x0010BB28 | 0x0010BD50 |
+| scrTraceCode | 0x0010C120 | 0x0010C348 |
+| scrCommonCommand | 0x0010D6B8 (end kept at 0x0010EEF0) | 0x0010D8E0 (end 0x0010F118) |
+
+A re-split with those lists (`config/<v>/script_units.txt`, same format as
+`model_units.txt`) ran cleanly after removing resplit's stale
+`scrCommonCommand` row and restoring the `# Nocturne __FILE__` comments, but
+was reverted before a build because of the dev build: it replaces DDS1
+`game/code_0010C028` and `script/scrTraceCode` (DDS2 `code_0010C250` and
+`scrTraceCode`), and the re-split folds the first five functions of
+`code_0010C028` (scrSetUserData to scrScriptProcess) into scrScriptProcess.
+The descriptor then has to replace scrScriptProcess whole (its 0x1118 bytes of
+rodata include an `INCLUDE_RODATA`, which a replacement may not use, so make
+that C first or retain the section), merge the old code_0010C028 and
+scrTraceCode text and rodata moves into one scrTraceCode move (DDS1 text
+0x0010C120 size 0x1598, rodata 0x0039F390 size 0x134), and reset the counts
+with a loop that sets each count the verifier reports (the session used a
+scratch `/tmp/s8b/devloop.py`, not kept).
+
+Pairing (`twins.Game.twin()` over each SMT3 function): SMT3-only `scrPrintProcedureEnd`,
+`scrAllReleaseScript`; DDS-only `scrProcDestroyTask`,
+`scrDestroyAllNamedProcesses`, `scrStartProcessProcedure` in their slot.
+Names to carry: `scrClearProcessGlobals` to `dds3GlobalWorkClearFlags`; SMT3's
+`scr_109D80`, `scr_109DD0`, `scr_109E38` are placeholders, so alias them to
+DDS's names in the shared unit.
 
 ## Next
 
-1. script/: re-split one unit at a time (scrScriptProcess and scrTraceCode
-   first), carry names, probe with `tools/sdf_probe.py script/<unit>`.
+1. script/: the dev build descriptor above, then the re-split, names and
+   scrScriptProcess and scrTraceCode, one at a time.
 2. mdlEffect, after its DDS viewer functions have a unit of their own.
 3. effect/.

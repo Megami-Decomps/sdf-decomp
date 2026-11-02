@@ -29,28 +29,30 @@
     address; 111 of the 171 have a same-named twin too (small wrappers hash
     alike). 59 is the count with no same-named DDS1 twin.
 
-## Current state (2026-11-02, end of stage 6)
+## Current state (2026-11-02, stage 8 in progress)
 
 - Stages 4 to 6: `docs/handoff-dds.md` (re-split, renames) and
-  `docs/handoff-stage6.md` (shared units, traps, owed names). All 46 units
-  are shared by all three games: SMT3's 45 `sdf/` units plus `mc/mcManager`,
-  as dds-decomp's `config/sdf_shared.txt` lists. dds-decomp branch
-  `sdf-shared` in the worktree `/home/wsl/projects/dds-decomp-sdf`, 94
-  commits on origin/main. All three games byte-identical from clean builds of
-  committed state; DDS progress unchanged (DDS1 9502/9573, DDS2 10768/10855).
+  `docs/handoff-stage6.md` (shared units, traps, owed names). Stage 8:
+  `docs/handoff-stage8.md`.
+- 48 units are shared by all three games: SMT3's 45 `sdf/` units,
+  `mc/mcManager`, `model/mdlManager` and `file/fileManager`, as dds-decomp's
+  `config/sdf_shared.txt` lists. `model/mdlEffect` is here for SMT3 only.
+  dds-decomp branch `sdf-shared` in the worktree
+  `/home/wsl/projects/dds-decomp-sdf`. All three games byte-identical from
+  clean builds of committed state.
 - sdfVu1 and sdfDev9 hold DDS's former `hand/` segments as INCLUDE_ASM, as
   SMT3 does; `config/<v>/handwritten.txt` keeps those 19 functions out of
   DDS's game-code totals (`tools/progress.py`, `production_report.py`).
   SMT3 counts the same functions as game code and was left as it is.
 - smt3-decomp origin/main has no commits touching shared files since 0be37933,
-  the base of the current consume patch. The consume patch did not change.
+  the base of the current consume patch.
 - Nothing is pushed. Waiting on the user: the GitHub home for sdf-decomp
   (suggested Megami-Decomps/sdf-decomp). Then: push, set dds-decomp's
   `.gitmodules` URL to `../sdf-decomp`, bump the smt3-decomp patch's pin,
   land both.
-- Next is stage 8 (`docs/plan.md`): `model/`, `file/`, `script/`, then
-  `effect/`. `docs/handoff-stage6.md` Next has the method. `mc/slMain` is
-  game code and stays per game.
+- Next: `script/` (scrScriptProcess, scrTraceCode), blocked first on the DDS
+  dev build descriptor; then mdlEffect, then `effect/`. `mc/slMain` and
+  `script/scrParameterCommand` are game code and stay per game.
 
 ## Next
 
