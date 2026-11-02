@@ -1,4 +1,4 @@
-From 22d112af871279c0e6bedaf2c3bcdd9d37e1ebec Mon Sep 17 00:00:00 2001
+From aa1165e0da11670e6ab6a340f5322b2f618a4ef6 Mon Sep 17 00:00:00 2001
 From: tge-was-taken <tge-was-taken@outlook.com>
 Date: Mon, 2 Nov 2026 04:16:42 +0100
 Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
@@ -65,7 +65,7 @@ index 96026b29..e59c98d1 100644
  python tools/download_tools.py
  
 diff --git a/configure.py b/configure.py
-index f45ca1dc..e1ae7cb8 100755
+index 93f71648..86b45f16 100755
 --- a/configure.py
 +++ b/configure.py
 @@ -20,6 +20,7 @@ import sys
@@ -120,7 +120,7 @@ index f45ca1dc..e1ae7cb8 100755
      subprocess.run([sys.executable, "tools/resolve_jtbl_targets.py", f"asm/{version}"], cwd=ROOT, check=True)
      subprocess.run([sys.executable, "tools/include_rodata.py", version], cwd=ROOT, check=True)
      subprocess.run([sys.executable, "tools/include_sdata.py", version], cwd=ROOT, check=True)
-@@ -415,7 +416,7 @@ def vu_binaries(n, version: str) -> list[str]:
+@@ -416,7 +417,7 @@ def vu_binaries(n, version: str) -> list[str]:
      """Assemble each VU listing in src/<version>/sdf/vu, and name what it wrote."""
      out = []
      for name in VU_SOURCES:
@@ -129,7 +129,7 @@ index f45ca1dc..e1ae7cb8 100755
          if not (ROOT / src).exists():
              continue
          binary = Path("build") / version / "vu" / f"{name}.bin"
-@@ -430,7 +431,7 @@ def source_for(obj: Path, version: str) -> tuple[str, Path]:
+@@ -431,7 +432,7 @@ def source_for(obj: Path, version: str) -> tuple[str, Path]:
      stem = Path(str(rel)[: -len(".o")])
      for kind, suffix in (("c", ".c"), ("s", ".s")):
          candidate = Path(f"{stem}{suffix}")
@@ -138,7 +138,7 @@ index f45ca1dc..e1ae7cb8 100755
              return kind, candidate
      if rel.parts[0] == "assets":
          return "bin", Path(f"{stem}.bin")
-@@ -582,7 +583,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+@@ -583,7 +584,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
              elif kind == "bin":
                  n.build(str(obj), "bin", str(src))
              else:
@@ -148,7 +148,7 @@ index f45ca1dc..e1ae7cb8 100755
                  nonmatchings = Path("asm") / version / "nonmatchings"
                  asm_files = list(dict.fromkeys(
                      str(nonmatchings / folder / f"{name}.s")
-@@ -592,7 +594,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+@@ -593,7 +595,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
                  if asm_files:
                      n.build(eeasm, "eeasm", asm_files, implicit=["tools/eeas_compat.py"],
                              variables={"unit": str(src)})
@@ -158,7 +158,7 @@ index f45ca1dc..e1ae7cb8 100755
                  unit = src.relative_to(Path("src") / version).with_suffix("").as_posix()
                  flags = unit_cflags(version).get(unit, "")
                  chain = TOOLCHAINS[unit_toolchain(version).get(unit, DEFAULT_TOOLCHAIN)]
-@@ -604,16 +607,16 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+@@ -605,16 +608,16 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
                             f"config/{version}/asflags.txt"]
                  # Instruction-emitting inline asm in the unit fails before it compiles.
                  asmcheck = Path("build") / version / "asmcheck" / src.with_suffix(".stamp")
@@ -178,7 +178,7 @@ index f45ca1dc..e1ae7cb8 100755
                          implicit=[str(asmcheck), *configs, "include/macro.inc",
                                    "tools/production_report.py"],
                          implicit_outputs=[str(base) + ".s", str(base) + ".proof.json"],
-@@ -658,7 +661,7 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+@@ -659,7 +662,7 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
      # ASM/C ownership. The ownership digest keeps body-only edits split-free.
      configure_inputs += [
          str(path.relative_to(ROOT)) for v in versions
@@ -187,7 +187,7 @@ index f45ca1dc..e1ae7cb8 100755
      ]
      for version in versions:
          alias_metadata = ROOT / "config" / version / "symbol_aliases.json"
-@@ -755,6 +758,11 @@ def main() -> None:
+@@ -756,6 +759,11 @@ def main() -> None:
              ap.error(f"{v}: orig/{v}/{VERSIONS[v]['serial']} missing; run tools/extract.py")
      if not versions:
          ap.error("no extracted versions; run tools/extract.py")
@@ -224,11 +224,11 @@ index 3e788386..3c9b4887 100644
  [TU recovery](tu-recovery.md).
 diff --git a/external/sdf-decomp b/external/sdf-decomp
 new file mode 160000
-index 00000000..65666fc4
+index 00000000..ebbd2297
 --- /dev/null
 +++ b/external/sdf-decomp
 @@ -0,0 +1 @@
-+Subproject commit 65666fc44dcca01ed0ad3634e926fd3468f0fca2
++Subproject commit ebbd22971162eec70255ca9421b0f450c869a6ce
 diff --git a/tools/cc.sh b/tools/cc.sh
 index c4fee6c8..acccf946 100755
 --- a/tools/cc.sh
@@ -403,7 +403,7 @@ index bbdd9ada..7c8e70b0 100755
              source = Path(path).read_text()
              wanted = {n for n in wanted if not re.search(
 diff --git a/tools/include_rodata.py b/tools/include_rodata.py
-index 3c71f7f9..8c8433c3 100755
+index c1c59916..040b42bf 100755
 --- a/tools/include_rodata.py
 +++ b/tools/include_rodata.py
 @@ -28,6 +28,7 @@ import sys
@@ -647,11 +647,11 @@ index 00000000..27fd2414
 +    sys.argv[1:1] = ["split"]
 +    splat_main()
 diff --git a/tools/test_check_inline_asm.py b/tools/test_check_inline_asm.py
-index 4a3dd646..b69ba96a 100644
+index 5b5d2bd7..cd324007 100644
 --- a/tools/test_check_inline_asm.py
 +++ b/tools/test_check_inline_asm.py
 @@ -63,8 +63,8 @@ class Allowlist(unittest.TestCase):
-         self.assertTrue(listed)
+         # An empty allowlist is valid once every unit has migrated.
          for path in sorted(listed):
              with self.subTest(path=path):
 -                self.assertTrue((ROOT / path).exists(), "listed unit is gone")
