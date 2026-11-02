@@ -3,6 +3,13 @@
 #include "ps2asm.h"
 #include "fpu.h"
 
+/* DDS's names for the same objects. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_002FA240 sdfViewMatrix
+#define aViewEye sdfViewTargetVector
+#define func_001AC068 effMathResetBezierSlot
+#endif
+
 /* The owner is stored after its contiguous cubic segments. */
 typedef struct
 {
