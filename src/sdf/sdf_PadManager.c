@@ -61,6 +61,18 @@ extern u64 sdf3DRefMapParam;
 
 extern u8 sdfPadCb_0[];
 
+#if defined(SDF_DDS1)
+#define D_005518D8 D_003BD3A0
+#elif defined(SDF_DDS2)
+#define D_005518D8 D_00438A90
+#endif
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_005298A0 sdfPadButtonMasks
+#define D_005298E8 sdfPadButtonPressure
+#define D_005518E0 sdfPadAnalogSticks
+#define D_0058F0C0 sdfPadPortBuffers
+#endif
+
 extern u8 D_005518E0[8];
 
 extern s8 dds3PadBitTable[0x20];
@@ -380,3 +392,24 @@ void sdfPadInitManager(void) {
     sdfPadManagerMode = 0;
 }
 
+#if defined(SDF_DDS1)
+INCLUDE_RODATA(const s32, "sdf/sdf_PadManager", D_003B4548);
+
+INCLUDE_SDATA(const s32, "sdf/sdf_PadManager", sdfPadManagerMode);
+
+INCLUDE_SDATA(const s32, "sdf/sdf_PadManager", D_003BD3A0);
+
+INCLUDE_SDATA(const s32, "sdf/sdf_PadManager", sdfPadAnalogSticks);
+
+INCLUDE_SDATA(const s32, "sdf/sdf_PadManager", D_003BD3A9);
+#elif defined(SDF_DDS2)
+INCLUDE_RODATA(const s32, "sdf/sdf_PadManager", D_0042E258);
+
+INCLUDE_SDATA(const s32, "sdf/sdf_PadManager", sdfPadManagerMode);
+
+INCLUDE_SDATA(const s32, "sdf/sdf_PadManager", D_00438A90);
+
+INCLUDE_SDATA(const s32, "sdf/sdf_PadManager", sdfPadAnalogSticks);
+
+INCLUDE_SDATA(const s32, "sdf/sdf_PadManager", D_00438A99);
+#endif
