@@ -3,6 +3,20 @@
 #include "ps2asm.h"
 #include "sdf_resource.h"
 
+/* DDS's names for the same objects. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_0031F2C0 effScatterPoolTriangleIndices
+#define D_0031F310 effScatterPoolTexcoords
+#define D_0031F3D0 effScatterPoolDrawSurfaces
+#define D_0031F3E0 effScatterTriangleIndices
+#define D_0031F440 effScatterDrawSurfaces
+#define D_0056AD28 effScatterPoolDrawParams
+#define D_0056AD58 effScatterDrawParams
+#define dds3EffectBase effDefaultRandomState
+#define sdfMatSetTex sdfSetAssetPrimaryTextureAddress
+#define sdfTexFreeDelayed sdfTexReleaseReferenceViaHandler
+#endif
+
 struct effDebugPolyParams_t;
 struct effRandState_t;
 struct dds3WhirlwindPolyList_tag;
