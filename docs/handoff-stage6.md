@@ -99,7 +99,7 @@
 
 ## Units moved
 
-25 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
+26 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
 report of 11 was wrong; there were 9 before this session). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -128,6 +128,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfTmx | 1180181 | 00bf3e064 | renames `mcModuleNames`, `sdfFileRpcBuf`, `sdfFileRpcState`, `sdfFileRpcThreadId` (4651fd56b); DDS compiles the two module paths from literals, so `D_0054A360`, `D_0054A380` are defined to them; rodata lists per game |
 | sdfDevFile | 8142c1f | 6d336f307 | renames `sdfDevLoadTex`, `sdfDevLoadTexList`, `sdfDevLoadModel`, `sdfDevLoadMotion` (7d13153dc); the loaders' `printf` and its rodata under `SDF_SMT3` |
 | sdfFileIO | 3cb189b | f59f53853 | renames `sdfFileCmdFreeList`, `sdfFileCmdCount`, `sdfFileCmdFreeCount`, `sdfFileCmdDefaultDevice`, `sdfCdImageLoadStart` (d958019ac); eight placeholders per game; DDS's `/movie2/` check in `sdfFileCmdAnalyzeFileName`; DDS's sdata lists per game |
+| sdfFile | c17f8b6 | a47f158b0 | renames `sdfFileDefaultSrcType`, `sdfFileCmdSetDefaultDevice` (e4de1cb30; static in the shared file, global in DDS's old one, same code); `D_00551928`, `D_00551938` defined to DDS `sdfDiscPathPrefix`, `sdfPfsPathPrefix`, three placeholders per game; DDS's `sdfFileHostRootPath` definition (.data) and sdata lists under the DDS games |
 | sdfHdd | 5f78ff4 | b106dcaa6 | renames `sdfHddPowerOffTh`, `sdfHddInit` (ec6715055) and `sdfDev9Ready` (2b5ac2a98); DDS's two bodies under the DDS games (no printf, `sdfHddInit` takes the mount path); sdata lists per game |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
@@ -171,7 +172,6 @@ temporarily, check_unit in both games; DDS1 and DDS2 agree unless noted):
 | sdfDefaultMain | 0 match, 12 differ | UNDEF `sdfPadManagerMode`, `SdfIopInit`, `sdfCdTrayMode` |
 | sdfModel | 46 match, 17 differ | UNDEF `ToMatrix`, `MultMatrixRev`, `sdfItemArrayNew` |
 | sdfMotion | 85 match, 26 differ | UNDEF `ToMatrix`, `sdfMotModelVisibleTable`, `sdfMotModelLinerScaleTable` |
-| sdfFile | 11 match, 18 differ | UNDEF `sdfFileDefaultSrcType`, `sdfFileCmdFreeList`, `sdfFileCmdFreeCount` |
 | sdfCd | 6 (DDS2 7) match, 31 differ | UNDEF `sdfCdTrayMode`, `sdfCdImageSearchFileDirect_ent`, `sdfCdImageFileName` |
 | sdfSound | 29 match, 114 differ | UNDEF `sdfSndSendCmd_cmd_id`, `sdfSndMakeFilename`, `sdfFileRpcResult` |
 
@@ -220,6 +220,8 @@ under the DDS games; the define goes when smt3-decomp takes the name.
 | `D_0052D944` | `sdfNormalizedAsinSamples` | sdfMath |
 | `D_00551870` | `sdfPacketBuffers` | sdfPacketBuff |
 | `D_005520A8` | `sdfPendingQueueSlots` | sdfDelayedResrc |
+| `D_00551928` | `sdfDiscPathPrefix` | sdfFile |
+| `D_00551938` | `sdfPfsPathPrefix` | sdfFile |
 | `D_005298E8` | `sdfPadButtonPressure` | sdf_PadManager (not moved) |
 | `D_0058F0C0` | `sdfPadPortBuffers` | sdf_PadManager (not moved) |
 | `sdf_2C0510` | `effMiscQuatLengthSqVU` | sdfQuat |
@@ -249,7 +251,10 @@ from the SDK (`void SleepThread`, `void EIntr`, `s32 sceSifSetRpcQueue`).
 - A unit can pass check_unit in both games and still fail the link: check_unit
   compares text, and data DDS defines (INCLUDE_SDATA, C definitions) that the
   SMT3 file only declares shows up as `undefined reference` at ld. Always run
-  the full build.
+  the full build. A missing DDS `.data` definition does not even fail to
+  link: everything after it shifts and ld reports `small-data section
+  exceeds 64KB` (sdfFile's `sdfFileHostRootPath`). Grep DDS's file for
+  top-level initialisers before moving.
 - Defines are per game when DDS names are placeholders (they differ between
   DDS1 and DDS2); DDS real names are usually the same in both.
 - `/tmp/s7-verify.sh` builds all three games from `--clean` with the
