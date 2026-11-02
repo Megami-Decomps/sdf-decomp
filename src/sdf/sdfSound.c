@@ -11,6 +11,102 @@ typedef void *(*sceSifRpcFunc)(s32 function, void *request, s32 size);
 #endif
 #include "sif_rpc.h"
 
+/* DDS keeps 13 loaded MIDI banks to SMT3's 7, which moves everything after the slots. */
+#ifdef SDF_SMT3
+#define SND_SLOT_COUNT 7
+#else
+#define SND_SLOT_COUNT 13
+#endif
+
+#if defined(SDF_DDS1)
+#define SND_VOICE_IOP_BYTES 0x21600
+#elif defined(SDF_DDS2)
+#define SND_VOICE_IOP_BYTES 0x3B600
+#endif
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_0054A088 sdfGsMemoryDumpHeader
+#define D_0054A100 sdfGsMemoryDumpRowFormat
+#define D_00551B40 sdfGsMemoryTypeFormat
+#define D_005907C0 sndCommandThreadParameters
+#define D_005907F0 sndCachedListenerState
+#define D_00590840 sndCommandRing
+#define D_00591840 sndCommandThreadStack
+#define D_00592880 sndRpcServerThreadStack
+#define sdfSndMakeFilename mnuBuildSoundResourcePath
+#define p2sd_2C1788 sndQueueNoPayloadCommand210
+#define p2sd_2C17D8 sndDispatchCommandWithoutPayload
+#define p2sd_2C1D78 sndSendFilenameCommand
+#define p2sd_2C1E10 sndSendChannelControlCommand
+#define p2sd_2C1E40 sndSendChannelGroupCommand140
+#define func_002C1E70 sndSendChannelGroupCommand150
+#define p2sd_2C1EA0 sndReleaseMidiTrack
+#define p2sd_2C1EF8 sndGetTrackBalanceFirstComponent
+#define p2sd_2C1F10 sndGetTrackBalanceSecondComponent
+#define p2sd_2C1F28 sndGetNonnegativeEntryBalance
+#define p2sd_2C1F50 sndGetMidiChannelTable
+#define p2sd_2C1F60 sndGetTrackSlotTable
+#define p2sd_2C1F70 sndGetMidiStateWordPair
+#define p2sd_2C1F90 sndCopyGroupedMidiStateBytes
+#define p2sd_2C21A8 sndSendChannelGroupCommand110
+#define p2sd_2C21D8 sdfSoundSetChannelCount
+#define p2sd_2C2280 sdfSoundGetCommandStatus
+#define p2sd_2C22B0 sndSendChannelGroupCommand110Duplicate
+#define sdf_2C2618 sdfSoundSetTableEntry
+#define sdf_2C27F8 sdfSoundGetTableEntry
+#endif
+#if defined(SDF_DDS1)
+#define D_00529BE8 D_00398948
+#define D_00529C68 D_003989C8
+#define D_00529C88 D_003989E8
+#define D_00529CC8 D_00398A28
+#define D_00529CD8 D_00398A38
+#define D_00549B50 D_003B4880
+#define D_00549B70 D_003B48A0
+#define D_00549B88 D_003B48B8
+#define D_00549BB0 D_003B48E0
+#define D_005519D4 D_003BD4A4
+#define D_00551A20 D_003BD4F0
+#define D_00551A28 D_003BD4F8
+#define D_00551A30 D_003BD500
+#define D_00551A38 D_003BD508
+#define D_00551A40 D_003BD510
+#define D_00551A50 D_003BD520
+#define D_00551A58 D_003BD528
+#define D_00551A60 D_003BD530
+#define D_00551B10 D_003BD5E0
+#define D_00551B18 D_003BD5E8
+#define D_00552120 D_003BDA70
+#define D_0055213C D_003BDA8C
+#define D_00593890 D_003FE0D0
+#define D_00593E20 D_003FE990
+#elif defined(SDF_DDS2)
+#define D_00529BE8 D_0040BAF8
+#define D_00529C68 D_0040BB78
+#define D_00529C88 D_0040BB98
+#define D_00529CC8 D_0040BBD8
+#define D_00529CD8 D_0040BBE8
+#define D_00549B50 D_0042E590
+#define D_00549B70 D_0042E5B0
+#define D_00549B88 D_0042E5C8
+#define D_00549BB0 D_0042E5F0
+#define D_005519D4 D_00438B94
+#define D_00551A20 D_00438BE0
+#define D_00551A28 D_00438BE8
+#define D_00551A30 D_00438BF0
+#define D_00551A38 D_00438BF8
+#define D_00551A40 D_00438C00
+#define D_00551A50 D_00438C10
+#define D_00551A58 D_00438C18
+#define D_00551A60 D_00438C20
+#define D_00551B10 D_00438CD0
+#define D_00551B18 D_00438CD8
+#define D_00552120 D_004391D0
+#define D_0055213C D_004391EC
+#define D_00593890 D_0047AA50
+#define D_00593E20 D_0047B310
+#endif
+
 struct sdfGsMemSlice_t;
 
 typedef struct {
@@ -149,16 +245,22 @@ typedef struct sndMergedWork_t {
     u32 iopBufferBytes;
     sndChannel_t channels[16];
     sndIopBuffer_t buffers[16];
-    p2sdLoadEntry_t slots[7];
+    p2sdLoadEntry_t slots[SND_SLOT_COUNT];
     void *eeWorkAddress;
     u32 eeWorkByteCount;
     u32 opaque1D0;
     u32 opaque1D4;
     u32 opaque1D8;
     u32 opaque1DC;
-    u8 controlData[7][0x80];
+    u8 controlData[SND_SLOT_COUNT][0x80];
     sndMidiStateGroup_t stateGroups[2];
 } sndMergedWork_t;
+
+#ifdef SDF_SMT3
+typedef char sndMergedWorkSizeCheck[sizeof(sndMergedWork_t) == 0x5A0 ? 1 : -1];
+#else
+typedef char sndMergedWorkSizeCheck[sizeof(sndMergedWork_t) == 0x8D0 ? 1 : -1];
+#endif
 
 extern sndMergedWork_t sdfSndWork FAKEMATCH_ASM_NAME("sdfSndMap");
 
@@ -221,6 +323,9 @@ extern void FlushCache(s32);
 extern sndListenerState_t D_005907F0;
 
 char *sdfSndMakeFilename(char *aDstName, const char *aSrcName);
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+char *mnuBuildVoiceResourcePath(char *aDstName, const char *aSrcName);
+#endif
 
 extern s32 p2sdLoadCheckMidi(s32 MidiNo);
 
@@ -257,6 +362,11 @@ extern char D_00549B70[];
 extern char D_00549B88[];
 
 extern char D_00549BB0[];
+#if defined(SDF_DDS1)
+extern char D_003B4900[];
+#elif defined(SDF_DDS2)
+extern char D_0042E610[];
+#endif
 
 
 extern char *sdfDmaTagNameTable[];
@@ -316,6 +426,7 @@ extern s32 sceSifQueryMaxFreeMemSize(void);
 extern s32 sceSifQueryMemSize(void);
 extern s32 sceSifQueryTotalFreeMemSize(void);
 
+#ifdef SDF_SMT3
 s32 sdfSndIopAlloc(s32 size) {
     s32 address;
 
@@ -327,10 +438,17 @@ s32 sdfSndIopAlloc(s32 size) {
     printf("sceSifQueryTotalFreeMemSize:%08x\n", sceSifQueryTotalFreeMemSize());
     return address;
 }
+#else
+s32 sdfSndIopAlloc(s32 size)
+{
+    return sceSifAllocIopHeap(size);
+}
+#endif
 
 extern s32 sceSifSendCmd(s32 command, void *packet, s32 packetBytes,
                          void *source, void *destination, s32 dataBytes);
 
+#ifdef SDF_SMT3
 s32 sdfSndCmdTrans(void)
 {
     s32 current = (s16)sdfSndCmdIndex;
@@ -352,6 +470,24 @@ s32 sdfSndCmdTrans(void)
     sdfSndCmdIndex = current;
     return 0;
 }
+#else
+s32 sdfSndCmdTrans(void)
+{
+    s32 current = (s16)sdfSndCmdIndex;
+    sndRingPacket_t *packet;
+
+    if (current == (s16)sdfSndCmdTailIndex) {
+        return 1;
+    }
+    packet = &D_00590840[current];
+    if (sceSifSendCmd(0, packet, (packet->command >> 24) & 0xF0, NULL, NULL, 0) == 0) {
+        return 1;
+    }
+    current = (current + 1) & 0x1F;
+    sdfSndCmdIndex = current;
+    return 0;
+}
+#endif
 
 void sdfSndCmdIFThread(void)
 {
@@ -386,6 +522,7 @@ extern s32 CreateThread(sdfSndInitThreadParam_t *parameter);
 extern s32 CreateThreadSimple(void *entryAddress, void *workspace, s32 stackBytes, s32 priority);
 extern void SifRpcServerThreadProc(void);
 
+#ifdef SDF_SMT3
 void sdfSndInitCmdIF(void)
 {
     s32 retries = 0;
@@ -413,6 +550,28 @@ void sdfSndInitCmdIF(void)
     D_005519D4 = threadId;
     _StartThread(threadId, 0);
 }
+#else
+s32 sdfSndInitCmdIF(void)
+{
+    s32 threadId;
+
+    while (sceSifGetSreg(0x1F) == 0) {
+    }
+    D_005907C0.entry = sdfSndCmdIFThread;
+    D_005907C0.stack = D_00591840;
+    D_005907C0.stackSize = 0x1000;
+    D_005907C0.priority = 0x42;
+    D_005907C0.gp = &_gp;
+    sdfSndCmdIndex = 0;
+    sdfSndCmdTailIndex = 0;
+    threadId = CreateThread(&D_005907C0);
+    sdfSndCmdBuf = threadId;
+    _StartThread(threadId, 0);
+    threadId = CreateThreadSimple(SifRpcServerThreadProc, D_00592880, 0x1000, 0x43);
+    D_005519D4 = threadId;
+    return _StartThread(threadId, 0);
+}
+#endif
 
 s32 sdfSndSendCmd(s32 aCmd, s32 aParam, void *aExDataPtr, s32 aExDataSize) {
     s32 nextWriteIndex;
@@ -504,6 +663,9 @@ void sdfSndLoadIRXModules(void) {
     char *module;
 
     sceSifLoadModule("cdrom0:\\SOUNDIRX\\LIBSD.IRX;1", 0, NULL);
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+    sceSifLoadModule("cdrom0:\\SOUNDIRX\\SDRDRV.IRX;1", 0, NULL);
+#endif
     sceSifLoadModule("cdrom0:\\SOUNDIRX\\MODHSYN.IRX;1", 0, NULL);
     sceSifLoadModule("cdrom0:\\SOUNDIRX\\MODMIDI.IRX;1", 0, NULL);
     sceSifLoadModule("cdrom0:\\SOUNDIRX\\MODMSIN.IRX;1", 0, NULL);
@@ -519,6 +681,33 @@ void sdfSndLoadIRXModules(void) {
 extern char D_00549A48[]; /* "SDF_SND_IOP_SIZE\n" */
 extern char D_00549A60[]; /* "sdfSndSeqMapInit\n" */
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+void sdfSndVoiceMapInit(char *aVoiceInfo, s32 aVoiceCount)
+{
+    sndChannel_t *channel;
+    s32 i;
+
+    sdfSndWork.header = aVoiceCount;
+    channel = sdfSndWork.channels;
+    for (i = 0; i < 0x10; i++) {
+        channel->index = i;
+        channel->unk1 = 0x20;
+        channel->unk2 = 0;
+        channel->iopWorkAddress = 0;
+        channel->unk4 = 0;
+        channel->unkC = 0;
+        channel++;
+    }
+    sdfSndWork.channels[0].iopWorkAddress = sdfSndIopAlloc(SND_VOICE_IOP_BYTES);
+    sdfSndWork.opaque1D0 = 0;
+    sdfSndWork.opaque1D4 = 0;
+    for (i = 0; i < SND_SLOT_COUNT; i++) {
+        sdfSndWork.slots[i].unk0 = -1;
+        sdfSndWork.slots[i].unk4 = 0;
+        sdfSndWork.slots[i].unk5 = 0;
+    }
+}
+#else
 #ifdef NON_MATCHING
 /* NON_MATCHING: 39 of 45 words match at the exact 180-byte size. */
 void sdfSndVoiceMapInit(char *aVoiceInfo, s32 aVoiceCount)
@@ -552,6 +741,7 @@ void sdfSndVoiceMapInit(char *aVoiceInfo, s32 aVoiceCount)
 #else
 INCLUDE_ASM(const s32, "sdf/sdfSound", sdfSndVoiceMapInit);
 #endif
+#endif
 
 void sdfSndSeqMapInit(u32 *aSequenceInfo, s32 aSequenceCount)
 {
@@ -576,7 +766,9 @@ void sdfSndSeqMapInit(u32 *aSequenceInfo, s32 aSequenceCount)
         sdfSndWork.buffers[i].iopAddress = 0;
         i++;
     }
+#ifdef SDF_SMT3
     printf(D_00549A60);
+#endif
     iopAddress = sdfSndIopAlloc(total);
     i = 0;
     do {
@@ -593,6 +785,7 @@ void sdfSndSeqMapInit(u32 *aSequenceInfo, s32 aSequenceCount)
 extern s32 sceSifInitIopHeap(void);
 extern s32 D_0055213C;
 
+#ifdef SDF_SMT3
 INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549A60);
 
 void sdfSndInit(char *aVoiceInfo, s32 aVoiceCount, char *aSequenceInfo, s32 aSequenceCount)
@@ -617,6 +810,25 @@ void sdfSndInit(char *aVoiceInfo, s32 aVoiceCount, char *aSequenceInfo, s32 aSeq
     sdfSndSendSyncCmd(0, 0, &D_0055213C, 4);
     sdfSndBurstReqMode = 0;
 }
+#else
+void sdfSndInit(char *aVoiceInfo, s32 aVoiceCount, char *aSequenceInfo, s32 aSequenceCount)
+{
+    sdfSndBurstReqMode = 1;
+    sdfSndLoadIRXModules();
+    sceSifInitIopHeap();
+    sdfSndInitCmdIF();
+    sdfSndWork.iopBufferAddress = sdfSndIopAlloc(0x4000);
+    sdfSndWork.iopBufferBytes = 0x4000;
+    sdfSndVoiceMapInit(aVoiceInfo, aVoiceCount);
+    sdfSndSeqMapInit((u32 *)aSequenceInfo, aSequenceCount);
+    D_0055213C = sdfSndIopAlloc(sizeof(sndMergedWork_t));
+    sdfSndWork.eeWorkAddress = &sdfSndWork;
+    sdfSndWork.eeWorkByteCount = sizeof(sndMergedWork_t);
+    sdfSndTransToIOP(D_0055213C, &sdfSndWork, sizeof(sndMergedWork_t));
+    sdfSndSendSyncCmd(0, 0, &D_0055213C, 4);
+    sdfSndBurstReqMode = 0;
+}
+#endif
 
 /* Starts a track with the default 0x7f setting after preparing its identifier. */
 void p2sdPlayBGM(s32 MidiNo) {
@@ -770,8 +982,8 @@ s32 p2sdLoadCheckMidi(s32 MidiNo)
     s32 bank = MidiNo >> 16;
     s32 i;
 
-    InvalidDCache(work, (u8 *)work + 0x5A0);
-    for (i = 0; i < 7; i++) {
+    InvalidDCache(work, (u8 *)work + sizeof(sndMergedWork_t));
+    for (i = 0; i < SND_SLOT_COUNT; i++) {
         if (work->slots[i].unk0 == bank) {
             return 1;
         }
@@ -884,9 +1096,9 @@ p2sdLoadEntry_t *p2sd_2C1F60(void)
 u32 p2sd_2C1F70(u32 *aOutValue)
 {
     if (aOutValue != NULL) {
-        *aOutValue = sdfSndMap[0x77];
+        *aOutValue = sdfSndWork.opaque1DC;
     }
-    return sdfSndMap[0x76];
+    return sdfSndWork.opaque1D8;
 }
 
 /* Pack two 24-byte MIDI state groups into out; NULL leaves the state untouched. */
@@ -913,6 +1125,7 @@ void p2sdPlayBGMFade(s32 trackId) {
     sdfSndSendCmd(0x20, 0, &packet, 0x10);
 }
 
+#ifdef SDF_SMT3
 s32 p2sdFadeOutBgm(s32 aId)
 {
     sdfSndTrackPacket_t arg;
@@ -922,6 +1135,7 @@ s32 p2sdFadeOutBgm(s32 aId)
     arg.setting = 0x17F;
     return sdfSndSendCmd(0x20, 0, &arg, sizeof(arg));
 }
+#endif
 
 s32 p2sdStopBGM(s32 aId)
 {
@@ -1058,7 +1272,11 @@ void *sdfFileRpcHandleCmd(s32 function, void *requestData, s32 requestSize)
             break;
         }
         p2sdPcmState = 1;
+#ifdef SDF_SMT3
         sdfSndMakeFilename(path, D_00529BE8);
+#else
+        mnuBuildVoiceResourcePath(path, D_00529BE8);
+#endif
         state = sdfFileCmdReadOpen(path,
             (void (*)(sdfFileCmdHandle_t *, s32, s32, s32, s32))sdfFileRpcCallback, 0);
         sdfFileRpcArg = state;
@@ -1169,6 +1387,7 @@ void SifRpcServerThreadProc(void)
 }
 
 
+#ifdef SDF_SMT3
 void sdf_2C2618(u32 kind, const u8 *data)
 {
     s32 i;
@@ -1209,7 +1428,7 @@ void sdf_2C2618(u32 kind, const u8 *data)
         }
         break;
     }
-    sdfSndTransToIOP(D_0055213C, &sdfSndWork, 0x5A0);
+    sdfSndTransToIOP(D_0055213C, &sdfSndWork, sizeof(sndMergedWork_t));
     sdfSndSendSyncCmd(0x1F0, 0, 0, 0);
 }
 
@@ -1255,6 +1474,212 @@ void sdf_2C27F8(u32 kind, u8 *data)
         break;
     }
 }
+#else
+void sdf_2C2618(u32 kind, const u8 *src)
+{
+    u8 *table;
+    u8 *dst;
+    s32 i;
+
+    switch (kind) {
+    case 0:
+        table = (u8 *)&sdfSndWork;
+        dst = table + 0x210;
+        for (i = 0; i < 0x20; i++) {
+            *dst++ = src[i];
+        }
+        break;
+    case 1:
+        table = (u8 *)&sdfSndWork;
+        dst = table + 0x290;
+        for (i = 0; i < 0x80; i++) {
+            *dst++ = src[i];
+        }
+        break;
+    case 2:
+        table = (u8 *)&sdfSndWork;
+        dst = table + 0x310;
+        for (i = 0; i < 0x80; i++) {
+            *dst++ = src[i];
+        }
+        break;
+    case 3:
+        table = (u8 *)&sdfSndWork;
+        dst = table + 0x390;
+        for (i = 0; i < 0x20; i++) {
+            *dst++ = src[i];
+        }
+        break;
+    case 4:
+        table = (u8 *)&sdfSndWork;
+        dst = table + 0x410;
+        for (i = 0; i < 0x20; i++) {
+            *dst++ = src[i];
+        }
+        break;
+    case 5:
+        table = (u8 *)&sdfSndWork;
+        dst = table + 0x490;
+        for (i = 0; i < 2; i++) {
+            *dst++ = src[i];
+        }
+        break;
+    case 6:
+        table = (u8 *)&sdfSndWork;
+        dst = table + 0x510;
+        for (i = 0; i < 2; i++) {
+            *dst++ = src[i];
+        }
+        break;
+    case 7:
+        table = (u8 *)&sdfSndWork;
+        dst = table + 0x590;
+        for (i = 0; i < 2; i++) {
+            *dst++ = src[i];
+        }
+        break;
+    case 8:
+        table = (u8 *)&sdfSndWork;
+        dst = table + 0x610;
+        for (i = 0; i < 2; i++) {
+            *dst++ = src[i];
+        }
+        break;
+    case 9:
+        table = (u8 *)&sdfSndWork;
+        dst = table + 0x690;
+        for (i = 0; i < 2; i++) {
+            *dst++ = src[i];
+        }
+        break;
+    case 10:
+        table = (u8 *)&sdfSndWork;
+        dst = table + 0x710;
+        for (i = 0; i < 2; i++) {
+            *dst++ = src[i];
+        }
+        break;
+    case 11:
+        table = (u8 *)&sdfSndWork;
+        dst = table + 0x790;
+        for (i = 0; i < 2; i++) {
+            *dst++ = src[i];
+        }
+        break;
+    case 12:
+        table = (u8 *)&sdfSndWork;
+        dst = table + 0x810;
+        for (i = 0; i < 2; i++) {
+            *dst++ = src[i];
+        }
+        break;
+    }
+    sdfSndTransToIOP(D_0055213C, &sdfSndWork, sizeof(sndMergedWork_t));
+    sdfSndSendSyncCmd(0x1F0, 0, 0, 0);
+}
+
+void sdf_2C27F8(u32 kind, u8 *dst)
+{
+    u8 *table;
+    u8 *src;
+    s32 i;
+
+    sdfSndSendSyncCmd(0x200, 0, 0, 0);
+    switch (kind) {
+    case 0:
+        table = (u8 *)&sdfSndWork;
+        src = table + 0x210;
+        for (i = 0; i < 0x20; i++) {
+            dst[i] = *src++;
+        }
+        return;
+    case 1:
+        table = (u8 *)&sdfSndWork;
+        src = table + 0x290;
+        for (i = 0; i < 0x80; i++) {
+            dst[i] = *src++;
+        }
+        return;
+    case 2:
+        table = (u8 *)&sdfSndWork;
+        src = table + 0x310;
+        for (i = 0; i < 0x80; i++) {
+            dst[i] = *src++;
+        }
+        return;
+    case 3:
+        table = (u8 *)&sdfSndWork;
+        src = table + 0x390;
+        for (i = 0; i < 0x20; i++) {
+            dst[i] = *src++;
+        }
+        return;
+    case 4:
+        table = (u8 *)&sdfSndWork;
+        src = table + 0x410;
+        for (i = 0; i < 0x20; i++) {
+            dst[i] = *src++;
+        }
+        return;
+    case 5:
+        table = (u8 *)&sdfSndWork;
+        src = table + 0x490;
+        for (i = 0; i < 2; i++) {
+            dst[i] = *src++;
+        }
+        return;
+    case 6:
+        table = (u8 *)&sdfSndWork;
+        src = table + 0x510;
+        for (i = 0; i < 2; i++) {
+            dst[i] = *src++;
+        }
+        return;
+    case 7:
+        table = (u8 *)&sdfSndWork;
+        src = table + 0x590;
+        for (i = 0; i < 2; i++) {
+            dst[i] = *src++;
+        }
+        return;
+    case 8:
+        table = (u8 *)&sdfSndWork;
+        src = table + 0x610;
+        for (i = 0; i < 2; i++) {
+            dst[i] = *src++;
+        }
+        return;
+    case 9:
+        table = (u8 *)&sdfSndWork;
+        src = table + 0x690;
+        for (i = 0; i < 2; i++) {
+            dst[i] = *src++;
+        }
+        return;
+    case 10:
+        table = (u8 *)&sdfSndWork;
+        src = table + 0x710;
+        for (i = 0; i < 2; i++) {
+            dst[i] = *src++;
+        }
+        return;
+    case 11:
+        table = (u8 *)&sdfSndWork;
+        src = table + 0x790;
+        for (i = 0; i < 2; i++) {
+            dst[i] = *src++;
+        }
+        return;
+    case 12:
+        table = (u8 *)&sdfSndWork;
+        src = table + 0x810;
+        for (i = 0; i < 2; i++) {
+            dst[i] = *src++;
+        }
+        return;
+    }
+}
+#endif
 
 /* Print size bytes in address-aligned, sixteen-column hexadecimal rows. */
 void sdfDumpHexLine(const u8 *data, s32 size) {
@@ -1287,6 +1712,7 @@ void sdfDumpHexLine(const u8 *data, s32 size) {
     }
 }
 
+#ifdef SDF_SMT3
 INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549B50);
 
 INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549B70);
@@ -1294,6 +1720,27 @@ INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549B70);
 INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549B88);
 
 INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549BB0);
+#elif defined(SDF_DDS1)
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_003B4880);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_003B48A0);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_003B48B8);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_003B48E0);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_003B4900);
+#elif defined(SDF_DDS2)
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_0042E590);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_0042E5B0);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_0042E5C8);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_0042E5F0);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", D_0042E610);
+#endif
 
 void sdfDumpDmaChain(sdfDmaDumpTag_t *source) {
     sdfDmaDumpTag_t *callStack[2];
@@ -1351,7 +1798,13 @@ void sdfDumpDmaChain(sdfDmaDumpTag_t *source) {
             break;
         }
         if (done != 0) {
+#if defined(SDF_DDS1)
+            sdfPrintf(D_003B4900, cursor);
+#elif defined(SDF_DDS2)
+            sdfPrintf(D_0042E610, cursor);
+#else
             sdfPrintf("<<< DMA normal end [%p] >>>\n", cursor);
+#endif
             return;
         }
     }
@@ -1692,9 +2145,19 @@ void sdfDumpGsMemory2(void) {
     }
 }
 
+#ifdef SDF_SMT3
 INCLUDE_RODATA(const s32, "sdf/sdfSound", D_0054A088);
 
 INCLUDE_RODATA(const s32, "sdf/sdfSound", D_0054A100);
+#elif defined(SDF_DDS1)
+INCLUDE_RODATA(const s32, "sdf/sdfSound", sdfGsMemoryDumpHeader);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", sdfGsMemoryDumpRowFormat);
+#elif defined(SDF_DDS2)
+INCLUDE_RODATA(const s32, "sdf/sdfSound", sdfGsMemoryDumpHeader);
+
+INCLUDE_RODATA(const s32, "sdf/sdfSound", sdfGsMemoryDumpRowFormat);
+#endif
 
 void sdfDumpMemory(void) {
     sdfMemInfo_t info;
@@ -1725,3 +2188,213 @@ void sdfDumpChipMemory(void) {
     } while (i != 7);
     sdfPrintf(sdfDumpLineBuf, first);
 }
+
+#if defined(SDF_DDS1)
+INCLUDE_SDATA(const s32, "sdf/sdfSound", p2sdSmgHandle);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", p2sdPcmCallback);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", p2sdPcmState);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", p2sdPcmBusy);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", sdfSndSendCmd_cmd_id);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD4A4);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", p2sdSmgBuf);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD4B0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD4B8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD4C0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD4C8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD4D0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD4D8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD4E0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD4E8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD4F0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD4F8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD500);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD508);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD510);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", sdfDumpLineBuf);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD520);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD528);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD530);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD538);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD540);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD548);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD550);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD558);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD560);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD568);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD570);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD578);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD580);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD588);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD590);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD598);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD5A0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD5A8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD5B0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD5B8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD5C0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD5C8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD5D0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD5D8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD5E0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD5E8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD5F0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD5F8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD600);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_003BD608);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", sdfGsMemoryTypeFormat);
+#elif defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "sdf/sdfSound", p2sdSmgHandle);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", p2sdPcmCallback);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", p2sdPcmState);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", p2sdPcmBusy);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", sdfSndSendCmd_cmd_id);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438B94);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", p2sdSmgBuf);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438BA0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438BA8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438BB0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438BB8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438BC0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438BC8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438BD0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438BD8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438BE0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438BE8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438BF0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438BF8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C00);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", sdfDumpLineBuf);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C10);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C18);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C20);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C28);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C30);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C38);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C40);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C48);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C50);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C58);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C60);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C68);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C70);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C78);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C80);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C88);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C90);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438C98);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438CA0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438CA8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438CB0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438CB8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438CC0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438CC8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438CD0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438CD8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438CE0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438CE8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438CF0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", D_00438CF8);
+
+INCLUDE_SDATA(const s32, "sdf/sdfSound", sdfGsMemoryTypeFormat);
+#endif
