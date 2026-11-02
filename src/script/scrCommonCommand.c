@@ -122,11 +122,11 @@ extern void dds3MFilterOff(s32 frame);
 /* DDS's global work keeps the script variables at SMT3's offsets. */
 typedef struct
 {
-    u8 unk0[0x40];
+    u8 other[0x40];
     s32 integers[256];
     f32 floats[256];
-} dds3GlobalWork_t;
-extern dds3GlobalWork_t *DDS3_GBWK;
+} scrGlobalWork_t;
+extern scrGlobalWork_t *DDS3_GBWK;
 
 #define SCR_PROCESS_CONTROL_FLAG 210
 
