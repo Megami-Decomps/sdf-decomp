@@ -783,6 +783,8 @@ INCLUDE_SDATA(const s32, "file/fileManager", D_0055164C);
 
 INCLUDE_SDATA(const s32, "file/fileManager", D_00551650);
 #else
+fileMngCb_tag fileQueueHead __attribute__((section(".bss")));
+
 u32 fileCallbackStatus __attribute__((section(".sdata"))) = 0;
 
 char D_00551650[8] __attribute__((section(".sdata"))) = "fileMan";
