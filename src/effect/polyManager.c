@@ -2,6 +2,62 @@
 #include "draw3d.h"
 #include "ps2asm.h"
 
+/* DDS's names for the same objects. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_00317650 polyTimedTintEndColor
+#define D_00317660 polyTimedTintStartColor
+#define D_005698B0 parDrawControl
+#define dds3EffectBase effDefaultRandomState
+#define func_00168A50 polyBandLayoutRing
+#define sdfMatSetTex sdfSetAssetPrimaryTextureAddress
+#endif
+#if defined(SDF_DDS1)
+#define D_00317380 D_0034E360
+#define D_00317400 D_0034E3E0
+#define D_00317470 D_0034E450
+#define D_003174F0 D_0034E4D0
+#define D_00317540 D_0034E520
+#define D_003175B0 D_0034E590
+#define D_003175D0 D_0034E5B0
+#define D_003175E0 D_0034E5C0
+#define D_00317640 D_0034E620
+#define D_003176A0 D_0034E680
+#define D_003176B0 D_0034E690
+#define D_005698A0 D_003D64B0
+#define VCSetFunc D_0034E5E0
+#define dds3PolygonTriangleParam D_0034E580
+#define dds3TrackPolyTag D_003BB014
+#define dds3TrackPolyVCAcuteParam D_0034E5D0
+#define dds3TrackPolyVCType2Param D_0034E5A0
+#elif defined(SDF_DDS2)
+#define D_00317380 D_003AAC90
+#define D_00317400 D_003AAD10
+#define D_00317470 D_003AAD80
+#define D_003174F0 D_003AAE00
+#define D_00317540 D_003AAE50
+#define D_003175B0 D_003AAEC0
+#define D_003175D0 D_003AAEE0
+#define D_003175E0 D_003AAEF0
+#define D_00317640 D_003AAF50
+#define D_003176A0 D_003AAFB0
+#define D_003176B0 D_003AAFC0
+#define D_005698A0 D_00451F50
+#define VCSetFunc D_003AAF10
+#define dds3PolygonTriangleParam D_003AAEB0
+#define dds3TrackPolyTag D_00436404
+#define dds3TrackPolyVCAcuteParam D_003AAF00
+#define dds3TrackPolyVCType2Param D_003AAED0
+#endif
+
+/* Ordering-table slots the polygon lists draw into. */
+#ifdef SDF_SMT3
+#define POLY_OT_PRIORITY 43
+#define POLY_OT_ADDITIVE 44
+#else
+#define POLY_OT_PRIORITY 51
+#define POLY_OT_ADDITIVE 55
+#endif
+
 typedef struct
 {
     u128 *pVertex;
@@ -425,7 +481,11 @@ void dds3PolygonDraw(dds3Polygon_t *hPolygon) {
 }
 
 extern sdfGrOt_t sdfGrOtTable[85];
+#ifdef SDF_SMT3
 PS2_SYMBOL_AT(sdfGrOt_t, D_002F64B8, sdfGrOtTable, 0x5A0);
+#else
+PS2_SYMBOL_AT(sdfGrOt_t, D_002F64B8, sdfGrOtTable, 0x700);
+#endif
 
 static inline void parAppendDrawSurfacePool(sdfGrOt_t *pool, sdfDrawTag_t *packet) {
     pool->regFunc(pool, packet);
@@ -439,7 +499,7 @@ void dds3PolygonLinkOt(void) {
     sdfGrOt_t *priorityPool;
 
     if (record != NULL) {
-        priorityPool = &sdfGrOtTable[43];
+        priorityPool = &sdfGrOtTable[POLY_OT_PRIORITY];
         do {
             if (record->drawCount != 0 && record->flags != 1) {
                 packet = (sdfDrawTag_t *)sdfGrAllocPacketBuff(0x20);
@@ -469,7 +529,7 @@ void dds3PolygonLinkOt(void) {
                 }
                 record->drawCount = 0;
                 if (flags & 0x10) parAppendDrawSurfacePool(priorityPool, packet);
-                else if (flags & 0x20) parAppendDrawSurfacePool(&sdfGrOtTable[44], packet);
+                else if (flags & 0x20) parAppendDrawSurfacePool(&sdfGrOtTable[POLY_OT_ADDITIVE], packet);
                 else parAppendDrawSurfacePool(&sdfGrOtTable[39], packet);
             }
             record = record->next;
@@ -2338,6 +2398,79 @@ void dds3SpPoly_RollRingSetScale(f32 hData, dds3SpPoly_RollRing_t3 *scale) {
     scale->radius_e = scale->radius_e * hData;
 }
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* DDS leaves a record of a one-frame effect running. */
+void dds3SpPoly_RollRingDraw(dds3SpPoly_RollRing_t3 *hData) {
+    s32 recordIndex = 0;
+    u32 completed = 0;
+    u8 loop;
+    dds3TrackPoly_t *strip;
+    s32 count;
+    dds3SpPoly_RollRingPhysics_t *record;
+    s32 duration;
+    u32 color;
+    dds3TrackPolyList_t *entry;
+
+    strip = hData->hTrackPoly;
+    count = hData->head.number;
+    record = hData->pPhysics;
+    duration = hData->head.frame;
+    loop = hData->head.loop;
+    color = hData->head.abgr;
+    entry = strip->trackList;
+
+    if (count > 0) {
+        s32 inactiveAge = POLY_INACTIVE_ENTRY_AGE;
+        s32 shortDuration = duration < 2;
+
+        do {
+            s32 age = record->frame;
+
+            if (age == inactiveAge) {
+                dds3SpPoly_RollRingBuffInit(hData, recordIndex);
+                age = record->frame;
+            }
+            if (age < 0) {
+                age++;
+            } else {
+                if ((u32)age < hData->head.alpha_s) {
+                    entry->color = dds3SpPoly_Color(age, hData->head.alpha_s, color);
+                } else if (age <= duration &&
+                           (u32)age >= duration - hData->head.alpha_e) {
+                    entry->color = dds3SpPoly_Color(duration - age, hData->head.alpha_e, color);
+                } else {
+                    entry->color = color;
+                }
+
+                if (entry->color & 0xFF000000) {
+                    dds3SpPoly_RollRingMove(hData, recordIndex);
+                } else {
+                    entry->count = 0;
+                }
+                age++;
+            }
+
+            if (age >= duration && !shortDuration) {
+                if (loop != 0) {
+                    age = inactiveAge;
+                } else {
+                    completed++;
+                    if (completed >= (u32)count) {
+                        hData->head.state = 0;
+                    }
+                }
+                entry->count = 0;
+            }
+
+            record->frame = age;
+            recordIndex++;
+            entry++;
+            record++;
+        } while (recordIndex < count);
+    }
+    dds3TrackPolyDraw(hData->hTrackPoly);
+}
+#else
 void dds3SpPoly_RollRingDraw(dds3SpPoly_RollRing_t3 *hData) {
     s32 recordIndex = 0;
     u32 completed = 0;
@@ -2406,6 +2539,7 @@ void dds3SpPoly_RollRingDraw(dds3SpPoly_RollRing_t3 *hData) {
     }
     dds3TrackPolyDraw(hData->hTrackPoly);
 }
+#endif
 
 
 void dds3SpPoly_RollRingSetEndless(dds3SpPoly_RollRing_t3 *pRollRing) {
@@ -2534,5 +2668,11 @@ void dds3TrackPolyColorSet(dds3TrackPoly_t *hTrackPoly, s32 number, u32 color) {
 }
 INCLUDE_SDATA(const s32, "effect/polyManager", hDrawListTop);
 
+#ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "effect/polyManager", dds3TrackPolyTag);
+#elif defined(SDF_DDS1)
+INCLUDE_SDATA(const s32, "effect/polyManager", D_003BB014);
+#elif defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "effect/polyManager", D_00436404);
+#endif
 
