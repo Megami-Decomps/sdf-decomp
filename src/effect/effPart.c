@@ -1,10 +1,27 @@
 #include "common.h"
 #include "motion.h"
 #include "model.h"
+#ifdef SDF_SMT3
 #include "event.h"
 #include "nb.h"
 #include "effBattle.h"
+#else
+#include "effPCPData.h"
+#endif
 #include "ps2asm.h"
+
+/* DDS's names for the same objects. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_0031DDD0 effParameterPresetBanks
+#define D_0031DF60 effModelDefaultPosition
+#define D_0031DF70 effModelDefaultQuaternion
+#define D_0031DF80 effModelDefaultScale
+#endif
+#if defined(SDF_DDS1)
+#define D_0054F1E4 D_003BB044
+#elif defined(SDF_DDS2)
+#define D_0054F1E4 D_00436434
+#endif
 
 extern u128 D_0031DF60;
 
@@ -53,9 +70,21 @@ void mdlLoopMotion(mdlObj_t *aHandle, s32 aGroup, s32 aNumber);
 
 extern dds3EffectFunc_t dds3EffectFuncTable[7];
 
+#ifdef SDF_SMT3
 extern void *D_002F69B8[4];
+#else
+extern void *kwlnSceneSurfaceSets[13][4];
+#define D_002F69B8 kwlnSceneSurfaceSets[10]
+#endif
 
+#ifdef SDF_SMT3
 extern s32 D_0054F1E4;
+#else
+extern u16 D_0054F1E4;
+#endif
+#ifdef SDF_DDS2
+extern dds3ModelResrc_t *mdlSearchResrc(s32 aMajor, s32 aMinor);
+#endif
 
 extern s32 effBTLCutCount;
 
@@ -254,6 +283,11 @@ mdlObj_t *dds3EffectPartModelCreate(dds3EffectPartModelData_t *pData)
 {
     mdlObj_t *hModel;
 
+#ifdef SDF_DDS2
+    while (mdlSearchResrc(7, D_0054F1E4) != 0) {
+        D_0054F1E4++;
+    }
+#endif
     mdlPackDecode(7, D_0054F1E4, 0x101, pData->data, pData->size);
     hModel = mdlLoad(7, D_0054F1E4);
     dds3EffectPartModelInit(hModel);
@@ -439,3 +473,8 @@ effPartHandle_t *dds3EffectPCPDataPartCreate(dds3EffectPCPData_t *hPCPData, u32 
     return dds3EffectPartCreate(type, pData);
 }
 
+#if defined(SDF_DDS1)
+INCLUDE_SDATA(const s32, "effect/effPart", D_003BB044);
+#elif defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "effect/effPart", D_00436434);
+#endif
