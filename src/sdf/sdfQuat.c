@@ -56,6 +56,18 @@ enum sdf_stream_playback {
 
 typedef union { f32 quaternion[4]; u16 monthDays[20]; } sdfMathConstants_t;
 
+#if defined(SDF_DDS1)
+#define D_00529620 D_00398380
+#define D_00529B90 D_003988F0
+#define D_00529BA0 D_00398900
+#define D_00529BB0 D_00398910
+#elif defined(SDF_DDS2)
+#define D_00529620 D_0040B530
+#define D_00529B90 D_0040BAA0
+#define D_00529BA0 D_0040BAB0
+#define D_00529BB0 D_0040BAC0
+#endif
+
 extern sdfMathConstants_t D_00529BB0;
 
 extern f32 D_00529B90[4];
@@ -90,6 +102,10 @@ void Normalize(void)
 {
     VU0_SEQ_NORMALIZE();
 }
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define sdf_2C0510 effMiscQuatLengthSqVU
+#endif
 
 /* vu0 routine: retail reduces (x*x)*(y*y) + z*z + w*w, not squared length. */
 f32 sdf_2C0510(void)
