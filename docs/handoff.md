@@ -32,22 +32,26 @@
 ## Current state (2026-11-02, end of session)
 
 - Stages 4 to 6: `docs/handoff-dds.md` (re-split, renames) and
-  `docs/handoff-stage6.md` (shared units, traps, owed names). 39 units are
-  shared by all three games: 38 `sdf/` units plus `mc/mcManager`. dds-decomp
-  branch `sdf-shared` in the worktree `/home/wsl/projects/dds-decomp-sdf`, 81
-  commits on origin/main, which had not moved at the last fetch. All three
-  games byte-identical from clean builds of committed state.
+  `docs/handoff-stage6.md` (shared units, traps, owed names). 44 units are
+  shared by all three games: 43 `sdf/` units plus `mc/mcManager`. dds-decomp
+  branch `sdf-shared` in the worktree `/home/wsl/projects/dds-decomp-sdf`, 88
+  commits on origin/main. All three games byte-identical from clean builds of
+  committed state; DDS progress unchanged (DDS1 9502/9573, DDS2 10768/10855).
 - smt3-decomp origin/main has no commits touching shared files since 0be37933,
-  the base of the current consume patch.
-- Nothing is pushed. Waiting on the user:
-  1. The GitHub home for sdf-decomp (suggested Megami-Decomps/sdf-decomp).
-     Then: push, set dds-decomp's `.gitmodules` URL to `../sdf-decomp`, bump
-     the smt3-decomp patch's pin, land both.
-  2. The seven units stage 4 did not split: sdfSystem, sdfChip, sdfMemory,
-     sdfIop, sdfGraph (DDS `devbuild.json` pins those objects; rewrite it,
-     as was done for mcManager) and the rest of sdfVu1 and sdfDev9 (DDS keeps
-     hand-written asm as `hand/` segments; fold them into the C units as SMT3
-     does, or keep the segments).
+  the base of the current consume patch. The consume patch did not change.
+- Nothing is pushed. Waiting on the user: the GitHub home for sdf-decomp
+  (suggested Megami-Decomps/sdf-decomp). Then: push, set dds-decomp's
+  `.gitmodules` URL to `../sdf-decomp`, bump the smt3-decomp patch's pin,
+  land both.
+- Of the seven units stage 4 did not split, sdfSystem, sdfChip, sdfMemory,
+  sdfIop and sdfGraph are re-split and shared (`docs/handoff-stage6.md`).
+  Left: sdfVu1 and sdfDev9. Decided: fold DDS's `hand/` segments
+  (`hand/vu/sdfVu*` x4, `hand/mem/sdfMemClearBlocks`) into the C units as
+  INCLUDE_ASM, and keep those functions out of DDS's game progress with a
+  per-function exclusion read by `tools/progress.py` and
+  `production_report.py`, so the numbers do not move. SMT3's totals already
+  count the same functions as game code (its exclusion covers only
+  `asm/<v>/hand/`); leave SMT3 as it is.
 - Then stage 8 continues with `model/`, `file/`, `script/`, `effect/`.
   `mc/slMain` is game code and stays per game.
 
