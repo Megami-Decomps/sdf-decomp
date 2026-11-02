@@ -1,35 +1,37 @@
-From aa1165e0da11670e6ab6a340f5322b2f618a4ef6 Mon Sep 17 00:00:00 2001
+From 01d13e0db352ed05fc2caa3e8c0988ab036ec4b5 Mon Sep 17 00:00:00 2001
 From: tge-was-taken <tge-was-taken@outlook.com>
 Date: Mon, 2 Nov 2026 04:16:42 +0100
 Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
 
 ---
- .github/workflows/build.yml    |  1 +
- .gitmodules                    |  3 ++
- README.md                      |  1 +
- configure.py                   | 34 +++++++++++-------
- docs/building.md               |  7 ++++
- external/sdf-decomp            |  1 +
- tools/cc.sh                    |  5 ++-
- tools/check_drift.py           |  5 ++-
- tools/check_inline_asm.py      |  7 +++-
- tools/check_nonmatching.py     | 15 ++++----
- tools/check_unit.py            | 11 +++---
- tools/include_rodata.py        |  5 +--
- tools/include_sdata.py         |  7 ++--
- tools/production_report.py     | 11 +++---
- tools/progress.py              |  5 +--
- tools/sources.py               | 65 ++++++++++++++++++++++++++++++++++
- tools/splat_split.py           | 39 ++++++++++++++++++++
- tools/test_check_inline_asm.py |  4 +--
- tools/test_configure.py        |  6 ++--
- tools/test_vuas.py             |  3 +-
- tools/vu_include.py            |  5 ++-
- 21 files changed, 195 insertions(+), 45 deletions(-)
+ .github/workflows/build.yml    |   1 +
+ .gitmodules                    |   3 +
+ README.md                      |   1 +
+ configure.py                   |  37 +++++----
+ docs/building.md               |   7 ++
+ external/sdf-decomp            |   1 +
+ tools/cc.sh                    |   5 +-
+ tools/check_drift.py           |   5 +-
+ tools/check_inline_asm.py      |   7 +-
+ tools/check_nonmatching.py     |  17 +++--
+ tools/check_unit.py            |  25 +++---
+ tools/include_rodata.py        |  22 +++---
+ tools/include_sdata.py         |  30 ++++++--
+ tools/production_report.py     |  11 +--
+ tools/progress.py              |   7 +-
+ tools/sources.py               | 135 +++++++++++++++++++++++++++++++++
+ tools/splat_split.py           |  39 ++++++++++
+ tools/test_check_inline_asm.py |   4 +-
+ tools/test_configure.py        |   6 +-
+ tools/test_sources.py          |  53 +++++++++++++
+ tools/test_vuas.py             |   3 +-
+ tools/vu_include.py            |   5 +-
+ 22 files changed, 357 insertions(+), 67 deletions(-)
  create mode 100644 .gitmodules
  create mode 160000 external/sdf-decomp
  create mode 100644 tools/sources.py
  create mode 100644 tools/splat_split.py
+ create mode 100755 tools/test_sources.py
 
 diff --git a/.github/workflows/build.yml b/.github/workflows/build.yml
 index 376a2d55..b4b5559d 100644
@@ -65,14 +67,14 @@ index 96026b29..e59c98d1 100644
  python tools/download_tools.py
  
 diff --git a/configure.py b/configure.py
-index 93f71648..86b45f16 100755
+index 93f71648..721b0f28 100755
 --- a/configure.py
 +++ b/configure.py
 @@ -20,6 +20,7 @@ import sys
  from pathlib import Path
  
  from tools.ee_gcc_aslr import marker_is_valid
-+from tools.sources import SHARED, c_sources, include_flags, logical, physical
++from tools.sources import SHARED, c_sources, game_source, include_flags, logical, physical
  from tools.symbol_aliases import load_symbol_aliases, linker_aliases
  
  ROOT = Path(__file__).resolve().parent
@@ -94,7 +96,7 @@ index 93f71648..86b45f16 100755
          ROOT / "build" / version / f"{serial}.ld",
          *config.glob("undefined_*_auto.txt"),
      ]
-@@ -229,14 +230,14 @@ def source_matching_ownership(version: str) -> list[tuple[str, list[tuple[str, s
+@@ -229,14 +230,15 @@ def source_matching_ownership(version: str) -> list[tuple[str, list[tuple[str, s
      here would feed a split's source edits back into its own cache key.
      """
      return [
@@ -102,7 +104,9 @@ index 93f71648..86b45f16 100755
 +        (str(logical(path, ROOT).relative_to(ROOT)), [
              (folder, name)
              for kind, folder, name in include_directives(
-                 path.read_text(errors="replace"), context=str(path.relative_to(ROOT))
+-                path.read_text(errors="replace"), context=str(path.relative_to(ROOT))
++                game_source(path.read_text(errors="replace"), version),
++                context=str(path.relative_to(ROOT)),
              )
              if kind == "ASM"
          ])
@@ -111,7 +115,7 @@ index 93f71648..86b45f16 100755
      ]
  
  
-@@ -263,7 +264,7 @@ def run_splat(version: str, yaml: Path, force: bool) -> None:
+@@ -263,7 +265,7 @@ def run_splat(version: str, yaml: Path, force: bool) -> None:
      # splat never deletes files: a unit or rodata split that moved leaves stale
      # asm behind (and include_rodata.py would include it twice).
      shutil.rmtree(ROOT / "asm" / version, ignore_errors=True)
@@ -120,7 +124,7 @@ index 93f71648..86b45f16 100755
      subprocess.run([sys.executable, "tools/resolve_jtbl_targets.py", f"asm/{version}"], cwd=ROOT, check=True)
      subprocess.run([sys.executable, "tools/include_rodata.py", version], cwd=ROOT, check=True)
      subprocess.run([sys.executable, "tools/include_sdata.py", version], cwd=ROOT, check=True)
-@@ -416,7 +417,7 @@ def vu_binaries(n, version: str) -> list[str]:
+@@ -416,7 +418,7 @@ def vu_binaries(n, version: str) -> list[str]:
      """Assemble each VU listing in src/<version>/sdf/vu, and name what it wrote."""
      out = []
      for name in VU_SOURCES:
@@ -129,7 +133,7 @@ index 93f71648..86b45f16 100755
          if not (ROOT / src).exists():
              continue
          binary = Path("build") / version / "vu" / f"{name}.bin"
-@@ -431,7 +432,7 @@ def source_for(obj: Path, version: str) -> tuple[str, Path]:
+@@ -431,7 +433,7 @@ def source_for(obj: Path, version: str) -> tuple[str, Path]:
      stem = Path(str(rel)[: -len(".o")])
      for kind, suffix in (("c", ".c"), ("s", ".s")):
          candidate = Path(f"{stem}{suffix}")
@@ -138,17 +142,17 @@ index 93f71648..86b45f16 100755
              return kind, candidate
      if rel.parts[0] == "assets":
          return "bin", Path(f"{stem}.bin")
-@@ -583,7 +584,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+@@ -583,7 +585,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
              elif kind == "bin":
                  n.build(str(obj), "bin", str(src))
              else:
 -                text = (ROOT / src).read_text(errors="replace")
 +                source = physical(src)
-+                text = (ROOT / source).read_text(errors="replace")
++                text = game_source((ROOT / source).read_text(errors="replace"), version)
                  nonmatchings = Path("asm") / version / "nonmatchings"
                  asm_files = list(dict.fromkeys(
                      str(nonmatchings / folder / f"{name}.s")
-@@ -593,7 +595,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+@@ -593,7 +596,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
                  if asm_files:
                      n.build(eeasm, "eeasm", asm_files, implicit=["tools/eeas_compat.py"],
                              variables={"unit": str(src)})
@@ -158,7 +162,7 @@ index 93f71648..86b45f16 100755
                  unit = src.relative_to(Path("src") / version).with_suffix("").as_posix()
                  flags = unit_cflags(version).get(unit, "")
                  chain = TOOLCHAINS[unit_toolchain(version).get(unit, DEFAULT_TOOLCHAIN)]
-@@ -605,16 +608,16 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+@@ -605,16 +609,16 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
                             f"config/{version}/asflags.txt"]
                  # Instruction-emitting inline asm in the unit fails before it compiles.
                  asmcheck = Path("build") / version / "asmcheck" / src.with_suffix(".stamp")
@@ -178,7 +182,7 @@ index 93f71648..86b45f16 100755
                          implicit=[str(asmcheck), *configs, "include/macro.inc",
                                    "tools/production_report.py"],
                          implicit_outputs=[str(base) + ".s", str(base) + ".proof.json"],
-@@ -659,7 +662,7 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+@@ -659,7 +663,7 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
      # ASM/C ownership. The ownership digest keeps body-only edits split-free.
      configure_inputs += [
          str(path.relative_to(ROOT)) for v in versions
@@ -187,7 +191,7 @@ index 93f71648..86b45f16 100755
      ]
      for version in versions:
          alias_metadata = ROOT / "config" / version / "symbol_aliases.json"
-@@ -756,6 +759,11 @@ def main() -> None:
+@@ -756,6 +760,11 @@ def main() -> None:
              ap.error(f"{v}: orig/{v}/{VERSIONS[v]['serial']} missing; run tools/extract.py")
      if not versions:
          ap.error("no extracted versions; run tools/extract.py")
@@ -307,7 +311,7 @@ index a13628a3..7568e08c 100644
          for line in violations(path):
              print(f"{path}:{line}: a C unit does not spell asm itself; emitted "
 diff --git a/tools/check_nonmatching.py b/tools/check_nonmatching.py
-index b6e20863..da529ed2 100644
+index b6e20863..87c6e113 100644
 --- a/tools/check_nonmatching.py
 +++ b/tools/check_nonmatching.py
 @@ -11,12 +11,14 @@ SKIP_ASM defined, which selects the drafts and drops the asm fallbacks.
@@ -321,7 +325,7 @@ index b6e20863..da529ed2 100644
  from pathlib import Path
  
 +sys.path.insert(0, str(Path(__file__).resolve().parent))
-+from sources import SHARED_INCLUDES, c_sources, unit_name  # noqa: E402
++from sources import SHARED_INCLUDES, c_sources, game_source, unit_name  # noqa: E402
 +
  ROOT = Path(__file__).resolve().parent.parent
  GUARD = "#ifdef NON_MATCHING"
@@ -340,8 +344,9 @@ index b6e20863..da529ed2 100644
 -    src = ROOT / "src" / version
      drafts = {}
 -    for path in sorted(src.rglob("*.c")):
+-        names = set(draft_names(path.read_text()))
 +    for path in c_sources(version, ROOT):
-         names = set(draft_names(path.read_text()))
++        names = set(draft_names(game_source(path.read_text(), version)))
          if names:
 -            drafts[path.relative_to(src).with_suffix("").as_posix()] = names
 +            drafts[unit_name(version, path, ROOT)] = names
@@ -360,25 +365,27 @@ index b6e20863..da529ed2 100644
           "-Werror-implicit-function-declaration",
           "-quiet", "-O2", str(path), "-o", "/dev/null"],
 diff --git a/tools/check_unit.py b/tools/check_unit.py
-index bbdd9ada..7c8e70b0 100755
+index bbdd9ada..491c512b 100755
 --- a/tools/check_unit.py
 +++ b/tools/check_unit.py
 @@ -23,6 +23,7 @@ from pathlib import Path
  
  sys.path.insert(0, str(Path(__file__).resolve().parent))
  from retail_elf import RETAIL, ROOT, VERSIONS, load_segments, off_to_va, va_to_off  # noqa: E402
-+from sources import SHARED, logical  # noqa: E402
++from sources import SHARED, game_source, logical  # noqa: E402
  from symbol_aliases import load_symbol_aliases  # noqa: E402
  from resolved_code import (  # noqa: E402
      hi_lo_addend,
-@@ -830,8 +831,9 @@ def main():
+@@ -829,9 +830,10 @@ def main():
+     args = ap.parse_args()
      unit = args.unit.resolve()
      source = args.source.resolve() if args.source else unit
-     source_text = drop_nonmatching(source.read_text())
+-    source_text = drop_nonmatching(source.read_text())
 -    version = unit.relative_to(ROOT / "src").parts[0]
 -    unit_name = unit.relative_to(ROOT / "src" / version).with_suffix("").as_posix()
 +    canonical = logical(unit, ROOT)
 +    version = canonical.relative_to(ROOT / "src").parts[0]
++    source_text = drop_nonmatching(game_source(source.read_text(), version))
 +    unit_name = canonical.relative_to(ROOT / "src" / version).with_suffix("").as_posix()
      syms = symbols(version)
      aliases = load_symbol_aliases(ROOT, version)
@@ -392,7 +399,52 @@ index bbdd9ada..7c8e70b0 100755
          asm_text = Path(tmp) / "unit.s"
          env_s = dict(env, SMT3_KEEP_S=str(asm_text))
          extra = args.cflags.split()
-@@ -1599,7 +1601,8 @@ def main():
+@@ -1535,7 +1537,7 @@ def main():
+         print(f"DATA {name}: 0x{size:X} bytes emitted by the unit; {why}")
+     # Localized constraints are reviewable SMT3 aids, not automatic source
+     # approval. Inspect --source when supplied, just as the compiler does.
+-    for fatal, message in source_review_diagnostics(source.read_text(), asm_source):
++    for fatal, message in source_review_diagnostics(game_source(source.read_text(), version), asm_source):
+         bad += fatal
+         print(message)
+     # A C function whose code is mostly inline asm may be handwritten code in
+@@ -1548,7 +1550,7 @@ def main():
+         if (args.func and name != args.func) or asm < 8 or asm * 2 <= total:
+             continue
+         if re.search(rf"(?:libvu0|vu0 routine):[^\n]*\n(?:[^\n]*\n){{0,2}}[^\n]*\b{re.escape(name)}\s*\(",
+-                     unit.read_text()):
++                     game_source(unit.read_text(), version)):
+             continue
+         print(f"ASMBODY {name}: {asm} of {total} instructions are inline asm; mark it as an SDK copy "
+               "or VU0 routine, or keep it as INCLUDE_ASM (docs/CONTRIBUTING.md)")
+@@ -1557,7 +1559,7 @@ def main():
+     # owner, so their actual object offsets provide the ordering check instead.
+     # (an implicit-int K&R definition starts with the function name itself)
+     order = re.findall(r'^INCLUDE_ASM\([^\n]*\b(\w+)\);|^(?:[A-Za-z_][^;\n=]*?\b)?([A-Za-z_]\w*)\s*\([^;\n]*\)\s*\{?\s*$',
+-                       drop_nonmatching(unit.read_text()), re.M)
++                       drop_nonmatching(game_source(unit.read_text(), version)), re.M)
+     placed = [(0, address(a or b, syms), a or b) for a, b in order if address(a or b, syms) is not None]
+     for (_, a, n), (_, b, m) in zip(placed, placed[1:]):
+         if b < a:
+@@ -1572,7 +1574,7 @@ def main():
+     # Every retail function of the unit must still be there, as C or INCLUDE_ASM.
+     full = ROOT / "asm" / version / f"{unit_name}.s"
+     if full.exists() and not args.func:
+-        source = unit.read_text()
++        source = game_source(unit.read_text(), version)
+         for name in re.findall(r"^glabel (\w+)", full.read_text(), re.M):
+             # A C definition may carry the retail name through an asm("") alias, which
+             # is how a function called main avoids cc1's __main call.
+@@ -1584,7 +1586,7 @@ def main():
+     renamed = {f"func_{int(a, 16):08X}": n for n, a in re.findall(
+         r"^\s*(\w+)\s*=\s*0x([0-9A-Fa-f]+)\s*;[^\n]*type:func", (ROOT / "config" / version / "symbol_addrs.txt").read_text(), re.M)
+         if not n.startswith("func_")}
+-    for old in sorted(set(re.findall(r"\bfunc_[0-9A-F]{8}\b", unit.read_text())) & renamed.keys()):
++    for old in sorted(set(re.findall(r"\bfunc_[0-9A-F]{8}\b", game_source(unit.read_text(), version))) & renamed.keys()):
+         bad += 1
+         print(f"STALE {old}: symbol_addrs names it {renamed[old]}; use that name")
+     # A symbol the C references but nothing defines (symbol_addrs, the
+@@ -1599,9 +1601,10 @@ def main():
          wanted -= set(subprocess.run(["grep", "-rhoE", rf"^\s*(glabel|dlabel|jlabel|nonmatching) ({alt})\b",
                                        str(ROOT / "asm" / version)], capture_output=True, text=True).stdout.split()[1::2])
      if wanted:
@@ -400,21 +452,26 @@ index bbdd9ada..7c8e70b0 100755
 +        for path in subprocess.run(["grep", "-rlwE", "|".join(sorted(wanted)), str(ROOT / "src" / version),
 +                                    *(str(ROOT / d) for d in SHARED.get(version, {}).values())],
                                     capture_output=True, text=True).stdout.splitlines():
-             source = Path(path).read_text()
+-            source = Path(path).read_text()
++            source = game_source(Path(path).read_text(), version)
              wanted = {n for n in wanted if not re.search(
+                 rf"^(?!extern\b)[A-Za-z_][^;\n]*\b{n}\s*(\([^;]*$|(\[[^\]]*\])*\s*[=;])", source, re.M)}
+         for name in sorted(wanted):
 diff --git a/tools/include_rodata.py b/tools/include_rodata.py
-index c1c59916..040b42bf 100755
+index c1c59916..c10dc8ba 100755
 --- a/tools/include_rodata.py
 +++ b/tools/include_rodata.py
-@@ -28,6 +28,7 @@ import sys
+@@ -27,7 +27,8 @@ import re
+ import sys
  from pathlib import Path
  
- from include_sdata import DATA_DEF
-+from sources import c_sources, unit_name
+-from include_sdata import DATA_DEF
++from include_sdata import DATA_DEF, LINE as SDATA_LINE, write_or_check
++from sources import c_sources, game_source, is_shared, unit_name
  
  ROOT = Path(__file__).resolve().parent.parent
  INCLUDE = re.compile(r'^INCLUDE_(?:ASM|RODATA)\([^,]+,\s*"[^"]+",\s*(\w+)\);$', re.M)
-@@ -44,8 +45,8 @@ def rodata_part(path):
+@@ -44,16 +45,16 @@ def rodata_part(path):
  
  def place(version):
      added = 0
@@ -422,11 +479,51 @@ index c1c59916..040b42bf 100755
 -        unit = c.relative_to(ROOT / "src" / version).with_suffix("").as_posix()
 +    for c in c_sources(version, ROOT):
 +        unit = unit_name(version, c, ROOT)
++        shared = is_shared(c, ROOT)
++        source = game_source(c.read_text(), version) if shared else c.read_text()
          nonmatchings = ROOT / "asm" / version / "nonmatchings" / unit
          matchings = ROOT / "asm" / version / "matchings" / unit
          if not nonmatchings.is_dir() and not matchings.is_dir():
+             # Nothing of the unit was split (its lines are left over from a split).
+-            text = c.read_text()
+-            stripped = re.sub(r'^INCLUDE_RODATA\([^,]+,\s*"[^"]+",\s*(\w+)\);\n\n?', "", text, flags=re.M)
+-            if stripped != text:
+-                c.write_text(stripped)
++            stripped = re.sub(r'^INCLUDE_RODATA\([^,]+,\s*"[^"]+",\s*(\w+)\);\n\n?', "", source, flags=re.M)
++            write_or_check(c, stripped, source, shared)
+             continue
+         # The unit's rodata as splat last split it; INCLUDE_RODATA lines and per-symbol
+         # files for anything else are left over from an earlier split.
+@@ -66,7 +67,7 @@ def place(version):
+         for f in nonmatchings.glob("*.s"):
+             if "glabel " in f.read_text():
+                 owned -= {n for n, _ in LABEL.findall(rodata_part(f))}
+-        text = c.read_text()
++        text = source
+         # Placed from scratch every time: once a function compiles its own
+         # literal, the lines around it must move with it.
+         text = re.sub(r'^INCLUDE_RODATA\([^,]+,\s*"[^"]+",\s*(\w+)\);\n\n?', "", text, flags=re.M)
+@@ -177,7 +178,7 @@ def place(version):
+             placed.append((pos, addr, sym, needed))
+         positions = [pos for pos, *_ in sorted(placed, key=lambda p: p[1])]
+         if positions != sorted(positions):
+-            print(f"warning: {c.relative_to(ROOT)}: rodata order does not follow function order")
++            print(f"warning: {unit}: rodata order does not follow function order")
+         inserts = {}
+         for pos, addr, sym, needed in sorted(placed, key=lambda p: p[1]):
+             if needed:
+@@ -188,7 +189,8 @@ def place(version):
+             added += len(inserts[pos])
+         # One blank line before each included item, however often this reruns.
+         text = re.sub(r"\n{3,}(?=INCLUDE_(?:RODATA|SDATA)\()", "\n\n", text)
+-        c.write_text(text)
++        # include_sdata.py runs next and places its lines afresh.
++        write_or_check(c, text, source, shared, ignore=SDATA_LINE)
+     print(f"{version}: {added} INCLUDE_RODATA lines")
+ 
+ 
 diff --git a/tools/include_sdata.py b/tools/include_sdata.py
-index 531232be..bc7c285b 100755
+index 531232be..8b76377d 100755
 --- a/tools/include_sdata.py
 +++ b/tools/include_sdata.py
 @@ -22,6 +22,9 @@ import re
@@ -434,12 +531,28 @@ index 531232be..bc7c285b 100755
  from pathlib import Path
  
 +sys.path.insert(0, str(Path(__file__).resolve().parent))
-+from sources import c_sources, unit_name  # noqa: E402
++from sources import c_sources, game_source, is_shared, unit_name  # noqa: E402
 +
  ROOT = Path(__file__).resolve().parent.parent
  LINE = re.compile(r'^INCLUDE_SDATA\([^,]+,\s*"[^"]+",\s*(\w+)\);\n\n?', re.M)
  DEF = re.compile(r"^[A-Za-z_][\w \t\*]*?\b(\w+)\s*\([^;{]*\)\s*\{?[ \t]*$", re.M)
-@@ -60,8 +63,8 @@ def write_text_if_changed(path, text):
+@@ -57,22 +60,37 @@ def write_text_if_changed(path, text):
+         path.write_text(text)
+ 
+ 
++def write_or_check(path, text, source, shared, ignore=None):
++    """Write a unit's own source. A shared unit's lines are per game and kept by
++    hand, so only check them, outside what `ignore` matches."""
++    if not shared:
++        write_text_if_changed(path, text)
++        return
++    if ignore is not None:
++        text, source = ignore.sub("", text), ignore.sub("", source)
++    if text.split() != source.split():
++        raise SystemExit(f"{path}: this game's INCLUDE_RODATA or INCLUDE_SDATA lines are not "
++                         "where configure places them; edit the shared source")
++
++
  def place(version):
      names = {n: int(a, 16) for n, a in ROW.findall((ROOT / "config" / version / "symbol_addrs.txt").read_text())}
      added = 0
@@ -447,9 +560,34 @@ index 531232be..bc7c285b 100755
 -        unit = c.relative_to(ROOT / "src" / version).with_suffix("").as_posix()
 +    for c in c_sources(version, ROOT):
 +        unit = unit_name(version, c, ROOT)
++        shared = is_shared(c, ROOT)
++        source = game_source(c.read_text(), version) if shared else c.read_text()
          data = ROOT / "asm" / version / "data" / f"{unit}.sdata.s"
-         text = LINE.sub("", c.read_text())
+-        text = LINE.sub("", c.read_text())
++        text = LINE.sub("", source)
          if not data.exists():
+-            write_text_if_changed(c, text)
++            write_or_check(c, text, source, shared)
+             continue
+         out_dir = ROOT / "asm" / version / "nonmatchings" / unit
+         out_dir.mkdir(parents=True, exist_ok=True)
+         syms = []
+         blocks = list(BLOCK.finditer(data.read_text()))
+         if not blocks:
+-            write_text_if_changed(c, text)
++            write_or_check(c, text, source, shared)
+             continue
+         # An .align raises the whole section's alignment, so no symbol may ask for
+         # more than the unit's own start address has.
+@@ -135,7 +153,7 @@ def place(version):
+             added += 1
+         # One blank line before each included item, however often this reruns.
+         text = re.sub(r"\n{3,}(?=INCLUDE_(?:RODATA|SDATA)\()", "\n\n", text)
+-        write_text_if_changed(c, text)
++        write_or_check(c, text, source, shared)
+     print(f"{version}: {added} INCLUDE_SDATA lines")
+ 
+ 
 diff --git a/tools/production_report.py b/tools/production_report.py
 index d8fcfe1a..a61fb2db 100644
 --- a/tools/production_report.py
@@ -508,14 +646,14 @@ index d8fcfe1a..a61fb2db 100644
              # target. An unexpected unit is a configuration error, not credit.
              raise ValueError(f"missing source for game report unit: {version}/{name}")
 diff --git a/tools/progress.py b/tools/progress.py
-index daa5ab64..8a5530d1 100755
+index daa5ab64..6d8de7e0 100755
 --- a/tools/progress.py
 +++ b/tools/progress.py
 @@ -20,6 +20,7 @@ from pathlib import Path
  
  sys.path.insert(0, str(Path(__file__).resolve().parent))
  import vu_include  # noqa: E402
-+from sources import c_sources, unit_name  # noqa: E402
++from sources import c_sources, game_source, unit_name  # noqa: E402
  from check_nonmatching import draft_functions  # noqa: E402
  
  ROOT = Path(__file__).resolve().parent.parent
@@ -530,12 +668,21 @@ index daa5ab64..8a5530d1 100755
          # Match the primary report's game scope. SDK/runtime reconstructions
          # have their own category and must not move the game-code denominator.
          if name.startswith("sdk/"):
+@@ -40,7 +41,7 @@ def version_stats(version):
+         full = ROOT / "asm" / version / f"{name}.s"
+         if not full.exists():
+             continue
+-        asm_funcs = set(INCLUDE.findall(unit.read_text()))
++        asm_funcs = set(INCLUDE.findall(game_source(unit.read_text(), version)))
+         unit_drafts = drafts.get(name, set())
+         for fname, body in GLABEL.findall(full.read_text()):
+             n = 4 * len(INSN.findall(body))
 diff --git a/tools/sources.py b/tools/sources.py
 new file mode 100644
-index 00000000..f7907697
+index 00000000..7d126550
 --- /dev/null
 +++ b/tools/sources.py
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,135 @@
 +"""Where a unit's source lives.
 +
 +A unit keeps its name and its src/<version>/<unit>.c path everywhere else
@@ -544,6 +691,7 @@ index 00000000..f7907697
 +from __future__ import annotations
 +
 +import os
++import re
 +from pathlib import Path
 +
 +ROOT = Path(__file__).resolve().parents[1]
@@ -594,6 +742,12 @@ index 00000000..f7907697
 +    return sorted(own + shared, key=lambda p: logical(p, root))
 +
 +
++def is_shared(path: Path, root: Path = ROOT) -> bool:
++    """Whether a file on disk is compiled from a submodule."""
++    path = Path(os.path.normpath(path))
++    return any(path.is_relative_to(root / d) for dirs in SHARED.values() for d in dirs.values())
++
++
 +def unit_name(version: str, path: Path, root: Path = ROOT) -> str:
 +    """A unit's name, src/<version>/ and .c dropped, for a file on disk."""
 +    return logical(path, root).relative_to(root / "src" / version).with_suffix("").as_posix()
@@ -601,6 +755,69 @@ index 00000000..f7907697
 +
 +def include_flags() -> str:
 +    return " ".join(f"-I{p}" for p in SHARED_INCLUDES) + " -Iinclude -Isrc"
++
++
++GAME_MACROS = ("SDF_SMT3", "SDF_DDS1", "SDF_DDS2")
++DIRECTIVE = re.compile(r"\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b(.*)")
++GAME_MACRO = re.compile(r"\b(?:defined\s*\(\s*(SDF_\w+)\s*\)|defined\s+(SDF_\w+)|(SDF_\w+))")
++
++
++def game_condition(kind: str, argument: str, version: str) -> bool | None:
++    """Value of an #if on the game macros for `version`'s build; None for any other #if."""
++    game = f"SDF_{version.upper()}"
++    argument = re.sub(r"/\*.*?\*/|//.*", "", argument).strip()
++    if kind in ("ifdef", "ifndef"):
++        if argument not in GAME_MACROS:
++            return None
++        return (argument == game) == (kind == "ifdef")
++    if not any(re.search(rf"\b{m}\b", argument) for m in GAME_MACROS):
++        return None
++
++    def value(match: re.Match) -> str:
++        name = match.group(1) or match.group(2) or match.group(3)
++        if name not in GAME_MACROS:
++            raise ValueError(f"unknown game macro {name} in #{kind} {argument}")
++        return " 1 " if name == game else " 0 "
++
++    expr = GAME_MACRO.sub(value, argument)
++    expr = expr.replace("&&", " and ").replace("||", " or ").replace("!", " not ")
++    if not all(t in ("0", "1", "(", ")", "and", "or", "not") for t in re.findall(r"\w+|\S", expr)):
++        raise ValueError(f"#{kind} {argument} mixes the game macros with other terms")
++    return bool(eval(expr, {"__builtins__": {}}))
++
++
++def game_source(text: str, version: str) -> str:
++    """Blank what `version`'s build skips under #if on the SDF_* game macros.
++
++    Other conditionals keep every branch, as the text scans always have. Line
++    and character offsets are kept.
++    """
++    stack = []  # per open #if: (on the game macros, a branch taken so far, this branch taken)
++    out = []
++    for number, line in enumerate(text.splitlines(keepends=True), 1):
++        hidden = not all(taken for _, _, taken in stack)
++        control = False
++        directive = DIRECTIVE.match(line)
++        if directive:
++            kind, argument = directive.groups()
++            if kind in ("if", "ifdef", "ifndef"):
++                value = game_condition(kind, argument, version)
++                stack.append((value is not None, bool(value), value is not False))
++                control = value is not None
++            elif stack:
++                game, done, _ = stack[-1]
++                if kind == "endif":
++                    stack.pop()
++                elif kind == "else":
++                    stack[-1] = (game, True, not done if game else True)
++                else:
++                    value = game_condition("if", argument, version)
++                    if game != (value is not None):
++                        raise ValueError(f"line {number}: #elif mixes a game macro chain with another")
++                    stack[-1] = (game, done or bool(value), (not done and bool(value)) if game else True)
++                control = game
++        out.append(re.sub(r"[^\r\n]", " ", line) if hidden or control else line)
++    return "".join(out)
 diff --git a/tools/splat_split.py b/tools/splat_split.py
 new file mode 100644
 index 00000000..27fd2414
@@ -692,6 +909,65 @@ index 2a08ba60..cf5ffa7a 100644
                  splits.append(command)
                  (self.root / f"asm/{VERSION}").mkdir(parents=True)
                  self.source.write_text(self.fallback)
+diff --git a/tools/test_sources.py b/tools/test_sources.py
+new file mode 100755
+index 00000000..46f3e56f
+--- /dev/null
++++ b/tools/test_sources.py
+@@ -0,0 +1,53 @@
++#!/usr/bin/env python3
++"""Tests for game_source, the per-game view of a shared unit."""
++import sys
++import unittest
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from sources import game_source  # noqa: E402
++
++SOURCE = """a
++#if defined(SDF_DDS1) || defined(SDF_DDS2)
++dds
++#ifdef NON_MATCHING
++draft
++#else
++asm
++#endif
++#elif defined(SDF_SMT3)
++smt3
++#endif
++#ifndef SDF_DDS2
++not_dds2
++#else
++dds2
++#endif
++"""
++
++
++def kept(version):
++    return [line for line in game_source(SOURCE, version).split("\n") if line.strip()]
++
++
++class GameSourceTest(unittest.TestCase):
++    def test_branches_per_game(self):
++        self.assertEqual(kept("smt3"), ["a", "smt3", "not_dds2"])
++        self.assertEqual(kept("dds1"), ["a", "dds", "#ifdef NON_MATCHING", "draft", "#else", "asm",
++                                        "#endif", "not_dds2"])
++        self.assertEqual(kept("dds2"), ["a", "dds", "#ifdef NON_MATCHING", "draft", "#else", "asm",
++                                        "#endif", "dds2"])
++
++    def test_offsets_kept(self):
++        self.assertEqual(len(game_source(SOURCE, "dds1")), len(SOURCE))
++        self.assertEqual(game_source(SOURCE, "dds1").count("\n"), SOURCE.count("\n"))
++
++    def test_mixed_condition_fails(self):
++        with self.assertRaises(ValueError):
++            game_source("#if defined(SDF_DDS1) && FOO\n#endif\n", "dds1")
++        with self.assertRaises(ValueError):
++            game_source("#ifdef NON_MATCHING\n#elif defined(SDF_DDS1)\n#endif\n", "dds1")
++
++
++if __name__ == "__main__":
++    unittest.main()
 diff --git a/tools/test_vuas.py b/tools/test_vuas.py
 index 6494e3c2..3be06b06 100644
 --- a/tools/test_vuas.py
