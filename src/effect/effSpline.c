@@ -1,10 +1,29 @@
 #include "common.h"
+#ifdef SDF_SMT3
 #include "newbattle.h"
 #include "kernel.h"
+#endif
 #include "ps2asm.h"
+#ifdef SDF_SMT3
 #include "nb.h"
+#endif
 #include "model.h"
 #include "motion.h"
+
+/* DDS's names for the same functions. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define dds3_1B09C0 effSplRun
+#define func_001B0A60 effSplCalc
+#define func_001B0B90 effSplCalcRegist
+#define func_001B0CC0 effSplRewind
+#define func_001B0CD0 effSplSetStep
+#define dds3_1B1238 effCreateChannel
+#define dds3_1B12B0 effReleaseInterpolationChannel
+#define dds3_1B12D0 effAdvanceChanCursor
+#define func_001B1370 effSampleChannelBezier
+#define func_001B1478 effClearChanCursor
+#define func_001B1488 effSetChanStep
+#endif
 
 /* Cubic spline fitted over a point list; dds3AllocSplineHandle takes 0x2C. */
 typedef struct dds3Spline_t {
@@ -380,6 +399,8 @@ void func_001B1488(dds3SplineWalk_t *pWalk, f32 step)
 {
     pWalk->step = step;
 }
+/* SMT3's sdata in this span is the battle camera's; DDS has none here. */
+#ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "effect/effSpline", D_0054F370);
 
 INCLUDE_SDATA(const s32, "effect/effSpline", D_0054F374);
@@ -451,4 +472,4 @@ INCLUDE_SDATA(const s32, "effect/effSpline", D_0054F3E8);
 INCLUDE_SDATA(const s32, "effect/effSpline", D_0054F3E9);
 
 INCLUDE_SDATA(const s32, "effect/effSpline", D_0054F3F0);
-
+#endif
