@@ -28,12 +28,16 @@ typedef struct
     f32 w;
 } scrVec4_t;
 
-extern s8 D_005298C9[];
 extern s8 dds3PadBitTable[];
+#ifdef SDF_SMT3
 extern char D_0052F5E8[];
+#endif
 
 #include "sdk_libc.h"
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define datDebugPrintf evtPrintDeveloperConsoleMessage
+#endif
 extern void datDebugPrintf(const char *fmt, ...);
 
 
@@ -114,13 +118,37 @@ extern void dds3MFilterSwap(s32 frame);
 extern void dds3MFilterOn(s32 frame);
 extern void dds3MFilterOff(s32 frame);
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* DDS's global work keeps the script variables at SMT3's offsets. */
+typedef struct
+{
+    u8 unk0[0x40];
+    s32 integers[256];
+    f32 floats[256];
+} dds3GlobalWork_t;
+extern dds3GlobalWork_t *DDS3_GBWK;
+
+#define SCR_PROCESS_CONTROL_FLAG 210
+
+extern void kwlnFadeBackgroundStartOut(s32 duration);
+extern void kwlnFadeBackgroundStartIn(s32 duration);
+extern void effDisableFramebufferQuad(void);
+extern void fldSetFilterAnime(u32 mode);
+extern void fldSkySetAlpha(u32 alpha);
+extern void fldSkySetAlphaOfs(u32 alpha);
+extern void fldSetFadeTarget(s32 area, s32 mode, s32 frame);
+extern void ptyAdjustItemQuantity(s32 itemId, s32 delta);
+extern void datAddCurrencyClamped(s32 delta);
+extern u8 datHasEnoughCurrency(s32 amount);
+#endif
+
 s32 scrCommand_KEY(void)
 {
     if (scrGetCommandTimer() == 0)
     {
         return 0;
     }
-    if (D_005298C9[0] < 0)
+    if (dds3PadBitTable[1] < 0)
     {
         return 1;
     }
@@ -171,14 +199,18 @@ s32 scrCommand_WAIT(void)
 
 s32 scrCommand_PUT(void)
 {
+#ifdef SDF_SMT3
     printf("put -> %d\n", scrGetIntPara(0));
+#endif
     datDebugPrintf("PUT -> %d\n", scrGetIntPara(0));
     return 1;
 }
 
 s32 scrCommand_PUTS(void)
 {
+#ifdef SDF_SMT3
     printf("puts -> %s\n", scrGetStrPara(0));
+#endif
     datDebugPrintf("PUTSTR -> %s\n", scrGetStrPara(0));
     return 1;
 }
@@ -228,6 +260,28 @@ s32 scrCommand_FADE_OUT(void)
     }
     return 1;
 }
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+s32 scrCommandFadeBackgroundOut(void)
+{
+    if (scrGetCommandTimer() == 0)
+    {
+        kwlnFadeBackgroundStartOut(scrGetIntPara(0));
+        return 0;
+    }
+    return 1;
+}
+
+s32 scrCommandFadeBackgroundIn(void)
+{
+    if (scrGetCommandTimer() == 0)
+    {
+        kwlnFadeBackgroundStartIn(scrGetIntPara(0));
+        return 0;
+    }
+    return 1;
+}
+#endif
 
 s32 scrCommand_SEL_JMP(void)
 {
@@ -298,7 +352,9 @@ s32 scrCommand_SCR_RUN(void)
     }
     if (work->ProcessID == NULL)
     {
+#ifdef SDF_SMT3
         printf(D_0052F5E8);
+#endif
         return 1;
     }
     if (startProc < 0 || startProc >= work->TypeTable->ItemCount)
@@ -393,7 +449,9 @@ s32 scrCommand_SCENE_LIGHT_RGB(void)
     return 1;
 }
 
+#ifdef SDF_SMT3
 INCLUDE_RODATA(const s32, "script/scrCommonCommand", D_0052F5E8);
+#endif
 
 s32 scrCommand_SCENE_LIGHT_DIR(void)
 {
@@ -927,6 +985,9 @@ s32 scrCommand_BLUR_ALLOFF(void)
     dds3MultiBlurOff(0);
     dds3DistBlurOff(0);
     dds3RipBlurOff(0);
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+    effDisableFramebufferQuad();
+#endif
     return 1;
 }
 
@@ -934,5 +995,61 @@ s32 scrCommand_FILTER_ALLOFF(void)
 {
     dds3Filter2Off(0);
     dds3MFilterOff(0);
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+    fldSetFilterAnime(0);
+    fldSkySetAlpha(0x80);
+    fldSkySetAlphaOfs(0);
+    fldSetFadeTarget(0, 1, 0);
+#endif
     return 1;
 }
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+s32 scrCommandClearProcessControlFlag(void)
+{
+    DDS3_GBWK->integers[SCR_PROCESS_CONTROL_FLAG] = 0;
+    return 1;
+}
+
+s32 scrCommandSetProcessControlFlag(void)
+{
+    DDS3_GBWK->integers[SCR_PROCESS_CONTROL_FLAG] = 1;
+    return 1;
+}
+
+s32 scrCommandIsProcessControlFlagClear(void)
+{
+    return DDS3_GBWK->integers[SCR_PROCESS_CONTROL_FLAG] == 0;
+}
+
+s32 scrCommandAdjustItemQuantity(void)
+{
+    s32 itemId;
+
+    itemId = scrGetIntPara(0);
+    ptyAdjustItemQuantity(itemId, scrGetIntPara(1));
+    return 1;
+}
+
+s32 scrCommandAddPartyCurrency(void)
+{
+    datAddCurrencyClamped(scrGetIntPara(0));
+    return 1;
+}
+
+s32 scrCommand_SCR_EXISTS(void)
+{
+    s32 requiredAmount;
+
+    requiredAmount = scrGetIntPara(0);
+    if (datHasEnoughCurrency(requiredAmount) != 0)
+    {
+        scrSetIntReturnValue(1);
+    }
+    else
+    {
+        scrSetIntReturnValue(0);
+    }
+    return 1;
+}
+#endif
