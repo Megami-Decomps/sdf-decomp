@@ -99,7 +99,7 @@
 
 ## Units moved
 
-40 units, as listed in dds-decomp's `config/sdf_shared.txt` (39 `sdf/` and
+41 units, as listed in dds-decomp's `config/sdf_shared.txt` (40 `sdf/` and
 `mc/mcManager`). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -144,6 +144,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | mc/mcManager | 28ea759 | bca2f1e96 | see below |
 | sdfChip | 90a4197 | f3ba9b818 | DDS defines the allocator state in the unit: definitions under the DDS games at the end of the file (a `-G0` dev build would otherwise address them through `$gp`), `sdfChipPageCount` and `sdfChipCB` under other C names with `FAKEMATCH_ASM_NAME` so each covers its retail span's four-byte tail, and an early DDS declaration of the page count so `.sbss` keeps retail's order (cc1 emits by first declaration) |
 | sdf3D | 6858c80 | 7d36a45a7 | renames `sdf3DMakeScreenParam` (was `sdfCameraBuildProjection`), `sdf3DSpecularTex`, `vu1Tex0Slot0..2` (d4725331e); six placeholders per game; DDS's screen adjustment at the end of `sdf3DMakeScreenParam` (five sdata placeholders, aliased in the unit as `sdf3DScreenAdjust*`); DDS's sdata lists per game |
+| sdfIop | 91cd776 | cb22c4603 | SMT3's two `printf`s under `SDF_SMT3` |
 
 mc/mcManager, the engine's `sdfMc*` memory card layer:
 
