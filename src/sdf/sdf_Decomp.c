@@ -38,9 +38,23 @@ struct sdfDecompCb_t;
 /* Load matrix into the VU0 scratch bank and postmultiply the primary bank. */
 void MultMatrixRev(const void *aMatrix);
 
+#if defined(SDF_DDS1)
+#define D_00594780 D_003FF300
+#define D_00552170 D_003BDAC0
+#elif defined(SDF_DDS2)
+#define D_00594780 D_0047BC80
+#define D_00552170 D_00439220
+#endif
+
 extern const u8 *D_00594780[16];
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* DDS has no symbol for the face list parameters, at sdf3DScreenParam + 0x70. */
+extern u8 sdf3DScreenParam[];
+#define sdfDrawFaceListParam ((f32 (*)[4])(sdf3DScreenParam + 0x70))
+#else
 extern f32 sdfDrawFaceListParam[][4];
+#endif
 
 extern u8 sdf3DScreenTm[];
 
