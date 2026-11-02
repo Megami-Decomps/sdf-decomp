@@ -99,7 +99,7 @@
 
 ## Units moved
 
-35 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
+36 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
 report of 11 was wrong; there were 9 before this session). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -139,6 +139,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfMat | 224205c | 1529fdc74 | renames `sdfMatSetTexUvw`, `sdfMatUpdatePacketBasic` (954ae4902); `sdfMatSetRefMap`, `sdfMatSetTex` stay DDS `sdfSetPrimaryStateWordFourth`, `sdfSetAssetPrimaryTextureAddress` by `#define` (code_002DE248 trap); DDS-only `sdfSetForcedAssetTextureMode`, `sdfApplyAssetEntryChangesWithForcedTexture`, `sdfResourceListApplyEntryChanges`; the forced mode in `sdfMatUpdatePacketBasic`; `D_00529438` per game; sdata list under the DDS games |
 | sdfModel | 7fc37d8 | 79856b85a | `model.h`: DDS's root node has `u8 lod` at 0x98 (size 0x9C) and flag bits 0x20, 0x40 that force the material refresh; `sdfModelLinkOt` and `sdfModelTempPacketLinkOt` call DDS's `sdfResourceListApplyEntryChanges` or the forced `sdfMatListUpdatePacket`, and `sdfModelLinkOt` skips packets of another LOD; DDS-only `sdfGetUniqueChunkValue`, `sdfGetLodChunkValue`; `func_002B2628` and `func_002BFF98` aliased, `D_00529428` per game; SMT3's sdata under `SDF_SMT3`, DDS's under the DDS games. `sdfModelLinkDrawPacket` is now C in all three games (DDS's body in SMT3's types, matching SMT3 too); the other three INCLUDE_ASM functions are INCLUDE_ASM in DDS as well |
 | sdfMotion | baed943 | 7604372a0 | 16 node and material tables renamed to SMT3's names (66c92438b); `D_00529448`, `D_00529470` per game, `D_00529600` to DDS `sdfMotionCommandHandlers`, `sdfMatSetRefMap` aliased as in sdfMat |
+| sdf3D | 6858c80 | 7d36a45a7 | renames `sdf3DMakeScreenParam` (was `sdfCameraBuildProjection`), `sdf3DSpecularTex`, `vu1Tex0Slot0..2` (d4725331e); six placeholders per game; DDS's screen adjustment at the end of `sdf3DMakeScreenParam` (five sdata placeholders, aliased in the unit as `sdf3DScreenAdjust*`); DDS's sdata lists per game |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
 per-symbol asm files and leaves its source alone.
@@ -188,7 +189,6 @@ Probe at the final state (`tools/sdf_probe.py`); DDS1 and DDS2 agree:
 | unit | probe | first blockers |
 |---|---|---|
 | sdfCd | NOASM (SMT3's rodata), 6 match | DDS has its own disc layer: `sdfDevWaitForDisc` (0x98, SMT3 `sdfCdWaitTrayClose` 0xC8), DDS-only `sdfDevSignalPendingSemaphore` and `sdfDevSeekDiscWithRequestGate`, `sdfDevReadDiscUntilComplete` against `sdfCdStRead`, `sdfDevFindDiscFileRecordByCdromPath` against `sdfCdImageSearchFileDirect`; `sdfCdImageLoadStart` and `sdfCdInit` bodies differ; placeholders `D_00551910`, `D_0055210C`, `D_00552110`, `D_0058F7C0` and `dds3ImgLsn`, `sdfCdImageCurrRemain`, `sdfCdImageDirData`, `sdfCdImageFileName` unnamed in DDS |
-| sdf3D | 7 match, 15 differ | MISSING `sdfCameraBuildProjection`; UNDEF `vu1Tex0Slot0..2` and code labels `D_002E8ED0`, `D_002ECF10` |
 | sdfSound | NOASM (SMT3's rodata), 29 match | MISSING `sndReserveIopWorkMemory`, `sndTryDispatchQueuedCommand`, `sndStartIopCommandAndRpcWorkers`; UNDEF `sdfSndSendCmd_cmd_id`, `sdfSndMakeFilename`, `sdfFileRpcResult` |
 
 NOASM means the unit's SMT3 INCLUDE_RODATA or INCLUDE_SDATA lines need
@@ -200,7 +200,7 @@ sdfDev9 (stage 4 did not split them for DDS).
 
 ## Next
 
-1. sdf3D, then sdfCd (several DDS-only or DDS-different functions,
+1. sdfCd (several DDS-only or DDS-different functions,
    about the size of sdfTex's work), sdfSound last.
 2. Per unit: `sdf_resolve.py` and `sdf_probe.py`, rename DDS to SMT3's real
    names with `sdf_rename.py` (then `configure.py` and `ninja` before the
