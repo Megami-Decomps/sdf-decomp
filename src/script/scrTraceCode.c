@@ -1,6 +1,17 @@
 #include "common.h"
 #include "sdk_libgcc.h"
+#ifdef SDF_SMT3
 #include "newdata.h"
+#else
+/* DDS's global work keeps the script variables at SMT3's offsets. */
+typedef struct
+{
+    u8 unk0[0x40];
+    s32 integers[256];
+    f32 floats[256];
+} dds3GlobalWork_t;
+extern dds3GlobalWork_t *DDS3_GBWK;
+#endif
 #include "scr.h"
 
 enum code_operation
@@ -56,7 +67,9 @@ void PushRet(scrProcessWork_s *pwork, s32 cp)
     pwork->SP++;
 }
 
+#ifdef SDF_SMT3
 INCLUDE_RODATA(const s32, "script/scrTraceCode", scrCommandTable);
+#endif
 
 s32 PopInt(scrProcessWork_s *pwork)
 {

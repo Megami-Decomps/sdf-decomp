@@ -1,7 +1,28 @@
 #include "common.h"
 #include "sdf_resource.h"
+#ifdef SDF_SMT3
 #include "newdata.h"
+#else
+/* DDS's global work keeps the script variables at SMT3's offsets. */
+typedef struct
+{
+    u8 unk0[0x40];
+    s32 integers[256];
+    f32 floats[256];
+} dds3GlobalWork_t;
+extern dds3GlobalWork_t *DDS3_GBWK;
+#endif
 #include "scr.h"
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define datDebugPrintf evtPrintDeveloperConsoleMessage
+#define scrPrintProcedureStart bfContextCreate
+#define scr_109D80 scrCreateProcessWithDefaultOption
+#define scr_109DD0 scrCreateTaskWithDefaultOption
+#define scr_109E38 scrCreateProcessAtFirstProcedure
+#define func_00109FD0 scrStartProcessProcedure
+extern s32 scrIsCurrentWorkTask(scrProcessWork_s *pw);
+#endif
 
 extern s32 scrHandleCount;
 extern scrProcessWork_s *scrHandleFirst;
@@ -12,8 +33,10 @@ extern dds3ProcessID_t *dds3StartProcess(char *v1, s32 dDS3_PRIORITY_DRAW_PB, s3
                                          s32 (*drawExit)(dds3ProcessID_t *id),
                                          void (*deleteExit)(dds3ProcessID_t *id),
                                          void *p);
+#ifdef SDF_SMT3
 extern void *dds3GetProcessData(dds3ProcessID_t *id);
 extern void dds3SetProcessData(dds3ProcessID_t *id, void *data);
+#endif
 
 
 extern scrProcessWork_s *fldFlowParse(void *data, s32 messageHandle);
@@ -106,7 +129,9 @@ scrProcessWork_s *scr_109E38(scrHeader_t *header, scrTypeTable_t *typeTable,
 
 void scrPrintProcedureEnd(scrProcessWork_s *pw)
 {
+#ifdef SDF_SMT3
     printf("procedure end <%s>\n", pw->ProcTable[pw->StartProc].Name);
+#endif
     datDebugPrintf("end <%s>\n", pw->ProcTable[pw->StartProc].Name);
 
     if (pw->LocalInt != NULL) {
@@ -126,6 +151,7 @@ void scrPrintProcedureEnd(scrProcessWork_s *pw)
     sdfChipFreeDirect(pw);
 }
 
+#ifdef SDF_SMT3
 void scrAllReleaseScript(void)
 {
     scrProcessWork_s *pw;
@@ -149,6 +175,33 @@ void scrAllReleaseScript(void)
 
     printf("after = %d\n", scrHandleCount);
 }
+#else
+/* DDS skips the running script's own process and does not print. */
+void scrAllReleaseScript(void)
+{
+    scrProcessWork_s *pw;
+    scrProcessWork_s *next;
+
+    pw = scrHandleFirst;
+    if (pw == NULL) {
+        return;
+    }
+    while (1) {
+        next = pw->next;
+        if (scrIsCurrentWorkTask(pw) == 0) {
+            if (pw->ProcessID != NULL) {
+                dds3KillProcess(pw->ProcessID, 0);
+            } else {
+                scrPrintProcedureEnd(pw);
+            }
+        }
+        pw = next;
+        if (pw == NULL) {
+            break;
+        }
+    }
+}
+#endif
 
 /* Restart a procedure with an empty operand stack and fresh timers. */
 s32 func_00109FD0(scrProcessWork_s *pw, s32 procNo)
@@ -262,3 +315,7 @@ s32 scrScriptProcess(dds3ProcessID_t *id)
         return 0;
     }
 }
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#include "scr_command_table.h"
+#endif

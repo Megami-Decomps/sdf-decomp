@@ -7,6 +7,9 @@
 
 #include "common.h"
 #include "kernel.h"
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#include "kwln.h"
+#endif
 #include "libsdf.h"
 
 typedef struct scrHeader_t scrHeader_t;
