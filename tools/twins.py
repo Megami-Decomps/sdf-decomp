@@ -5,6 +5,7 @@ Hashes mask jump targets and gp- and lui-relative immediates; --loose masks ever
 """
 import argparse
 import collections
+import difflib
 import hashlib
 import json
 import re
@@ -252,6 +253,87 @@ def contig(args):
         print()
 
 
+def align(smt3_functions, game):
+    """Map each DDS function name to the SMT3 function it aligns with, in address order.
+
+    Hashes are aligned as sequences, so a small wrapper that hashes like many others
+    still pairs by position."""
+    order = sorted(game.functions.values(), key=lambda f: f.addr)
+    matcher = difflib.SequenceMatcher(None, [f.hash for f in smt3_functions], [f.hash for f in order],
+                                      autojunk=False)
+    pairs = {}
+    for a, b, n in matcher.get_matching_blocks():
+        for i in range(n):
+            pairs[order[b + i].name] = smt3_functions[a + i]
+    return order, pairs
+
+
+def runs(args):
+    smt3, *dds = load(args)
+    functions = sorted((f for f in smt3.functions.values() if f.unit and f.unit.startswith(args.prefix)),
+                       key=lambda f: f.addr)
+    if not functions:
+        sys.exit(f"no SMT3 units start with {args.prefix}")
+    for game in dds:
+        order, pairs = align(functions, game)
+        print(f"== {game.version}")
+        # Each DDS function between the first and last aligned one, with its unit or None.
+        placed = [i for i, f in enumerate(order) if f.name in pairs]
+        rows = [(f, pairs[f.name].unit if f.name in pairs else None) for f in order[placed[0]:placed[-1] + 1]]
+        current, start, extra, gap = None, None, [], []
+
+        def close(end):
+            if current:
+                print(f"{current} 0x{start:08X} 0x{end:08X}")
+                for f in extra:
+                    print(f"    inside {f.name} 0x{f.addr:08X}")
+
+        for i, (f, unit) in enumerate(rows):
+            if unit is None:
+                (gap if current is None else extra).append(f)
+                continue
+            if unit != current and current is None:
+                current, start, extra, gap = unit, f.addr, [], []
+            elif unit != current:
+                # Unaligned functions after the previous unit's last aligned one are a gap.
+                tail = []
+                while extra and extra[-1].addr > last.addr:
+                    tail.insert(0, extra.pop())
+                close(tail[0].addr if tail else last.addr + last.words * 4)
+                for g in tail + gap:
+                    print(f"  between {g.name} 0x{g.addr:08X} {g.words * 4} bytes")
+                current, start, extra, gap = unit, f.addr, [], []
+            last = f
+        close(last.addr + last.words * 4)
+        missing = [f for f in functions if f not in pairs.values()]
+        for f in missing:
+            print(f"  unaligned SMT3 {f.unit} {f.name} 0x{f.addr:08X}")
+        print()
+
+
+def renames(args):
+    smt3, *dds = load(args)
+    functions = sorted((f for f in smt3.functions.values() if f.unit and f.unit.startswith(args.prefix)),
+                       key=lambda f: f.addr)
+    for game in dds:
+        names = set(game.functions)
+        # Among several same-hash twins, the one aligned with f in unit order.
+        aligned = {s.name: game.functions[d] for d, s in align(functions, game)[1].items()}
+        for f in functions:
+            if f.words < 4:
+                continue
+            matches = game.by_hash.get(f.hash, [])
+            if not matches or any(m.name == f.name for m in matches):
+                continue
+            if len(matches) > 1:
+                if f.name not in aligned or aligned[f.name] not in matches:
+                    print(f"{game.version}\t{f.name}\tskip: {len(matches)} twins")
+                    continue
+                matches = [aligned[f.name]]
+            note = "\tcollision" if f.name in names else ""
+            print(f"{game.version}\t{matches[0].name}\t{f.name}\t0x{matches[0].addr:08X}{note}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--smt3", type=Path, default=SIBLINGS / "smt3-decomp", help="smt3-decomp checkout")
@@ -266,6 +348,12 @@ def main():
     p.add_argument("-v", "--verbose", action="store_true",
                    help="list the functions in a flagged unit's DDS run that have no SMT3 twin")
     p.set_defaults(run=contig)
+    p = sub.add_parser("runs", help="each SMT3 unit's address range in DDS1 and DDS2, by sequence alignment")
+    p.add_argument("--prefix", default="sdf/", help="SMT3 unit name prefix")
+    p.set_defaults(run=runs)
+    p = sub.add_parser("renames", help="DDS name and SMT3 name of each identical twin named differently")
+    p.add_argument("--prefix", default="sdf/", help="SMT3 unit name prefix")
+    p.set_defaults(run=renames)
     args = parser.parse_args()
     args.run(args)
 
