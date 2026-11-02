@@ -220,3 +220,20 @@ under the DDS games; the define goes when smt3-decomp takes the name.
 - The SMT3 clone's `external/sdf-decomp` is checked out at the sdf-decomp tip
   but its superproject commit still pins ebbd229; that clone is for
   verification only.
+- Never add an identifier (typedef, struct tag, prototype) to a DDS header
+  most units include: DDS2 `game/code_002DE248.c` includes `sdk_ps2.h` and
+  everything else, and its `sdfDrawTexturedQuad` changes register allocation
+  when cc1's identifier table grows (a bare `struct zzqq;` in
+  `sdk_libcdvd.h` was enough; a comment or macro was not). dds-decomp's
+  `rename_refs.py` says the same. Put DDS-only declarations in the shared
+  unit under the DDS games instead.
+- `game/code_002E7C20.c` (DDS1) and `game/code_00340AC8.c` (DDS2) are
+  orphans: no yaml entry, not built. They are old copies of sdfQuat and the
+  source of their check_unit difference.
+- A rename needs `configure.py` before check_unit sees the new name in the
+  split asm.
+- `names.py apply` renames in every DDS source, including files configure
+  has just rewritten; stage such a file as HEAD plus the renames, not as the
+  working copy (`/tmp/s8/fixmixed.py`).
+- SMT3's `check_inline_asm.py` rejects `__asm__` in a shared unit even inside
+  a DDS-only branch; alias a function with `#define` instead.
