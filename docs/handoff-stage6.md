@@ -99,7 +99,7 @@
 
 ## Units moved
 
-26 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
+27 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
 report of 11 was wrong; there were 9 before this session). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -129,6 +129,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfDevFile | 8142c1f | 6d336f307 | renames `sdfDevLoadTex`, `sdfDevLoadTexList`, `sdfDevLoadModel`, `sdfDevLoadMotion` (7d13153dc); the loaders' `printf` and its rodata under `SDF_SMT3` |
 | sdfFileIO | 3cb189b | f59f53853 | renames `sdfFileCmdFreeList`, `sdfFileCmdCount`, `sdfFileCmdFreeCount`, `sdfFileCmdDefaultDevice`, `sdfCdImageLoadStart` (d958019ac); eight placeholders per game; DDS's `/movie2/` check in `sdfFileCmdAnalyzeFileName`; DDS's sdata lists per game |
 | sdfFile | c17f8b6 | a47f158b0 | renames `sdfFileDefaultSrcType`, `sdfFileCmdSetDefaultDevice` (e4de1cb30; static in the shared file, global in DDS's old one, same code); `D_00551928`, `D_00551938` defined to DDS `sdfDiscPathPrefix`, `sdfPfsPathPrefix`, three placeholders per game; DDS's `sdfFileHostRootPath` definition (.data) and sdata lists under the DDS games |
+| sdf_PadManager | 1ad12b5 | 8a04b1ab5 | renames `sdfPadManagerMode`, `sdfPadWork`, DDS2 `sdfPadPortSlotPairs` and `sdfPadButtonMasks` (30d385c2f); four SMT3 placeholders defined to DDS names, `D_005518D8` per game; DDS's rodata and sdata lists per game |
 | sdfHdd | 5f78ff4 | b106dcaa6 | renames `sdfHddPowerOffTh`, `sdfHddInit` (ec6715055) and `sdfDev9Ready` (2b5ac2a98); DDS's two bodies under the DDS games (no printf, `sdfHddInit` takes the mount path); sdata lists per game |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
@@ -168,7 +169,6 @@ temporarily, check_unit in both games; DDS1 and DDS2 agree unless noted):
 | sdfMisc | 1 match, 6 differ | ORDER, MISSING DDS-only functions (`sdfDevCreateBufferedRequest`, `sdfDevResizeBufferedRequest`) |
 | sdfPacDecode | 28 match, 10 differ | ORDER, MISSING DDS-only `sdfPacResetOutputToAllocationEntry` |
 | sdfMat | 35 match, 22 differ | UNDEF sdfTex function names (`sdfTexDup`, `sdfTexFreeDelayed`, `sdfTexSetClutColor`) |
-| sdf_PadManager | 6 match, 9 (DDS2 10) differ | `D_005298E8` is DDS `sdfPadButtonPressure`, `D_0058F0C0` DDS `sdfPadPortBuffers` (owed to SMT3); UNDEF `sdfPadManagerMode`, `D_005298A0`, `D_005518D8`, `D_005518E0`; MISSING `sdfPadBuildButtonStates` |
 | sdfDefaultMain | 0 match, 12 differ | UNDEF `sdfPadManagerMode`, `SdfIopInit`, `sdfCdTrayMode` |
 | sdfModel | 46 match, 17 differ | UNDEF `ToMatrix`, `MultMatrixRev`, `sdfItemArrayNew` |
 | sdfMotion | 85 match, 26 differ | UNDEF `ToMatrix`, `sdfMotModelVisibleTable`, `sdfMotModelLinerScaleTable` |
@@ -222,8 +222,10 @@ under the DDS games; the define goes when smt3-decomp takes the name.
 | `D_005520A8` | `sdfPendingQueueSlots` | sdfDelayedResrc |
 | `D_00551928` | `sdfDiscPathPrefix` | sdfFile |
 | `D_00551938` | `sdfPfsPathPrefix` | sdfFile |
-| `D_005298E8` | `sdfPadButtonPressure` | sdf_PadManager (not moved) |
-| `D_0058F0C0` | `sdfPadPortBuffers` | sdf_PadManager (not moved) |
+| `D_005298A0` | `sdfPadButtonMasks` | sdf_PadManager |
+| `D_005298E8` | `sdfPadButtonPressure` | sdf_PadManager |
+| `D_005518E0` | `sdfPadAnalogSticks` | sdf_PadManager |
+| `D_0058F0C0` | `sdfPadPortBuffers` | sdf_PadManager |
 | `sdf_2C0510` | `effMiscQuatLengthSqVU` | sdfQuat |
 | `func_002BD300` | `sdfPktSetCmd` | sdfDevCons |
 | `D_00551888` | `sdfGrFrameComplete` | sdfDraw |
@@ -279,6 +281,10 @@ from the SDK (`void SleepThread`, `void EIntr`, `s32 sceSifSetRpcQueue`).
 - A rename needs `configure.py` before check_unit sees the new name in the
   split asm, and a renamed INCLUDE_SDATA symbol also needs `ninja` (the
   `build/eeasm` copy) before a probe compiles.
+- `names.py apply` only renames a symbol that already has a symbol_addrs row
+  (`rename.py` inserts a bare `D_X = 0xX;` row first), and `rename_refs.py`
+  also rewrites the old name inside name_sources.txt's "was" note; fix it by
+  hand when renaming without `rename.py`.
 - `names.py apply` renames in every DDS source, including files configure
   has just rewritten; stage such a file as HEAD plus the renames, not as the
   working copy (`/tmp/s8/fixmixed.py`).
