@@ -99,7 +99,7 @@
 
 ## Units moved
 
-39 units, as listed in dds-decomp's `config/sdf_shared.txt` (38 `sdf/` and
+40 units, as listed in dds-decomp's `config/sdf_shared.txt` (39 `sdf/` and
 `mc/mcManager`). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -142,6 +142,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfCd | 1b77d06 | f3eab1061 | renames `sdfCdWaitTrayClose`, `sdfCdStRead`, `sdfCdImageSearchFileDirect`, `sdfCdImageSearchFileDirect_ent` (3ef826784); DDS's sdfCd rodata started 0x18 late, so its first string sat in sdf_PadManager's: the yaml now starts it where SMT3's does and sdf_PadManager drops that INCLUDE_RODATA; SMT3's printfs under `SDF_SMT3`; DDS-only `sdfDevSignalPendingSemaphore`, `sdfDevSeekDiscWithRequestGate`; DDS bodies of `sdfCdImageLoadStart` (a path whose second letter is `v` takes the request gate) and `sdfCdInit` (second semaphore); `sdfCdImageSearchFileDirect` retries where SMT3 gives up; `FlushCache` in `sdfCdImageLoadDir` in DDS1 only; three placeholders defined to DDS names, `D_00551910` per game; DDS's sdata lists per game |
 | sdfSound | d488518 | 5004cf1f7 | renames of eight functions (`sdfSndIopAlloc`, `sdfSndCmdTrans`, `sdfSndInitCmdIF`, `sdfSndLoadIRXModules`, `sdfSndVoiceMapInit`, `sdfSndSeqMapInit`, `sdfSndInit`, `p2sdLoadCheckMidi`) and nine data symbols (ebf4a3c0e); DDS keeps 13 MIDI bank slots to SMT3's 7, so `sndMergedWork_t` takes `SND_SLOT_COUNT` (size 0x5A0 or 0x8D0, checked) and the bank check, `p2sd_2C1F70` and the IOP transfer size follow it; DDS bodies of `sdfSndIopAlloc`, `sdfSndCmdTrans`, `sdfSndInitCmdIF`, `sdfSndVoiceMapInit` (voice IOP buffer 0x21600 in DDS1, 0x3B600 in DDS2), `sdfSndInit`, and of `sdf_2C2618`, `sdf_2C27F8` (13 tables); DDS loads `SDRDRV.IRX` too; SMT3's printfs and `p2sdFadeOutBgm` under `SDF_SMT3`; SMT3's one `sdfSndMakeFilename` is DDS's `mnuBuildSoundResourcePath` for MIDI and `mnuBuildVoiceResourcePath` in the file RPC handler; 20 SMT3 placeholder functions and 8 data placeholders defined to DDS names, 24 per game; DDS's rodata and sdata lists per game |
 | mc/mcManager | 28ea759 | bca2f1e96 | see below |
+| sdfChip | 90a4197 | f3ba9b818 | DDS defines the allocator state in the unit: definitions under the DDS games at the end of the file (a `-G0` dev build would otherwise address them through `$gp`), `sdfChipPageCount` and `sdfChipCB` under other C names with `FAKEMATCH_ASM_NAME` so each covers its retail span's four-byte tail, and an early DDS declaration of the page count so `.sbss` keeps retail's order (cc1 emits by first declaration) |
 | sdf3D | 6858c80 | 7d36a45a7 | renames `sdf3DMakeScreenParam` (was `sdfCameraBuildProjection`), `sdf3DSpecularTex`, `vu1Tex0Slot0..2` (d4725331e); six placeholders per game; DDS's screen adjustment at the end of `sdf3DMakeScreenParam` (five sdata placeholders, aliased in the unit as `sdf3DScreenAdjust*`); DDS's sdata lists per game |
 
 mc/mcManager, the engine's `sdfMc*` memory card layer:
@@ -171,6 +172,33 @@ mc/mcManager, the engine's `sdfMc*` memory card layer:
   flag words to SMT3's 5 (`MC_SLOT_FLAG_WORDS`, size 0x64 or 0x28,
   checked). The interior alias `fileRequestSlotFlags` stays in DDS's
   symbol_addrs.
+
+## sdfSystem, sdfChip, sdfMemory, sdfIop, sdfGraph: DDS re-split
+
+dds-decomp 59b4fa02c: `config/<v>/sdf_units.txt` lists the five SMT3
+boundaries (DDS1 0x002CF438, 0x002CFD80, 0x002D02C0, 0x002D0D70, 0x002D0E30;
+DDS2 0x003282E8, 0x00328C30, 0x00329170, 0x00329C20, 0x00329CE0) and
+`resplit.py` re-cut both games. By hand after it: two stale yaml rows (the
+old `sdf/sdfGraph` and the unit after it), the merged files' conflicting
+declarations (`reqMakeFrameBuff`, the memory-full callback), a missing
+`sdfVblankFlag` declaration and an `aligned(8)` that moved `.sdata`. The
+`-fno-optimize-sibling-calls` flag (DDS1 `code_002CF530`, DDS2
+`code_003283E0`) is gone: `sdfAllocAuto`, `sdfFreeAuto`, `sdfFreeAutoDelayed`
+and `sdfFreeMemorySlotFromEitherHeap` take SMT3's forms (s32 returns, the
+`size = 0` stores), and DDS's `sdf_resource.h` declares the two frees s32.
+check_unit clean on all 221 DDS units including it.
+
+`devbuild.json` and `docs/development-build.md` follow. The replacement set
+is now `sdfSystem`, `sdfMemory`, `sdfIop` (both games) and `sdfChip` (DDS2
+only); counts were let the dev build report (`/tmp/s9/devloop.py` sets each
+count dev_elf names). Not replaced, measured: `sdfGraph`, because under `-G0`
+cc1 still addresses the unit's own `.sdata` definitions through `$gp` and the
+retained-section audit rejects the changed GP-reference signatures (it held
+only `sdfGrSetFrameSetMode`, an asm fallback, of the old replaced code); and
+DDS1 `sdfChip`, because its text spans 0x002D0000, a value a data table
+stores at 0x0036965C, which the stale-reference scan rejects. A replaced
+unit's sdata is retained at its retail address, and DDS2 `sdfChip`'s `.sbss`
+and `.bss` move.
 
 ## mc/slMain: game code, not engine
 
@@ -243,8 +271,8 @@ Every unit stage 4 split for DDS is shared. `tools/sdf_probe.py <unit>`
 probes the next one; NOASM means the unit's SMT3 INCLUDE_RODATA or
 INCLUDE_SDATA lines need `#ifdef SDF_SMT3` before the probe can count. UNDEF
 of an SMT3 real name usually means a DDS rename is owed.
-Not attempted: sdfSystem, sdfChip, sdfMemory, sdfIop, sdfGraph, sdfVu1,
-sdfDev9 (stage 4 did not split them for DDS).
+In progress: sdfSystem, sdfMemory, sdfIop, sdfGraph (re-split, see above),
+then sdfVu1 and sdfDev9 (fold the `hand/` segments).
 
 ## Next
 
@@ -264,8 +292,8 @@ sdfDev9 (stage 4 did not split them for DDS).
    commit. `sdf_probe.py` and `/tmp/s8/probe.sh` assume `sdf/`; for another
    directory append the unit to `config/sdf_shared.txt` by hand for the run.
    `sdf_rename.py` does not rewrite `tools/test_*.py`; grep them.
-3. Not split for DDS by stage 4, so not attempted: sdfSystem, sdfChip,
-   sdfMemory, sdfIop, sdfGraph, sdfVu1, sdfDev9.
+3. Remaining of the seven: sdfSystem, sdfMemory, sdfIop, sdfGraph, sdfVu1,
+   sdfDev9.
 4. mc/slMain stays in each game (see above).
 
 ## Owed to smt3-decomp
