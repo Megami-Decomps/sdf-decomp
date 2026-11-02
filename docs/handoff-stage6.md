@@ -99,7 +99,7 @@
 
 ## Units moved
 
-42 units, as listed in dds-decomp's `config/sdf_shared.txt` (41 `sdf/` and
+43 units, as listed in dds-decomp's `config/sdf_shared.txt` (42 `sdf/` and
 `mc/mcManager`). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -146,6 +146,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdf3D | 6858c80 | 7d36a45a7 | renames `sdf3DMakeScreenParam` (was `sdfCameraBuildProjection`), `sdf3DSpecularTex`, `vu1Tex0Slot0..2` (d4725331e); six placeholders per game; DDS's screen adjustment at the end of `sdf3DMakeScreenParam` (five sdata placeholders, aliased in the unit as `sdf3DScreenAdjust*`); DDS's sdata lists per game |
 | sdfIop | 91cd776 | cb22c4603 | SMT3's two `printf`s under `SDF_SMT3` |
 | sdfMemory | 62b1d04 | 810ba9758 | rename `sdfMemFullCallback` (bb6ccb341); DDS defines the `sdfMemCB` heap root in the unit, under the DDS games at the end |
+| sdfSystem | e295ce6 | 1803ecb96 | Unused pipe declarations dropped; DDS1 .sdata and DDS .sbss defined under the game macros; check_unit skips a func_ name the unit #defines away |
 
 mc/mcManager, the engine's `sdfMc*` memory card layer:
 
