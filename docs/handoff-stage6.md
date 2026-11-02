@@ -99,7 +99,7 @@
 
 ## Units moved
 
-15 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
+18 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
 report of 11 was wrong; there were 9 before this session). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -119,6 +119,9 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfCoreDraw | 3320a1d | 05bbc529b | renames (bb4f38c26, 9ee9c2b95 `sdfCoreDrawReset`), DDS's three INCLUDE_SDATA lines at the end under the DDS games |
 | sdfGsMemIO | d8a7357 | a3a084442 | `D_00529388` as sdfPrim; SMT3's 27 INCLUDE_SDATA lines under `#ifdef SDF_SMT3` (DDS places that sdata in other units) |
 | sdfQuat | cb30f8a | c5884f320 | four constants per game, `#define sdf_2C0510 effMiscQuatLengthSqVU`, renames `Mult`, `ToMatrix`, `FromEuler` (81988f325) |
+| sdfDraw | 53d9599 | a337a9853 | `D_0055188A`, `D_00551888` defined to DDS names, `#define sdfGrOtClose sdfFlushPoolNodes` (see Traps), DDS's INCLUDE_SDATA lines at the end, one per game |
+| sdfDevCons | 62ea4f6 | a337a9853 | `#define func_002BD300 sdfPktSetCmd`; DDS's `sdfDevConsFontUvTable` and `sdfDevConsColorTable` definitions under the DDS games |
+| sdfIpu | 1a3eb57 | e639d4d22 | SDK skips, `D_00552158` and `D_00552144` defined, `#define sdfIpuRunDecode sdfAdvanceStreamPlayback`, DDS's own `sdfIpuRunDecode` body (pause checks) under the DDS games, its INCLUDE_SDATA line per game |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
 per-symbol asm files and leaves its source alone.
@@ -140,9 +143,6 @@ temporarily, check_unit in both games; DDS1 and DDS2 agree unless noted):
 
 | unit | probe | first blockers |
 |---|---|---|
-| sdfGsMemory | 14 match, 2 differ | UNDEF `sdfGsErrorHandler` (SMT3 INCLUDE_ASM name), NOASM |
-| sdfGsMemIO | 4 match, 4 differ | `D_00529388` (define as sdfPrim does), NOASM; SMT3's INCLUDE_SDATA of `D_00551870` belongs to SMT3's split |
-| sdfQuat | 8 match, 14 differ | UNDEF `D_00529B90`, `D_00529BA0`, `D_00529BB0` (placeholders both sides: define per game) |
 | sdfVu0 | 34 match, 9 differ | MISSING DDS functions (`sdfVuLoadSecondaryRotationMatrixY`), NOASM |
 | sdfTex | 29 match, 17 differ | MISSING DDS function names (`sdfTexDestroy`, `sdfTexReleaseReference...`) |
 | sdf3D | 7 match, 17 differ | UNDEF `vu1Tex0Slot0..2` and more names |
@@ -154,14 +154,11 @@ temporarily, check_unit in both games; DDS1 and DDS2 agree unless noted):
 | sdfMat | 35 match, 22 differ | UNDEF sdfTex function names (`sdfTexDup`, `sdfTexFreeDelayed`, `sdfTexSetClutColor`) |
 | sdf_PadManager | 6 match, 9 (DDS2 10) differ | `D_005298E8` is DDS `sdfPadButtonPressure`, `D_0058F0C0` DDS `sdfPadPortBuffers` (owed to SMT3); UNDEF `sdfPadManagerMode`, `D_005298A0`, `D_005518D8`, `D_005518E0`; MISSING `sdfPadBuildButtonStates` |
 | sdfDefaultMain | 0 match, 12 differ | UNDEF `sdfPadManagerMode`, `SdfIopInit`, `sdfCdTrayMode` |
-| sdfDraw | 35 match, 14 differ | UNDEF `sdfDrawFrameCount`, `sdfDrawSyncFlag`, `sdfReqDrawDelaySleepCount` |
 | sdfModel | 46 match, 17 differ | UNDEF `ToMatrix`, `MultMatrixRev`, `sdfItemArrayNew` |
 | sdfMotion | 85 match, 26 differ | UNDEF `ToMatrix`, `sdfMotModelVisibleTable`, `sdfMotModelLinerScaleTable` |
-| sdfCoreDraw | 5 match, 9 differ | UNDEF `corePktCurrFog`, `corePktFogParm`, `corePktPointBuff`, `corePktZBias`, `sdfCoreDrawBuffHandle`, `vu0MicroPacket`, `vu1MicroPacket`; MISSING `sdfVuClearTransformCache` |
-| sdfDevCons | 25 match, 10 differ | UNDEF `sdfDebugFontTex`, `devConsTop`, `EE_UNCACHED_RING` |
 | sdfMovie | 9 match, 11 differ | UNDEF `sdfDummyFunc`, `D_00551B50`, NOASM |
-| sdfSortOt, sdfImageSet, sdfIpu, sdfFileIO, sdfFile | compile fails | not yet read |
-| sdfPrint, sdfCd, sdfSound, sdfTmx | parse errors (sdfPrint:137, sdfCd:287/501/507, sdfSound:1160, sdfTmx:593) | likely SMT3 local SDK prototypes against DDS's `sdk_libkernl.h`; DDS guards each prototype with `SDK_SKIP_<name>` |
+| sdfPrint | compiles | UNDEF `D_005495C8`, `D_00551908` (DDS1 `D_003BD3D0`), `D_0058F310` (DDS `sdfDevRpcClient`); MISSING `sdfStartDevRpcServerAndBindClient` (SMT3 `sdfPrintIopInit`); NOASM; `sdfPuts` differs |
+| sdfFileIO, sdfFile, sdfCd, sdfSound, sdfTmx | compile | not yet probed in detail |
 
 UNDEF of an SMT3 real name usually means a DDS rename is owed (step 1 below);
 UNDEF of a function name means stage 5 withheld or never paired it.
@@ -198,6 +195,14 @@ under the DDS games; the define goes when smt3-decomp takes the name.
 | `D_005520A8` | `sdfPendingQueueSlots` | sdfDelayedResrc |
 | `D_005298E8` | `sdfPadButtonPressure` | sdf_PadManager (not moved) |
 | `D_0058F0C0` | `sdfPadPortBuffers` | sdf_PadManager (not moved) |
+| `sdf_2C0510` | `effMiscQuatLengthSqVU` | sdfQuat |
+| `func_002BD300` | `sdfPktSetCmd` | sdfDevCons |
+| `D_00551888` | `sdfGrFrameComplete` | sdfDraw |
+| `D_0055188A` | `sdfGrBufferSlotIndex` | sdfDraw |
+| `D_00552158` | `sdfIpuInputStream` | sdfIpu |
+
+Also owed: SMT3's units declare SDK functions locally with types that differ
+from the SDK (`void SleepThread`, `void EIntr`, `s32 sceSifSetRpcQueue`).
 
 ## Traps
 
@@ -237,3 +242,9 @@ under the DDS games; the define goes when smt3-decomp takes the name.
   working copy (`/tmp/s8/fixmixed.py`).
 - SMT3's `check_inline_asm.py` rejects `__asm__` in a shared unit even inside
   a DDS-only branch; alias a function with `#define` instead.
+- DDS1 `game/code_001DEFE0.c` (`btlBuildPresetCameraPose`) shifts when an
+  identifier in a header it includes changes length: renaming
+  `sdfFlushPoolNodes` to `sdfGrOtClose` and `sdfAdvanceStreamPlayback` to
+  `sdfIpuRunDecode` (both in `sdf.h` or `sdf_packet_list.h`) failed DDS1.
+  New names of 16 or more characters were fine. DDS keeps its names and the
+  shared unit aliases them with `#define`.
