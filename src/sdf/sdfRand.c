@@ -1,7 +1,6 @@
 #include "fpu.h"
 #include "common.h"
 #include "libsdf.h"
-#include "ps2asm.h"
 
 extern s32 sdfCdTrayMode;
 
@@ -119,6 +118,15 @@ enum sdf_stream_playback {
 
 typedef union { f32 quaternion[4]; u16 monthDays[20]; } sdfMathConstants_t;
 
+/* Placeholders in all three games. */
+#if defined(SDF_DDS1)
+#define D_00529BB0 D_00398910
+#define D_005519B8 D_003BD488
+#elif defined(SDF_DDS2)
+#define D_00529BB0 D_0040BAC0
+#define D_005519B8 D_00438B78
+#endif
+
 extern sdfMathConstants_t D_00529BB0;
 
 extern s8 sdfPrintIopFlag;
@@ -163,7 +171,12 @@ extern s32 sceCdReadClock(sdfCdClock_t *);
 
 extern u8 sdfCdClock;
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* DDS defines the clock cache in this unit. */
+sdfClock_t D_005519B8 = {0};
+#else
 extern sdfClock_t D_005519B8;
+#endif
 
 extern s32 (*p2sdSmgBuf)(void);
 
