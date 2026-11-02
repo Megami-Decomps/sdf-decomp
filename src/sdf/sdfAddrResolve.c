@@ -1,7 +1,6 @@
 #include "fpu.h"
 #include "common.h"
 #include "libsdf.h"
-#include "ps2asm.h"
 
 void sdfAddressResolver(void *aDataBody, void *aOffset, void *aAddrInfoPtr, s32 aAddrInfoLeng);
 
