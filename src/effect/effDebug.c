@@ -5,6 +5,35 @@
 
 #include "effect.h"
 
+/* DDS's names for the same objects. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define dds3_1AC0A8 effCreateSlotArray
+#define dds3_1AC138 effReleaseSlotArrayAllocation
+#define func_001AC150 effStepActiveBezierSlot
+#define func_001AC3D8 effEvaluateSlotBezierPosition
+#define func_001AC4C8 effInitSlotTail
+#define func_001AC4F0 effGetSlotAt
+#define D_0056B050 effTriangleVertexScratch
+#endif
+#if defined(SDF_DDS1)
+#define D_003201C0 D_00355870
+#define D_0054F270 D_003BB068
+#define D_0054F274 D_003BB06C
+#elif defined(SDF_DDS2)
+#define D_003201C0 D_003B21A0
+#define D_0054F270 D_00436458
+#define D_0054F274 D_0043645C
+#endif
+
+/* The debug overlay's OT slots; DDS has more slots before them. */
+#ifdef SDF_SMT3
+#define EFF_DEBUG_WIRE_OT 44
+#define EFF_DEBUG_TEXT_OT 83
+#else
+#define EFF_DEBUG_WIRE_OT 55
+#define EFF_DEBUG_TEXT_OT 96
+#endif
+
 /* Screen pixel pair in the debug overlay's own 1/16 pixel grid. */
 typedef struct
 {
@@ -202,7 +231,7 @@ void effDebugPointDraw(sdfVector4_t *pPos)
     point.y = ((s32)screen.y << 1) - 0xF20;
     sdfDrawTagLink(tag, dds3PrimFrameRect(point.x * 16 + 0x7000, point.y * 8 + 0x7900,
                                           0xFF0000, 0x20, 0x10, 0x60008080, 0x60008080));
-    ot = &sdfGrOtTable[83];
+    ot = &sdfGrOtTable[EFF_DEBUG_TEXT_OT];
     ((void (*)(sdfGrOt_t *, void *))ot->regFunc)(ot, tag);
 }
 
@@ -223,7 +252,7 @@ void effDebugPointDraw2(sdfVector4_t *pPos, u32 color)
     point.y = ((s32)screen.y << 1) - 0xF20;
     sdfDrawTagLink(tag, dds3PrimFrameRect(point.x * 16 + 0x7000, point.y * 8 + 0x7900,
                                           0xFF0000, 0x20, 0x10, color, color));
-    ot = &sdfGrOtTable[83];
+    ot = &sdfGrOtTable[EFF_DEBUG_TEXT_OT];
     ((void (*)(sdfGrOt_t *, void *))ot->regFunc)(ot, tag);
 }
 
@@ -251,7 +280,7 @@ void effDebugLineDraw(sdfVector4_t *pPos0, sdfVector4_t *pPos1)
                                      0xFF0000, 0x60008080,
                                      point[1].x * 16 + 0x7000, point[1].y * 8 + 0x7900,
                                      0xFF0000, 0x60008080, 0));
-    ot = &sdfGrOtTable[83];
+    ot = &sdfGrOtTable[EFF_DEBUG_TEXT_OT];
     ((void (*)(sdfGrOt_t *, void *))ot->regFunc)(ot, tag);
 }
 
@@ -279,7 +308,7 @@ void effDebugLineDraw2(sdfVector4_t *from, sdfVector4_t *to, u32 mode)
                                      0xFF0000, mode,
                                      point[1].x * 16 + 0x7000, point[1].y * 8 + 0x7900,
                                      0xFF0000, mode, 0));
-    ot = &sdfGrOtTable[83];
+    ot = &sdfGrOtTable[EFF_DEBUG_TEXT_OT];
     ((void (*)(sdfGrOt_t *, void *))ot->regFunc)(ot, tag);
 }
 
@@ -290,7 +319,7 @@ void effDebugStringDraw(s32 x, s32 y, s32 commandIndex, const char *format) {
 
     sdfDrawTagInit(task);
     sdfDrawTagLink(task, (sdfDevPrintf((x << 4) + 0x7000, (y << 3) + 0x7900, 0xFF0000, commandIndex, format)));
-    scene = &sdfGrOtTable[83];
+    scene = &sdfGrOtTable[EFF_DEBUG_TEXT_OT];
     ((void (*)(sdfGrOt_t *, void *))scene->regFunc)(scene, task);
 }
 
@@ -357,7 +386,7 @@ void effDebugWireframeSphereDraw(const f32 *center, u32 color, f32 radius) {
         MultMatrixNoArg();
         SDF_VU0_STOREMATRIX_NOMEM(matrix);
     }
-    surface = &sdfGrOtTable[44];
+    surface = &sdfGrOtTable[EFF_DEBUG_WIRE_OT];
     ((void (*)(sdfGrOt_t *, void *))surface->regFunc)(surface, list);
 }
 
@@ -522,7 +551,7 @@ void effDebugWireframeCylinderDraw(const f32 *center, u32 color, f32 radius, f32
         angle += angleStep;
     }
     sdfDrawTagLink(list, effDebugDrawWireModel(vertices, colors, 20, 0x80));
-    surface = &sdfGrOtTable[44];
+    surface = &sdfGrOtTable[EFF_DEBUG_WIRE_OT];
     ((void (*)(sdfGrOt_t *, void *))surface->regFunc)(surface, list);
 }
 
@@ -533,11 +562,21 @@ void effDebugWindowDraw(s32 x, s32 y, s32 width, s32 height, s32 fillColor, s32 
 
     sdfDrawTagInit(list);
     sdfDrawTagLink(list, (dds3PrimFrameRect(x * 0x10 + 0x7000, y * 8 + 0x7900, 0xFF0000, width * 0x10, height * 8, fillColor, borderColor)));
-    scene = &sdfGrOtTable[83];
+    scene = &sdfGrOtTable[EFF_DEBUG_TEXT_OT];
     ((void (*)(sdfGrOt_t *, void *))scene->regFunc)(scene, list);
 }
 
+#ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "effect/effDebug", D_0054F270);
 
 INCLUDE_SDATA(const s32, "effect/effDebug", D_0054F274);
+#elif defined(SDF_DDS1)
+INCLUDE_SDATA(const s32, "effect/effDebug", D_003BB068);
+
+INCLUDE_SDATA(const s32, "effect/effDebug", D_003BB06C);
+#elif defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "effect/effDebug", D_00436458);
+
+INCLUDE_SDATA(const s32, "effect/effDebug", D_0043645C);
+#endif
 
