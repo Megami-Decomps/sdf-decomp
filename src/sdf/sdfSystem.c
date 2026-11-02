@@ -1,10 +1,30 @@
 #include "fpu.h"
 #include "common.h"
 #include "eeregs.h"
-#include "pipe.h"
 #include "ps2asm.h"
 #include "basic.h"
 #include "motion.h"
+
+#if defined(SDF_DDS1)
+#define D_00551824 D_003BD2D0
+#define D_00552040 D_003BD990
+#define D_005756C0 D_003DFEF0
+#define D_005776C0 D_003E1EF0
+#elif defined(SDF_DDS2)
+#define D_00551824 D_004389C0
+#define D_00552040 D_004390F0
+#define D_005756C0 D_0045C8A0
+#define D_005776C0 D_0045E8A0
+#endif
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_00551828 sdfTickCallback
+#define D_00552054 sdfSleepThreadId
+#define sdf_2A8258 sdfFreeMemorySlotFromEitherHeap
+#define sdf_2A84D8 sdfDrainPendingHandlers
+#define func_002A8758 sdfDeleteTrackedThread
+#define func_002A87F0 sdfFindThreadNode
+#define sdf_2A8858 sdfUnlinkAndDeleteCurrentThread
+#endif
 
 /* Native 0x30-byte EE thread descriptor passed to CreateThread. */
 typedef struct {
@@ -24,11 +44,6 @@ typedef struct sdfHandlerNode_t {
     s32 handlerId;
 } sdfHandlerNode_t;
 
-struct pipeTextureFile_t;
-
-
-extern dds3Basic_t *pipe_Camera;
-
 extern s32 _gp, sdfThreadSema, sdfVblankFlag, D_00551824;
 
 extern u8 sdfPadManagerMode, D_005756C0[], D_005776C0[];
@@ -43,6 +58,18 @@ extern s32 CreateThread(sdfKernelThreadParam_t *parameter);
 
 extern s32 AddIntcHandler2(s32 channel, s32 handler, s32 argument, s32 next);
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define SDK_SKIP_ChangeThreadPriority
+#define SDK_SKIP_CreateSema
+#define SDK_SKIP_CreateThread
+#define SDK_SKIP_DeleteThread
+#define SDK_SKIP_RemoveDmacHandler
+#define SDK_SKIP_RemoveIntcHandler
+#define SDK_SKIP_RemoveSbusIntcHandler
+#define SDK_SKIP_SetAlarm
+#define SDK_SKIP_TerminateThread
+#define SDK_SKIP_WakeupThread
+#endif
 #include "sdk_libkernl.h"
 
 extern s32 AddSbusIntcHandler(s32 channel, s32 handler);
@@ -113,14 +140,9 @@ void sdfAlarmWakeup(s32 unused0, s32 unused1, s32 threadId);
 
 void sdfWaitVblank(s32 count);
 
-
 s32 sdfInitThreadSystem(void);
 
 s32 VblankIntcHandler(s32 cause);
-
-
-
-
 
 typedef struct sdfSemaParam_t {
     s32 count;
@@ -130,57 +152,6 @@ typedef struct sdfSemaParam_t {
     u32 attr;
     u32 option;
 } sdfSemaParam_t;
-
-typedef struct tagpipeParts {
-    s32 offset;
-    u8 id;
-    u8 unk05;
-    u8 mdl;
-    s8 resv[5];
-} tagpipeParts;
-
-extern tagpipeParts *PartsWork;
-
-extern u16 myStatus;
-
-extern u8 camMode, CameraAction, offsetStep, offsetStepCount;
-
-extern s32 D_00551738, D_0055173C, D_00551744, D_00551748;
-
-extern void *pipeObjList, *pipeObjTail;
-
-extern u8 attackCount;
-
-typedef struct PIPE_EFF_t {
-    sdfMemHandle_t *mhFile;
-    void *ptr;
-    s32 size;
-    void *d3p;
-    f32 x;
-    f32 y;
-    f32 z;
-    f32 pos2[2];
-    s32 offset;
-    s32 count;
-} PIPE_EFF_t;
-
-extern s32 SectionIndex, mapIndex, mapPrev;
-
-extern u8 debugMode, pipeInitDone;
-
-extern s32 offsetCount;
-
-extern tagpipeBasic *basicMy;
-
-extern tagpipeBasic *PipeLine, *PipeCur, *PipeCur2, *PipeRBOX, *PipeEMS, *PipeEML;
-
-extern tagpipeBasic *PipeMaka1, *PipeZMaka, *PipeDMaka, *PipeDRBOX;
-
-extern PIPE_EFF_t *pipe_CELL01_D3P, *pipe_BREAK01_D3P, *pipe_BREAK02_D3P;
-
-extern PIPE_EFF_t *pipe_DAMAGE01_D3P, *pipe_DAMAGE03_D3P, *pipe_ATTACK01_D3P;
-
-extern s32 dds3ConfigBackup;
 
 extern s32 sdfChipCheck(void *aPtr);
 
@@ -192,46 +163,13 @@ extern void sdfMemFreePtrDirect(void *aPtr);
 
 extern void *sdfMemGetHandleByPtr(void *aPtr);
 
-extern tagPipeObject *ObjWork;
-
-extern tagPipeTexture *MakaTex;
-
-extern s32 ZmakaCount;
-
-extern void *hWorkArea;
-
 extern sdfHandlerNode_t *sdfDmacHandlerTable;
 
-extern void *D_005516C4;
-
 extern s32 D_00552054;
-
-extern char D_00551700[];
-
-extern char D_00551808[];
-
-/* [1] is dds3ConfigBackup; both are written through one base register. */
-extern s32 dds3ConfigValue[2];
-
-extern s32 playerDAMAGE;
-
-extern s32 myMaka;
-
-extern s32 pipeMyMakaCount;
-
-extern s8 rBoxNum;
 
 extern u8 sdfCdClock;
 
 extern s32 sdfVblankSema;
-
-extern s8 slLoadKillFlag;
-
-extern s32 pipeBulrLimitValue;
-
-extern void *pipeMessData;
-
-extern void *makaWork;
 
 extern s32 CreateSema(sdfSemaParam_t *param);
 
@@ -258,7 +196,6 @@ extern void *sdfMemLock(void *aHandle);
 extern void *sdfChipAllocDirect(s32 aSize);
 
 extern s32 CancelWakeupThread(s32 thid);
-
 
 void sdfDummyFunc(void) {
 }
@@ -411,6 +348,14 @@ void sdf_2A84D8(void)
     }
 }
 
+#if defined(SDF_DDS1)
+/* DDS1 defines this unit's .sdata here; DDS2 places the first three words in
+ * the unit before. */
+sdfHandlerNode_t *sdfDmacHandlerTable __attribute__((section(".sdata"))) = NULL;
+s32 D_00551824 __attribute__((section(".sdata"))) = 0x100000;
+void (*D_00551828)(void) __attribute__((section(".sdata"))) = NULL;
+#endif
+
 void sdfAlarmWakeup(s32 arg0, s32 arg1, s32 thid)
 {
     iWakeupThread(thid);
@@ -506,6 +451,11 @@ void func_002A8758(sdfThCB_t *node) {
     DeleteThread(threadId);
 }
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+s32 sdfThreadSema __attribute__((section(".sbss")));
+sdfThCB_t *sdfVblankThreadId __attribute__((section(".sbss")));
+#endif
+
 sdfThCB_t *func_002A87F0(s32 threadId) {
     sdfThCB_t *node;
 
@@ -580,11 +530,13 @@ void sdfSetMainThreadPriority(void)
     SleepThread();
 }
 
+#ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "sdf/sdfSystem", sdfDmacHandlerTable);
 
 INCLUDE_SDATA(const s32, "sdf/sdfSystem", D_00551824);
 
 INCLUDE_SDATA(const s32, "sdf/sdfSystem", D_00551828);
+#endif
 
 INCLUDE_SDATA(const s32, "sdf/sdfSystem", sdfVblankFlag);
 
