@@ -248,8 +248,58 @@ effSpline: sdf-decomp 3306342 (history), 337a882; dds-decomp 5ee6b1f56. The
 SMT3's 18 in order. 11 SMT3 placeholders aliased to DDS's `effSpl*` and
 channel names. Matched on the first probe.
 
+Stopped here on the user's request (2026-11-02). Verified from committed state
+(sdf-decomp 337a882 pinned in dds-decomp 5ee6b1f56, the SMT3 clone's
+submodule at this tree's tip, consume commit e6486598): clean builds, SMT3
+5facfbf7916836613449c922e26a4ec412207b32, DDS1
+6d18898e2724bf1d145392766e8ba1e678487419, DDS2
+9be91ee1b4a535a4cb6ec89237b5a6ba41be2add, `ninja dds1-dev dds2-dev` exit 0,
+check_unit clean on code_001DEFE0 and code_002DE248. The CI-equivalent run
+(tests, check_nonmatching, reports, progress) was not done at this point.
+`config/sdf_shared.txt` lists 61 units.
+
+## effEvent, measured, not started
+
+DDS has 93 functions to SMT3's 84 (re-split already, DDS1 0x0018F3A0 to
+0x00192CC8). By position:
+
+- DDS-only: `effEnableFramebufferQuad`, `effDisableFramebufferQuad`,
+  `effCopyFramebufferQuadParameters`, `effGetCh73Params` (between
+  `Eve_RippleBlurSetDefTex` and `Eve_FilterON`), and
+  `effEventAdvanceScreenDrawSetup`, `effGetLoadDescD`, `effSetLoadDescD`
+  (between SMT3's `dblurSetParam` and `evtViewerCheckDirty`): a fourth
+  screen effect DDS has.
+- Bodies that differ: `Eve_EffectDraw` (DDS `effDispatchActive`, which draws
+  the fourth effect too) and `effEveBEDCutDraw` (DDS
+  `effEventUpdateEffectParameters`, which adds an `mdlGetScale` branch and
+  reads the cut at DDS's offsets).
+- Renames by position: `func_001AD6E8` `effUpdateCh72Params`,
+  `evtGetUnityCalcArea`/`evtSetUnityCalcArea` `effGetLoadDescA`/`effSetLoadDescA`,
+  `mblur*` `effEventAdvanceBlurTemplateSetup`, `...GetBlurTemplateSetupParams`,
+  `...SetBlurTemplateParameters`, `dblur*` the `ScatterBlur` three,
+  `dblurGetParam2`/`dblurSetParam2` the `SolidRectangle` pair, `eff_1AEC58`
+  `effEventUpdateBillboardParticles`, `func_001B0730` `effCopyVertRows`. The
+  rest have SMT3's names in DDS already.
+- Headers: SMT3's unit includes `effBattle.h`, `event.h` and `effDebug.h`.
+  DDS has its own, different `event.h`, so the shared include must not pick
+  it up for SMT3's `evtUnit_t`. DDS's `effBTLCut_t` has 8 more bytes (colour
+  and flag words) before `currentFrame`; only `effEveBEDCutDraw` reads past
+  them. Likely route: move `effDebug.h` and `effBattle.h` here (SMT3's
+  effBattleSystem and effMagatuhi include `effDebug.h`; the consume patch
+  deletes them), the 8 bytes under the DDS macros, and alias `evtUnit_t` and
+  DDS's BED function names by `#define`. DDS's types are CamelCase
+  (`SoundMixer` is its name for `effBTL_t`), which check_drift rejects, so
+  DDS-only bodies take SMT3's type names.
+- The `effEveBEDCutDraw` DDS body uses `VU0_SCALAR_OP` with an instruction
+  string; check SMT3's `check_inline_asm.py` accepts it in a shared unit.
+
 ## Next
 
-1. effect/: effEvent (re-split already), then
-   effBlur_Filter.
-2. mdlEffect, by bringing its viewer code in under the DDS macros.
+1. Run the CI-equivalent checks on this state (DDS run_tests.py,
+   test_c_aliases, check_nonmatching, the four report targets and the scope
+   check, progress; SMT3 clone all `tools/test_*.py`, check_nonmatching,
+   check_irx_nonmatching, check_inline_asm, progress).
+2. effect/: effEvent by the plan above, then effBlur_Filter (DDS has 7
+   functions, 0xB80 bytes, before `dds3EffectBlurSetRect` where SMT3 has 6 in
+   0x6B0, and more blur functions later; measure by position first).
+3. mdlEffect, by bringing its viewer code in under the DDS macros.

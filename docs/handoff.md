@@ -34,15 +34,17 @@
 - Stages 4 to 6: `docs/handoff-dds.md` (re-split, renames) and
   `docs/handoff-stage6.md` (shared units, traps, owed names). Stage 8:
   `docs/handoff-stage8.md`.
-- 58 units are shared by all three games: SMT3's 45 `sdf/` units,
+- 61 units are shared by all three games: SMT3's 45 `sdf/` units,
   `mc/mcManager`, `model/mdlManager`, `file/fileManager`, the three
   `script/` engine units, and `effect/` effPCPNeedle, polyManager, effPart,
   effPCPFlash, effPCPScatter, parManager, effMath, effPacket, effDebug and
-  effSpline, as dds-decomp's
-  `config/sdf_shared.txt` lists. `model/mdlEffect` is here for SMT3 only.
-  dds-decomp branch `sdf-shared` in the worktree
-  `/home/wsl/projects/dds-decomp-sdf`. All three games byte-identical from
-  clean builds of committed state.
+  effSpline, as dds-decomp's `config/sdf_shared.txt` lists. `model/mdlEffect`
+  is here for SMT3 only. dds-decomp branch `sdf-shared` in the worktree
+  `/home/wsl/projects/dds-decomp-sdf` (5ee6b1f56). All three games
+  byte-identical from clean builds of committed state.
+- Branch `sdf-only` marks the end of stage 6 (the 45 `sdf/` units plus
+  `mc/mcManager`) as a cut that can land on its own: sdf-decomp 575a81e,
+  dds-decomp worktree 6b1c8ccb7.
 - sdfVu1 and sdfDev9 hold DDS's former `hand/` segments as INCLUDE_ASM, as
   SMT3 does; `config/<v>/handwritten.txt` keeps those 19 functions out of
   DDS's game-code totals (`tools/progress.py`, `production_report.py`).
@@ -54,8 +56,9 @@
   (suggested Megami-Decomps/sdf-decomp). Then: push, set dds-decomp's
   `.gitmodules` URL to `../sdf-decomp`, bump the smt3-decomp patch's pin,
   land both.
-- Next: effPacket, effSpline, effDebug, effEvent, effBlur_Filter by the plan
-  in `docs/handoff-stage8.md`, then mdlEffect. `mc/slMain` and `script/scrParameterCommand` are game code and
+- Stopped 2026-11-02 on the user's request after effSpline, at a verified
+  committed point. Next: the CI-equivalent checks, then effEvent (measured,
+  plan in `docs/handoff-stage8.md`), effBlur_Filter, mdlEffect. `mc/slMain` and `script/scrParameterCommand` are game code and
   stay per game.
 
 ## Next
