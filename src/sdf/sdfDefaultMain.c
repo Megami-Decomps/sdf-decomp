@@ -12,7 +12,6 @@
 #endif
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
 #define D_00551B88 kwlnMainLoopThreadNode
-#define dds3KernelMain kwlnRunMainLoop
 #endif
 
 extern u32 D_0054E8BC;
