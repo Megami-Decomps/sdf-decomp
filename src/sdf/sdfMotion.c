@@ -4,6 +4,18 @@
 #include "model.h"
 #include "motion.h"
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define sdfMatSetRefMap sdfSetPrimaryStateWordFourth
+#define D_00529600 sdfMotionCommandHandlers
+#endif
+#if defined(SDF_DDS1)
+#define D_00529448 D_003981A8
+#define D_00529470 D_003981D0
+#elif defined(SDF_DDS2)
+#define D_00529448 D_0040B358
+#define D_00529470 D_0040B380
+#endif
+
 
 typedef struct
 {
