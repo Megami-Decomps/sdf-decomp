@@ -282,9 +282,9 @@ from the SDK (`void SleepThread`, `void EIntr`, `s32 sceSifSetRpcQueue`).
   split asm, and a renamed INCLUDE_SDATA symbol also needs `ninja` (the
   `build/eeasm` copy) before a probe compiles.
 - `names.py apply` only renames a symbol that already has a symbol_addrs row
-  (`rename.py` inserts a bare `D_X = 0xX;` row first), and `rename_refs.py`
-  also rewrites the old name inside name_sources.txt's "was" note; fix it by
-  hand when renaming without `rename.py`.
+  (`rename.py` inserts a bare `D_X = 0xX;` row first). After a rename done
+  by hand, check the "was" note in name_sources.txt: DDS2
+  `sdfPadButtonMasks` came out as "was sdfPadButtonMasks".
 - `names.py apply` renames in every DDS source, including files configure
   has just rewritten; stage such a file as HEAD plus the renames, not as the
   working copy (`/tmp/s8/fixmixed.py`).
