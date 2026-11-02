@@ -75,10 +75,33 @@
   `sdf3DPrimIdentityTm`, DDS1 `D_00398500`/DDS2 `D_0040B6B0` to
   `sdf3DPrimDefaultFaceIndex` (5b6517731).
 
+- SDK prototypes (step 1 of the last Next): SMT3's units declare SDK
+  functions locally (`extern void SleepThread(void)`, `extern void
+  EIntr(void)`, `sceSifSetRpcQueue` returning s32) where DDS's
+  `sdk_libkernl.h` has one canonical prototype each. The shared units define
+  `SDK_SKIP_<name>` under the DDS games before the include (sdf-decomp
+  41f34ae, 4f6da3c); sdfPrint, sdfSound and sdfTmx also declare SMT3's
+  `sceSifRpcFunc` typedef and sdfCd `sceCdlFILE` there. All 9 units that
+  failed to compile now do. Conforming DDS's SDK headers was tried and
+  reverted: see Traps (code_002DE248).
+- dds-decomp 144675144 takes SMT3's `eeregs.h` (macros only: `HW_FIELD_*`,
+  `EE_UNCACHED*`, D0 registers).
+- dds-decomp ec8afa786, `tools/c_aliases.py`: `function_aliases` also
+  follows `#define smt3name ddsname`, so check_unit, include_rodata and
+  include_sdata see a shared function under the DDS name it compiles to.
+  `test_c_aliases.py`.
+- Renames to SMT3's names, both DDS games, through `names.py apply` and
+  `rename_refs.py` (bb4f38c26: 23 symbols, 9ee9c2b95: `sdfCoreDrawReset`,
+  81988f325: `Mult`, `ToMatrix`, `FromEuler`). Some DDS names were wrong:
+  DDS's `sdfCreateSemaphoreFromOptions` is the empty `sdfDummyFunc`.
+  `sdf_chip.h` kept a stale `sdfChipCheck(s32)` prototype; it now matches
+  `sdf_chip_range_api.h`.
+
 ## Units moved
 
-Each is in `config/sdf_shared.txt`, DDS's copies deleted, check_unit clean in
-both games, all three games byte-identical.
+15 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
+report of 11 was wrong; there were 9 before this session). Each has DDS's
+copies deleted, check_unit clean in both games, all three games byte-identical.
 
 | unit | sdf-decomp | dds-decomp | what the shared file needed |
 |---|---|---|---|
@@ -90,20 +113,25 @@ both games, all three games byte-identical.
 | sdfBillBoard | none | 5368a2aa7 | nothing once DDS had `ps2asm.h` |
 | sdf3DPrim | none | f813b3fc0 | the two data renames above |
 | sdfPacketBuff, sdfDelayedResrc | 6e1669c | 546ff6a5a | `D_00551870` defined to `sdfPacketBuffers`, `D_005520A8` to `sdfPendingQueueSlots`; DDS's INCLUDE_SDATA lines at the end under `#if defined(SDF_DDS1) \|\| defined(SDF_DDS2)` |
+| sdfSortOt | 41f34ae | 476696ca4 | `SDK_SKIP_SleepThread` for DDS |
+| sdfGsMemory | none | 17ab14a35 | `sdfGsErrorHandler` rename (bb4f38c26) |
+| sdfImageSet | 013e0c8 | 50dd0162f | `SDK_SKIP_SleepThread`, `sdfChipCheck` rename, `D_005293A0` per game (DDS1 `D_00398100`, DDS2 `D_0040B2B0`) |
+| sdfCoreDraw | 3320a1d | 05bbc529b | renames (bb4f38c26, 9ee9c2b95 `sdfCoreDrawReset`), DDS's three INCLUDE_SDATA lines at the end under the DDS games |
+| sdfGsMemIO | d8a7357 | a3a084442 | `D_00529388` as sdfPrim; SMT3's 27 INCLUDE_SDATA lines under `#ifdef SDF_SMT3` (DDS places that sdata in other units) |
+| sdfQuat | cb30f8a | c5884f320 | four constants per game, `#define sdf_2C0510 effMiscQuatLengthSqVU`, renames `Mult`, `ToMatrix`, `FromEuler` (81988f325) |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
 per-symbol asm files and leaves its source alone.
 
-Final state, verified from committed state (sdf-decomp e38c6d7 in both
-submodules): SMT3 clone `configure.py --clean`, ninja exit 0, `[860/860]
-check config/smt3/checksum.sha1`, 5facfbf7916836613449c922e26a4ec412207b32;
-28 tools/test_*.py pass, check_nonmatching and check_irx_nonmatching exit 0,
-progress unchanged (8567/9045). DDS `configure.py --clean`, ninja exit 0 with
-both check lines, DDS1 6d18898e2724bf1d145392766e8ba1e678487419, DDS2
-9be91ee1b4a535a4cb6ec89237b5a6ba41be2add; `ninja dds1 dds2 dds1-dev
-dds2-dev`, the four reports, progress.py unchanged (DDS1 9501/9573, DDS2
-10767/10855), CI's report scope check, run_tests.py 445 OK,
-check_nonmatching 89 units 0 failed.
+Final state, verified from committed state (sdf-decomp cb30f8a in both
+submodules, dds-decomp c5884f320): SMT3 clone `configure.py --clean`, ninja
+exit 0, `[860/861] check config/smt3/checksum.sha1`,
+5facfbf7916836613449c922e26a4ec412207b32. DDS `configure.py --clean`, ninja
+exit 0 with both check lines, DDS1 6d18898e2724bf1d145392766e8ba1e678487419,
+DDS2 9be91ee1b4a535a4cb6ec89237b5a6ba41be2add. check_unit over every DDS unit
+(shared ones by logical path) after each rename batch: only the four known
+differences (devbuild in both games, and the orphans code_002E7C20 and
+code_00340AC8, see Traps).
 
 ## Units not moved
 
