@@ -1,4 +1,4 @@
-From ff8967d0ca2d436b43795bb944b75edeab72a137 Mon Sep 17 00:00:00 2001
+From 390c56b9ed8e97ba59cc51d40308873f2e3a04f3 Mon Sep 17 00:00:00 2001
 From: tge-was-taken <tge-was-taken@outlook.com>
 Date: Mon, 2 Nov 2026 04:16:42 +0100
 Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
@@ -19,14 +19,14 @@ Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
  tools/include_sdata.py         |  30 ++++--
  tools/production_report.py     |  11 ++-
  tools/progress.py              |   7 +-
- tools/sources.py               | 166 +++++++++++++++++++++++++++++++++
+ tools/sources.py               | 168 +++++++++++++++++++++++++++++++++
  tools/splat_split.py           |  39 ++++++++
  tools/test_check_inline_asm.py |   4 +-
  tools/test_configure.py        |   6 +-
- tools/test_sources.py          |  68 ++++++++++++++
+ tools/test_sources.py          |  68 +++++++++++++
  tools/test_vuas.py             |   3 +-
  tools/vu_include.py            |   5 +-
- 22 files changed, 402 insertions(+), 67 deletions(-)
+ 22 files changed, 404 insertions(+), 67 deletions(-)
  create mode 100644 .gitmodules
  create mode 160000 external/sdf-decomp
  create mode 100644 tools/sources.py
@@ -678,10 +678,10 @@ index daa5ab64..6d8de7e0 100755
              n = 4 * len(INSN.findall(body))
 diff --git a/tools/sources.py b/tools/sources.py
 new file mode 100644
-index 00000000..10192194
+index 00000000..8b67396a
 --- /dev/null
 +++ b/tools/sources.py
-@@ -0,0 +1,166 @@
+@@ -0,0 +1,168 @@
 +"""Where a unit's source lives.
 +
 +A unit keeps its name and its src/<version>/<unit>.c path everywhere else
@@ -709,6 +709,8 @@ index 00000000..10192194
 +        "effect/effPCPNeedle.c": Path("external/sdf-decomp/src/effect/effPCPNeedle.c"),
 +        "effect/polyManager.c": Path("external/sdf-decomp/src/effect/polyManager.c"),
 +        "effect/effPart.c": Path("external/sdf-decomp/src/effect/effPart.c"),
++        "effect/effPCPFlash.c": Path("external/sdf-decomp/src/effect/effPCPFlash.c"),
++        "effect/effPCPScatter.c": Path("external/sdf-decomp/src/effect/effPCPScatter.c"),
 +    },
 +}
 +

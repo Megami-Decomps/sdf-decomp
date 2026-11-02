@@ -18,6 +18,7 @@ one consume commit amended per unit and exported to
 | `effect/effPCPNeedle` | shared, all three games | DDS names aliased in the unit; SMT3's two `printf`s under `SDF_SMT3` |
 | `effect/polyManager` | shared, all three games | DDS names aliased in the unit; the OT slots and `D_002F64B8`'s offset per game; DDS's `dds3SpPoly_RollRingDraw` body (keeps a one-frame record running) under the DDS macros |
 | `effect/effPart` | shared, all three games | SMT3's `event.h`, `nb.h`, `effBattle.h` under `SDF_SMT3`, `effPCPData.h` for DDS; the model id counter is u16 in DDS and DDS2 skips ids in use; `D_002F69B8` is DDS's `kwlnSceneSurfaceSets[10]` |
+| `effect/effPCPFlash`, `effect/effPCPScatter` | shared, all three games | DDS names aliased in the units; Flash's OT slot per game (`sdfGrOtTable[45]`, DDS `[56]`) |
 
 dds-decomp commits, in order: e76182af8 (probe and resolve take `dir/unit`),
 878bc0130 (model re-split), ed9e2911e (model names), 79f089aa1 (mdlManager
@@ -123,8 +124,8 @@ SMT3's functions in order.
 | effPCPNeedle | 17 | 0x001760F8..0x00177120 | shared |
 | polyManager | 87 | 0x0015B228..0x0015F810 | shared |
 | effPart | 40 | 0x00162970..0x001632E0 | shared |
-| effPCPFlash | 148 | 0x0016A088..0x001708A0 | clean |
-| effPCPScatter | 90 | 0x001708A0..0x001760F8 | clean |
+| effPCPFlash | 148 | 0x0016A088..0x001708A0 | shared |
+| effPCPScatter | 90 | 0x001708A0..0x001760F8 | shared |
 | parManager | 126 | 0x00153680..0x0015B228 | clean; SMT3 has 2 INCLUDE_ASM |
 | effMath | 10 | 0x0018DBD8..0x0018E218 | 1 extra |
 | effPacket | 7 | 0x0015F810..0x001606C0 | 6 twins in 11, inside `game/code_0015F4D0` |
@@ -166,6 +167,11 @@ effPart: dds-decomp d7cd1eb74 (`dds3EffectPartGetHandle`,
 the last one differently, `effParamCreateInitWork` and
 `effParamCreateViewerWork`; `eff_param.h` changed and its 24 includers stayed
 clean), 7a60736bb; sdf-decomp 8873049, ef6044c.
+
+effPCPFlash, effPCPScatter: names already agreed. dds-decomp f4b87312c,
+5f453c1a1; sdf-decomp a081a76, 46cc20f, c54a62f, and the Scatter commit
+after it. SMT3's OT slot 45 (0x5A0) is DDS's 56 (0x700) in polyManager and
+Flash alike.
 
 Recipe, as effPCPNeedle went (dds-decomp 68256150f, 23f77cb01, 26cf8c8b3;
 sdf-decomp 6a79c02, 4e084ea, 8ebfaf4):
