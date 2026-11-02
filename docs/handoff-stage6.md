@@ -99,7 +99,8 @@
 
 ## Units moved
 
-38 units, as listed in dds-decomp's `config/sdf_shared.txt`. Each has DDS's
+39 units, as listed in dds-decomp's `config/sdf_shared.txt` (38 `sdf/` and
+`mc/mcManager`). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
 | unit | sdf-decomp | dds-decomp | what the shared file needed |
@@ -140,7 +141,61 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfMotion | baed943 | 7604372a0 | 16 node and material tables renamed to SMT3's names (66c92438b); `D_00529448`, `D_00529470` per game, `D_00529600` to DDS `sdfMotionCommandHandlers`, `sdfMatSetRefMap` aliased as in sdfMat |
 | sdfCd | 1b77d06 | f3eab1061 | renames `sdfCdWaitTrayClose`, `sdfCdStRead`, `sdfCdImageSearchFileDirect`, `sdfCdImageSearchFileDirect_ent` (3ef826784); DDS's sdfCd rodata started 0x18 late, so its first string sat in sdf_PadManager's: the yaml now starts it where SMT3's does and sdf_PadManager drops that INCLUDE_RODATA; SMT3's printfs under `SDF_SMT3`; DDS-only `sdfDevSignalPendingSemaphore`, `sdfDevSeekDiscWithRequestGate`; DDS bodies of `sdfCdImageLoadStart` (a path whose second letter is `v` takes the request gate) and `sdfCdInit` (second semaphore); `sdfCdImageSearchFileDirect` retries where SMT3 gives up; `FlushCache` in `sdfCdImageLoadDir` in DDS1 only; three placeholders defined to DDS names, `D_00551910` per game; DDS's sdata lists per game |
 | sdfSound | d488518 | 5004cf1f7 | renames of eight functions (`sdfSndIopAlloc`, `sdfSndCmdTrans`, `sdfSndInitCmdIF`, `sdfSndLoadIRXModules`, `sdfSndVoiceMapInit`, `sdfSndSeqMapInit`, `sdfSndInit`, `p2sdLoadCheckMidi`) and nine data symbols (ebf4a3c0e); DDS keeps 13 MIDI bank slots to SMT3's 7, so `sndMergedWork_t` takes `SND_SLOT_COUNT` (size 0x5A0 or 0x8D0, checked) and the bank check, `p2sd_2C1F70` and the IOP transfer size follow it; DDS bodies of `sdfSndIopAlloc`, `sdfSndCmdTrans`, `sdfSndInitCmdIF`, `sdfSndVoiceMapInit` (voice IOP buffer 0x21600 in DDS1, 0x3B600 in DDS2), `sdfSndInit`, and of `sdf_2C2618`, `sdf_2C27F8` (13 tables); DDS loads `SDRDRV.IRX` too; SMT3's printfs and `p2sdFadeOutBgm` under `SDF_SMT3`; SMT3's one `sdfSndMakeFilename` is DDS's `mnuBuildSoundResourcePath` for MIDI and `mnuBuildVoiceResourcePath` in the file RPC handler; 20 SMT3 placeholder functions and 8 data placeholders defined to DDS names, 24 per game; DDS's rodata and sdata lists per game |
+| mc/mcManager | 28ea759 | bca2f1e96 | see below |
 | sdf3D | 6858c80 | 7d36a45a7 | renames `sdf3DMakeScreenParam` (was `sdfCameraBuildProjection`), `sdf3DSpecularTex`, `vu1Tex0Slot0..2` (d4725331e); six placeholders per game; DDS's screen adjustment at the end of `sdf3DMakeScreenParam` (five sdata placeholders, aliased in the unit as `sdf3DScreenAdjust*`); DDS's sdata lists per game |
+
+mc/mcManager, the engine's `sdfMc*` memory card layer:
+
+- History: sdf-decomp e02d77d merges smt3-decomp's six commits for
+  `src/smt3/mc/mcManager.c` as `src/mc/mcManager.c`, authors kept, file equal
+  to smt3-decomp 0be37933's. It needs no engine header (only `common.h`).
+- SMT3 clone: `tools/sources.py` `SHARED` maps a single file too
+  (`mc/mcManager.c`), with `shared_files()` used by `c_sources`, `is_shared`,
+  check_inline_asm and check_drift; `configure.py` accepts a file entry;
+  `cc.sh` maps any `external/sdf-decomp/src/*` path; `test_sources.py` has a
+  path map test. Consume commit 3a875cdc pins 28ea759; the patch and the
+  `git rm` line in `docs/handoff.md` follow (f570f87 and this commit).
+- DDS boundaries did not agree: SMT3's first 13 functions were DDS's
+  `game/code_00289A08` (built with `-fno-optimize-sibling-calls`) and
+  `sdfMcFuncFormat` was `game/code_00289D50`; DDS2 the same at
+  `code_002C8F88`/`code_002C92D0`. dds-decomp 62fa325d9 renames the 22 DDS
+  functions (`fileReq*`, `sdfMcPoll*`) and the data (`fileRequestEntries` to
+  `sdfMcCb`, `fileActiveCardDetectionRequestIndex` to `sdfMcInfo`);
+  0aee6c70f starts `mc/mcManager` at SMT3's boundary in both games, drops
+  the flag (SMT3's dummy local does the job) and merges the dev-build
+  replacements and moves into one (`devbuild.json`, counts in
+  `docs/development-build.md`); bca2f1e96 compiles it from sdf-decomp.
+  `configure.py`'s dev replacement reads and compiles a shared unit's
+  physical file. c13e8b3dd fixes a test that named `fileRequestEntries`.
+- The shared file needed one difference: DDS's control block has 20 slot
+  flag words to SMT3's 5 (`MC_SLOT_FLAG_WORDS`, size 0x64 or 0x28,
+  checked). The interior alias `fileRequestSlotFlags` stays in DDS's
+  symbol_addrs.
+
+## mc/slMain: game code, not engine
+
+Measured with `twins.py`'s strict hash (script in `/tmp/s8/py/slmain.py`):
+
+- 104 functions, 25,928 bytes. 65 hash identical in all three games, but 8
+  of those are tiny wrappers pairing with unrelated DDS functions
+  (`evtDestroySelectionState`, `dds3GetKernelCount`, `CheckRecover`). The
+  real twins are 57, all in one DDS unit: DDS1 `game/code_0028A150`, DDS2
+  `game/code_002C96D0`, right after mcManager. That DDS unit has 254
+  functions; 172 have no SMT3 twin. 41 of the 57 already carry SMT3's name
+  in DDS.
+- Names: 98 `sl*`, 3 `fm*`, 2 `func_*`, 1 `mc*`. No `sdf` prefix.
+- SMT3 links it among the field units (`field/fldSnow`, then `mc/slMain`,
+  then `field/fldCommand`, rom 0x528D0), far from the engine.
+- Calls out of the unit, by callee unit: mcManager 204, `field/fldDraw` 90
+  (`aDrawBoxG`, `DrwSprite2D`, `rset*`), sdfSound 27 (`p2sdPlaySE`), libc
+  21, `interface/frFont` 13, sdfMemory 13, `file/fileManager` 10,
+  `kernel/dds3Kernel*` 13, plus `event/EventBit`, `basic/dds3*Basic`,
+  `newdata/datCalc`, `interface/frWrap`, `interface/fmGslCont`.
+
+It is the save and load screens: game code on the DDS3 game layer (kernel
+processes, field drawing, fonts) over the engine's card layer. It belongs
+with the game-layer units (`kernel/`, `field/`, `interface/`) if those are
+ever shared, not in the engine's set.
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
 per-symbol asm files and leaves its source alone.
@@ -149,22 +204,22 @@ Later, sdf-decomp c6c2ba5 ports DDS's NON_MATCHING draft of
 `sdfMovieQueueFrameSprite` to SMT3's types (dds-decomp 137191fac): DDS's
 check_nonmatching failed on it in the shared file.
 
-Final state, verified from committed state (sdf-decomp efcf7da in both
-submodules, dds-decomp 4a6ea4ca8): SMT3 clone `configure.py --clean`, ninja
-exit 0, `[860/861] check config/smt3/checksum.sha1`,
-5facfbf7916836613449c922e26a4ec412207b32. DDS `configure.py --clean`, ninja
-exit 0 with both check lines, DDS1 6d18898e2724bf1d145392766e8ba1e678487419,
-DDS2 9be91ee1b4a535a4cb6ec89237b5a6ba41be2add. check_unit over every DDS unit
-(528, shared ones by logical path): only the four known differences (devbuild
-in both games, and the orphans code_002E7C20 and code_00340AC8, see Traps).
+Final state, verified from committed state (sdf-decomp 28ea759 in both
+submodules, dds-decomp c13e8b3dd, SMT3 clone 3a875cdc): SMT3 clone
+`configure.py --clean`, ninja exit 0, `[860/861] check
+config/smt3/checksum.sha1`, 5facfbf7916836613449c922e26a4ec412207b32. DDS
+`configure.py --clean`, ninja exit 0 with both check lines, DDS1
+6d18898e2724bf1d145392766e8ba1e678487419, DDS2
+9be91ee1b4a535a4cb6ec89237b5a6ba41be2add. check_unit clean on mcManager in
+both games and on every unit the renames touched, code_001DEFE0 and
+code_002DE248 included.
 
 CI-equivalent checks at that state. DDS: run_tests.py 445 OK,
-test_c_aliases OK, check_nonmatching 89 units 0 failed, `ninja dds1 dds2
+test_c_aliases OK, check_nonmatching 91 units 0 failed, `ninja dds1 dds2
 dds1-dev dds2-dev` exit 0, the four report.json targets built, progress dds1
-9502/9573 functions, dds2 10768/10855 (unchanged). SMT3 clone: every
-`tools/test_*.py` passes, check_nonmatching (exit 0) and
-check_irx_nonmatching pass, progress 8568/9045 (one more than before:
-`sdfModelLinkDrawPacket` is C now).
+9502/9573 functions, dds2 10768/10855 (unchanged). SMT3 clone: all 28
+`tools/test_*.py` pass, check_nonmatching and check_irx_nonmatching pass,
+progress 8568/9045 (unchanged).
 
 ## Tools
 
@@ -193,8 +248,12 @@ sdfDev9 (stage 4 did not split them for DDS).
 
 ## Next
 
-1. mc/mcManager (docs/plan.md stage 8). Every sdf unit stage 4 split is
-   now shared.
+1. docs/plan.md stage 8 continues with `model/`, `file/`, `script/`, then
+   `effect/`. Check unit boundaries first: `twins.py contig --prefix <dir>`
+   and a per-range pairing like `/tmp/s8/py/mclist.py`. mcManager's DDS
+   boundary was off by 14 functions, and a DDS dev-build replacement can sit
+   on the units being merged (`config/<v>/devbuild.json`; let the dev build
+   report each count, it prints actual then expected).
 2. Per unit: `sdf_resolve.py` and `sdf_probe.py`, rename DDS to SMT3's real
    names with `sdf_rename.py` (then `configure.py` and `ninja` before the
    probe sees renamed asm), check_unit code_001DEFE0 (DDS1) and
@@ -202,13 +261,12 @@ sdfDev9 (stage 4 did not split them for DDS).
    placeholders, put DDS-only or DDS-different bodies under the DDS games in
    address order, list DDS's INCLUDE_SDATA and INCLUDE_RODATA per game, grep
    DDS's file for top-level initialisers, then probe, move, build all three,
-   commit.
-3. Done: DDS's `kwlnRunMainLoop` is `dds3KernelMain` (dds-decomp d165b3a49,
-   sdf-decomp efcf7da drops the alias). The thread node stays
-   `kwlnMainLoopThreadNode` by `#define`, since SMT3's is the placeholder
-   `D_00551B88`.
-4. Not split for DDS by stage 4, so not attempted: sdfSystem, sdfChip,
+   commit. `sdf_probe.py` and `/tmp/s8/probe.sh` assume `sdf/`; for another
+   directory append the unit to `config/sdf_shared.txt` by hand for the run.
+   `sdf_rename.py` does not rewrite `tools/test_*.py`; grep them.
+3. Not split for DDS by stage 4, so not attempted: sdfSystem, sdfChip,
    sdfMemory, sdfIop, sdfGraph, sdfVu1, sdfDev9.
+4. mc/slMain stays in each game (see above).
 
 ## Owed to smt3-decomp
 
