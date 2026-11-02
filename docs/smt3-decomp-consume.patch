@@ -1,4 +1,4 @@
-From 3a875cdcfd8a0ba3cc4ab440220880923528a95a Mon Sep 17 00:00:00 2001
+From d9a0acc47f5c8e1e6a79b5098531000fca9f2315 Mon Sep 17 00:00:00 2001
 From: tge-was-taken <tge-was-taken@outlook.com>
 Date: Mon, 2 Nov 2026 04:16:42 +0100
 Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
@@ -19,14 +19,14 @@ Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
  tools/include_sdata.py         |  30 +++++--
  tools/production_report.py     |  11 +--
  tools/progress.py              |   7 +-
- tools/sources.py               | 158 +++++++++++++++++++++++++++++++++
+ tools/sources.py               | 159 +++++++++++++++++++++++++++++++++
  tools/splat_split.py           |  39 ++++++++
  tools/test_check_inline_asm.py |   4 +-
  tools/test_configure.py        |   6 +-
- tools/test_sources.py          |  62 +++++++++++++
+ tools/test_sources.py          |  63 +++++++++++++
  tools/test_vuas.py             |   3 +-
  tools/vu_include.py            |   5 +-
- 22 files changed, 388 insertions(+), 67 deletions(-)
+ 22 files changed, 390 insertions(+), 67 deletions(-)
  create mode 100644 .gitmodules
  create mode 160000 external/sdf-decomp
  create mode 100644 tools/sources.py
@@ -228,11 +228,11 @@ index 3e788386..3c9b4887 100644
  [TU recovery](tu-recovery.md).
 diff --git a/external/sdf-decomp b/external/sdf-decomp
 new file mode 160000
-index 00000000..28ea759f
+index 00000000..f7867af7
 --- /dev/null
 +++ b/external/sdf-decomp
 @@ -0,0 +1 @@
-+Subproject commit 28ea759fefa1eb1c0906d5a492f7a3f71c991495
++Subproject commit f7867af7a86c368656dcc1a94338f544fa2a2018
 diff --git a/tools/cc.sh b/tools/cc.sh
 index c4fee6c8..7f94b807 100755
 --- a/tools/cc.sh
@@ -678,10 +678,10 @@ index daa5ab64..6d8de7e0 100755
              n = 4 * len(INSN.findall(body))
 diff --git a/tools/sources.py b/tools/sources.py
 new file mode 100644
-index 00000000..263d5842
+index 00000000..340cc312
 --- /dev/null
 +++ b/tools/sources.py
-@@ -0,0 +1,158 @@
+@@ -0,0 +1,159 @@
 +"""Where a unit's source lives.
 +
 +A unit keeps its name and its src/<version>/<unit>.c path everywhere else
@@ -701,6 +701,7 @@ index 00000000..263d5842
 +    "smt3": {
 +        "sdf": Path("external/sdf-decomp/src/sdf"),
 +        "mc/mcManager.c": Path("external/sdf-decomp/src/mc/mcManager.c"),
++        "model": Path("external/sdf-decomp/src/model"),
 +    },
 +}
 +
@@ -933,10 +934,10 @@ index 2a08ba60..cf5ffa7a 100644
                  self.source.write_text(self.fallback)
 diff --git a/tools/test_sources.py b/tools/test_sources.py
 new file mode 100755
-index 00000000..da84af58
+index 00000000..f38e008e
 --- /dev/null
 +++ b/tools/test_sources.py
-@@ -0,0 +1,62 @@
+@@ -0,0 +1,63 @@
 +#!/usr/bin/env python3
 +"""Tests for game_source, the per-game view of a shared unit."""
 +import sys
@@ -992,6 +993,7 @@ index 00000000..da84af58
 +    def test_shared_directory_and_unit(self):
 +        for unit, disk in (("src/smt3/sdf/sdfRand.c", "external/sdf-decomp/src/sdf/sdfRand.c"),
 +                           ("src/smt3/mc/mcManager.c", "external/sdf-decomp/src/mc/mcManager.c"),
++                           ("src/smt3/model/mdlEffect.c", "external/sdf-decomp/src/model/mdlEffect.c"),
 +                           ("src/smt3/mc/slMain.c", "src/smt3/mc/slMain.c")):
 +            self.assertEqual(physical(Path(unit)), Path(disk))
 +            self.assertEqual(logical(Path(disk)), Path(unit))

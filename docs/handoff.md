@@ -77,7 +77,7 @@ relative to smt3-decomp's remote (on GitHub: Megami-Decomps/sdf-decomp):
 
 ```sh
 git am /path/to/sdf-decomp/docs/smt3-decomp-consume.patch
-git rm -r -q src/smt3/sdf src/smt3/mc/mcManager.c include/{libsdf.h,sdf_types.h,sdf_resource.h,sdf_lighting.h,sdf_movie_types.h,sdfGsMemIO.h,sdfDevCons.h,sdfCorePacketCb_t.h,sdfCorePacketPointBuff_tag.h,model.h,motion.h,draw.h,draw3d.h,billboard.h}
+git rm -r -q src/smt3/sdf src/smt3/mc/mcManager.c src/smt3/model include/{libsdf.h,sdf_types.h,sdf_resource.h,sdf_lighting.h,sdf_movie_types.h,sdfGsMemIO.h,sdfDevCons.h,sdfCorePacketCb_t.h,sdfCorePacketPointBuff_tag.h,model.h,motion.h,draw.h,draw3d.h,billboard.h}
 git commit --amend --no-edit
 git submodule update --init
 ```
