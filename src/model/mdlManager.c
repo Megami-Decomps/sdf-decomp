@@ -4,6 +4,28 @@
 #include "draw3d.h"
 #include "ps2asm.h"
 
+#if defined(SDF_DDS1)
+#define D_0054F628 D_003BBB60
+#define D_0054F630 D_003BBB68
+#define D_0054F634 D_003BBB6C
+#define D_0054F638 D_003BBB70
+#define D_0054F640 D_003BBB78
+#define D_00551F04 D_003BD880
+#elif defined(SDF_DDS2)
+#define D_0054F628 D_00436FA0
+#define D_0054F630 D_00436FA8
+#define D_0054F634 D_00436FAC
+#define D_0054F638 D_00436FB0
+#define D_0054F640 D_00436FB8
+#define D_00551F04 D_00438F98
+#define pacLoadEx fileCreatePacLoadWork
+#endif
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_002FA240 sdfViewMatrix
+#define fileHandleFree fileRequestFreeIfComplete
+#define mdl_1DD9C0 mdlProjectPoints
+#endif
+
 #define MDL_GROUP_COUNT 8
 
 /* sdfPacStdBlockHeader_t.tag for the chunks the PIB unit dispatches on, as the
@@ -984,6 +1006,96 @@ void mdlLink(mdlObj_t *aHandle, void *aModelOt)
     mdlLinkBlur(aHandle, aModelOt);
 }
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+extern void LoadIdentity(void);
+extern void RotateMatrixX(f32 angle);
+extern void RotateMatrixY(f32 angle);
+
+/* mdlLink, first turning node aNode's local rotation towards aPitch and aYaw
+ * (degrees) by abs(aPitch) / 25, at most one. aNode -1 skips the turn. */
+void mdlBlendEntryPitchYawAndUpdate(mdlObj_t *aHandle, void *aModelOt, s32 aNode, f32 aPitch, f32 aYaw)
+{
+    sdfModelRootNode_t *inner;
+    sdfModelNode_t *node = NULL;
+    f32 target[4][4];
+    f32 magnitude;
+    f32 weight;
+    f32 rest;
+    dds3ModelEffectCtrlr_t *item;
+    s32 i;
+
+    inner = aHandle->inner;
+    if (aNode != -1)
+    {
+        node = inner->nodeList->items[aNode];
+        LoadIdentity();
+        RotateMatrixX(aPitch * 0.017453293f);
+        RotateMatrixY(aYaw * 0.017453293f);
+        SDF_VU0_STOREMATRIX(target);
+    }
+    for (i = 0; i != 4; i++)
+    {
+        if (aHandle->slots[i] != NULL)
+        {
+            if (aHandle->slots[i]->stat != 0)
+            {
+                sdfMotionNext(aHandle->slots[i]);
+            }
+        }
+    }
+    magnitude = aPitch;
+    if (aNode != -1)
+    {
+        if (magnitude < 0.0f)
+        {
+            magnitude = -magnitude;
+        }
+        weight = 1.0f;
+        if (magnitude < 25.0f)
+        {
+            weight = magnitude / 25.0f;
+        }
+        rest = 1.0f - weight;
+        node->localNoScaledTm.m[0] = target[0][0] * weight + node->localNoScaledTm.m[0] * rest;
+        node->localNoScaledTm.m[1] = target[0][1] * weight + node->localNoScaledTm.m[1] * rest;
+        node->localNoScaledTm.m[2] = target[0][2] * weight + node->localNoScaledTm.m[2] * rest;
+        node->localNoScaledTm.m[4] = target[1][0] * weight + node->localNoScaledTm.m[4] * rest;
+        node->localNoScaledTm.m[5] = target[1][1] * weight + node->localNoScaledTm.m[5] * rest;
+        node->localNoScaledTm.m[6] = target[1][2] * weight + node->localNoScaledTm.m[6] * rest;
+        node->localNoScaledTm.m[8] = target[2][0] * weight + node->localNoScaledTm.m[8] * rest;
+        node->localNoScaledTm.m[9] = target[2][1] * weight + node->localNoScaledTm.m[9] * rest;
+        node->localNoScaledTm.m[10] = target[2][2] * weight + node->localNoScaledTm.m[10] * rest;
+    }
+    if (aHandle->flags & 1)
+    {
+        return;
+    }
+    inner = aHandle->inner;
+    sdfModelEvalTm(inner);
+    sdfModelLinkOt(aModelOt, inner);
+    if (aHandle->flags & 2)
+    {
+        return;
+    }
+    if (aHandle->flags & 4)
+    {
+        if ((inner->flags & 0x10) == 0)
+        {
+            return;
+        }
+    }
+    for (item = aHandle->resourceItems; item != NULL; item = item->next)
+    {
+        mdlLinkEffect(aHandle, item);
+    }
+    if (aHandle->devList == NULL)
+    {
+        return;
+    }
+    mdlLinkBlur(aHandle, aModelOt);
+}
+#endif
+
 void mdlHideAllNode(mdlObj_t *aHandle)
 {
     sdfModelNode_t **items;
@@ -1280,7 +1392,11 @@ s32 mdlGetMinorNum(mdlObj_t *aHandle)
 
 s32 mdlGetNumOfMajor(void)
 {
+#ifdef SDF_SMT3
     return 7;
+#else
+    return 8;
+#endif
 }
 
 s32 mdlGetNumOfMinor(s32 aMajor)
@@ -1775,6 +1891,27 @@ void mdlMakeHddFileList(void) {
     }
     mdlMakeHddFileListDummy();
 }
+#ifdef SDF_DDS2
+s32 mdlSetViewerSlotResourceHandles(s32 aMajor, s32 aMinor, char *aTexFile, char *aModelFile, char *aMotionFile)
+{
+    dds3ModelFileTable_t *entries = modelFileTable[aMajor].entries;
+
+    if (entries == NULL)
+    {
+        return 0;
+    }
+    if (aMinor >= modelFileTable[aMajor].count)
+    {
+        return 0;
+    }
+    entries[aMinor].texFile = aTexFile;
+    entries[aMinor].modelFile = aModelFile;
+    entries[aMinor].motionFile = aMotionFile;
+    return 1;
+}
+#endif
+
+#ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "model/mdlManager", D_0054F628);
 
 INCLUDE_SDATA(const s32, "model/mdlManager", D_0054F630);
@@ -1784,4 +1921,24 @@ INCLUDE_SDATA(const s32, "model/mdlManager", D_0054F634);
 INCLUDE_SDATA(const s32, "model/mdlManager", D_0054F638);
 
 INCLUDE_SDATA(const s32, "model/mdlManager", D_0054F640);
+#elif defined(SDF_DDS1)
+INCLUDE_SDATA(const s32, "model/mdlManager", D_003BBB60);
 
+INCLUDE_SDATA(const s32, "model/mdlManager", D_003BBB68);
+
+INCLUDE_SDATA(const s32, "model/mdlManager", D_003BBB6C);
+
+INCLUDE_SDATA(const s32, "model/mdlManager", D_003BBB70);
+
+INCLUDE_SDATA(const s32, "model/mdlManager", D_003BBB78);
+#elif defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "model/mdlManager", D_00436FA0);
+
+INCLUDE_SDATA(const s32, "model/mdlManager", D_00436FA8);
+
+INCLUDE_SDATA(const s32, "model/mdlManager", D_00436FAC);
+
+INCLUDE_SDATA(const s32, "model/mdlManager", D_00436FB0);
+
+INCLUDE_SDATA(const s32, "model/mdlManager", D_00436FB8);
+#endif
