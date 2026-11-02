@@ -109,6 +109,12 @@ typedef struct sdfPreDrawTag_t {
     u32 pad;
 } sdfPreDrawTag_t;
 
+#if defined(SDF_DDS1)
+#define D_00529388 D_003980E0
+#elif defined(SDF_DDS2)
+#define D_00529388 D_0040B290
+#endif
+
 extern sdfGrFrameSet_t D_00529388;
 
 s32 sdfGetTexelBitCount(u32 aFormat);
@@ -270,6 +276,7 @@ void sdfLinkLoadImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle,
                   aDstX, aDstY, aWidth, aHeight, aBuffer);
     sdfDrawTagLink2(aDrawTag, packetAddress, packetAddress + SDF_DESCRIPTOR_PACKET_TAIL_OFFSET);
 }
+#ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfDelayedResrcSemaId);
 
 INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfGrPacketBuffHandle);
@@ -319,4 +326,4 @@ INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfCoreDrawBuffHandle);
 INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfFaceDivSoften);
 
 INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfFaceDivBias);
-
+#endif
