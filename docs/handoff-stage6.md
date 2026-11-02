@@ -99,7 +99,7 @@
 
 ## Units moved
 
-43 units, as listed in dds-decomp's `config/sdf_shared.txt` (42 `sdf/` and
+44 units, as listed in dds-decomp's `config/sdf_shared.txt` (43 `sdf/` and
 `mc/mcManager`). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -147,6 +147,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfIop | 91cd776 | cb22c4603 | SMT3's two `printf`s under `SDF_SMT3` |
 | sdfMemory | 62b1d04 | 810ba9758 | rename `sdfMemFullCallback` (bb6ccb341); DDS defines the `sdfMemCB` heap root in the unit, under the DDS games at the end |
 | sdfSystem | e295ce6 | 1803ecb96 | Unused pipe declarations dropped; DDS1 .sdata and DDS .sbss defined under the game macros; check_unit skips a func_ name the unit #defines away |
+| sdfGraph | 13ba61d | ccd8786cf | SMT3HD names sdfDispThread, sdfGrGsResetDone, sdfDrawFrameCounter carried to DDS; DDS1 and DDS2 define the first four .sdata words in C; sdfDispThread's DDS-only semaphore call under the game macros |
 
 mc/mcManager, the engine's `sdfMc*` memory card layer:
 
