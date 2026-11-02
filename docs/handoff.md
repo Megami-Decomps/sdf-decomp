@@ -45,8 +45,9 @@
   SMT3 does; `config/<v>/handwritten.txt` keeps those 19 functions out of
   DDS's game-code totals (`tools/progress.py`, `production_report.py`).
   SMT3 counts the same functions as game code and was left as it is.
-- smt3-decomp main has no commits touching shared files since 0be37933,
-  the base of the current consume patch (checked at a69f68e3).
+- smt3-decomp main has no commits touching shared files since 98b9d355,
+  the base of the current consume patch (rebased from 0be37933 on 2026-11-02;
+  5353c126 and e7483423 touched polyManager and effEvent before they moved).
 - Nothing is pushed. Waiting on the user: the GitHub home for sdf-decomp
   (suggested Megami-Decomps/sdf-decomp). Then: push, set dds-decomp's
   `.gitmodules` URL to `../sdf-decomp`, bump the smt3-decomp patch's pin,
@@ -80,7 +81,7 @@ relative to smt3-decomp's remote (on GitHub: Megami-Decomps/sdf-decomp):
 
 ```sh
 git am /path/to/sdf-decomp/docs/smt3-decomp-consume.patch
-git rm -r -q src/smt3/sdf src/smt3/mc/mcManager.c src/smt3/model src/smt3/file/fileManager.c src/smt3/script/scrScriptProcess.c src/smt3/script/scrTraceCode.c src/smt3/script/scrCommonCommand.c src/smt3/effect/effPCPNeedle.c include/{libsdf.h,sdf_types.h,sdf_resource.h,sdf_lighting.h,sdf_movie_types.h,sdfGsMemIO.h,sdfDevCons.h,sdfCorePacketCb_t.h,sdfCorePacketPointBuff_tag.h,model.h,motion.h,draw.h,draw3d.h,billboard.h,fileManager.h,scr.h,effPCPData.h}
+git rm -r -q src/smt3/sdf src/smt3/mc/mcManager.c src/smt3/model src/smt3/file/fileManager.c src/smt3/script/scrScriptProcess.c src/smt3/script/scrTraceCode.c src/smt3/script/scrCommonCommand.c src/smt3/effect/effPCPNeedle.c src/smt3/effect/polyManager.c include/{libsdf.h,sdf_types.h,sdf_resource.h,sdf_lighting.h,sdf_movie_types.h,sdfGsMemIO.h,sdfDevCons.h,sdfCorePacketCb_t.h,sdfCorePacketPointBuff_tag.h,model.h,motion.h,draw.h,draw3d.h,billboard.h,fileManager.h,scr.h,effPCPData.h}
 git commit --amend --no-edit
 git submodule update --init
 ```

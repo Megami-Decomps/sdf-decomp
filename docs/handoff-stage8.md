@@ -16,6 +16,7 @@ one consume commit amended per unit and exported to
 | `script/scrCommonCommand` | shared, all three games | DDS's extra commands and its additions to `BLUR_ALLOFF`, `FILTER_ALLOFF` under the DDS macros |
 | `script/scrParameterCommand` | SMT3 only | game code, no twins in DDS |
 | `effect/effPCPNeedle` | shared, all three games | DDS names aliased in the unit; SMT3's two `printf`s under `SDF_SMT3` |
+| `effect/polyManager` | shared, all three games | DDS names aliased in the unit; the OT slots and `D_002F64B8`'s offset per game; DDS's `dds3SpPoly_RollRingDraw` body (keeps a one-frame record running) under the DDS macros |
 
 dds-decomp commits, in order: e76182af8 (probe and resolve take `dir/unit`),
 878bc0130 (model re-split), ed9e2911e (model names), 79f089aa1 (mdlManager
@@ -115,7 +116,7 @@ SMT3's functions in order.
 | unit | SMT3 | DDS1 run | state |
 |---|---|---|---|
 | effPCPNeedle | 17 | 0x001760F8..0x00177120 | shared |
-| polyManager | 87 | 0x0015B228..0x0015F810 | clean |
+| polyManager | 87 | 0x0015B228..0x0015F810 | shared |
 | effPart | 40 | 0x00162970..0x001632E0 | clean, now inside `game/code_001624D0` |
 | effPCPFlash | 148 | 0x0016A088..0x001708A0 | clean |
 | effPCPScatter | 90 | 0x001708A0..0x001760F8 | clean |
@@ -132,6 +133,28 @@ SMT3's functions in order.
 
 Where SMT3 still has INCLUDE_ASM and DDS has C, the shared unit should take
 DDS's C for that function (it may match SMT3 too) rather than lose it.
+
+The SMT3 clone was rebased onto smt3-decomp 98b9d355 first: 5353c126
+(`sdfGrOtTable`'s interior symbols as `PS2_SYMBOL_AT`) and e7483423 touched
+polyManager and effEvent. The history merges now reset to 98b9d355.
+
+dds-decomp 0e33cdee7 re-split parManager, polyManager, effPart, effPCPFlash
+and effPCPScatter in one run (`config/<v>/effect_units.txt`); each unit's
+function count now equals SMT3's. resplit.py's join needed hand fixes:
+conflicting prototypes kept from both halves (parManager, polyManager), a K&R
+definition whose body it copied into the next unit without its header
+(DDS2 `effPCPFlashPolyRingExpHCreate`), a stale `code_00175B00` row, and it
+rewrote effPCPThunder's head and dropped two size checks, so effPCPThunder was
+restored from HEAD minus the moved function. `/tmp/s8/hist.sh <unit>...`
+merges a unit's history, `/tmp/s8/move2.sh dir/unit` moves one,
+`/tmp/s8/py/pair.py dir/unit` pairs function names by position from the built
+objects (SMT3 clone, DDS1, DDS2).
+
+polyManager: dds-decomp 6d17bdf0b (`dds3SpPoly_RollRingDraw`, DDS's
+`polyUpdateRotatingBandCells`), 7248d2491; sdf-decomp eaba360, ea9e6dd.
+`func_00168A50` is DDS's `polyBandLayoutRing`, a `#define`; DDS has a
+different function at 0x00168A50, which check_unit reported as a 104-word DIFF
+until the alias was in.
 
 Recipe, as effPCPNeedle went (dds-decomp 68256150f, 23f77cb01, 26cf8c8b3;
 sdf-decomp 6a79c02, 4e084ea, 8ebfaf4):
