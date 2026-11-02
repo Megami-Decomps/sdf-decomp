@@ -65,6 +65,10 @@ extern u8 sdfFrameId;
 
 #define SDF_GRAPH_DEPTH_BUFFER_INDEX 2
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_0055188A sdfGrBufferSlotIndex
+#endif
+
 extern u8 D_0055188A;
 
 extern u16 sdfReqDrawDelaySleepCount;
@@ -381,6 +385,10 @@ void sdfGrJoinDrawTag(sdfDrawTag_t *aFore, sdfDrawTag_t *aBack);
 
 void sdfGrInitExPacket(sdfDrawTag_t *p);
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* DDS keeps its own name: the shorter one shifts DDS1 code_001DEFE0. */
+#define sdfGrOtClose sdfFlushPoolNodes
+#endif
 sdfDrawTag_t *sdfGrOtClose(sdfGrOt_t *aOt);
 
 void sdfPreDrawTagLink(sdfPreDrawTag_t *aTag, sdfPreDrawHook_t *aHook);
@@ -980,6 +988,10 @@ void sdfGrInitDraw(void) {
 }
 
 /* The draw worker publishes this to the kernel process, which clears it. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_00551888 sdfGrFrameComplete
+#endif
+
 extern volatile u8 D_00551888;
 
 extern volatile u8 sdfDrawFrameFlag;
@@ -1138,3 +1150,31 @@ void sdfDrawSync(void) {
         sdfWaitVblank(0);
     }
 }
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfDrawFrameFlag);
+
+INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfDrawSyncFlag);
+
+#ifdef SDF_DDS1
+INCLUDE_SDATA(const s32, "sdf/sdfDraw", D_003BD32E);
+#else
+INCLUDE_SDATA(const s32, "sdf/sdfDraw", D_00438A1E);
+#endif
+
+INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfGrFrameComplete);
+
+INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfGrDrawFrameId);
+
+INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfGrBufferSlotIndex);
+
+INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfReqDrawDelayCount);
+
+INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfReqDrawDelaySleepCount);
+
+INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfDrawReqQueueIndex);
+
+INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfGrDrawFrameTagHead);
+
+INCLUDE_SDATA(const s32, "sdf/sdfDraw", sdfDrawFrameCount);
+#endif
