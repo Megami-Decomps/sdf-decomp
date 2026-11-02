@@ -135,6 +135,9 @@ extern s32 DIntr();
 
 extern void *memcpy(void *, const void *, unsigned int);
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define SDK_SKIP_EIntr
+#endif
 #include "sdk_libkernl.h"
 
 extern char D_00551928[];

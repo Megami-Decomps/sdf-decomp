@@ -143,6 +143,10 @@ enum sdf_stream_playback {
 
 extern s32 DIntr();
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define SDK_SKIP_EIntr
+#define SDK_SKIP_EnableDmac
+#endif
 #include "sdk_libkernl.h"
 
 extern void *memcpy(void *, const void *, unsigned int);

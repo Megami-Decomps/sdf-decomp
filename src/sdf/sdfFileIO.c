@@ -115,6 +115,9 @@ enum sdf_stream_playback {
     SDF_STREAM_PLAYBACK_CADENCED = 2
 };
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define SDK_SKIP_EIntr
+#endif
 #include "sdk_libkernl.h"
 
 extern void *memcpy(void *, const void *, unsigned int);

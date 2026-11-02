@@ -92,6 +92,9 @@ extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
 
 extern s32 GetThreadId(void);
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define SDK_SKIP_SleepThread
+#endif
 #include "sdk_libkernl.h"
 
 extern s32 RemoveDmacHandler(s32 channel, s32 handlerId);

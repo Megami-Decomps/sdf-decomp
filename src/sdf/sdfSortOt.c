@@ -23,6 +23,9 @@ struct sdfGrOt_t;
 
 #define SDF_POOL_FREE_KIND 0xFFFF
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define SDK_SKIP_SleepThread
+#endif
 #include "sdk_libkernl.h"
 
 extern void SleepThread(void);
