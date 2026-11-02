@@ -4,6 +4,19 @@
 #include "sdf_resource.h"
 #include "sdf_types.h"
 
+/* DDS's names for the same objects. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_0031F1E0 effFanPoolTriangleIndices
+#define D_0031F228 effScaledFanDrawSurfaces
+#define D_0031F238 effTrianglePoolDrawSurfaces
+#define D_0031F250 effQuadPoolTriangleIndices
+#define D_0031F298 effQuadPoolDrawSurfaces
+#define D_0031F2A8 effTransformedFanDrawSurfaces
+#define D_0056ACF8 effRecordPoolDrawParams
+#define aViewEye sdfViewTargetVector
+#define dds3EffectBase effDefaultRandomState
+#endif
+
 struct effDebugPolyParams_t;
 struct effRandState_t;
 struct dds3FlashPolyList_t;
@@ -823,7 +836,11 @@ f32 sdfSin(f32 aRadius);
 
 extern sdfGrOt_t sdfGrOtTable[85];
 
+#ifdef SDF_SMT3
 #define effFlashOtNode ((sdfGrOt_t *)&sdfGrOtTable[45])
+#else
+#define effFlashOtNode ((sdfGrOt_t *)&sdfGrOtTable[56])
+#endif
 
 /* Parameter prefixes retained by the flash particle constructors. */
 typedef struct effPCPFlashPolyRingParam_t {
