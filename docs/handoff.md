@@ -36,6 +36,15 @@ Nothing. Stages 1 to 3 are done.
 ## Next
 
 - Land the patch in smt3-decomp (a session there), after sdf-decomp has a remote.
+  First replay into sdf-decomp the smt3-decomp commits since the seed that
+  touch moved files. As of origin/main on 2026-11-02: 58da2042 (sdfVu1 inline
+  asm into ps2asm.h macros), db882c2f (rotate comment signs in sdfVu0),
+  cfd84fef (movieMemcpy at file scope under NON_MATCHING). Recheck with
+  `git log b9136570..origin/main -- src/smt3/sdf <moved headers>`.
+- `sdfGrOtTable` (0x002F5F18): splat declares 0xAA0, emits 0x5A0; smt3-port
+  lost an interior alias at +0x600 to it. Size is being settled in
+  smt3-port; the symbol stays in smt3-decomp's config, but the C that
+  declares it is now here.
 - Stage 4, DDS re-split: `twins.py contig -v` lists each flagged unit's DDS
   functions without an SMT3 twin, the candidates for the DDS-only code.
 - Stage 5 can take its list from `twins.py`'s `Game.twin()`; no subcommand
