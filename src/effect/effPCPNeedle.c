@@ -2,6 +2,24 @@
 #include "effPCPData.h"
 #include "ps2asm.h"
 
+/* DDS's names for the same objects. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_0031F460 effResourceDefaultTrianglePoints
+#define D_0031F520 effResourceDefaultTriangleColors
+#define D_0031F550 effResourceDrawSurfaces
+#define D_0056AD88 effResourceDrawParams
+#define aViewEye sdfViewTargetVector
+#define dds3EffectBase effDefaultRandomState
+#define effBTLModelGetSphereCenter btlUnitGetMuzzlePosVU
+#define effBTLSkillCheckRun effBTLFieldColorUsesActorSelectors
+#define effBTLSkillGetInvokeFormation effBTLFieldColorGetOriginalSelector
+#endif
+#if defined(SDF_DDS1)
+#define D_0031F450 D_00354C00
+#elif defined(SDF_DDS2)
+#define D_0031F450 D_003B1530
+#endif
+
 
 /* One needle instance: position plus the colour the draw loop stamps. */
 typedef struct dds3NeedleModelPart_tag
@@ -553,13 +571,17 @@ void dds3NeedleModelVNCListCreate(dds3NeedleModel_tag *hNModel, u32 split, u32 r
         normal++;
         position++;
     }
+#ifdef SDF_SMT3
     printf("dds3NeedleModelVNCListCreate[%p] ****\n", hNModel->hVNMem);
+#endif
 }
 
 void dds3NeedleModelVNCListDelete(dds3NeedleModel_tag *hNModel)
 {
     if (hNModel->hVNMem != NULL) {
+#ifdef SDF_SMT3
         printf("dds3NeedleModelVNCListDelete[%p] ****\n", hNModel->hVNMem);
+#endif
         sdfMemFreeDirect(hNModel->hVNMem);
     }
 }
