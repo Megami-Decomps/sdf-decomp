@@ -68,9 +68,19 @@ extern void *memcpy(void *, const void *, unsigned int);
 
 #include "sdk_libmrpc.h"
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_0058F310 sdfDevRpcClient
+#endif
+
 extern sifRpcClientContextView_t D_0058F310;
 
 extern s8 sdfPrintIopFlag;
+
+#if defined(SDF_DDS1)
+#define D_00551908 D_003BD3D0
+#elif defined(SDF_DDS2)
+#define D_00551908 D_00438AC0
+#endif
 
 extern char D_00551908[];
 
@@ -156,6 +166,24 @@ extern s32 sdfGetRunTimeCount(s32 aBaseTime);
 
 extern s32 sceSifMBindRpc(sifRpcClientDataPrefix_t *client, s32 number, s32 mode);
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* DDS retries the bind after a failure instead of printing and returning. */
+void sdfPrintIopInit(void)
+{
+    s32 startTicks;
+
+    _StartThread(sdfCreateThreadWithStack(sdfPrintRpcThread, 0x1000, 0x4C), 0);
+    while (sceSifMBindRpc(&D_0058F310.client, 0x646E7270, 0) >= 0) {
+        if (D_0058F310.client.server != NULL) {
+            sdfPrintIopFlag = 1;
+            break;
+        }
+        startTicks = sdfGetRunTimeCountBase();
+        while (sdfGetRunTimeCount(startTicks) < 4) {
+        }
+    }
+}
+#else
 void sdfPrintIopInit(void)
 {
     s32 threadId;
@@ -177,6 +205,7 @@ void sdfPrintIopInit(void)
     }
     sdfPrintIopFlag = 1;
 }
+#endif
 
 /* Print text through the bound IOP dev client, or locally when it is unbound. */
 void sdfPuts(const char *str) {
@@ -204,6 +233,7 @@ s32 sdfPrintf(const char *str, ...) {
     sdfPuts(buffer);
     return length;
 }
+#ifdef SDF_SMT3
 INCLUDE_RODATA(const s32, "sdf/sdfPrint", D_005495C8);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfPrintIopFlag);
@@ -393,4 +423,12 @@ INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551B30);
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551B38);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551B40);
+#else
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfPrintIopFlag);
 
+#ifdef SDF_DDS1
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_003BD3D0);
+#else
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00438AC0);
+#endif
+#endif
