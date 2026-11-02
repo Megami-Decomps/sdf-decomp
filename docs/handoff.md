@@ -29,9 +29,27 @@
     address; 111 of the 171 have a same-named twin too (small wrappers hash
     alike). 59 is the count with no same-named DDS1 twin.
 
-## In progress
+## Current state (2026-11-02, end of session)
 
-Nothing. Stages 1 to 3 are done.
+- Stages 4 to 6: `docs/handoff-dds.md` (re-split, renames) and
+  `docs/handoff-stage6.md` (shared units, traps, owed names). 39 units are
+  shared by all three games: 38 `sdf/` units plus `mc/mcManager`. dds-decomp
+  branch `sdf-shared` in the worktree `/home/wsl/projects/dds-decomp-sdf`, 81
+  commits on origin/main, which had not moved at the last fetch. All three
+  games byte-identical from clean builds of committed state.
+- smt3-decomp origin/main has no commits touching shared files since 0be37933,
+  the base of the current consume patch.
+- Nothing is pushed. Waiting on the user:
+  1. The GitHub home for sdf-decomp (suggested Megami-Decomps/sdf-decomp).
+     Then: push, set dds-decomp's `.gitmodules` URL to `../sdf-decomp`, bump
+     the smt3-decomp patch's pin, land both.
+  2. The seven units stage 4 did not split: sdfSystem, sdfChip, sdfMemory,
+     sdfIop, sdfGraph (DDS `devbuild.json` pins those objects; rewrite it,
+     as was done for mcManager) and the rest of sdfVu1 and sdfDev9 (DDS keeps
+     hand-written asm as `hand/` segments; fold them into the C units as SMT3
+     does, or keep the segments).
+- Then stage 8 continues with `model/`, `file/`, `script/`, `effect/`.
+  `mc/slMain` is game code and stays per game.
 
 ## Next
 
