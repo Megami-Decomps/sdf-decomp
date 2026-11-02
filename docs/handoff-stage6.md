@@ -49,6 +49,15 @@
   ignores INCLUDE_SDATA lines, which the sdata pass places next). DDS's two
   also follow object-like `#define ALIAS name` lines, so a function naming
   `D_00551870` counts as naming `sdfPacketBuffers`.
+- Data names (dds-decomp ac466b040): DDS1 `D_00398938`/DDS2 `D_0040BAE8` to
+  `sdfDefaultRandCB`, DDS1 `D_003BD480`/DDS2 `D_00438B70` to `sdfCdClock`.
+  `names.py apply` needs a symbol_addrs row, so a splat-only label first got a
+  bare `D_X = 0xX;` row above `// BEGIN shared`, then `names.py apply <v>`
+  by address and `rename_refs.py` with the D_ names. check_unit on the ten
+  units that name them: unchanged (code_002E7C20 and its DDS2 twin keep their
+  earlier `.lit4` DATA line).
+- dds-decomp e3fc94014: the placement tools also resolve a C definition's name
+  through the unit's `#define` (sdfRand defines `D_005519B8` for DDS).
 
 ## Units moved
 
@@ -61,6 +70,7 @@ both games, all three games byte-identical.
 | sdf2D | 80fdb48 | 8605346ab | same |
 | sdfMath | dea183c | 9eba07f73 | same, and `#define D_0052D944 sdfNormalizedAsinSamples` for DDS |
 | sdfPrim | 0ff30f4 | 184d8dae5 | same, and `D_00529388` defined to DDS1 `D_003980E0`, DDS2 `D_0040B290` |
+| sdfRand | e38c6d7 | 65a71918c | unused `ps2asm.h` dropped; `D_00529BB0`, `D_005519B8` defined per game to DDS placeholders, and DDS defines the clock cache (`sdfClock_t D_005519B8 = {0};`) in the unit |
 | sdfPacketBuff, sdfDelayedResrc | 6e1669c | 546ff6a5a | `D_00551870` defined to `sdfPacketBuffers`, `D_005520A8` to `sdfPendingQueueSlots`; DDS's INCLUDE_SDATA lines at the end under `#if defined(SDF_DDS1) \|\| defined(SDF_DDS2)` |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
@@ -84,7 +94,6 @@ check_unit in both games), with what blocks it:
 |---|---|---|
 | sdfGsMemory | 14 match, sdfGsErrorHandler UNDEF | SMT3 INCLUDE_ASM name; DDS needs the rename or a name for it |
 | sdfGsMemIO | 2 DIFF (D_00529388), NOASM, UNDEF | SMT3 INCLUDE_SDATA of `D_00551870` belongs to SMT3's split |
-| sdfRand | 2 DIFF, 4 UNDEF | `sdfDefaultRandCB`, `sdfCdClock` (SMT3 names, DDS D_), `D_00529BB0`, `D_005519B8`; DDS defines the clock cache in C |
 | sdfMisc, sdfHdd, sdfDevFile, sdfPacDecode, sdfMat, sdf_PadManager | MISSING/ORDER | DDS-only functions between or inside the run need `#ifdef` bodies |
 | sdfDefaultMain, sdfImageSet, sdfTex, sdfDraw, sdfModel, sdfMotion, sdfVu0, sdfCoreDraw, sdf3D, sdf3DPrim, sdfBillBoard, sdfDevCons, sdfPrint, sdfCd, sdfFile, sdfFileIO, sdfQuat, sdfSound, sdfIpu, sdfMovie, sdf_Decomp, sdfTmx, sdfSortOt | does not compile for DDS | missing `ps2asm.h` (14 use its macros), `sif_rpc.h`, `sdk_libmrpc.h`, `libdma.h`, `pipe.h`; SMT3 local SDK prototypes (`SleepThread`, `sceGetstat`) conflict with DDS `sdk_libkernl.h`; SMT3 `common.h` macros (`FAKEMATCH_*`, `PS2_SYMBOL_AT`, `QUAD_ZERO`) DDS's `common.h` lacks |
 
@@ -97,11 +106,9 @@ field offset, so check the base (sdfPrim's first guess was the object at +8).
 
 ## Next
 
-1. Data names: where SMT3 has a real name and DDS a placeholder (`sdfCdClock`,
-   `sdfDefaultRandCB`), rename in DDS (names.py, rename_refs) rather than
-   define. Where SMT3 has a placeholder and DDS a name (`D_0052D944`), the
-   name is owed to smt3-decomp (list it in its upstream file); the `#define`
-   goes when SMT3 takes it.
+1. Data names, per unit as it moves: where SMT3 has a real name and DDS a
+   placeholder, rename in DDS as above rather than define. Where SMT3 has a
+   placeholder and DDS a name, define it and add it to "Owed to smt3-decomp".
 2. DDS headers: a DDS `ps2asm.h` (copy of smt3-decomp's, a dds-decomp
    decision), the SDK headers above, and SMT3's local SDK prototypes guarded
    or matched to DDS's.
