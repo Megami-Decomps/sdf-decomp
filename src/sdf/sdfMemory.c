@@ -506,3 +506,8 @@ INCLUDE_SDATA(const s32, "sdf/sdfMemory", sdfGrDrawFirstFlag);
 
 INCLUDE_SDATA(const s32, "sdf/sdfMemory", sdfFrameEvenOdd);
 
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* DDS's build defines the heap root in this unit. */
+sdfMemHandleCB_tag sdfMemCB __attribute__((section(".bss"), aligned(8)));
+#endif
