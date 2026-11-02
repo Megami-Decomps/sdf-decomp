@@ -53,6 +53,10 @@ DDS re-split at SMT3's outer boundary stays.
   `INCLUDE_RODATA`, which is why DDS keeps fileManager's data in C.
 - A resplit-deleted unit can come back as a stub file from configure; `git rm`
   it with the re-split.
+- smt3-decomp's `tools/check_drift.py` scans the shared files, DDS-only code
+  included: a DDS-side type there may not reuse an SMT3 type name or leave an
+  `unk` member (the script units' global work view is `scrGlobalWork_t`,
+  0327a5c). Run all of SMT3's `tools/test_*.py`, not only `test_sources.py`.
 
 ## script/
 
