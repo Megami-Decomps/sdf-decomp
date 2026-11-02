@@ -39,6 +39,10 @@ void *sdfChipAllocDirect(s32 aSize);
 
 extern s32 EIntr(void);
 
+/* DDS names the pending slots; SMT3 has no name for them yet. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_005520A8 sdfPendingQueueSlots
+#endif
 extern s32 D_005520A8[2];
 
 extern s32 DIntr(void);
@@ -213,3 +217,6 @@ u64 sdfDelayedResrcCheck(void) {
     return pendingWork;
 }
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "sdf/sdfDelayedResrc", sdfDelayedResrcSemaId);
+#endif

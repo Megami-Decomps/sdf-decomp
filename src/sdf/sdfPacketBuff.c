@@ -19,6 +19,10 @@ u32 sdfMemLock(struct sdfMemHandle_t *aHandle);
 
 extern s32 sdfGrPacketBuffSize;
 
+/* DDS names the buffer pair; SMT3 has no name for it yet. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_00551870 sdfPacketBuffers
+#endif
 extern s32 D_00551870[2];
 
 extern s32 sdfGrPacketBuffPtr;
@@ -87,3 +91,15 @@ s32 sdfGrOpenPacketBuff(void) {
 void sdfGrClosePacketBuff(s32 aBuffPtr) {
     sdfGrPacketBuffPtr = (aBuffPtr + SDF_QWORD_ALIGNMENT_MASK) & ~SDF_QWORD_ALIGNMENT_MASK;
 }
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "sdf/sdfPacketBuff", sdfGrPacketBuffHandle);
+
+INCLUDE_SDATA(const s32, "sdf/sdfPacketBuff", sdfGrPacketBuffSize);
+
+INCLUDE_SDATA(const s32, "sdf/sdfPacketBuff", sdfPacketBuffers);
+
+INCLUDE_SDATA(const s32, "sdf/sdfPacketBuff", sdfGrPacketBuffPtr);
+
+INCLUDE_SDATA(const s32, "sdf/sdfPacketBuff", sdfGrPacketBuffLimit);
+#endif
