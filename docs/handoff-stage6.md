@@ -65,8 +65,8 @@
   on all 536 DDS units (both games, shared ones included) gave the same
   result line before and after; the four that differ did before too
   (devbuild in both games, code_002E7C20 and code_00340AC8's `.lit4` DATA).
-  `pipe.h` is not copied: only sdfSystem includes it, and it includes
-  `model.h` and `libsdf.h`.
+  `pipe.h` is not copied. sdfSystem was its only includer, and every
+  declaration it served there was unused, so sdfSystem no longer includes it.
 - Overlap, not merged: DDS's `sdf_vu0.h` defines 96 macros, 95 of them also in
   `ps2asm.h` with identical bodies; `pcp_vu0.h` defines 123, 37 shared, 34
   identical. 121 DDS1 units include one of the two. A unit including both
@@ -275,8 +275,12 @@ Every unit stage 4 split for DDS is shared. `tools/sdf_probe.py <unit>`
 probes the next one; NOASM means the unit's SMT3 INCLUDE_RODATA or
 INCLUDE_SDATA lines need `#ifdef SDF_SMT3` before the probe can count. UNDEF
 of an SMT3 real name usually means a DDS rename is owed.
-In progress: sdfSystem, sdfMemory, sdfIop, sdfGraph (re-split, see above),
-then sdfVu1 and sdfDev9 (fold the `hand/` segments).
+In progress: sdfVu1 and sdfDev9 (fold the `hand/` segments).
+
+configure checks a shared unit's INCLUDE_SDATA placement only when it
+re-splits, so a misplaced line can pass a move and fail at the next rename.
+It wants the lines after any trailing DDS-only definitions (sdfMemory's
+`sdfMemCB` block had to move above them).
 
 ## Next
 
@@ -296,8 +300,7 @@ then sdfVu1 and sdfDev9 (fold the `hand/` segments).
    commit. `sdf_probe.py` and `/tmp/s8/probe.sh` assume `sdf/`; for another
    directory append the unit to `config/sdf_shared.txt` by hand for the run.
    `sdf_rename.py` does not rewrite `tools/test_*.py`; grep them.
-3. Remaining of the seven: sdfSystem, sdfMemory, sdfIop, sdfGraph, sdfVu1,
-   sdfDev9.
+3. Remaining of the seven: sdfVu1, sdfDev9.
 4. mc/slMain stays in each game (see above).
 
 ## Owed to smt3-decomp
