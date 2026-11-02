@@ -99,7 +99,7 @@
 
 ## Units moved
 
-23 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
+24 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
 report of 11 was wrong; there were 9 before this session). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -126,6 +126,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfPrint | 43887e8 | 43397b6bb | rename to `sdfPrintIopInit` (4844a7423); DDS's body under the DDS games (it retries the bind instead of printing); `D_0058F310`, `D_00551908` defined; SMT3's INCLUDE_RODATA and INCLUDE_SDATA under `SDF_SMT3`, DDS's two per game |
 | sdfMovie | 346ea33 | c72f8d6c6 | DDS-only `sdfSetStreamFrameDrawMode`, `sdfSetGridScaledDrawBounds`, `sdfMovieQueueFrameSprite` (INCLUDE_ASM plus DDS's NON_MATCHING draft) after `movieWaitSema`; the draw-mode check in `release_movieobj2` under the DDS games; sdata lists per game |
 | sdfTmx | 1180181 | 00bf3e064 | renames `mcModuleNames`, `sdfFileRpcBuf`, `sdfFileRpcState`, `sdfFileRpcThreadId` (4651fd56b); DDS compiles the two module paths from literals, so `D_0054A360`, `D_0054A380` are defined to them; rodata lists per game |
+| sdfDevFile | 8142c1f | 6d336f307 | renames `sdfDevLoadTex`, `sdfDevLoadTexList`, `sdfDevLoadModel`, `sdfDevLoadMotion` (7d13153dc); the loaders' `printf` and its rodata under `SDF_SMT3` |
 | sdfHdd | 5f78ff4 | b106dcaa6 | renames `sdfHddPowerOffTh`, `sdfHddInit` (ec6715055) and `sdfDev9Ready` (2b5ac2a98); DDS's two bodies under the DDS games (no printf, `sdfHddInit` takes the mount path); sdata lists per game |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
@@ -163,7 +164,6 @@ temporarily, check_unit in both games; DDS1 and DDS2 agree unless noted):
 | sdfTex | 29 match, 17 differ | MISSING DDS function names (`sdfTexDestroy`, `sdfTexReleaseReference...`) |
 | sdf3D | 7 match, 17 differ | UNDEF `vu1Tex0Slot0..2` and more names |
 | sdfMisc | 1 match, 6 differ | ORDER, MISSING DDS-only functions (`sdfDevCreateBufferedRequest`, `sdfDevResizeBufferedRequest`) |
-| sdfDevFile | 5 match, 10 differ | MISSING `sndLoadNamedOffsetResourceList`, UNDEF `D_0054A2D8`, NOASM |
 | sdfPacDecode | 28 match, 10 differ | ORDER, MISSING DDS-only `sdfPacResetOutputToAllocationEntry` |
 | sdfMat | 35 match, 22 differ | UNDEF sdfTex function names (`sdfTexDup`, `sdfTexFreeDelayed`, `sdfTexSetClutColor`) |
 | sdf_PadManager | 6 match, 9 (DDS2 10) differ | `D_005298E8` is DDS `sdfPadButtonPressure`, `D_0058F0C0` DDS `sdfPadPortBuffers` (owed to SMT3); UNDEF `sdfPadManagerMode`, `D_005298A0`, `D_005518D8`, `D_005518E0`; MISSING `sdfPadBuildButtonStates` |
