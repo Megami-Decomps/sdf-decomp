@@ -99,7 +99,7 @@
 
 ## Units moved
 
-37 units, as listed in dds-decomp's `config/sdf_shared.txt`. Each has DDS's
+38 units, as listed in dds-decomp's `config/sdf_shared.txt`. Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
 | unit | sdf-decomp | dds-decomp | what the shared file needed |
@@ -139,6 +139,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfModel | 7fc37d8 | 79856b85a | `model.h`: DDS's root node has `u8 lod` at 0x98 (size 0x9C) and flag bits 0x20, 0x40 that force the material refresh; `sdfModelLinkOt` and `sdfModelTempPacketLinkOt` call DDS's `sdfResourceListApplyEntryChanges` or the forced `sdfMatListUpdatePacket`, and `sdfModelLinkOt` skips packets of another LOD; DDS-only `sdfGetUniqueChunkValue`, `sdfGetLodChunkValue`; `func_002B2628` and `func_002BFF98` aliased, `D_00529428` per game; SMT3's sdata under `SDF_SMT3`, DDS's under the DDS games. `sdfModelLinkDrawPacket` is now C in all three games (DDS's body in SMT3's types, matching SMT3 too); the other three INCLUDE_ASM functions are INCLUDE_ASM in DDS as well |
 | sdfMotion | baed943 | 7604372a0 | 16 node and material tables renamed to SMT3's names (66c92438b); `D_00529448`, `D_00529470` per game, `D_00529600` to DDS `sdfMotionCommandHandlers`, `sdfMatSetRefMap` aliased as in sdfMat |
 | sdfCd | 1b77d06 | f3eab1061 | renames `sdfCdWaitTrayClose`, `sdfCdStRead`, `sdfCdImageSearchFileDirect`, `sdfCdImageSearchFileDirect_ent` (3ef826784); DDS's sdfCd rodata started 0x18 late, so its first string sat in sdf_PadManager's: the yaml now starts it where SMT3's does and sdf_PadManager drops that INCLUDE_RODATA; SMT3's printfs under `SDF_SMT3`; DDS-only `sdfDevSignalPendingSemaphore`, `sdfDevSeekDiscWithRequestGate`; DDS bodies of `sdfCdImageLoadStart` (a path whose second letter is `v` takes the request gate) and `sdfCdInit` (second semaphore); `sdfCdImageSearchFileDirect` retries where SMT3 gives up; `FlushCache` in `sdfCdImageLoadDir` in DDS1 only; three placeholders defined to DDS names, `D_00551910` per game; DDS's sdata lists per game |
+| sdfSound | d488518 | 5004cf1f7 | renames of eight functions (`sdfSndIopAlloc`, `sdfSndCmdTrans`, `sdfSndInitCmdIF`, `sdfSndLoadIRXModules`, `sdfSndVoiceMapInit`, `sdfSndSeqMapInit`, `sdfSndInit`, `p2sdLoadCheckMidi`) and nine data symbols (ebf4a3c0e); DDS keeps 13 MIDI bank slots to SMT3's 7, so `sndMergedWork_t` takes `SND_SLOT_COUNT` (size 0x5A0 or 0x8D0, checked) and the bank check, `p2sd_2C1F70` and the IOP transfer size follow it; DDS bodies of `sdfSndIopAlloc`, `sdfSndCmdTrans`, `sdfSndInitCmdIF`, `sdfSndVoiceMapInit` (voice IOP buffer 0x21600 in DDS1, 0x3B600 in DDS2), `sdfSndInit`, and of `sdf_2C2618`, `sdf_2C27F8` (13 tables); DDS loads `SDRDRV.IRX` too; SMT3's printfs and `p2sdFadeOutBgm` under `SDF_SMT3`; SMT3's one `sdfSndMakeFilename` is DDS's `mnuBuildSoundResourcePath` for MIDI and `mnuBuildVoiceResourcePath` in the file RPC handler; 20 SMT3 placeholder functions and 8 data placeholders defined to DDS names, 24 per game; DDS's rodata and sdata lists per game |
 | sdf3D | 6858c80 | 7d36a45a7 | renames `sdf3DMakeScreenParam` (was `sdfCameraBuildProjection`), `sdf3DSpecularTex`, `vu1Tex0Slot0..2` (d4725331e); six placeholders per game; DDS's screen adjustment at the end of `sdf3DMakeScreenParam` (five sdata placeholders, aliased in the unit as `sdf3DScreenAdjust*`); DDS's sdata lists per game |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
@@ -183,22 +184,17 @@ configure, ninja), `smt3.sh`, `sweep.sh`, `stage_renames.sh`; and
 
 ## Units not moved
 
-Probe at the final state (`tools/sdf_probe.py`); DDS1 and DDS2 agree:
-
-| unit | probe | first blockers |
-|---|---|---|
-| sdfSound | NOASM (SMT3's rodata), 29 match | MISSING `sndReserveIopWorkMemory`, `sndTryDispatchQueuedCommand`, `sndStartIopCommandAndRpcWorkers`; UNDEF `sdfSndSendCmd_cmd_id`, `sdfSndMakeFilename`, `sdfFileRpcResult` |
-
-NOASM means the unit's SMT3 INCLUDE_RODATA or INCLUDE_SDATA lines need
-`#ifdef SDF_SMT3` before the probe can count; the count is then from the
-SKIP_ASM compile. UNDEF of an SMT3 real name usually means a DDS rename is
-owed; UNDEF of a function name means stage 5 withheld or never paired it.
+Every unit stage 4 split for DDS is shared. `tools/sdf_probe.py <unit>`
+probes the next one; NOASM means the unit's SMT3 INCLUDE_RODATA or
+INCLUDE_SDATA lines need `#ifdef SDF_SMT3` before the probe can count. UNDEF
+of an SMT3 real name usually means a DDS rename is owed.
 Not attempted: sdfSystem, sdfChip, sdfMemory, sdfIop, sdfGraph, sdfVu1,
 sdfDev9 (stage 4 did not split them for DDS).
 
 ## Next
 
-1. sdfSound, then mc/mcManager (docs/plan.md stage 8).
+1. mc/mcManager (docs/plan.md stage 8). Every sdf unit stage 4 split is
+   now shared.
 2. Per unit: `sdf_resolve.py` and `sdf_probe.py`, rename DDS to SMT3's real
    names with `sdf_rename.py` (then `configure.py` and `ninja` before the
    probe sees renamed asm), check_unit code_001DEFE0 (DDS1) and
@@ -247,6 +243,9 @@ under the DDS games; the define goes when smt3-decomp takes the name.
 | `D_0055210C` | `sdfDiscReadPosition` | sdfCd |
 | `D_00552110` | `sdfDiscReadMode` | sdfCd |
 | `D_0058F7C0` | `sdfDevReadSectorBuffer` | sdfCd |
+| `p2sd_2C1788`, `p2sd_2C17D8`, `p2sd_2C1D78`, `p2sd_2C1E10`, `p2sd_2C1E40`, `func_002C1E70`, `p2sd_2C1EA0`, `p2sd_2C1EF8`, `p2sd_2C1F10`, `p2sd_2C1F28`, `p2sd_2C1F50`, `p2sd_2C1F60`, `p2sd_2C1F70`, `p2sd_2C1F90`, `p2sd_2C21A8`, `p2sd_2C21D8`, `p2sd_2C2280`, `p2sd_2C22B0`, `sdf_2C2618`, `sdf_2C27F8` | DDS's `snd*` and `sdfSound*` names, listed at the top of the unit | sdfSound |
+| `D_0054A088`, `D_0054A100`, `D_00551B40` | `sdfGsMemoryDumpHeader`, `sdfGsMemoryDumpRowFormat`, `sdfGsMemoryTypeFormat` | sdfSound |
+| `D_005907C0`, `D_005907F0`, `D_00590840`, `D_00591840`, `D_00592880` | `sndCommandThreadParameters`, `sndCachedListenerState`, `sndCommandRing`, `sndCommandThreadStack`, `sndRpcServerThreadStack` | sdfSound |
 | `release_movieobj2` | `sdfMovieDrawFrame` | sdfMovie (IDB name with a one-argument `dds3MovieTable_t` prototype; the function takes the movie and an OT) |
 
 Also owed: SMT3's units declare SDK functions locally with types that differ
