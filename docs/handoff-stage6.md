@@ -99,7 +99,7 @@
 
 ## Units moved
 
-27 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
+28 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
 report of 11 was wrong; there were 9 before this session). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -130,6 +130,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfFileIO | 3cb189b | f59f53853 | renames `sdfFileCmdFreeList`, `sdfFileCmdCount`, `sdfFileCmdFreeCount`, `sdfFileCmdDefaultDevice`, `sdfCdImageLoadStart` (d958019ac); eight placeholders per game; DDS's `/movie2/` check in `sdfFileCmdAnalyzeFileName`; DDS's sdata lists per game |
 | sdfFile | c17f8b6 | a47f158b0 | renames `sdfFileDefaultSrcType`, `sdfFileCmdSetDefaultDevice` (e4de1cb30; static in the shared file, global in DDS's old one, same code); `D_00551928`, `D_00551938` defined to DDS `sdfDiscPathPrefix`, `sdfPfsPathPrefix`, three placeholders per game; DDS's `sdfFileHostRootPath` definition (.data) and sdata lists under the DDS games |
 | sdf_PadManager | 1ad12b5 | 8a04b1ab5 | renames `sdfPadManagerMode`, `sdfPadWork`, DDS2 `sdfPadPortSlotPairs` and `sdfPadButtonMasks` (30d385c2f); four SMT3 placeholders defined to DDS names, `D_005518D8` per game; DDS's rodata and sdata lists per game |
+| sdfDefaultMain | e5cec6e | dc059deed | renames `sdfCdInit`, `sdfCdTrayMode`, `SdfIopInit` (0797fed4c); DDS's own `main` body under the DDS games (pad drivers before the disc image, DDS1 boots `IOPRP255`, packet buffer per game) with string literals; `D_00551B88`, `dds3KernelMain` defined to DDS's `kwlnMainLoopThreadNode`, `kwlnRunMainLoop`; c_aliases reads `FAKEMATCH_ASM_NAME` (e9972a1ae) |
 | sdfHdd | 5f78ff4 | b106dcaa6 | renames `sdfHddPowerOffTh`, `sdfHddInit` (ec6715055) and `sdfDev9Ready` (2b5ac2a98); DDS's two bodies under the DDS games (no printf, `sdfHddInit` takes the mount path); sdata lists per game |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
@@ -169,7 +170,6 @@ temporarily, check_unit in both games; DDS1 and DDS2 agree unless noted):
 | sdfMisc | 1 match, 6 differ | ORDER, MISSING DDS-only functions (`sdfDevCreateBufferedRequest`, `sdfDevResizeBufferedRequest`) |
 | sdfPacDecode | 28 match, 10 differ | ORDER, MISSING DDS-only `sdfPacResetOutputToAllocationEntry` |
 | sdfMat | 35 match, 22 differ | UNDEF sdfTex function names (`sdfTexDup`, `sdfTexFreeDelayed`, `sdfTexSetClutColor`) |
-| sdfDefaultMain | 0 match, 12 differ | UNDEF `sdfPadManagerMode`, `SdfIopInit`, `sdfCdTrayMode` |
 | sdfModel | 46 match, 17 differ | UNDEF `ToMatrix`, `MultMatrixRev`, `sdfItemArrayNew` |
 | sdfMotion | 85 match, 26 differ | UNDEF `ToMatrix`, `sdfMotModelVisibleTable`, `sdfMotModelLinerScaleTable` |
 | sdfCd | 6 (DDS2 7) match, 31 differ | UNDEF `sdfCdTrayMode`, `sdfCdImageSearchFileDirect_ent`, `sdfCdImageFileName` |
