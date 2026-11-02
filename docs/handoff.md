@@ -34,9 +34,10 @@
 - Stages 4 to 6: `docs/handoff-dds.md` (re-split, renames) and
   `docs/handoff-stage6.md` (shared units, traps, owed names). Stage 8:
   `docs/handoff-stage8.md`.
-- 52 units are shared by all three games: SMT3's 45 `sdf/` units,
+- 58 units are shared by all three games: SMT3's 45 `sdf/` units,
   `mc/mcManager`, `model/mdlManager`, `file/fileManager`, the three
-  `script/` engine units and `effect/effPCPNeedle`, as dds-decomp's
+  `script/` engine units, and `effect/` effPCPNeedle, polyManager, effPart,
+  effPCPFlash, effPCPScatter, parManager and effMath, as dds-decomp's
   `config/sdf_shared.txt` lists. `model/mdlEffect` is here for SMT3 only.
   dds-decomp branch `sdf-shared` in the worktree
   `/home/wsl/projects/dds-decomp-sdf`. All three games byte-identical from
@@ -52,8 +53,8 @@
   (suggested Megami-Decomps/sdf-decomp). Then: push, set dds-decomp's
   `.gitmodules` URL to `../sdf-decomp`, bump the smt3-decomp patch's pin,
   land both.
-- Next: the rest of `effect/` by the plan in `docs/handoff-stage8.md`, then
-  mdlEffect. `mc/slMain` and `script/scrParameterCommand` are game code and
+- Next: effPacket, effSpline, effDebug, effEvent, effBlur_Filter by the plan
+  in `docs/handoff-stage8.md`, then mdlEffect. `mc/slMain` and `script/scrParameterCommand` are game code and
   stay per game.
 
 ## Next
