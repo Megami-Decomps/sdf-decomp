@@ -139,6 +139,26 @@ extern void EIntr(void);
 
 extern void sdfChipFreeDirect(void *aPtr);
 
+#if defined(SDF_DDS1)
+#define D_00551948 D_003BD418
+#define D_00551954 D_003BD424
+#define D_00551958 D_003BD428
+#define D_00551968 D_003BD438
+#define D_00551970 D_003BD440
+#define D_00551978 D_003BD448
+#define D_00551980 D_003BD450
+#define D_00551988 D_003BD458
+#elif defined(SDF_DDS2)
+#define D_00551948 D_00438B08
+#define D_00551954 D_00438B14
+#define D_00551958 D_00438B18
+#define D_00551968 D_00438B28
+#define D_00551970 D_00438B30
+#define D_00551978 D_00438B38
+#define D_00551980 D_00438B40
+#define D_00551988 D_00438B48
+#endif
+
 extern sdfFileCmdHandle_t *D_00551948;
 
 extern sdfFileCmdHandle_t *sdfFileCmdFreeList;
@@ -705,6 +725,11 @@ s32 sdfFileCmdAnalyzeFileName(const char *aFileName, char **aRealNamePtr)
             if (memcmp(suffix, D_00551980, 7) == 0) {
                 device = 3;
                 prefixLength = 0;
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+            } else if (memcmp(suffix, "/movie2/", 7) == 0) {
+                device = 3;
+                prefixLength = 0;
+#endif
             } else {
                 device = 0;
                 prefixLength = 7;
@@ -950,3 +975,57 @@ void sdfFileCmdStartThread(s32 deviceType) {
         _StartThread(thread, worker);
     }
 }
+
+#if defined(SDF_DDS1)
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", sdfFileCmdCount);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_003BD424);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_003BD428);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", sdfFileCmdFreeCount);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", sdfFileCmdDefaultDevice);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", sdfFileCmdThreadPrioCheckCounter);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", sdfFileCmdThreadPrio);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", sdfFileCmdDefaultCreateMode);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_003BD438);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_003BD440);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_003BD448);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_003BD450);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_003BD458);
+#elif defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", sdfFileCmdCount);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_00438B14);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_00438B18);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", sdfFileCmdFreeCount);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", sdfFileCmdDefaultDevice);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", sdfFileCmdThreadPrioCheckCounter);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", sdfFileCmdThreadPrio);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", sdfFileCmdDefaultCreateMode);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_00438B28);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_00438B30);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_00438B38);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_00438B40);
+
+INCLUDE_SDATA(const s32, "sdf/sdfFileIO", D_00438B48);
+#endif
