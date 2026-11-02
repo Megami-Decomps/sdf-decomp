@@ -2,6 +2,25 @@
 #include "draw3d.h"
 #include "ps2asm.h"
 
+/* DDS's names for the same objects. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_002F5C20 kwlnHeldTextureTargetVector
+#define D_002F5C30 kwlnHeldTextureEyeVector
+#endif
+#if defined(SDF_DDS1)
+#define D_003176C0 D_0034E6A0
+#define dds3CrossfadeEndMessage D_003A0D70
+#elif defined(SDF_DDS2)
+#define D_003176C0 D_003AAFD0
+#define dds3CrossfadeEndMessage D_00414430
+#endif
+
+/* DDS keeps the end message as data: its rodata block has 8 more bytes than
+ * the literal emits. */
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+extern const char dds3CrossfadeEndMessage[];
+#endif
+
 /* The native end message is padded to a 0x20-byte rodata block. */
 extern s8 dds3CrossfadeRunFlag;
 extern u32 dds3CrossfadeFrame;
@@ -40,6 +59,85 @@ sdfGrPacketHeader_t *effPkt2DAllocTriStrip(s32 num, s32 prim) {
     sdf2DMakePrimPacketHeader(packet, prim | 0x54, 9, 0x525252521, num);
     return packet;
 }
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+void effWriteGouraudTexturedQuadPacket(u64 *packet, s32 primitive,
+                  s32 x0, s32 y0, f32 s0, f32 t0, s32 color0,
+                  s32 x1, s32 y1, f32 s1, f32 t1, s32 color1,
+                  s32 x2, s32 y2, f32 s2, f32 t2, s32 color2,
+                  s32 x3, s32 y3, f32 s3, f32 t3, s32 color3, s32 depth) {
+    u64 depthHigh = (u64)depth << 32;
+
+    packet[0] = 0xE400000000008001ULL;
+    packet[1] = 0xF5125125125120ULL;
+    packet[2] = (u32)(primitive | 0x1C);
+    ((f32 *)packet)[6] = s0;
+    ((f32 *)packet)[7] = t0;
+    packet[4] = (u32)color0 | ((u64)0xFE00 << 46);
+    packet[5] = (u32)((x0 & 0xFFFF) | (y0 << 16)) | depthHigh;
+    ((f32 *)packet)[12] = s1;
+    ((f32 *)packet)[13] = t1;
+    packet[7] = (u32)color1 | ((u64)0xFE00 << 46);
+    packet[8] = (u32)((x1 & 0xFFFF) | (y1 << 16)) | depthHigh;
+    ((f32 *)packet)[18] = s2;
+    ((f32 *)packet)[19] = t2;
+    packet[10] = (u32)color2 | ((u64)0xFE00 << 46);
+    packet[11] = (u32)((x2 & 0xFFFF) | (y2 << 16)) | depthHigh;
+    ((f32 *)packet)[24] = s3;
+    ((f32 *)packet)[25] = t3;
+    packet[13] = (u32)color3 | ((u64)0xFE00 << 46);
+    packet[14] = (u32)((x3 & 0xFFFF) | (y3 << 16)) | depthHigh;
+}
+
+void effAppendGouraudTexturedQuadPacket(sdfDrawTag_t *chain, s32 primitive,
+                 s32 x0, s32 y0, f32 s0, f32 t0, s32 color0,
+                 s32 x1, s32 y1, f32 s1, f32 t1, s32 color1,
+                 s32 x2, s32 y2, f32 s2, f32 t2, s32 color2,
+                 s32 x3, s32 y3, f32 s3, f32 t3, s32 color3, s32 depth) {
+    u64 *packet = (u64 *)sdfGrAllocPacketBuff(0x90);
+
+    packet[0] = 0x20000008;
+    packet[1] = 0x5000000810000000ULL;
+    effWriteGouraudTexturedQuadPacket(packet + 2, primitive, x0, y0, s0, t0, color0,
+                 x1, y1, s1, t1, color1, x2, y2, s2, t2, color2,
+                 x3, y3, s3, t3, color3, depth);
+    sdfDrawTagLink(chain, (u32)packet);
+}
+
+void billWriteFloatTextureTrianglePacket(u64 *packet, s32 color, s32 primitive,
+                  s32 x0, s32 y0, f32 uFirst, f32 vFirst,
+                  s32 x1, s32 y1, f32 uSecond, f32 vSecond,
+                  s32 x2, s32 y2, f32 uThird, f32 vThird, s32 depth) {
+    u64 depthHigh = (u64)depth << 32;
+
+    packet[0] = 0x8400000000008001ULL;
+    packet[1] = 0x52525210;
+    packet[2] = (u32)(primitive | 0x14);
+    packet[3] = (u32)color | ((u64)0xFE00 << 46);
+    ((f32 *)packet)[8] = uFirst;
+    ((f32 *)packet)[9] = vFirst;
+    packet[5] = (u32)((x0 & 0xFFFF) | (y0 << 16)) | depthHigh;
+    ((f32 *)packet)[12] = uSecond;
+    ((f32 *)packet)[13] = vSecond;
+    packet[7] = (u32)((x1 & 0xFFFF) | (y1 << 16)) | depthHigh;
+    ((f32 *)packet)[16] = uThird;
+    ((f32 *)packet)[17] = vThird;
+    packet[9] = (u32)((x2 & 0xFFFF) | (y2 << 16)) | depthHigh;
+}
+
+void effAppendTexturedTrianglePacket(sdfDrawTag_t *chain, s32 color, s32 primitive,
+                 s32 x0, s32 y0, f32 u0, f32 v0,
+                 s32 x1, s32 y1, f32 u1, f32 v1,
+                 s32 x2, s32 y2, f32 u2, f32 v2, s32 depth) {
+    u64 *packet = (u64 *)sdfGrAllocPacketBuff(0x60);
+
+    packet[0] = 0x20000005;
+    packet[1] = 0x5000000510000000ULL;
+    billWriteFloatTextureTrianglePacket(packet + 2, color, primitive, x0, y0, u0, v0,
+                 x1, y1, u1, v1, x2, y2, u2, v2, depth);
+    sdfDrawTagLink(chain, (u32)packet);
+}
+#endif
 
 u64 *effPkt2DAllocF4(u32 prim) {
     u64 *packet = (u64 *)sdfGrAllocPacketBuff(0x80);
@@ -181,11 +279,18 @@ void *effPkt3DPrimMakePoly(sdf3DPrimPolyParm_t *aParm) {
     return packet;
 }
 
-/* The render draw env's clear sprite, 0x1800 into each 0x1BE0 draw bank: both
- * XYZ corners go to the GS coordinate bias, which clears nothing. */
+/* The render draw env's clear sprite, 0x1800 into each 0x1BE0 draw bank (DDS:
+ * 0x1B60 into 0x1F40): both XYZ corners go to the GS coordinate bias, which
+ * clears nothing. */
+#ifdef SDF_SMT3
+#define EFF_PACKET_DRAW_BANK_HEAD 0x1300
+#else
+#define EFF_PACKET_DRAW_BANK_HEAD 0x1660
+#endif
+
 typedef struct
 {
-    u8 unk0000[0x1300];
+    u8 unk0000[EFF_PACKET_DRAW_BANK_HEAD];
     u8 frameMaskSource[0x500];
     u64 clearXyzA;
     u64 unk1808;
@@ -246,6 +351,12 @@ void dds3CrossfadeStart(s32 frame)
     dds3CrossfadeFrame = 0;
     printf("dds3CrossfadeStart\n");
 }
+
+#ifdef SDF_SMT3
+#define EFF_PACKET_CROSSFADE_OT 70
+#else
+#define EFF_PACKET_CROSSFADE_OT 82
+#endif
 
 void dds3CrossfadeRun(void)
 {
@@ -349,7 +460,7 @@ void dds3CrossfadeRun(void)
     vertex->corner[1].flag = 0;
     sdfDrawTagLink(list, (u32)sprite);
     {
-        sdfGrOt_t *ot = &sdfGrOtTable[70];
+        sdfGrOt_t *ot = &sdfGrOtTable[EFF_PACKET_CROSSFADE_OT];
 
         ot->regFunc(ot, list);
     }
@@ -359,13 +470,25 @@ void dds3CrossfadeEnd(void) {
     dds3RenderTextureOFF();
     dds3FreeRenderTexture();
     dds3CrossfadeRunFlag = 0;
+#ifdef SDF_SMT3
     printf("dds3CrossfadeEnd\n");
+#else
+    printf(dds3CrossfadeEndMessage);
+#endif
 }
+
+#if defined(SDF_DDS1)
+INCLUDE_RODATA(const s32, "effect/effPacket", D_003A0D70);
+#elif defined(SDF_DDS2)
+INCLUDE_RODATA(const s32, "effect/effPacket", D_00414430);
+#endif
+
 INCLUDE_SDATA(const s32, "effect/effPacket", dds3CrossfadeRunFlag);
 
+#ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "effect/effPacket", D_0054F0C1);
+#endif
 
 INCLUDE_SDATA(const s32, "effect/effPacket", dds3CrossfadeFrame);
 
 INCLUDE_SDATA(const s32, "effect/effPacket", dds3CrossfadeFrameMax);
-
