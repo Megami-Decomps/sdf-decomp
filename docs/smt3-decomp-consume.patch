@@ -1,4 +1,4 @@
-From d9a0acc47f5c8e1e6a79b5098531000fca9f2315 Mon Sep 17 00:00:00 2001
+From 51b893d7361112d5ed7b42d06c3a8c5ee0e9f581 Mon Sep 17 00:00:00 2001
 From: tge-was-taken <tge-was-taken@outlook.com>
 Date: Mon, 2 Nov 2026 04:16:42 +0100
 Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
@@ -19,14 +19,14 @@ Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
  tools/include_sdata.py         |  30 +++++--
  tools/production_report.py     |  11 +--
  tools/progress.py              |   7 +-
- tools/sources.py               | 159 +++++++++++++++++++++++++++++++++
+ tools/sources.py               | 160 +++++++++++++++++++++++++++++++++
  tools/splat_split.py           |  39 ++++++++
  tools/test_check_inline_asm.py |   4 +-
  tools/test_configure.py        |   6 +-
  tools/test_sources.py          |  63 +++++++++++++
  tools/test_vuas.py             |   3 +-
  tools/vu_include.py            |   5 +-
- 22 files changed, 390 insertions(+), 67 deletions(-)
+ 22 files changed, 391 insertions(+), 67 deletions(-)
  create mode 100644 .gitmodules
  create mode 160000 external/sdf-decomp
  create mode 100644 tools/sources.py
@@ -228,11 +228,11 @@ index 3e788386..3c9b4887 100644
  [TU recovery](tu-recovery.md).
 diff --git a/external/sdf-decomp b/external/sdf-decomp
 new file mode 160000
-index 00000000..f7867af7
+index 00000000..39e125f6
 --- /dev/null
 +++ b/external/sdf-decomp
 @@ -0,0 +1 @@
-+Subproject commit f7867af7a86c368656dcc1a94338f544fa2a2018
++Subproject commit 39e125f6aff8436eb03aadcc8a0364769eb7481c
 diff --git a/tools/cc.sh b/tools/cc.sh
 index c4fee6c8..7f94b807 100755
 --- a/tools/cc.sh
@@ -678,10 +678,10 @@ index daa5ab64..6d8de7e0 100755
              n = 4 * len(INSN.findall(body))
 diff --git a/tools/sources.py b/tools/sources.py
 new file mode 100644
-index 00000000..340cc312
+index 00000000..b28eec42
 --- /dev/null
 +++ b/tools/sources.py
-@@ -0,0 +1,159 @@
+@@ -0,0 +1,160 @@
 +"""Where a unit's source lives.
 +
 +A unit keeps its name and its src/<version>/<unit>.c path everywhere else
@@ -702,6 +702,7 @@ index 00000000..340cc312
 +        "sdf": Path("external/sdf-decomp/src/sdf"),
 +        "mc/mcManager.c": Path("external/sdf-decomp/src/mc/mcManager.c"),
 +        "model": Path("external/sdf-decomp/src/model"),
++        "file/fileManager.c": Path("external/sdf-decomp/src/file/fileManager.c"),
 +    },
 +}
 +
