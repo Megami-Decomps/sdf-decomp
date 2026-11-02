@@ -99,7 +99,7 @@
 
 ## Units moved
 
-33 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
+34 units, as listed in dds-decomp's `config/sdf_shared.txt` (the earlier
 report of 11 was wrong; there were 9 before this session). Each has DDS's
 copies deleted, check_unit clean in both games, all three games byte-identical.
 
@@ -137,6 +137,7 @@ copies deleted, check_unit clean in both games, all three games byte-identical.
 | sdfTex | 9f17ead | 8a9c4b67f | renames `sdfTexNew`, `sdfTexDup`, `sdfTexSetEx`, `sdfTexSetClutColor` (911c2a4b7). DDS reference-counts textures: `sdf_resource.h` has `sdfTexRef_t` and a `ref` field in place of `origin` under the DDS games; DDS bodies of `sdfTexNew`, `sdfTexDup`, `sdfTexFree` plus DDS-only `sdfTexReleaseReference`; the id lookup in `sdfTexSetEx` and the origin in `sdfTexSetClutColor` inline. `sdfTexFree`, `sdfTexFreeDelayed` stay DDS `sdfTexDestroy`, `sdfTexReleaseReferenceViaHandler` by `#define` (code_002DE248 trap) |
 | sdfHdd | 5f78ff4 | b106dcaa6 | renames `sdfHddPowerOffTh`, `sdfHddInit` (ec6715055) and `sdfDev9Ready` (2b5ac2a98); DDS's two bodies under the DDS games (no printf, `sdfHddInit` takes the mount path); sdata lists per game |
 | sdfMat | 224205c | 1529fdc74 | renames `sdfMatSetTexUvw`, `sdfMatUpdatePacketBasic` (954ae4902); `sdfMatSetRefMap`, `sdfMatSetTex` stay DDS `sdfSetPrimaryStateWordFourth`, `sdfSetAssetPrimaryTextureAddress` by `#define` (code_002DE248 trap); DDS-only `sdfSetForcedAssetTextureMode`, `sdfApplyAssetEntryChangesWithForcedTexture`, `sdfResourceListApplyEntryChanges`; the forced mode in `sdfMatUpdatePacketBasic`; `D_00529438` per game; sdata list under the DDS games |
+| sdfModel | 7fc37d8 | 79856b85a | `model.h`: DDS's root node has `u8 lod` at 0x98 (size 0x9C) and flag bits 0x20, 0x40 that force the material refresh; `sdfModelLinkOt` and `sdfModelTempPacketLinkOt` call DDS's `sdfResourceListApplyEntryChanges` or the forced `sdfMatListUpdatePacket`, and `sdfModelLinkOt` skips packets of another LOD; DDS-only `sdfGetUniqueChunkValue`, `sdfGetLodChunkValue`; `func_002B2628` and `func_002BFF98` aliased, `D_00529428` per game; SMT3's sdata under `SDF_SMT3`, DDS's under the DDS games. `sdfModelLinkDrawPacket` is now C in all three games (DDS's body in SMT3's types, matching SMT3 too); the other three INCLUDE_ASM functions are INCLUDE_ASM in DDS as well |
 
 Also dds-decomp d00cc006d: `include_sdata.py` writes a shared unit's
 per-symbol asm files and leaves its source alone.
@@ -187,7 +188,6 @@ Probe at the final state (`tools/sdf_probe.py`); DDS1 and DDS2 agree:
 |---|---|---|
 | sdfCd | NOASM (SMT3's rodata), 6 match | DDS has its own disc layer: `sdfDevWaitForDisc` (0x98, SMT3 `sdfCdWaitTrayClose` 0xC8), DDS-only `sdfDevSignalPendingSemaphore` and `sdfDevSeekDiscWithRequestGate`, `sdfDevReadDiscUntilComplete` against `sdfCdStRead`, `sdfDevFindDiscFileRecordByCdromPath` against `sdfCdImageSearchFileDirect`; `sdfCdImageLoadStart` and `sdfCdInit` bodies differ; placeholders `D_00551910`, `D_0055210C`, `D_00552110`, `D_0058F7C0` and `dds3ImgLsn`, `sdfCdImageCurrRemain`, `sdfCdImageDirData`, `sdfCdImageFileName` unnamed in DDS |
 | sdf3D | 7 match, 15 differ | MISSING `sdfCameraBuildProjection`; UNDEF `vu1Tex0Slot0..2` and code labels `D_002E8ED0`, `D_002ECF10` |
-| sdfModel | NOASM (SMT3's sdata), 46 match | MISSING `sdfChunkFindById`, `sdfGetUniqueChunkValue`, `sdfGetLodChunkValue`; UNDEF `ToMatrix`, `MultMatrixRev` |
 | sdfMotion | 85 match, 23 differ | UNDEF `D_00529448`, `D_00529470`, `D_00529600`, `sdfMotModelVisibleTable`, `sdfMotModelLinerScaleTable` |
 | sdfSound | NOASM (SMT3's rodata), 29 match | MISSING `sndReserveIopWorkMemory`, `sndTryDispatchQueuedCommand`, `sndStartIopCommandAndRpcWorkers`; UNDEF `sdfSndSendCmd_cmd_id`, `sdfSndMakeFilename`, `sdfFileRpcResult` |
 
@@ -200,7 +200,7 @@ sdfDev9 (stage 4 did not split them for DDS).
 
 ## Next
 
-1. sdfModel and sdfMotion (renames and placeholders, as for
+1. sdfMotion (renames and placeholders, as for
    sdfTex), sdf3D, then sdfCd (several DDS-only or DDS-different functions,
    about the size of sdfTex's work), sdfSound last.
 2. Per unit: `sdf_resolve.py` and `sdf_probe.py`, rename DDS to SMT3's real
@@ -245,6 +245,7 @@ under the DDS games; the define goes when smt3-decomp takes the name.
 | `D_00529B60` | `sdfDevHddModuleArguments` | sdfHdd |
 | `D_00529B70` | `sdfDevPfsModuleArguments` | sdfHdd |
 | `movie_2C5080` | `sdfPrintTextLine` | sdfMovie |
+| `func_002B2628` | `sdfChunkFindById` | sdfModel |
 | `release_movieobj2` | `sdfMovieDrawFrame` | sdfMovie (IDB name with a one-argument `dds3MovieTable_t` prototype; the function takes the movie and an OT) |
 
 Also owed: SMT3's units declare SDK functions locally with types that differ
