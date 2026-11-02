@@ -1,6 +1,18 @@
 #include "common.h"
 #include "libsdf.h"
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define func_002BFF98 sdfDevResizeBufferedRequest
+#define sdfTexFreeDelayed sdfTexReleaseReferenceViaHandler
+#define sdfMatSetRefMap sdfSetPrimaryStateWordFourth
+#define sdfMatSetTex sdfSetAssetPrimaryTextureAddress
+#endif
+#if defined(SDF_DDS1)
+#define D_00529438 D_00398198
+#elif defined(SDF_DDS2)
+#define D_00529438 D_0040B348
+#endif
+
 extern void *sdfChipAllocDirect(s32 aSize);
 extern void *sdfChipAllocZeroDirect(s32 aSize);
 extern void sdfChipFreeDirect(void *aPtr);
@@ -62,6 +74,19 @@ void sdfMatSetFaceDivParm(sdfMat_t *aMat, f32 aBias, f32 aSoften);
 sdfMat_t *sdfMatNew(void);
 u8 *sdfMatSet(sdfMat_t *aMatPtr, sdfItemArray_t *aTexList, u8 *aDef);
 void sdfMatListAdd(sdfItemArray_t *aList, sdfMat_t *aMat);
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* 0 normal; 1 and 2 make sdfMatListUpdatePacket refresh the basic packet even when
+ * it is clean, and 1 also zeroes its specular color. */
+extern s32 sdfForcedAssetTextureMode;
+
+void sdfApplyAssetEntryChangesWithForcedTexture(sdfMat_t *aMat, s32 aId);
+
+void sdfSetForcedAssetTextureMode(s32 aMode)
+{
+    sdfForcedAssetTextureMode = aMode;
+}
+#endif
 
 sdfItemArray_t *sdfTexListNew(s32 aInitCapa)
 {
@@ -460,13 +485,27 @@ sdfDmaTag_t *sdfMatMakePacket(sdfMat_t *aMat, sdfDmaTag_t *aBuffer, s32 aId)
 
 void sdfMatUpdatePacketBasic(sdfMat_t *aMat, sdfMatPacket_t *aPacket)
 {
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+    sdfTexHandle_t *handle;
+#else
     sdfTexHandle_t *handle = aMat->texHandle;
+#endif
 
     aPacket->ambient = aMat->ambient;
     aPacket->constant = aMat->constant;
     aPacket->diffuse = aMat->diffuse;
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+    if (sdfForcedAssetTextureMode == 1) {
+        aPacket->specularColor = 0;
+    } else {
+        aPacket->specularColor = aMat->specular;
+    }
+    aPacket->refmapColor = aMat->refmap;
+    handle = aMat->texHandle;
+#else
     aPacket->specularColor = aMat->specular;
     aPacket->refmapColor = aMat->refmap;
+#endif
     if (handle != NULL) {
         aPacket->tex1Data = sdfTexGetTex1Reg(handle);
         aPacket->tex0Data = sdfTexGetTex0Reg(handle);
@@ -563,6 +602,30 @@ void sdfMatUpdatePacket(sdfMat_t *aMat, s32 aId)
     aMat->duty = duty & (0x55 << (aId ^ 1));
 }
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+void sdfApplyAssetEntryChangesWithForcedTexture(sdfMat_t *aMat, s32 aId)
+{
+    u8 duty = aMat->duty;
+    sdfMatPacket_t *packet = aMat->packet[aId];
+
+    if ((duty >> aId) & 1) {
+        sdfMatUpdatePacketBasic(aMat, packet);
+    } else if (sdfForcedAssetTextureMode != 0) {
+        sdfMatUpdatePacketBasic(aMat, packet);
+    }
+    if (duty & (4 << aId)) {
+        sdfMatUpdatePacketUvwParm(aMat, packet);
+    }
+    if (duty & (0x10 << aId)) {
+        sdfMatUpdatePacketMultiTex(aMat, packet);
+    }
+    if (duty & (0x40 << aId)) {
+        sdfMatUpdatePacketFaceDiv(aMat, packet);
+    }
+    aMat->duty = duty & (0x55 << (aId ^ 1));
+}
+#endif
+
 sdfItemArray_t *sdfMatListMake(sdfItemArray_t *aTexList, u32 *aData)
 {
     u32 count = *aData;
@@ -579,7 +642,8 @@ sdfItemArray_t *sdfMatListMake(sdfItemArray_t *aTexList, u32 *aData)
     return list;
 }
 
-void sdfMatListUpdatePacket(sdfItemArray_t *aMatList, s32 aId)
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+void sdfResourceListApplyEntryChanges(sdfItemArray_t *aMatList, s32 aId)
 {
     s32 i;
     s32 count = aMatList->count;
@@ -587,6 +651,22 @@ void sdfMatListUpdatePacket(sdfItemArray_t *aMatList, s32 aId)
 
     for (i = 0; i < count; i++) {
         sdfMatUpdatePacket(items[i], aId);
+    }
+}
+#endif
+
+void sdfMatListUpdatePacket(sdfItemArray_t *aMatList, s32 aId)
+{
+    s32 i;
+    s32 count = aMatList->count;
+    sdfMat_t **items = (sdfMat_t **)aMatList->items;
+
+    for (i = 0; i < count; i++) {
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+        sdfApplyAssetEntryChangesWithForcedTexture(items[i], aId);
+#else
+        sdfMatUpdatePacket(items[i], aId);
+#endif
     }
 }
 
@@ -626,3 +706,9 @@ void sdfMatListCopyStat(sdfItemArray_t *aDst, sdfItemArray_t *aSrc)
         sdfMatCopyStat((sdfMat_t *)dst[i], (sdfMat_t *)src[i]);
     }
 }
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "sdf/sdfMat", sdfMatAllocCount);
+
+INCLUDE_SDATA(const s32, "sdf/sdfMat", sdfForcedAssetTextureMode);
+#endif
