@@ -43,6 +43,11 @@ void sdfPacTexListDecoder1(sdfPacDecodeCb_t *cb);
 void sdfPacTexListDecoder0(sdfPacDecodeCb_t *cb);
 void sdfPacTexListDecoderInit(sdfPacDecodeCb_t *cb, sdfPacStdBlockHeader_t *hdr);
 
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define func_002C60E0 sdfPacMarkPhaseFinished
+#define func_002C6D58 sdfPacResetOutputToAllocationEntry
+#endif
+
 void func_002C60E0(sdfPacDecodeCb_t *aState);
 void func_002C6D58(sdfPacDecodeCb_t *aState);
 void sdfPacTexListDecoderTmxHeaderEndFunc(sdfPacDecodeCb_t *cb);
