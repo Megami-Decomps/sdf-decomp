@@ -21,13 +21,19 @@ extern void *sdfZeroMemQuad(void *ptr, s32 quadCount);
 extern void sdfDelayedResrcInitCB(sdfDelayedResrcCB_t *aCB, sdfDelayedResrcFreeFunc aFreeFunc);
 extern void sdfDelayedResrcEntry(sdfDelayedResrcCB_t *aCB, void *aItem);
 
-extern sdfDelayedResrcCB_t dds3CleanupList;
 extern sdfChipCB_tag sdfChipCB[SDF_CHIP_CLASS_COUNT];
 extern sdfChipPageInfo_tag *sdfChipPageInfo;
 extern sdfChipPageInfo_tag *sdfChipPageFreeLink;
 extern u8 *sdfChipPageTop;
 extern u8 *sdfChipPageEnd;
 extern s32 sdfChipPageCount;
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* Declared ahead of the cleanup list so the definitions below keep retail's
+ * .sbss order. */
+extern s32 sdfChipPageCountSpan[2] FAKEMATCH_ASM_NAME("sdfChipPageCount");
+#endif
+extern sdfDelayedResrcCB_t dds3CleanupList;
 
 void sdfChipAllocNextPage(sdfChipCB_tag *aCB);
 sdfChip_t *sdfChipAllocGetFree(sdfChipCB_tag *aCB, sdfChipPageInfo_tag *aPageInfo);
@@ -292,3 +298,21 @@ void sdfChipGetInfo(sdfChipInfo_t *aInfo)
     aInfo->freePageCount = freePageCount;
     aInfo->fragmentedPageCount = fragmentedPageCount;
 }
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+/* DDS's build defines the allocator state in this unit, after the code so that
+ * a -G0 build does not address it through $gp. The page count and the class
+ * table each own a four-byte tail of their retail span, so they are defined
+ * under other C names with the symbol's own. */
+sdfChipPageInfo_tag *sdfChipPageInfo __attribute__((section(".sbss"), aligned(8)));
+sdfChipPageInfo_tag *sdfChipPageFreeLink __attribute__((section(".sbss")));
+u8 *sdfChipPageTop __attribute__((section(".sbss")));
+u8 *sdfChipPageEnd __attribute__((section(".sbss")));
+s32 sdfChipPageCountSpan[2] FAKEMATCH_ASM_NAME("sdfChipPageCount") __attribute__((section(".sbss")));
+sdfDelayedResrcCB_t dds3CleanupList __attribute__((section(".sbss"), aligned(8)));
+struct
+{
+    sdfChipCB_tag classes[SDF_CHIP_CLASS_COUNT];
+    u8 tail[4];
+} sdfChipCBSpan FAKEMATCH_ASM_NAME("sdfChipCB") __attribute__((section(".bss"), aligned(8)));
+#endif
