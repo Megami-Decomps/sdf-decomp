@@ -144,69 +144,76 @@ Later, sdf-decomp c6c2ba5 ports DDS's NON_MATCHING draft of
 `sdfMovieQueueFrameSprite` to SMT3's types (dds-decomp 137191fac): DDS's
 check_nonmatching failed on it in the shared file.
 
-Final state, verified from committed state (sdf-decomp c6c2ba5 in both
-submodules, dds-decomp 137191fac): SMT3 clone `configure.py --clean`, ninja
-exit 0, `[860/861] check config/smt3/checksum.sha1`,
-5facfbf7916836613449c922e26a4ec412207b32. DDS `configure.py --clean`, ninja
-exit 0 with both check lines, DDS1 6d18898e2724bf1d145392766e8ba1e678487419,
-DDS2 9be91ee1b4a535a4cb6ec89237b5a6ba41be2add. check_unit over every DDS unit
+Final state, verified from committed state (sdf-decomp 9f17ead in both
+submodules, dds-decomp 8a9c4b67f for the build; b1aa6dbe4 adds only tools):
+SMT3 clone `configure.py --clean`, ninja exit 0, `[860/861] check
+config/smt3/checksum.sha1`, 5facfbf7916836613449c922e26a4ec412207b32. DDS
+`configure.py --clean`, ninja exit 0 with both check lines, DDS1
+6d18898e2724bf1d145392766e8ba1e678487419, DDS2
+9be91ee1b4a535a4cb6ec89237b5a6ba41be2add. check_unit over every DDS unit
 (528, shared ones by logical path): only the four known differences
 (devbuild in both games, and the orphans code_002E7C20 and code_00340AC8, see
 Traps).
 
 CI-equivalent checks at that state. DDS: run_tests.py 445 OK,
 test_c_aliases OK, check_nonmatching 89 units 0 failed, `ninja dds1 dds2
-dds1-dev dds2-dev` exit 0, the four reports built and the primary report equal
-to the audit's game scope, progress dds1 9502/9573 functions, dds2
-10768/10855. SMT3 clone: every `tools/test_*.py` passes, check_nonmatching and
-check_irx_nonmatching pass, progress unchanged.
+dds1-dev dds2-dev` exit 0, the five report targets built, progress dds1
+9502/9573 functions, dds2 10768/10855 (unchanged). SMT3 clone: every
+`tools/test_*.py` passes, check_nonmatching (exit 0) and
+check_irx_nonmatching pass, progress 8567/9045.
+
+## Tools
+
+dds-decomp `tools/` now has the helpers this stage used (3dd9e4fff):
+`sdf_probe.py <unit>...` runs check_unit with the unit listed as shared for
+the run; `sdf_resolve.py <unit>` maps the symbols the shared unit leaves
+undefined to the DDS symbol retail uses (gp-relative targets are approximate);
+`sdf_rename.py rows.txt` carries SMT3 names into both games (rows `<new>
+<smt3> <dds1> <dds2> <reason>`) and leaves the map in
+`build/sdf_rename_refs.tsv`; `sdf_restage.py <map> <files>` rewrites a source
+as HEAD plus the renames so configure's spacing rewrites are not staged.
+Still in `/tmp/s8` only, since they hard-code both sibling paths: `sync.sh`
+(copy sdf-decomp's working src and include into both submodules), `pin.sh`
+(check out sdf-decomp HEAD in both), `move.sh <unit>` (list, `git rm`,
+configure, ninja), `smt3.sh`, `sweep.sh`, `stage_renames.sh`; and
+`/tmp/s7-verify.sh` (clean build of all three from committed state).
 
 ## Units not moved
 
-Probe after the headers landed (unit listed in `sdf_shared.txt`
-temporarily, check_unit in both games; DDS1 and DDS2 agree unless noted):
+Probe at the final state (`tools/sdf_probe.py`); DDS1 and DDS2 agree:
 
 | unit | probe | first blockers |
 |---|---|---|
-| sdf3D | 7 match, 17 differ | UNDEF `vu1Tex0Slot0..2` and more names |
-| sdfMat | 35 match, 22 differ | UNDEF sdfTex function names (`sdfTexDup`, `sdfTexFreeDelayed`, `sdfTexSetClutColor`) |
-| sdfModel | 46 match, 17 differ | UNDEF `ToMatrix`, `MultMatrixRev`, `sdfItemArrayNew` |
-| sdfMotion | 85 match, 26 differ | UNDEF `ToMatrix`, `sdfMotModelVisibleTable`, `sdfMotModelLinerScaleTable` |
-| sdfCd | 6 (DDS2 7) match, 31 differ | UNDEF `sdfCdTrayMode`, `sdfCdImageSearchFileDirect_ent`, `sdfCdImageFileName` |
-| sdfSound | 29 match, 114 differ | UNDEF `sdfSndSendCmd_cmd_id`, `sdfSndMakeFilename`, `sdfFileRpcResult` |
+| sdfCd | NOASM (SMT3's rodata), 6 match | DDS has its own disc layer: `sdfDevWaitForDisc` (0x98, SMT3 `sdfCdWaitTrayClose` 0xC8), DDS-only `sdfDevSignalPendingSemaphore` and `sdfDevSeekDiscWithRequestGate`, `sdfDevReadDiscUntilComplete` against `sdfCdStRead`, `sdfDevFindDiscFileRecordByCdromPath` against `sdfCdImageSearchFileDirect`; `sdfCdImageLoadStart` and `sdfCdInit` bodies differ; placeholders `D_00551910`, `D_0055210C`, `D_00552110`, `D_0058F7C0` and `dds3ImgLsn`, `sdfCdImageCurrRemain`, `sdfCdImageDirData`, `sdfCdImageFileName` unnamed in DDS |
+| sdfMat | 35 match, 17 differ | MISSING `sdfSetForcedAssetTextureMode`, `sdfSetPrimaryStateWordFourth` (SMT3 `sdfMatSetRefMap`), `sdfSetAssetPrimaryTextureAddress`; `sdfTexFreeDelayed` now resolves through sdfTex's `#define` |
+| sdf3D | 7 match, 15 differ | MISSING `sdfCameraBuildProjection`; UNDEF `vu1Tex0Slot0..2` and code labels `D_002E8ED0`, `D_002ECF10` |
+| sdfModel | NOASM (SMT3's sdata), 46 match | MISSING `sdfChunkFindById`, `sdfGetUniqueChunkValue`, `sdfGetLodChunkValue`; UNDEF `ToMatrix`, `MultMatrixRev` |
+| sdfMotion | 85 match, 23 differ | UNDEF `D_00529448`, `D_00529470`, `D_00529600`, `sdfMotModelVisibleTable`, `sdfMotModelLinerScaleTable` |
+| sdfSound | NOASM (SMT3's rodata), 29 match | MISSING `sndReserveIopWorkMemory`, `sndTryDispatchQueuedCommand`, `sndStartIopCommandAndRpcWorkers`; UNDEF `sdfSndSendCmd_cmd_id`, `sdfSndMakeFilename`, `sdfFileRpcResult` |
 
-UNDEF of an SMT3 real name usually means a DDS rename is owed (step 1 below);
-UNDEF of a function name means stage 5 withheld or never paired it.
+NOASM means the unit's SMT3 INCLUDE_RODATA or INCLUDE_SDATA lines need
+`#ifdef SDF_SMT3` before the probe can count; the count is then from the
+SKIP_ASM compile. UNDEF of an SMT3 real name usually means a DDS rename is
+owed; UNDEF of a function name means stage 5 withheld or never paired it.
 Not attempted: sdfSystem, sdfChip, sdfMemory, sdfIop, sdfGraph, sdfVu1,
 sdfDev9 (stage 4 did not split them for DDS).
 
-`/tmp/s7/probe.sh <unit>...` and `/tmp/s7/names.sh <unit>` (not committed)
-wrap the probe and `/tmp/s6-names.py`, which printed, from check_unit -v, each
-SMT3 name's DDS address and symbol: HI16/LO16 pairs give the address plus the
-field offset, so check the base (sdfPrim's first guess was the object at +8).
-
 ## Next
 
-1. Remaining units, roughly in order of effort: sdfDevFile, sdfFileIO,
-   sdfFile, sdf_PadManager, sdfDefaultMain, sdfCd, sdfVu0, sdfTex, sdfMat,
-   sdfMisc, sdfPacDecode, sdf3D, sdfModel, sdfMotion, sdfSound. The table
-   above has each one's first blockers; rerun the probe first, since renames
-   since then changed some.
-2. `/tmp/s8/resolve.py <unit>` maps each symbol the shared unit leaves
-   undefined to the DDS symbol at the retail target. Known from it: SMT3
-   `sdfItemArrayNew` is DDS `sdfDevCreateBufferedRequest`, `func_002BFF98`
-   `sdfDevResizeBufferedRequest`, `sdfTexDup` `sdfTexClone`,
-   `sdfTexFreeDelayed` `sdfTexReleaseReferenceViaHandler`,
-   `sdfTexSetClutColor` `sdfTexBlendPaletteToTintedIntensityVU`, `sdfCdInit`
-   `sdfInitDeviceSemaphores`, `sdfCdImageLoadStart`
-   `sdfDevOpenDiscFileAndGetSize`, `sdfMatSetRefMap`
-   `sdfSetPrimaryStateWordFourth`. It only works where the function names
-   already agree.
-3. Per unit: rename DDS to SMT3's real names (check the new name's length
-   against the code_001DEFE0 trap if a header declares it), define SMT3
+1. sdfMat, then sdfModel and sdfMotion (renames and placeholders, as for
+   sdfTex), sdf3D, then sdfCd (several DDS-only or DDS-different functions,
+   about the size of sdfTex's work), sdfSound last.
+2. Per unit: `sdf_resolve.py` and `sdf_probe.py`, rename DDS to SMT3's real
+   names with `sdf_rename.py` (then `configure.py` and `ninja` before the
+   probe sees renamed asm), check_unit code_001DEFE0 (DDS1) and
+   code_002DE248 (DDS2) after renaming a header-declared name, define SMT3
    placeholders, put DDS-only or DDS-different bodies under the DDS games in
-   address order, list DDS's INCLUDE_SDATA and INCLUDE_RODATA per game, then
-   probe, move, build all three, commit.
+   address order, list DDS's INCLUDE_SDATA and INCLUDE_RODATA per game, grep
+   DDS's file for top-level initialisers, then probe, move, build all three,
+   commit.
+3. DDS still names SMT3's `dds3KernelMain` `kwlnRunMainLoop` and its thread
+   node `kwlnMainLoopThreadNode` (sdfDefaultMain aliases both); a DDS rename
+   outside sdf.
 4. Not split for DDS by stage 4, so not attempted: sdfSystem, sdfChip,
    sdfMemory, sdfIop, sdfGraph, sdfVu1, sdfDev9.
 
