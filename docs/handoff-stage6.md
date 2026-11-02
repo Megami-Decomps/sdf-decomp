@@ -210,9 +210,10 @@ sdfDev9 (stage 4 did not split them for DDS).
    address order, list DDS's INCLUDE_SDATA and INCLUDE_RODATA per game, grep
    DDS's file for top-level initialisers, then probe, move, build all three,
    commit.
-3. DDS still names SMT3's `dds3KernelMain` `kwlnRunMainLoop` and its thread
-   node `kwlnMainLoopThreadNode` (sdfDefaultMain aliases both); a DDS rename
-   outside sdf.
+3. Done: DDS's `kwlnRunMainLoop` is `dds3KernelMain` (dds-decomp d165b3a49,
+   sdf-decomp efcf7da drops the alias). The thread node stays
+   `kwlnMainLoopThreadNode` by `#define`, since SMT3's is the placeholder
+   `D_00551B88`.
 4. Not split for DDS by stage 4, so not attempted: sdfSystem, sdfChip,
    sdfMemory, sdfIop, sdfGraph, sdfVu1, sdfDev9.
 
