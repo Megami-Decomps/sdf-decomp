@@ -70,5 +70,4 @@ path for smt3-port and sdfport to reach DDS.
    SMT3's `mc/slMain` (104 functions, 67 identical in all three) needs a look
    at whether it is engine or game code before it is moved.
 
-Nothing is pushed until a GitHub home is chosen (suggested
-`Megami-Decomps/sdf-decomp`).
+The repo lives at `github.com/Megami-Decomps/sdf-decomp`.
