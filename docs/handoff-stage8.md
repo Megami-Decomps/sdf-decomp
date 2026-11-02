@@ -13,7 +13,7 @@ one consume commit amended per unit and exported to
 | `model/mdlEffect` | SMT3 only | DDS re-split to its boundary; not shared, below |
 | `file/fileManager` | shared, all three games | DDS2 prints in `pacLoadEx` and `fileLoadEx`; DDS defines its sdata and bss in C, SMT3 uses `INCLUDE_SDATA`/`INCLUDE_RODATA` |
 | `script/scrScriptProcess`, `script/scrTraceCode` | shared, all three games | the script VM; DDS defines the command table in C, its rows in DDS's `include/scr_command_table.h` |
-| `script/scrCommonCommand` | DDS re-split; next | below |
+| `script/scrCommonCommand` | shared, all three games | DDS's extra commands and its additions to `BLUR_ALLOFF`, `FILTER_ALLOFF` under the DDS macros |
 | `script/scrParameterCommand` | SMT3 only | game code, no twins in DDS |
 
 dds-decomp commits, in order: e76182af8 (probe and resolve take `dir/unit`),
@@ -87,17 +87,18 @@ DDS2 0x0010BD50, 0x0010C348, 0x0010D8E0, end 0x0010F118), 514a1257e (names),
   at 0x40, as in both games. dds-decomp got SMT3's `sdk_libgcc.h`.
 
 scrCommonCommand: `twins.py contig` reports 21 of 67 paired because the
-identical `_ON`/`_OFF`/`_SWAP` wrappers are not unique twins. By position 60
-of SMT3's 67 functions have a same-named DDS twin in order. Per game: SMT3's
-`PUT`, `PUTS` are DDS's `scrCommandPrintInteger`, `scrCommandPrintString`;
-`FADE_IN`, `FADE_OUT` are `bfWaitCbScreenFadeA`, `B`; `SCR_RUN` is
-`bfWaitCbCreateTask`; `BLUR_ALLOFF`, `FILTER_ALLOFF` are
-`scrCommandResetDrawEffects`, `scrCommandResetFieldEffects`. DDS-only:
-`scrCommandFadeBackgroundOut`, `In` after the fades, and five game commands
-at the end (process control flag, item quantity, party currency).
+identical `_ON`/`_OFF`/`_SWAP` wrappers are not unique twins; by position 60
+of SMT3's 67 have a same-named DDS twin in order. dds-decomp 541786aa5 carries
+SMT3's names for the other 7 (`PUT`, `PUTS`, `FADE_IN`, `FADE_OUT`, `SCR_RUN`,
+`BLUR_ALLOFF`, `FILTER_ALLOFF`), c701a78cb compiles it from sdf-decomp
+(6e00347). In the shared unit: SMT3's `printf` calls and its `D_0052F5E8`
+string are under `SDF_SMT3`; `D_005298C9` is now `dds3PadBitTable[1]` (the
+same address in all three games); DDS's two background fades, the five game
+commands at the end and `scrCommand_SCR_EXISTS` are under the DDS macros, with externs
+written in the unit rather than DDS's headers. `config/sdf_shared.txt` lists
+51 units.
 
 ## Next
 
-1. script/scrCommonCommand: a clean unit, share it.
-2. mdlEffect, after its DDS viewer functions have a unit of their own.
-3. effect/.
+1. mdlEffect, after its DDS viewer functions have a unit of their own.
+2. effect/.
