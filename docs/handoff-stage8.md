@@ -17,6 +17,7 @@ one consume commit amended per unit and exported to
 | `script/scrParameterCommand` | SMT3 only | game code, no twins in DDS |
 | `effect/effPCPNeedle` | shared, all three games | DDS names aliased in the unit; SMT3's two `printf`s under `SDF_SMT3` |
 | `effect/polyManager` | shared, all three games | DDS names aliased in the unit; the OT slots and `D_002F64B8`'s offset per game; DDS's `dds3SpPoly_RollRingDraw` body (keeps a one-frame record running) under the DDS macros |
+| `effect/effPart` | shared, all three games | SMT3's `event.h`, `nb.h`, `effBattle.h` under `SDF_SMT3`, `effPCPData.h` for DDS; the model id counter is u16 in DDS and DDS2 skips ids in use; `D_002F69B8` is DDS's `kwlnSceneSurfaceSets[10]` |
 
 dds-decomp commits, in order: e76182af8 (probe and resolve take `dir/unit`),
 878bc0130 (model re-split), ed9e2911e (model names), 79f089aa1 (mdlManager
@@ -37,6 +38,10 @@ the viewer code's DDS headers carry, plus `newdata.h`, which DDS lacks. The
 DDS re-split at SMT3's outer boundary stays.
 
 ## Traps
+
+- SMT3's `tools/test_find_similar.py` fails after a unit's source is removed
+  from the clone: `find_similar.py` caches on the newest source mtime, which a
+  deletion does not change. `rm -rf build/find_similar` and rerun.
 
 - `tools/resplit.py` can leave stale yaml rows (the old unit's start rows) and
   print CONFLICT for a duplicate declaration; fix the yaml by hand. It also
@@ -117,7 +122,7 @@ SMT3's functions in order.
 |---|---|---|---|
 | effPCPNeedle | 17 | 0x001760F8..0x00177120 | shared |
 | polyManager | 87 | 0x0015B228..0x0015F810 | shared |
-| effPart | 40 | 0x00162970..0x001632E0 | clean, now inside `game/code_001624D0` |
+| effPart | 40 | 0x00162970..0x001632E0 | shared |
 | effPCPFlash | 148 | 0x0016A088..0x001708A0 | clean |
 | effPCPScatter | 90 | 0x001708A0..0x001760F8 | clean |
 | parManager | 126 | 0x00153680..0x0015B228 | clean; SMT3 has 2 INCLUDE_ASM |
@@ -155,6 +160,12 @@ polyManager: dds-decomp 6d17bdf0b (`dds3SpPoly_RollRingDraw`, DDS's
 `func_00168A50` is DDS's `polyBandLayoutRing`, a `#define`; DDS has a
 different function at 0x00168A50, which check_unit reported as a 104-word DIFF
 until the alias was in.
+
+effPart: dds-decomp d7cd1eb74 (`dds3EffectPartGetHandle`,
+`dds3EffectPartGetType`, `dds3EffectPartModelCreate`; DDS1 and DDS2 had named
+the last one differently, `effParamCreateInitWork` and
+`effParamCreateViewerWork`; `eff_param.h` changed and its 24 includers stayed
+clean), 7a60736bb; sdf-decomp 8873049, ef6044c.
 
 Recipe, as effPCPNeedle went (dds-decomp 68256150f, 23f77cb01, 26cf8c8b3;
 sdf-decomp 6a79c02, 4e084ea, 8ebfaf4):
