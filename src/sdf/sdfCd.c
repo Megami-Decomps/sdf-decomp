@@ -3,6 +3,17 @@
 #include "libsdf.h"
 #include "ps2asm.h"
 
+#if defined(SDF_DDS1)
+#define D_00551910 D_003BD3E0
+#elif defined(SDF_DDS2)
+#define D_00551910 D_00438AD0
+#endif
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define D_0055210C sdfDiscReadPosition
+#define D_00552110 sdfDiscReadMode
+#define D_0058F7C0 sdfDevReadSectorBuffer
+#endif
+
 typedef struct
 {
     u32 nameOffset_;
@@ -151,12 +162,16 @@ void sdfCdWaitTrayClose(void)
     u8 file[0x30];
     s32 status;
 
+#ifdef SDF_SMT3
     printf(D_005495D8);
+#endif
     WaitSema(sdfCdImageFd);
     for (;;) {
         sdfDelayThread(100);
         sceCdDiskReady(0);
+#ifdef SDF_SMT3
         printf(D_005495F0);
+#endif
         status = sceCdGetDiskType();
         if (sdfCdTrayMode == 2) {
             if (status != 20) {
@@ -170,7 +185,9 @@ void sdfCdWaitTrayClose(void)
         }
     }
     SignalSema(sdfCdImageFd);
+#ifdef SDF_SMT3
     printf(D_00549600);
+#endif
 }
 
 void sdfCdStStart(s32 lsn) {
@@ -200,11 +217,57 @@ void sdfCdStStart(s32 lsn) {
     D_0055210C = lsn;
 }
 
+#ifdef SDF_SMT3
 INCLUDE_RODATA(const s32, "sdf/sdfCd", D_005495D8);
 
 INCLUDE_RODATA(const s32, "sdf/sdfCd", D_005495F0);
 
 INCLUDE_RODATA(const s32, "sdf/sdfCd", D_00549600);
+#endif
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+extern s32 sdfDiscRequestPending;
+extern s32 sdfDiscRequestSemaphore;
+
+void sdfDevSignalPendingSemaphore(void)
+{
+    if (sdfDiscRequestPending != 0) {
+        SignalSema(sdfDiscRequestSemaphore);
+        sdfDiscRequestPending = 0;
+    }
+}
+
+void sdfDevSeekDiscWithRequestGate(s32 lsn)
+{
+    u8 options[4];
+    s32 ready;
+
+    options[0] = 0;
+    if (D_00552110 == 1) {
+        options[1] = 0;
+    } else {
+        options[1] = 1;
+    }
+    options[2] = 0;
+    options[3] = 0;
+    for (;;) {
+        WaitSema(sdfCdImageFd);
+        sdfDiscRequestPending = 1;
+        WaitSema(sdfDiscRequestSemaphore);
+        ready = sceCdStStart(lsn, options);
+        SignalSema(sdfCdImageFd);
+        if (ready != 0) {
+            break;
+        }
+        if (sceCdStatus() == 1) {
+            sdfCdWaitTrayClose();
+        } else {
+            sdfDelayThread(100);
+        }
+    }
+    D_0055210C = lsn;
+}
+#endif
 
 void sdfCdStRead(s32 sectors, void *buffer)
 {
@@ -222,7 +285,9 @@ void sdfCdStRead(s32 sectors, void *buffer)
             sdfCdWaitTrayClose();
             sdfCdStStart(D_0055210C);
         } else {
+#ifdef SDF_SMT3
             printf("CD read error!\n");
+#endif
             WaitSema(sdfCdImageFd);
             sceCdStStop();
             SignalSema(sdfCdImageFd);
@@ -238,8 +303,12 @@ extern sdfCdImageDirEntry_t sdfCdImageSearchFileDirect_ent;
 
 sdfCdImageDirEntry_t *sdfCdImageSearchFileDirect(const char *filename, s32 *lsn, u8 *mode)
 {
+#ifdef SDF_SMT3
     /* Same CD search scratch capacity as sdfCdImageInit. */
     u32 file[12];
+#else
+    u32 file[9];
+#endif
     char path[256];
     char *name;
     char *cursor;
@@ -283,7 +352,11 @@ sdfCdImageDirEntry_t *sdfCdImageSearchFileDirect(const char *filename, s32 *lsn,
         if (status == 1) {
             sdfCdWaitTrayClose();
         } else {
+#ifdef SDF_SMT3
             return NULL;
+#else
+            sdfDelayThread(100);
+#endif
         }
     }
     *lsn = file[0];
@@ -361,6 +434,7 @@ sdfCdImageDirEntry_t *sdfCdImageSearchFile(const char *path, s32 *lsn, u8 *mode)
     return node;
 }
 
+#ifdef SDF_SMT3
 s32 sdfCdImageLoadStart(const char *filename)
 {
     s32 lsn;
@@ -375,6 +449,29 @@ s32 sdfCdImageLoadStart(const char *filename)
     sdfCdStStart(lsn);
     return entry->size_;
 }
+#else
+s32 sdfCdImageLoadStart(const char *filename)
+{
+    s32 result;
+    s32 lsn[4];
+    sdfCdImageDirEntry_t *entry;
+
+    entry = sdfCdImageSearchFile(filename, lsn, &D_00552110);
+    result = -1;
+    if (entry != NULL) {
+        sdfCdImageCurrRemain = entry->size_;
+        sdfCdImageCurrFile = entry;
+        sdfCdImageCurrActive = 0;
+        if (filename[1] == 'v' || filename[1] == 'V') {
+            sdfDevSeekDiscWithRequestGate(lsn[0]);
+        } else {
+            sdfCdStStart(lsn[0]);
+        }
+        result = entry->size_;
+    }
+    return result;
+}
+#endif
 
 /* Consume up to size disc-file bytes, retaining a partial sector; return the byte count. */
 s32 sdfCdImageRead(void *buff, s32 length) {
@@ -493,6 +590,9 @@ void sdfCdImageLoadDir(const char *dirFile) {
     sdfCdImageDirData = buffer;
     sceRead(fileHandle, (s32)buffer, fileBytes);
     sceClose(fileHandle);
+#ifdef SDF_DDS1
+    FlushCache(0);
+#endif
 }
 
 /* Record the disc search path, preload a separate file, and initialize an aligned IOP buffer. */
@@ -510,10 +610,34 @@ void sdfCdImageInit(const char *imageFile, const char *dirFile) {
     sceCdStInit(0x50, 5, (iopHeapAddress + 15) & -16);
 }
 
+#ifdef SDF_SMT3
 s32 sdfCdInit(void)
 {
     sdfCdImageFd = sdfCreateSema(1, 0xFF, 0);
     sceCdInit(0);
     return sceCdMmode(sdfCdTrayMode);
 }
+#else
+void sdfCdInit(void)
+{
+    sdfCdImageFd = sdfCreateSema(1, 0xFF, 0);
+    sdfDiscRequestSemaphore = sdfCreateSema(0, 0xFF, 0);
+    sdfDiscRequestPending = 0;
+    sceCdInit(0);
+    sceCdMmode(sdfCdTrayMode);
+}
+#endif
+#if defined(SDF_DDS1)
+INCLUDE_SDATA(const s32, "sdf/sdfCd", sdfDiscRequestPending);
+
+INCLUDE_SDATA(const s32, "sdf/sdfCd", D_003BD3E0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfCd", sdfCdTrayMode);
+#elif defined(SDF_DDS2)
+INCLUDE_SDATA(const s32, "sdf/sdfCd", sdfDiscRequestPending);
+
+INCLUDE_SDATA(const s32, "sdf/sdfCd", D_00438AD0);
+
+INCLUDE_SDATA(const s32, "sdf/sdfCd", sdfCdTrayMode);
+#endif
 
