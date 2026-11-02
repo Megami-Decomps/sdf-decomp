@@ -56,7 +56,17 @@ extern void *memcpy(void *, const void *, unsigned int);
 
 void *sdfChipAllocDirect(s32 aSize);
 
+#if defined(SDF_DDS1)
+#define D_00549878 D_003B4690
+#elif defined(SDF_DDS2)
+#define D_00549878 D_0042E3A0
+#endif
+
 extern char D_00549878[];
+
+#if defined(SDF_DDS1) || defined(SDF_DDS2)
+#define sdf_2BFE08 sdfDecimalToPackedDigits
+#endif
 
 extern u8 sdfDev9LoadFlag;
 
@@ -113,7 +123,13 @@ u64 sdf_2BFC58(void *dst, s32 size)
     return entry;
 }
 #else
+#if defined(SDF_DDS1)
+INCLUDE_ASM(const s32, "sdf/sdfDev9", func_002E73F0);
+#elif defined(SDF_DDS2)
+INCLUDE_ASM(const s32, "sdf/sdfDev9", func_00340298);
+#else
 INCLUDE_ASM(const s32, "sdf/sdfDev9", sdf_2BFC58);
+#endif
 #endif
 
 /* Clear `count` quadwords at dst: four per pass, then a falling 3/2/1
@@ -187,5 +203,11 @@ s32 sdf_2BFE08(s32 number) {
     return packedDigits;
 }
 
+#if defined(SDF_DDS1)
+INCLUDE_RODATA(const s32, "sdf/sdfDev9", D_003B4690);
+#elif defined(SDF_DDS2)
+INCLUDE_RODATA(const s32, "sdf/sdfDev9", D_0042E3A0);
+#else
 INCLUDE_RODATA(const s32, "sdf/sdfDev9", D_00549878);
+#endif
 
