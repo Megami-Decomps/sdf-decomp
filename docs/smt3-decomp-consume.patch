@@ -1,0 +1,734 @@
+From 22d112af871279c0e6bedaf2c3bcdd9d37e1ebec Mon Sep 17 00:00:00 2001
+From: tge-was-taken <tge-was-taken@outlook.com>
+Date: Mon, 2 Nov 2026 04:16:42 +0100
+Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
+
+---
+ .github/workflows/build.yml    |  1 +
+ .gitmodules                    |  3 ++
+ README.md                      |  1 +
+ configure.py                   | 34 +++++++++++-------
+ docs/building.md               |  7 ++++
+ external/sdf-decomp            |  1 +
+ tools/cc.sh                    |  5 ++-
+ tools/check_drift.py           |  5 ++-
+ tools/check_inline_asm.py      |  7 +++-
+ tools/check_nonmatching.py     | 15 ++++----
+ tools/check_unit.py            | 11 +++---
+ tools/include_rodata.py        |  5 +--
+ tools/include_sdata.py         |  7 ++--
+ tools/production_report.py     | 11 +++---
+ tools/progress.py              |  5 +--
+ tools/sources.py               | 65 ++++++++++++++++++++++++++++++++++
+ tools/splat_split.py           | 39 ++++++++++++++++++++
+ tools/test_check_inline_asm.py |  4 +--
+ tools/test_configure.py        |  6 ++--
+ tools/test_vuas.py             |  3 +-
+ tools/vu_include.py            |  5 ++-
+ 21 files changed, 195 insertions(+), 45 deletions(-)
+ create mode 100644 .gitmodules
+ create mode 160000 external/sdf-decomp
+ create mode 100644 tools/sources.py
+ create mode 100644 tools/splat_split.py
+
+diff --git a/.github/workflows/build.yml b/.github/workflows/build.yml
+index 376a2d55..b4b5559d 100644
+--- a/.github/workflows/build.yml
++++ b/.github/workflows/build.yml
+@@ -24,6 +24,7 @@ jobs:
+         uses: actions/checkout@v5
+         with:
+           persist-credentials: false
++          submodules: true
+ 
+       - name: Set up Python
+         uses: actions/setup-python@v5
+diff --git a/.gitmodules b/.gitmodules
+new file mode 100644
+index 00000000..17592be8
+--- /dev/null
++++ b/.gitmodules
+@@ -0,0 +1,3 @@
++[submodule "external/sdf-decomp"]
++	path = external/sdf-decomp
++	url = ../sdf-decomp
+diff --git a/README.md b/README.md
+index 96026b29..e59c98d1 100644
+--- a/README.md
++++ b/README.md
+@@ -71,6 +71,7 @@ Requirements:
+   from it.
+ 
+ ```sh
++git submodule update --init    # external/sdf-decomp, the shared SDF engine source
+ python -m pip install -r requirements.txt
+ python tools/download_tools.py
+ 
+diff --git a/configure.py b/configure.py
+index f45ca1dc..e1ae7cb8 100755
+--- a/configure.py
++++ b/configure.py
+@@ -20,6 +20,7 @@ import sys
+ from pathlib import Path
+ 
+ from tools.ee_gcc_aslr import marker_is_valid
++from tools.sources import SHARED, c_sources, include_flags, logical, physical
+ from tools.symbol_aliases import load_symbol_aliases, linker_aliases
+ 
+ ROOT = Path(__file__).resolve().parent
+@@ -54,7 +55,7 @@ CC1_DEFINES = (
+ )
+ # Retail game code: -O2, default small-data limit (-G8: .sdata/.sbss/.lit4 are $gp-relative).
+ CC1_FLAGS = "-quiet -O2"
+-INCLUDES = "-Iinclude -Isrc"
++INCLUDES = include_flags()
+ AS_FLAGS = "-EL -march=r5900 -mabi=eabi -G8 -Iinclude"
+ # Retail was assembled with -g: GNU as then leaves `.set reorder` code where cc1
+ # put it, so every delay slot cc1 did not fill keeps its `nop` (soft-double and
+@@ -215,7 +216,7 @@ def generated_footprint(version: str) -> list[Path]:
+     return [
+         ROOT / "asm" / version,
+         ROOT / "assets" / version,
+-        *(ROOT / "src" / version).rglob("*.c"),
++        *c_sources(version, ROOT),
+         ROOT / "build" / version / f"{serial}.ld",
+         *config.glob("undefined_*_auto.txt"),
+     ]
+@@ -229,14 +230,14 @@ def source_matching_ownership(version: str) -> list[tuple[str, list[tuple[str, s
+     here would feed a split's source edits back into its own cache key.
+     """
+     return [
+-        (str(path.relative_to(ROOT)), [
++        (str(logical(path, ROOT).relative_to(ROOT)), [
+             (folder, name)
+             for kind, folder, name in include_directives(
+                 path.read_text(errors="replace"), context=str(path.relative_to(ROOT))
+             )
+             if kind == "ASM"
+         ])
+-        for path in sorted((ROOT / "src" / version).rglob("*.c"))
++        for path in c_sources(version, ROOT)
+     ]
+ 
+ 
+@@ -263,7 +264,7 @@ def run_splat(version: str, yaml: Path, force: bool) -> None:
+     # splat never deletes files: a unit or rodata split that moved leaves stale
+     # asm behind (and include_rodata.py would include it twice).
+     shutil.rmtree(ROOT / "asm" / version, ignore_errors=True)
+-    subprocess.run([sys.executable, "-m", "splat", "split", str(yaml)], cwd=ROOT, check=True)
++    subprocess.run([sys.executable, "tools/splat_split.py", str(yaml)], cwd=ROOT, check=True)
+     subprocess.run([sys.executable, "tools/resolve_jtbl_targets.py", f"asm/{version}"], cwd=ROOT, check=True)
+     subprocess.run([sys.executable, "tools/include_rodata.py", version], cwd=ROOT, check=True)
+     subprocess.run([sys.executable, "tools/include_sdata.py", version], cwd=ROOT, check=True)
+@@ -415,7 +416,7 @@ def vu_binaries(n, version: str) -> list[str]:
+     """Assemble each VU listing in src/<version>/sdf/vu, and name what it wrote."""
+     out = []
+     for name in VU_SOURCES:
+-        src = Path("src") / version / "sdf" / "vu" / f"{name}.vsm"
++        src = physical(Path("src") / version / "sdf" / "vu" / f"{name}.vsm")
+         if not (ROOT / src).exists():
+             continue
+         binary = Path("build") / version / "vu" / f"{name}.bin"
+@@ -430,7 +431,7 @@ def source_for(obj: Path, version: str) -> tuple[str, Path]:
+     stem = Path(str(rel)[: -len(".o")])
+     for kind, suffix in (("c", ".c"), ("s", ".s")):
+         candidate = Path(f"{stem}{suffix}")
+-        if (ROOT / candidate).exists():
++        if (ROOT / physical(candidate)).exists():
+             return kind, candidate
+     if rel.parts[0] == "assets":
+         return "bin", Path(f"{stem}.bin")
+@@ -582,7 +583,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+             elif kind == "bin":
+                 n.build(str(obj), "bin", str(src))
+             else:
+-                text = (ROOT / src).read_text(errors="replace")
++                source = physical(src)
++                text = (ROOT / source).read_text(errors="replace")
+                 nonmatchings = Path("asm") / version / "nonmatchings"
+                 asm_files = list(dict.fromkeys(
+                     str(nonmatchings / folder / f"{name}.s")
+@@ -592,7 +594,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+                 if asm_files:
+                     n.build(eeasm, "eeasm", asm_files, implicit=["tools/eeas_compat.py"],
+                             variables={"unit": str(src)})
+-                cdefs = f"'-DASM_ROOT=\"build/eeasm/{nonmatchings}/\"' -DVERSION_{version.upper()}"
++                cdefs = (f"'-DASM_ROOT=\"build/eeasm/{nonmatchings}/\"' -DVERSION_{version.upper()} "
++                         f"-DSDF_{version.upper()}")
+                 unit = src.relative_to(Path("src") / version).with_suffix("").as_posix()
+                 flags = unit_cflags(version).get(unit, "")
+                 chain = TOOLCHAINS[unit_toolchain(version).get(unit, DEFAULT_TOOLCHAIN)]
+@@ -604,16 +607,16 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+                            f"config/{version}/asflags.txt"]
+                 # Instruction-emitting inline asm in the unit fails before it compiles.
+                 asmcheck = Path("build") / version / "asmcheck" / src.with_suffix(".stamp")
+-                n.build(str(asmcheck), "asmcheck", str(src),
++                n.build(str(asmcheck), "asmcheck", str(source),
+                         implicit=["tools/check_inline_asm.py", "config/inline_asm_allow.txt"])
+-                n.build(str(obj), "cc", str(src),
++                n.build(str(obj), "cc", str(source),
+                         implicit=eeasm + [str(asmcheck), "include/macro.inc", *configs,
+                                           "tools/production_report.py"],
+                         implicit_outputs=[str(obj) + ".s", str(obj) + ".proof.json"],
+                         variables={"cdefs": cdefs, "cflags": flags, **tools})
+                 # objdiff base: the same unit without its INCLUDE_ASM fallbacks, so only C counts.
+                 base = Path("build") / version / "base" / src.with_suffix(".o")
+-                n.build(str(base), "cc", str(src),
++                n.build(str(base), "cc", str(source),
+                         implicit=[str(asmcheck), *configs, "include/macro.inc",
+                                   "tools/production_report.py"],
+                         implicit_outputs=[str(base) + ".s", str(base) + ".proof.json"],
+@@ -658,7 +661,7 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+     # ASM/C ownership. The ownership digest keeps body-only edits split-free.
+     configure_inputs += [
+         str(path.relative_to(ROOT)) for v in versions
+-        for path in sorted((ROOT / "src" / v).rglob("*.c"))
++        for path in c_sources(v, ROOT)
+     ]
+     for version in versions:
+         alias_metadata = ROOT / "config" / version / "symbol_aliases.json"
+@@ -755,6 +758,11 @@ def main() -> None:
+             ap.error(f"{v}: orig/{v}/{VERSIONS[v]['serial']} missing; run tools/extract.py")
+     if not versions:
+         ap.error("no extracted versions; run tools/extract.py")
++    # splat would otherwise write stub C files into the empty checkout.
++    for v in versions:
++        for unit_dir in SHARED.get(v, {}).values():
++            if not any((ROOT / unit_dir).glob("*.c")):
++                ap.error(f"{unit_dir} is empty; run git submodule update --init")
+     needed = {DEFAULT_TOOLCHAIN}
+     for version in VERSIONS:
+         needed |= set(unit_toolchain(version).values())
+diff --git a/docs/building.md b/docs/building.md
+index 3e788386..3c9b4887 100644
+--- a/docs/building.md
++++ b/docs/building.md
+@@ -121,11 +121,18 @@ config/smt3/symbol_addrs.txt names and addresses
+ config/smt3/cflags.txt      per-unit compiler options, with evidence
+ src/smt3/<dir>/<unit>.c C units; INCLUDE_ASM marks functions not decompiled yet
+ include/                    common.h, include_asm.h and shared headers
++external/sdf-decomp/        submodule: the sdf/ units and engine headers
+ tools/                      build, checking, splitting and analysis tools
+ docs/                       this documentation
+ asm/ build/ orig/           generated or extracted locally (git-ignored)
+ ```
+ 
++The `sdf/` units are compiled from `external/sdf-decomp/src/sdf/`, shared with
++the Digital Devil Saga decompilation, and its `include/` is searched before
++this one's. A unit keeps its `src/smt3/sdf/<unit>.c` name everywhere else (splat,
++objects, reports); `tools/sources.py` maps it to the file. Every unit is built
++with `-DSDF_SMT3`, which the shared code uses for SMT3-only parts.
++
+ `.text` is in the `main` splat segment, split into named C units and
+ `code_<vram>` placeholders. Preserve the configured boundaries; see
+ [TU recovery](tu-recovery.md).
+diff --git a/external/sdf-decomp b/external/sdf-decomp
+new file mode 160000
+index 00000000..65666fc4
+--- /dev/null
++++ b/external/sdf-decomp
+@@ -0,0 +1 @@
++Subproject commit 65666fc44dcca01ed0ad3634e926fd3468f0fca2
+diff --git a/tools/cc.sh b/tools/cc.sh
+index c4fee6c8..acccf946 100755
+--- a/tools/cc.sh
++++ b/tools/cc.sh
+@@ -19,8 +19,10 @@ case $in in /*) ;; *) in="$PWD/$in" ;; esac
+ case $out in /*) ;; *) out="$PWD/$out" ;; esac
+ version=${SMT3_VERSION:-smt3}
+ canon=${SMT3_AS_UNIT:-}
++# A unit compiled from a submodule keeps its src/<version> name (tools/sources.py).
+ case $in in
+     "$root"/src/"$version"/*) [ -z "$canon" ] && canon=${in#"$root"/} ;;
++    "$root"/external/sdf-decomp/src/sdf/*) [ -z "$canon" ] && canon=src/$version/sdf/${in#"$root"/external/sdf-decomp/src/sdf/} ;;
+ esac
+ compiler=ee-gcc2.96
+ if [ -n "$canon" ]; then
+@@ -94,7 +96,8 @@ run "$cc1" \
+     -D__LANGUAGE_C -D_LANGUAGE_C -DLANGUAGE_C \
+     "-D__SIZE_TYPE__=unsigned int" "-D__PTRDIFF_TYPE__=int" -D__LONG_MAX__=9223372036854775807L \
+     -U__mips -D__mips=3 -D__mips64 -D__mips_eabi -D__mips_single_float \
+-    -Iinclude -Isrc "-DASM_ROOT=\"build/eeasm/asm/$version/nonmatchings/\"" "-DVERSION_$(echo $version | tr a-z A-Z)" \
++    -Iexternal/sdf-decomp/include -Iinclude -Isrc "-DASM_ROOT=\"build/eeasm/asm/$version/nonmatchings/\"" \
++    "-DVERSION_$(echo $version | tr a-z A-Z)" "-DSDF_$(echo $version | tr a-z A-Z)" \
+     $ccflags $flags "$cc_in" -o "$cc_out"
+ # SMT3_KEEP_S=path keeps the compiler's assembly (check_unit measures inline asm).
+ if [ -n "$SMT3_KEEP_S" ]; then cp "$cc_out" "$SMT3_KEEP_S"; fi
+diff --git a/tools/check_drift.py b/tools/check_drift.py
+index 90fd1bc4..c9a104f1 100644
+--- a/tools/check_drift.py
++++ b/tools/check_drift.py
+@@ -13,6 +13,7 @@ from pathlib import Path
+ 
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ from cparse import structs  # noqa: E402
++from sources import SHARED, SHARED_INCLUDES  # noqa: E402
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ BASELINE = ROOT / "config" / "smt3" / "drift_baseline.txt"
+@@ -41,7 +42,9 @@ ENUMS = ROOT / "config" / "smt3" / "hd_enums.txt"
+ 
+ 
+ def sources():
+-    return sorted(list((ROOT / "src").rglob("*.c")) + list((ROOT / "include").rglob("*.h")))
++    shared = [p for dirs in SHARED.values() for d in dirs.values() for p in (ROOT / d).rglob("*.c")]
++    shared += [p for d in SHARED_INCLUDES for p in (ROOT / d).rglob("*.h")]
++    return sorted(list((ROOT / "src").rglob("*.c")) + list((ROOT / "include").rglob("*.h")) + shared)
+ 
+ 
+ def adopted_enum_members():
+diff --git a/tools/check_inline_asm.py b/tools/check_inline_asm.py
+index a13628a3..7568e08c 100644
+--- a/tools/check_inline_asm.py
++++ b/tools/check_inline_asm.py
+@@ -13,6 +13,9 @@ import re
+ import sys
+ from pathlib import Path
+ 
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from sources import SHARED, logical, physical  # noqa: E402
++
+ ROOT = Path(__file__).resolve().parent.parent
+ ALLOW_FILE = ROOT / "config" / "inline_asm_allow.txt"
+ MACRO_HOME = Path("include/ps2asm.h")
+@@ -78,11 +81,13 @@ def main() -> None:
+     sources = [p if not p.is_absolute() else p.relative_to(ROOT) for p in args.sources]
+     if args.all:
+         sources += [p.relative_to(ROOT) for p in sorted(ROOT.glob("src/**/*.c"))]
++        sources += [p.relative_to(ROOT) for dirs in SHARED.values() for d in dirs.values()
++                    for p in sorted((ROOT / d).rglob("*.c"))]
+     allowed = load_allowlist()
+ 
+     failed = False
+     for path in dict.fromkeys(sources):
+-        if path in allowed:
++        if logical(path, ROOT) in allowed:
+             continue
+         for line in violations(path):
+             print(f"{path}:{line}: a C unit does not spell asm itself; emitted "
+diff --git a/tools/check_nonmatching.py b/tools/check_nonmatching.py
+index b6e20863..da529ed2 100644
+--- a/tools/check_nonmatching.py
++++ b/tools/check_nonmatching.py
+@@ -11,12 +11,14 @@ SKIP_ASM defined, which selects the drafts and drops the asm fallbacks.
+ A failure means the draft needs updating, not that the repo is broken: the
+ real build does not use it. Exit status is non-zero so CI still says so.
+ """
+-import glob
+ import re
+ import subprocess
+ import sys
+ from pathlib import Path
+ 
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from sources import SHARED_INCLUDES, c_sources, unit_name  # noqa: E402
++
+ ROOT = Path(__file__).resolve().parent.parent
+ GUARD = "#ifdef NON_MATCHING"
+ # A draft is a guarded block whose #else holds the asm fallback; the
+@@ -36,18 +38,16 @@ def draft_names(text: str) -> list[str]:
+ def units(args):
+     if args:
+         return [Path(a) for a in args]
+-    return [Path(p) for p in sorted(glob.glob(str(ROOT / "src/smt3/**/*.c"), recursive=True))
+-            if GUARD in Path(p).read_text()]
++    return [p for p in c_sources("smt3", ROOT) if GUARD in p.read_text()]
+ 
+ 
+ def draft_functions(version: str = "smt3") -> dict[str, set[str]]:
+     """Map each unit, relative to src/<version> and without .c, to its drafts."""
+-    src = ROOT / "src" / version
+     drafts = {}
+-    for path in sorted(src.rglob("*.c")):
++    for path in c_sources(version, ROOT):
+         names = set(draft_names(path.read_text()))
+         if names:
+-            drafts[path.relative_to(src).with_suffix("").as_posix()] = names
++            drafts[unit_name(version, path, ROOT)] = names
+     return drafts
+ 
+ 
+@@ -63,8 +63,9 @@ def compile_unit(path: Path) -> str:
+          "-D__LONG_MAX__=9223372036854775807L",
+          "-U__mips", "-D__mips=3", "-D__mips64", "-D__mips_eabi",
+          "-D__mips_single_float",
++         *("-I" + str(ROOT / p) for p in SHARED_INCLUDES),
+          "-I" + str(ROOT / "include"), "-I" + str(ROOT / "src"),
+-         "-DVERSION_SMT3", "-DSKIP_ASM", "-DNON_MATCHING",
++         "-DVERSION_SMT3", "-DSDF_SMT3", "-DSKIP_ASM", "-DNON_MATCHING",
+          # Old GCC needs this spelling; -Werror=... is silently ignored.
+          "-Werror-implicit-function-declaration",
+          "-quiet", "-O2", str(path), "-o", "/dev/null"],
+diff --git a/tools/check_unit.py b/tools/check_unit.py
+index bbdd9ada..7c8e70b0 100755
+--- a/tools/check_unit.py
++++ b/tools/check_unit.py
+@@ -23,6 +23,7 @@ from pathlib import Path
+ 
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ from retail_elf import RETAIL, ROOT, VERSIONS, load_segments, off_to_va, va_to_off  # noqa: E402
++from sources import SHARED, logical  # noqa: E402
+ from symbol_aliases import load_symbol_aliases  # noqa: E402
+ from resolved_code import (  # noqa: E402
+     hi_lo_addend,
+@@ -830,8 +831,9 @@ def main():
+     unit = args.unit.resolve()
+     source = args.source.resolve() if args.source else unit
+     source_text = drop_nonmatching(source.read_text())
+-    version = unit.relative_to(ROOT / "src").parts[0]
+-    unit_name = unit.relative_to(ROOT / "src" / version).with_suffix("").as_posix()
++    canonical = logical(unit, ROOT)
++    version = canonical.relative_to(ROOT / "src").parts[0]
++    unit_name = canonical.relative_to(ROOT / "src" / version).with_suffix("").as_posix()
+     syms = symbols(version)
+     aliases = load_symbol_aliases(ROOT, version)
+     syms.update({alias.name: alias.address for alias in aliases})
+@@ -853,7 +855,7 @@ def main():
+     with tempfile.TemporaryDirectory() as tmp:
+         obj = Path(tmp) / "unit.o"
+         # cc.sh compiles under the unit's own path (and flags) even for --source.
+-        env = dict(os.environ, SMT3_VERSION=version, SMT3_AS_UNIT=str(unit.relative_to(ROOT)))
++        env = dict(os.environ, SMT3_VERSION=version, SMT3_AS_UNIT=str(canonical.relative_to(ROOT)))
+         asm_text = Path(tmp) / "unit.s"
+         env_s = dict(env, SMT3_KEEP_S=str(asm_text))
+         extra = args.cflags.split()
+@@ -1599,7 +1601,8 @@ def main():
+         wanted -= set(subprocess.run(["grep", "-rhoE", rf"^\s*(glabel|dlabel|jlabel|nonmatching) ({alt})\b",
+                                       str(ROOT / "asm" / version)], capture_output=True, text=True).stdout.split()[1::2])
+     if wanted:
+-        for path in subprocess.run(["grep", "-rlwE", "|".join(sorted(wanted)), str(ROOT / "src" / version)],
++        for path in subprocess.run(["grep", "-rlwE", "|".join(sorted(wanted)), str(ROOT / "src" / version),
++                                    *(str(ROOT / d) for d in SHARED.get(version, {}).values())],
+                                    capture_output=True, text=True).stdout.splitlines():
+             source = Path(path).read_text()
+             wanted = {n for n in wanted if not re.search(
+diff --git a/tools/include_rodata.py b/tools/include_rodata.py
+index 3c71f7f9..8c8433c3 100755
+--- a/tools/include_rodata.py
++++ b/tools/include_rodata.py
+@@ -28,6 +28,7 @@ import sys
+ from pathlib import Path
+ 
+ from include_sdata import DATA_DEF
++from sources import c_sources, unit_name
+ 
+ ROOT = Path(__file__).resolve().parent.parent
+ INCLUDE = re.compile(r'^INCLUDE_(?:ASM|RODATA)\([^,]+,\s*"[^"]+",\s*(\w+)\);$', re.M)
+@@ -44,8 +45,8 @@ def rodata_part(path):
+ 
+ def place(version):
+     added = 0
+-    for c in sorted((ROOT / "src" / version).rglob("*.c")):
+-        unit = c.relative_to(ROOT / "src" / version).with_suffix("").as_posix()
++    for c in c_sources(version, ROOT):
++        unit = unit_name(version, c, ROOT)
+         nonmatchings = ROOT / "asm" / version / "nonmatchings" / unit
+         matchings = ROOT / "asm" / version / "matchings" / unit
+         if not nonmatchings.is_dir() and not matchings.is_dir():
+diff --git a/tools/include_sdata.py b/tools/include_sdata.py
+index 531232be..bc7c285b 100755
+--- a/tools/include_sdata.py
++++ b/tools/include_sdata.py
+@@ -22,6 +22,9 @@ import re
+ import sys
+ from pathlib import Path
+ 
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from sources import c_sources, unit_name  # noqa: E402
++
+ ROOT = Path(__file__).resolve().parent.parent
+ LINE = re.compile(r'^INCLUDE_SDATA\([^,]+,\s*"[^"]+",\s*(\w+)\);\n\n?', re.M)
+ DEF = re.compile(r"^[A-Za-z_][\w \t\*]*?\b(\w+)\s*\([^;{]*\)\s*\{?[ \t]*$", re.M)
+@@ -60,8 +63,8 @@ def write_text_if_changed(path, text):
+ def place(version):
+     names = {n: int(a, 16) for n, a in ROW.findall((ROOT / "config" / version / "symbol_addrs.txt").read_text())}
+     added = 0
+-    for c in sorted((ROOT / "src" / version).rglob("*.c")):
+-        unit = c.relative_to(ROOT / "src" / version).with_suffix("").as_posix()
++    for c in c_sources(version, ROOT):
++        unit = unit_name(version, c, ROOT)
+         data = ROOT / "asm" / version / "data" / f"{unit}.sdata.s"
+         text = LINE.sub("", c.read_text())
+         if not data.exists():
+diff --git a/tools/production_report.py b/tools/production_report.py
+index d8fcfe1a..a61fb2db 100644
+--- a/tools/production_report.py
++++ b/tools/production_report.py
+@@ -19,6 +19,7 @@ import sys
+ 
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ from retail_elf import ROOT, load_segments  # noqa: E402
++from sources import logical, physical  # noqa: E402
+ 
+ sys.path.insert(0, str(ROOT))
+ 
+@@ -234,7 +235,7 @@ class Elf:
+ def record_object(root: Path, source: Path, obj: Path) -> None:
+     """Bind compiler ownership to the object in the successful compile recipe."""
+     match = OBJECT_PATH.fullmatch(str(obj))
+-    if match is None or str(source) != match[2] + ".c":
++    if match is None or str(logical(source)) != match[2] + ".c":
+         raise ValueError("compile object/source identity differs")
+     dependency_text = (root / (str(obj) + ".d")).read_text().replace("\\\n", " ")
+     target, separator, dependencies = dependency_text.partition(":")
+@@ -244,7 +245,7 @@ def record_object(root: Path, source: Path, obj: Path) -> None:
+     assembly = (root / (str(obj) + ".s")).read_text()
+     for included in re.findall(r'^\s*\.include "([^"\n]+)"\s*$', assembly, re.M):
+         paths.add("include/macro.inc" if included == "macro.inc" else included)
+-    version = source.parts[1]
++    version = logical(source).parts[1]
+     paths.update((f"config/{version}/cflags.txt", "include/macro.inc"))
+     receipt = {"schema": 1, "source": str(source), "object": str(obj),
+                "files": {p: digest(root / p) for p in sorted(paths)}}
+@@ -271,7 +272,7 @@ def read_object_receipt(root: Path, obj: str) -> dict:
+     if receipt.get("schema") != 1 or receipt.get("object") != obj or not source:
+         raise ValueError("wrong compile receipt identity")
+     match = OBJECT_PATH.fullmatch(obj)
+-    if match is None or source != match[2] + ".c":
++    if match is None or str(logical(Path(source))) != match[2] + ".c":
+         raise ValueError("compile object/source identity differs")
+     files = receipt.get("files", {})
+     if not {obj, obj + ".s", source} <= files.keys():
+@@ -338,7 +339,7 @@ class Production:
+ 
+     def unit(self, unit: dict, name: str) -> dict:
+         obj = f"build/{self.version}/src/{self.version}/{name}.o"
+-        source = f"src/{self.version}/{name}.c"
++        source = str(physical(Path(f"src/{self.version}/{name}.c")))
+         assembly_path = obj + ".s"
+         if obj not in self.receipt["objects"] or not {source, assembly_path} <= self.receipt["files"].keys():
+             raise ValueError(f"{name}: missing compiled source provenance")
+@@ -496,7 +497,7 @@ def reconcile(report: dict, scope: str, root: Path = ROOT, *,
+             version, name = scope, unit["name"]
+         if version not in VERSIONS:
+             raise ValueError(f"unknown report version: {version}")
+-        if not (root / f"src/{version}/{name}.c").is_file():
++        if not (root / physical(Path(f"src/{version}/{name}.c"))).is_file():
+             # The game scope is deliberately limited to the C reconstruction
+             # target. An unexpected unit is a configuration error, not credit.
+             raise ValueError(f"missing source for game report unit: {version}/{name}")
+diff --git a/tools/progress.py b/tools/progress.py
+index daa5ab64..8a5530d1 100755
+--- a/tools/progress.py
++++ b/tools/progress.py
+@@ -20,6 +20,7 @@ from pathlib import Path
+ 
+ sys.path.insert(0, str(Path(__file__).resolve().parent))
+ import vu_include  # noqa: E402
++from sources import c_sources, unit_name  # noqa: E402
+ from check_nonmatching import draft_functions  # noqa: E402
+ 
+ ROOT = Path(__file__).resolve().parent.parent
+@@ -31,8 +32,8 @@ INSN = re.compile(r"^\s*/\* [0-9A-F]+ [0-9A-F]{8} [0-9A-F]{8} \*/", re.M)
+ def version_stats(version):
+     funcs = c_funcs = draft_funcs = size = c_size = draft_size = 0
+     drafts = draft_functions(version)
+-    for unit in (ROOT / "src" / version).rglob("*.c"):
+-        name = unit.relative_to(ROOT / "src" / version).with_suffix("").as_posix()
++    for unit in c_sources(version, ROOT):
++        name = unit_name(version, unit, ROOT)
+         # Match the primary report's game scope. SDK/runtime reconstructions
+         # have their own category and must not move the game-code denominator.
+         if name.startswith("sdk/"):
+diff --git a/tools/sources.py b/tools/sources.py
+new file mode 100644
+index 00000000..f7907697
+--- /dev/null
++++ b/tools/sources.py
+@@ -0,0 +1,65 @@
++"""Where a unit's source lives.
++
++A unit keeps its name and its src/<version>/<unit>.c path everywhere else
++(splat, objects, reports); only the file itself may sit in a submodule.
++"""
++from __future__ import annotations
++
++import os
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++
++# Unit directories compiled from a submodule, per version.
++SHARED = {
++    "smt3": {"sdf": Path("external/sdf-decomp/src/sdf")},
++}
++
++# Header directories of those submodules, searched before include/.
++SHARED_INCLUDES = [Path("external/sdf-decomp/include")]
++
++
++def physical(path: Path, root: Path = ROOT) -> Path:
++    """Map a path under src/<version>, absolute or repo-relative, to the file on disk."""
++    path = Path(os.path.normpath(path))
++    absolute = path.is_absolute()
++    if absolute and not path.is_relative_to(root):
++        return path
++    rel = path.relative_to(root) if absolute else path
++    parts = rel.parts
++    if len(parts) > 3 and parts[0] == "src":
++        shared = SHARED.get(parts[1], {}).get(parts[2])
++        if shared is not None:
++            rel = shared.joinpath(*parts[3:])
++    return root / rel if absolute else rel
++
++
++def logical(path: Path, root: Path = ROOT) -> Path:
++    """Map a file on disk back to its path under src/<version>; the inverse of physical()."""
++    path = Path(os.path.normpath(path))
++    absolute = path.is_absolute()
++    if absolute and not path.is_relative_to(root):
++        return path
++    rel = path.relative_to(root) if absolute else path
++    for version, dirs in SHARED.items():
++        for unit_dir, shared in dirs.items():
++            if rel.is_relative_to(shared):
++                rel = Path("src", version, unit_dir) / rel.relative_to(shared)
++                break
++    return root / rel if absolute else rel
++
++
++def c_sources(version: str, root: Path = ROOT) -> list[Path]:
++    """Every C unit's file on disk, absolute, in src/<version> path order."""
++    own = list((root / "src" / version).rglob("*.c"))
++    shared = [p for d in SHARED.get(version, {}).values() for p in (root / d).rglob("*.c")]
++    return sorted(own + shared, key=lambda p: logical(p, root))
++
++
++def unit_name(version: str, path: Path, root: Path = ROOT) -> str:
++    """A unit's name, src/<version>/ and .c dropped, for a file on disk."""
++    return logical(path, root).relative_to(root / "src" / version).with_suffix("").as_posix()
++
++
++def include_flags() -> str:
++    return " ".join(f"-I{p}" for p in SHARED_INCLUDES) + " -Iinclude -Isrc"
+diff --git a/tools/splat_split.py b/tools/splat_split.py
+new file mode 100644
+index 00000000..27fd2414
+--- /dev/null
++++ b/tools/splat_split.py
+@@ -0,0 +1,39 @@
++#!/usr/bin/env python3
++"""`splat split`, reading a submodule unit's C from the submodule.
++
++Linker entries keep the src/<version> path, so object names do not move.
++"""
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from sources import physical  # noqa: E402
++
++from splat.__main__ import splat_main  # noqa: E402
++from splat.segtypes.common.c import CommonSegC  # noqa: E402
++
++source_path = CommonSegC.out_path
++
++
++def out_path(self):
++    path = source_path(self)
++    return physical(path) if path is not None and getattr(self, "reading_source", False) else path
++
++
++def reading_source(method):
++    def wrapper(self, *args, **kwargs):
++        self.reading_source = True
++        try:
++            return method(self, *args, **kwargs)
++        finally:
++            self.reading_source = False
++    return wrapper
++
++
++CommonSegC.out_path = out_path
++CommonSegC.scan = reading_source(CommonSegC.scan)
++CommonSegC.split = reading_source(CommonSegC.split)
++
++if __name__ == "__main__":
++    sys.argv[1:1] = ["split"]
++    splat_main()
+diff --git a/tools/test_check_inline_asm.py b/tools/test_check_inline_asm.py
+index 4a3dd646..b69ba96a 100644
+--- a/tools/test_check_inline_asm.py
++++ b/tools/test_check_inline_asm.py
+@@ -63,8 +63,8 @@ class Allowlist(unittest.TestCase):
+         self.assertTrue(listed)
+         for path in sorted(listed):
+             with self.subTest(path=path):
+-                self.assertTrue((ROOT / path).exists(), "listed unit is gone")
+-                self.assertTrue(cia.violations(path), "nothing left to grandfather")
++                self.assertTrue((ROOT / cia.physical(path)).exists(), "listed unit is gone")
++                self.assertTrue(cia.violations(cia.physical(path)), "nothing left to grandfather")
+ 
+     def test_no_other_unit_spells_asm(self):
+         listed = cia.load_allowlist()
+diff --git a/tools/test_configure.py b/tools/test_configure.py
+index 2a08ba60..cf5ffa7a 100644
+--- a/tools/test_configure.py
++++ b/tools/test_configure.py
+@@ -57,7 +57,7 @@ class ConfigureTests(unittest.TestCase):
+             (build / f"{SERIAL}.ld").write_text("main_SBSS_START = .;\nmain_BSS_START = .;\n")
+ 
+             def run_forced_step(command, **kwargs):
+-                if "splat" in command:
++                if "tools/splat_split.py" in command:
+                     (root / f"asm/{VERSION}").mkdir(parents=True, exist_ok=True)
+ 
+             with patch.object(configure, "ROOT", root), \
+@@ -391,7 +391,7 @@ class SplatOwnershipTests(unittest.TestCase):
+         splits = []
+ 
+         def generate(command, **kwargs):
+-            if "splat" not in command:
++            if "tools/splat_split.py" not in command:
+                 return
+             splits.append(command)
+             asm.mkdir(parents=True)
+@@ -429,7 +429,7 @@ class SplatOwnershipTests(unittest.TestCase):
+         splits = []
+ 
+         def generate(command, **kwargs):
+-            if "splat" in command:
++            if "tools/splat_split.py" in command:
+                 splits.append(command)
+                 (self.root / f"asm/{VERSION}").mkdir(parents=True)
+                 self.source.write_text(self.fallback)
+diff --git a/tools/test_vuas.py b/tools/test_vuas.py
+index 6494e3c2..3be06b06 100644
+--- a/tools/test_vuas.py
++++ b/tools/test_vuas.py
+@@ -22,7 +22,8 @@ vudis = load("vudis")
+ vutext = load("vutext")
+ 
+ RETAIL = ROOT / "orig" / "smt3" / "SLUS_209.11"
+-SOURCES = {0: ROOT / "src/smt3/sdf/vu/vu0_micro.vsm", 1: ROOT / "src/smt3/sdf/vu/vu1_micro.vsm"}
++SOURCES = {0: ROOT / "external/sdf-decomp/src/sdf/vu/vu0_micro.vsm",
++           1: ROOT / "external/sdf-decomp/src/sdf/vu/vu1_micro.vsm"}
+ 
+ 
+ def words(text):
+diff --git a/tools/vu_include.py b/tools/vu_include.py
+index b47e18a4..e69e9419 100644
+--- a/tools/vu_include.py
++++ b/tools/vu_include.py
+@@ -13,6 +13,9 @@ import importlib.util
+ import sys
+ from pathlib import Path
+ 
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++from sources import physical  # noqa: E402
++
+ ROOT = Path(__file__).resolve().parent.parent
+ 
+ spec = importlib.util.spec_from_file_location("vutext", ROOT / "tools" / "vutext.py")
+@@ -48,7 +51,7 @@ def coverage(version, elf_path=vutext.DEFAULT_ELF):
+     the report would score 59,312 bytes of microcode, VIF headers and texture as
+     one unmatched function.
+     """
+-    written = {"vu%d" % vu: (ROOT / "src" / version / "sdf" / "vu" / f"{name}.vsm").exists()
++    written = {"vu%d" % vu: physical(ROOT / "src" / version / "sdf" / "vu" / f"{name}.vsm", ROOT).exists()
+                for vu, name in SOURCES.items()}
+     section = micro = source = 0
+     for what, _, length in pieces(elf_path):
+-- 
+2.47.3
+
