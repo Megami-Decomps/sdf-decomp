@@ -1,4 +1,4 @@
-From 01d13e0db352ed05fc2caa3e8c0988ab036ec4b5 Mon Sep 17 00:00:00 2001
+From 54d1512e7331d30df753ccb219bc3b3a54852f1e Mon Sep 17 00:00:00 2001
 From: tge-was-taken <tge-was-taken@outlook.com>
 Date: Mon, 2 Nov 2026 04:16:42 +0100
 Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
@@ -7,26 +7,26 @@ Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
  .github/workflows/build.yml    |   1 +
  .gitmodules                    |   3 +
  README.md                      |   1 +
- configure.py                   |  37 +++++----
+ configure.py                   |  37 +++++---
  docs/building.md               |   7 ++
  external/sdf-decomp            |   1 +
  tools/cc.sh                    |   5 +-
  tools/check_drift.py           |   5 +-
- tools/check_inline_asm.py      |   7 +-
- tools/check_nonmatching.py     |  17 +++--
+ tools/check_inline_asm.py      |   6 +-
+ tools/check_nonmatching.py     |  17 ++--
  tools/check_unit.py            |  25 +++---
- tools/include_rodata.py        |  22 +++---
- tools/include_sdata.py         |  30 ++++++--
+ tools/include_rodata.py        |  22 ++---
+ tools/include_sdata.py         |  30 +++++--
  tools/production_report.py     |  11 +--
  tools/progress.py              |   7 +-
- tools/sources.py               | 135 +++++++++++++++++++++++++++++++++
- tools/splat_split.py           |  39 ++++++++++
+ tools/sources.py               | 158 +++++++++++++++++++++++++++++++++
+ tools/splat_split.py           |  39 ++++++++
  tools/test_check_inline_asm.py |   4 +-
  tools/test_configure.py        |   6 +-
- tools/test_sources.py          |  53 +++++++++++++
+ tools/test_sources.py          |  62 +++++++++++++
  tools/test_vuas.py             |   3 +-
  tools/vu_include.py            |   5 +-
- 22 files changed, 357 insertions(+), 67 deletions(-)
+ 22 files changed, 388 insertions(+), 67 deletions(-)
  create mode 100644 .gitmodules
  create mode 160000 external/sdf-decomp
  create mode 100644 tools/sources.py
@@ -67,7 +67,7 @@ index 96026b29..e59c98d1 100644
  python tools/download_tools.py
  
 diff --git a/configure.py b/configure.py
-index 93f71648..721b0f28 100755
+index 93f71648..6b8043d3 100755
 --- a/configure.py
 +++ b/configure.py
 @@ -20,6 +20,7 @@ import sys
@@ -198,7 +198,7 @@ index 93f71648..721b0f28 100755
 +    # splat would otherwise write stub C files into the empty checkout.
 +    for v in versions:
 +        for unit_dir in SHARED.get(v, {}).values():
-+            if not any((ROOT / unit_dir).glob("*.c")):
++            if not (ROOT / unit_dir).is_file() and not any((ROOT / unit_dir).glob("*.c")):
 +                ap.error(f"{unit_dir} is empty; run git submodule update --init")
      needed = {DEFAULT_TOOLCHAIN}
      for version in VERSIONS:
@@ -228,13 +228,13 @@ index 3e788386..3c9b4887 100644
  [TU recovery](tu-recovery.md).
 diff --git a/external/sdf-decomp b/external/sdf-decomp
 new file mode 160000
-index 00000000..ebbd2297
+index 00000000..e02d77d9
 --- /dev/null
 +++ b/external/sdf-decomp
 @@ -0,0 +1 @@
-+Subproject commit ebbd22971162eec70255ca9421b0f450c869a6ce
++Subproject commit e02d77d9b436bad6831fed33a81a3c8692472270
 diff --git a/tools/cc.sh b/tools/cc.sh
-index c4fee6c8..acccf946 100755
+index c4fee6c8..7f94b807 100755
 --- a/tools/cc.sh
 +++ b/tools/cc.sh
 @@ -19,8 +19,10 @@ case $in in /*) ;; *) in="$PWD/$in" ;; esac
@@ -244,7 +244,7 @@ index c4fee6c8..acccf946 100755
 +# A unit compiled from a submodule keeps its src/<version> name (tools/sources.py).
  case $in in
      "$root"/src/"$version"/*) [ -z "$canon" ] && canon=${in#"$root"/} ;;
-+    "$root"/external/sdf-decomp/src/sdf/*) [ -z "$canon" ] && canon=src/$version/sdf/${in#"$root"/external/sdf-decomp/src/sdf/} ;;
++    "$root"/external/sdf-decomp/src/*) [ -z "$canon" ] && canon=src/$version/${in#"$root"/external/sdf-decomp/src/} ;;
  esac
  compiler=ee-gcc2.96
  if [ -n "$canon" ]; then
@@ -259,14 +259,14 @@ index c4fee6c8..acccf946 100755
  # SMT3_KEEP_S=path keeps the compiler's assembly (check_unit measures inline asm).
  if [ -n "$SMT3_KEEP_S" ]; then cp "$cc_out" "$SMT3_KEEP_S"; fi
 diff --git a/tools/check_drift.py b/tools/check_drift.py
-index 90fd1bc4..c9a104f1 100644
+index 90fd1bc4..eefaa544 100644
 --- a/tools/check_drift.py
 +++ b/tools/check_drift.py
 @@ -13,6 +13,7 @@ from pathlib import Path
  
  sys.path.insert(0, str(Path(__file__).resolve().parent))
  from cparse import structs  # noqa: E402
-+from sources import SHARED, SHARED_INCLUDES  # noqa: E402
++from sources import SHARED_INCLUDES, shared_files  # noqa: E402
  
  ROOT = Path(__file__).resolve().parents[1]
  BASELINE = ROOT / "config" / "smt3" / "drift_baseline.txt"
@@ -275,14 +275,14 @@ index 90fd1bc4..c9a104f1 100644
  
  def sources():
 -    return sorted(list((ROOT / "src").rglob("*.c")) + list((ROOT / "include").rglob("*.h")))
-+    shared = [p for dirs in SHARED.values() for d in dirs.values() for p in (ROOT / d).rglob("*.c")]
++    shared = shared_files()
 +    shared += [p for d in SHARED_INCLUDES for p in (ROOT / d).rglob("*.h")]
 +    return sorted(list((ROOT / "src").rglob("*.c")) + list((ROOT / "include").rglob("*.h")) + shared)
  
  
  def adopted_enum_members():
 diff --git a/tools/check_inline_asm.py b/tools/check_inline_asm.py
-index a13628a3..7568e08c 100644
+index a13628a3..f07514b1 100644
 --- a/tools/check_inline_asm.py
 +++ b/tools/check_inline_asm.py
 @@ -13,6 +13,9 @@ import re
@@ -290,17 +290,16 @@ index a13628a3..7568e08c 100644
  from pathlib import Path
  
 +sys.path.insert(0, str(Path(__file__).resolve().parent))
-+from sources import SHARED, logical, physical  # noqa: E402
++from sources import logical, physical, shared_files  # noqa: E402
 +
  ROOT = Path(__file__).resolve().parent.parent
  ALLOW_FILE = ROOT / "config" / "inline_asm_allow.txt"
  MACRO_HOME = Path("include/ps2asm.h")
-@@ -78,11 +81,13 @@ def main() -> None:
+@@ -78,11 +81,12 @@ def main() -> None:
      sources = [p if not p.is_absolute() else p.relative_to(ROOT) for p in args.sources]
      if args.all:
          sources += [p.relative_to(ROOT) for p in sorted(ROOT.glob("src/**/*.c"))]
-+        sources += [p.relative_to(ROOT) for dirs in SHARED.values() for d in dirs.values()
-+                    for p in sorted((ROOT / d).rglob("*.c"))]
++        sources += [p.relative_to(ROOT) for p in shared_files()]
      allowed = load_allowlist()
  
      failed = False
@@ -679,10 +678,10 @@ index daa5ab64..6d8de7e0 100755
              n = 4 * len(INSN.findall(body))
 diff --git a/tools/sources.py b/tools/sources.py
 new file mode 100644
-index 00000000..7d126550
+index 00000000..263d5842
 --- /dev/null
 +++ b/tools/sources.py
-@@ -0,0 +1,135 @@
+@@ -0,0 +1,158 @@
 +"""Where a unit's source lives.
 +
 +A unit keeps its name and its src/<version>/<unit>.c path everywhere else
@@ -696,9 +695,13 @@ index 00000000..7d126550
 +
 +ROOT = Path(__file__).resolve().parents[1]
 +
-+# Unit directories compiled from a submodule, per version.
++# Unit directories and single units compiled from a submodule, per version,
++# keyed by their path under src/<version>.
 +SHARED = {
-+    "smt3": {"sdf": Path("external/sdf-decomp/src/sdf")},
++    "smt3": {
++        "sdf": Path("external/sdf-decomp/src/sdf"),
++        "mc/mcManager.c": Path("external/sdf-decomp/src/mc/mcManager.c"),
++    },
 +}
 +
 +# Header directories of those submodules, searched before include/.
@@ -713,10 +716,13 @@ index 00000000..7d126550
 +        return path
 +    rel = path.relative_to(root) if absolute else path
 +    parts = rel.parts
-+    if len(parts) > 3 and parts[0] == "src":
-+        shared = SHARED.get(parts[1], {}).get(parts[2])
-+        if shared is not None:
-+            rel = shared.joinpath(*parts[3:])
++    if len(parts) > 2 and parts[0] == "src":
++        dirs = SHARED.get(parts[1], {})
++        unit = Path(*parts[2:]).as_posix()
++        if unit in dirs:
++            rel = dirs[unit]
++        elif len(parts) > 3 and parts[2] in dirs:
++            rel = dirs[parts[2]].joinpath(*parts[3:])
 +    return root / rel if absolute else rel
 +
 +
@@ -729,23 +735,39 @@ index 00000000..7d126550
 +    rel = path.relative_to(root) if absolute else path
 +    for version, dirs in SHARED.items():
 +        for unit_dir, shared in dirs.items():
++            if rel == shared:
++                rel = Path("src", version, unit_dir)
++                break
 +            if rel.is_relative_to(shared):
 +                rel = Path("src", version, unit_dir) / rel.relative_to(shared)
 +                break
 +    return root / rel if absolute else rel
 +
 +
++def shared_files(version: str | None = None, root: Path = ROOT) -> list[Path]:
++    """The submodule's C units, absolute, for one version or all of them."""
++    out = []
++    for v, dirs in SHARED.items():
++        if version is not None and v != version:
++            continue
++        for d in dirs.values():
++            if d.suffix == ".c":
++                out += [root / d] if (root / d).is_file() else []
++            else:
++                out += sorted((root / d).rglob("*.c"))
++    return out
++
++
 +def c_sources(version: str, root: Path = ROOT) -> list[Path]:
 +    """Every C unit's file on disk, absolute, in src/<version> path order."""
 +    own = list((root / "src" / version).rglob("*.c"))
-+    shared = [p for d in SHARED.get(version, {}).values() for p in (root / d).rglob("*.c")]
-+    return sorted(own + shared, key=lambda p: logical(p, root))
++    return sorted(own + shared_files(version, root), key=lambda p: logical(p, root))
 +
 +
 +def is_shared(path: Path, root: Path = ROOT) -> bool:
 +    """Whether a file on disk is compiled from a submodule."""
 +    path = Path(os.path.normpath(path))
-+    return any(path.is_relative_to(root / d) for dirs in SHARED.values() for d in dirs.values())
++    return any(path == root / d or path.is_relative_to(root / d) for dirs in SHARED.values() for d in dirs.values())
 +
 +
 +def unit_name(version: str, path: Path, root: Path = ROOT) -> str:
@@ -911,10 +933,10 @@ index 2a08ba60..cf5ffa7a 100644
                  self.source.write_text(self.fallback)
 diff --git a/tools/test_sources.py b/tools/test_sources.py
 new file mode 100755
-index 00000000..46f3e56f
+index 00000000..da84af58
 --- /dev/null
 +++ b/tools/test_sources.py
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,62 @@
 +#!/usr/bin/env python3
 +"""Tests for game_source, the per-game view of a shared unit."""
 +import sys
@@ -922,7 +944,7 @@ index 00000000..46f3e56f
 +from pathlib import Path
 +
 +sys.path.insert(0, str(Path(__file__).resolve().parent))
-+from sources import game_source  # noqa: E402
++from sources import game_source, logical, physical  # noqa: E402
 +
 +SOURCE = """a
 +#if defined(SDF_DDS1) || defined(SDF_DDS2)
@@ -964,6 +986,15 @@ index 00000000..46f3e56f
 +            game_source("#if defined(SDF_DDS1) && FOO\n#endif\n", "dds1")
 +        with self.assertRaises(ValueError):
 +            game_source("#ifdef NON_MATCHING\n#elif defined(SDF_DDS1)\n#endif\n", "dds1")
++
++
++class PathMapTest(unittest.TestCase):
++    def test_shared_directory_and_unit(self):
++        for unit, disk in (("src/smt3/sdf/sdfRand.c", "external/sdf-decomp/src/sdf/sdfRand.c"),
++                           ("src/smt3/mc/mcManager.c", "external/sdf-decomp/src/mc/mcManager.c"),
++                           ("src/smt3/mc/slMain.c", "src/smt3/mc/slMain.c")):
++            self.assertEqual(physical(Path(unit)), Path(disk))
++            self.assertEqual(logical(Path(disk)), Path(unit))
 +
 +
 +if __name__ == "__main__":
