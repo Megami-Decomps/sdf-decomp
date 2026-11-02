@@ -63,7 +63,12 @@ path for smt3-port and sdfport to reach DDS.
    the shared one under `-DSDF_DDS1`/`-DSDF_DDS2`, adding `#ifdef`s until both
    DDS games checksum. Units with no DDS-only code first.
 7. **Pins follow.** smt3-port and sdfport pick up the new layout.
-8. **Second round:** `model/`, `file/`, `script/`, then `effect/`.
+8. **Second round:** `mc/mcManager` first (the engine's `sdfMc*` memory card
+   layer, 31 functions; 19 identical in all three games, and DDS already has
+   the unit under the same name), then `model/`, `file/`, `script/`, then
+   `effect/`. Sony's `sceMc*` (libmc) stays in each game repo with the SDK.
+   SMT3's `mc/slMain` (104 functions, 67 identical in all three) needs a look
+   at whether it is engine or game code before it is moved.
 
 Nothing is pushed until a GitHub home is chosen (suggested
 `Megami-Decomps/sdf-decomp`).
