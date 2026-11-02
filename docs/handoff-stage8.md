@@ -23,6 +23,7 @@ one consume commit amended per unit and exported to
 | `effect/effMath` | shared, all three games | SMT3's text; DDS's `sdfViewMatrix`, `sdfViewTargetVector` and `effMathResetBezierSlot` (SMT3's `func_001AC068`) aliased |
 | `effect/effPacket` | shared, all three games | DDS's four textured quad and triangle writers under the DDS macros; the draw bank's head and the crossfade's second OT slot per game; DDS keeps the end message as INCLUDE_RODATA |
 | `effect/effDebug` | shared, all three games | DDS names aliased; the overlay's OT slots per game (SMT3 44 and 83, DDS 55 and 96) |
+| `effect/effSpline` | shared, all three games | DDS names aliased; SMT3's includes of game headers and its sdata (battle camera state in this span) under `SDF_SMT3` |
 
 dds-decomp commits, in order: e76182af8 (probe and resolve take `dir/unit`),
 878bc0130 (model re-split), ed9e2911e (model names), 79f089aa1 (mdlManager
@@ -133,7 +134,7 @@ SMT3's functions in order.
 | parManager | 126 | 0x00153680..0x0015B228 | shared |
 | effMath | 11 | 0x0018DBD8..0x0018E218 | shared |
 | effPacket | 7 | 0x0015F810..0x001606C0 | shared |
-| effSpline | 11 | 0x00192CC8..0x001937E0 | 4 DDS-only, inside `game/code_00192488` |
+| effSpline | 18 | 0x00192CC8..0x00193900 | shared |
 | effDebug | 16 | 0x0018E218..0x0018F3A0 | shared |
 | effEvent | 84 | 0x0018F3A0..0x00192CC8 | 82 twins in 93; SMT3 has 1 INCLUDE_ASM |
 | effBlur_Filter | 30 | 0x00186BC8..0x00188068 | 18 twins in 27; SMT3 has 1 INCLUDE_ASM |
@@ -242,8 +243,13 @@ placeholders (`dds3_1AC0A8` to `func_001AC4F0`) are DDS's `effCreateSlotArray`,
 `effEvaluateSlotBezierPosition`, `effInitSlotTail`, `effGetSlotAt`, aliased.
 DDS's OT slots run 11 to 13 above SMT3's from slot 44 on (39 is the same).
 
+effSpline: sdf-decomp 3306342 (history), 337a882; dds-decomp 5ee6b1f56. The
+"4 DDS-only" were SMT3 `func_` names the twin table skipped; the run is
+SMT3's 18 in order. 11 SMT3 placeholders aliased to DDS's `effSpl*` and
+channel names. Matched on the first probe.
+
 ## Next
 
-1. effect/: effEvent, effSpline (re-split already), then
+1. effect/: effEvent (re-split already), then
    effBlur_Filter.
 2. mdlEffect, by bringing its viewer code in under the DDS macros.
