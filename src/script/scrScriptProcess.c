@@ -316,6 +316,9 @@ s32 scrScriptProcess(dds3ProcessID_t *id)
     }
 }
 
+/* DDS defines the command table in C; SMT3 includes it with scrTraceCode. */
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
 #include "scr_command_table.h"
+
+const scrCommandTable_t scrCommandTable[] = { SCR_COMMAND_TABLE_ENTRIES };
 #endif
