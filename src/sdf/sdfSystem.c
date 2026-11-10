@@ -6,19 +6,18 @@
 #include "motion.h"
 
 #if defined(SDF_DDS1)
-#define D_00551824 D_003BD2D0
-#define D_00552040 D_003BD990
-#define D_005756C0 D_003DFEF0
-#define D_005776C0 D_003E1EF0
+#define sdfCoreDrawBuffSize D_003BD2D0
+#define sdfSystemThreadCB D_003BD990
+#define sdfSystemThreadStack D_003DFEF0
+#define sdfVblankThreadStack D_003E1EF0
 #elif defined(SDF_DDS2)
-#define D_00551824 D_004389C0
-#define D_00552040 D_004390F0
-#define D_005756C0 D_0045C8A0
-#define D_005776C0 D_0045E8A0
+#define sdfCoreDrawBuffSize D_004389C0
+#define sdfSystemThreadCB D_004390F0
+#define sdfSystemThreadStack D_0045C8A0
+#define sdfVblankThreadStack D_0045E8A0
 #endif
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
-#define D_00551828 sdfTickCallback
-#define D_00552054 sdfSleepThreadId
+#define sdfMainThreadId sdfSleepThreadId
 #define sdf_2A8258 sdfFreeMemorySlotFromEitherHeap
 #define sdf_2A84D8 sdfDrainPendingHandlers
 #define func_002A8758 sdfDeleteTrackedThread
@@ -29,7 +28,7 @@
 /* Native 0x30-byte EE thread descriptor passed to CreateThread. */
 typedef struct {
     s32 status;
-    void (*entry)(void);
+    void (*entry)(void *);
     void *stack;
     s32 stackSize;
     void *gp;
@@ -44,15 +43,15 @@ typedef struct sdfHandlerNode_t {
     s32 handlerId;
 } sdfHandlerNode_t;
 
-extern s32 _gp, sdfThreadSema, sdfVblankFlag, D_00551824;
+extern s32 _gp, sdfThreadSema, sdfVblankFlag, sdfCoreDrawBuffSize;
 
-extern u8 sdfPadManagerMode, D_005756C0[], D_005776C0[];
+extern u8 sdfPadManagerMode, sdfSystemThreadStack[], sdfVblankThreadStack[];
 
-extern void (*D_00551828)(void);
+extern void (*sdfTickCallback)(void);
 
 extern sdfThCB_t *sdfVblankThreadId;
 
-extern sdfThCB_t D_00552040;
+extern sdfThCB_t sdfSystemThreadCB;
 
 extern s32 CreateThread(sdfKernelThreadParam_t *parameter);
 
@@ -126,7 +125,7 @@ extern void sdfCoreDrawInit(s32 buffSize);
 
 extern void sdfRandomizeByTime(void *aCB);
 
-extern void *memset(void *a, s32 b, u32 c);
+extern void *memset(void *a, s32 b, size_t c);
 
 void FatalError(const char *format, ...) __attribute__((noreturn));
 
@@ -165,7 +164,7 @@ extern void *sdfMemGetHandleByPtr(void *aPtr);
 
 extern sdfHandlerNode_t *sdfDmacHandlerTable;
 
-extern s32 D_00552054;
+extern s32 sdfMainThreadId;
 
 extern u8 sdfCdClock;
 
@@ -284,7 +283,7 @@ void FatalError(const char *format, ...) {
     }
 }
 
-sdfHandlerNode_t *DmacAddHandler(s32 kind, s32 channel, s32 handler, s32 arg, s32 next) {
+sdfHandlerNode_t *DmacAddHandler(s32 kind, s32 channel, saddr_t handler, s32 arg, s32 next) {
     sdfHandlerNode_t *node;
     s32 id;
 
@@ -293,7 +292,7 @@ sdfHandlerNode_t *DmacAddHandler(s32 kind, s32 channel, s32 handler, s32 arg, s3
         id = AddIntcHandler2(channel, handler, arg, next);
         break;
     case 1:
-        id = AddDmacHandler2(channel, (s32 (*)(s32, void *, void *))handler, arg, (void *)next);
+        id = AddDmacHandler2(channel, (s32 (*)(s32, void *, void *))handler, arg, EE_ADDR_AS(void *, next));
         break;
     case 2:
         id = AddSbusIntcHandler(channel, handler);
@@ -352,8 +351,8 @@ void sdf_2A84D8(void)
 /* DDS1 defines this unit's .sdata here; DDS2 places the first three words in
  * the unit before. */
 sdfHandlerNode_t *sdfDmacHandlerTable __attribute__((section(".sdata"))) = NULL;
-s32 D_00551824 __attribute__((section(".sdata"))) = 0x100000;
-void (*D_00551828)(void) __attribute__((section(".sdata"))) = NULL;
+s32 sdfCoreDrawBuffSize __attribute__((section(".sdata"))) = 0x100000;
+void (*sdfTickCallback)(void) __attribute__((section(".sdata"))) = NULL;
 #endif
 
 void sdfAlarmWakeup(s32 arg0, s32 arg1, s32 thid)
@@ -364,7 +363,7 @@ void sdfAlarmWakeup(s32 arg0, s32 arg1, s32 thid)
 void sdfDelayThread(u32 delay) {
     s32 threadId = GetThreadId();
     CancelWakeupThread(threadId);
-    SetAlarm(delay & 0xFFFF, sdfAlarmWakeup, (void *)threadId);
+    SetAlarm(delay & 0xFFFF, sdfAlarmWakeup, EE_ADDR_AS(void *, threadId));
     SleepThread();
 }
 
@@ -386,8 +385,8 @@ void sdfSystemThreadProc(void) {
             sdfPadWork();
         }
         sdfFileCmdThreadCheckPrio();
-        if (D_00551828 != NULL) {
-            D_00551828();
+        if (sdfTickCallback != NULL) {
+            sdfTickCallback();
         }
     }
 }
@@ -404,9 +403,9 @@ void dds3InitSubsystems(u32 heapSize, u32 initialHeapSize, u32 packetBufferBytes
     sdfInitThreadSystem();
     sdfGrInit(packetBufferBytes);
     sdf3DInit(0x40);
-    sdfCoreDrawInit(D_00551824);
+    sdfCoreDrawInit(sdfCoreDrawBuffSize);
     sdfRandomizeByTime(NULL);
-    sdfStartThreadAndWait(&D_00552040, sdfSystemThreadProc, D_005756C0, 0x2000, 0x4C, 0);
+    sdfStartThreadAndWait(&sdfSystemThreadCB, sdfSystemThreadProc, sdfSystemThreadStack, 0x2000, 0x4C, 0);
 }
 
 void sdfStartThreadAndWait(sdfThCB_t *node, void (*entry)(void), void *stack, s64 stackSize, s32 priority, s32 threadArgument) {
@@ -415,7 +414,7 @@ void sdfStartThreadAndWait(sdfThCB_t *node, void (*entry)(void), void *stack, s6
     node->next = sdfVblankThreadId;
     sdfVblankThreadId = node;
     SignalSema(sdfThreadSema);
-    _StartThread(node->thId, (void *)threadArgument);
+    _StartThread(node->thId, EE_ADDR_AS(void *, threadArgument));
 }
 
 void sdfWaitVblank(s32 count)
@@ -496,7 +495,7 @@ s32 VblankIntcHandler(s32 cause)
 void VblankThreadProc(void) {
     sdfThCB_t *threadEntry;
 
-    DmacAddHandler(0, 2, (s32)VblankIntcHandler, -1, 0);
+    DmacAddHandler(0, 2, EE_ADDR_S(VblankIntcHandler), -1, 0);
     EnableIntc(2);
     for (;;) {
         SleepThread();
@@ -516,7 +515,7 @@ s32 sdfInitThreadSystem(void) {
     sdfVblankFlag = 0;
     sdfVblankThreadId = NULL;
     sdfThreadSema = sdfCreateSema(1, 1, 0);
-    threadId = CreateThreadSimple((void *)VblankThreadProc, D_005776C0, 0x800, 0x3E);
+    threadId = CreateThreadSimple((void *)VblankThreadProc, sdfVblankThreadStack, 0x800, 0x3E);
     sdfVblankSema = threadId;
     return _StartThread(threadId, 0);
 }
@@ -525,7 +524,7 @@ void sdfSetMainThreadPriority(void)
 {
     s32 thid = GetThreadId();
 
-    D_00552054 = thid;
+    sdfMainThreadId = thid;
     ChangeThreadPriority(thid, 0x7C);
     SleepThread();
 }
@@ -533,9 +532,9 @@ void sdfSetMainThreadPriority(void)
 #ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "sdf/sdfSystem", sdfDmacHandlerTable);
 
-INCLUDE_SDATA(const s32, "sdf/sdfSystem", D_00551824);
+INCLUDE_SDATA(const s32, "sdf/sdfSystem", sdfCoreDrawBuffSize);
 
-INCLUDE_SDATA(const s32, "sdf/sdfSystem", D_00551828);
+INCLUDE_SDATA(const s32, "sdf/sdfSystem", sdfTickCallback);
 #endif
 
 INCLUDE_SDATA(const s32, "sdf/sdfSystem", sdfVblankFlag);

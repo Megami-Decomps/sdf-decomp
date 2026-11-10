@@ -67,7 +67,7 @@ typedef struct sdfFileCmdHandle_t {
     s32 errorCode;
     s32 currentOffset;
     u8 remainder[4];
-    void (*callback)(struct sdfFileCmdHandle_t *, s32, s32, s32, s32);
+    void (*callback)(struct sdfFileCmdHandle_t *, s32, saddr_t, s32, s32);
     s32 userData;
 } sdfFileCmdHandle_t;
 
@@ -133,7 +133,7 @@ enum sdf_stream_playback {
 
 extern s32 DIntr();
 
-extern void *memcpy(void *, const void *, unsigned int);
+extern void *memcpy(void *, const void *, size_t);
 
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
 #define SDK_SKIP_EIntr
@@ -141,46 +141,46 @@ extern void *memcpy(void *, const void *, unsigned int);
 #include "sdk_libkernl.h"
 
 #if defined(SDF_DDS1)
-#define D_00551930 D_003BD400
-#define D_00551940 D_003BD410
-#define D_00551948 D_003BD418
+#define sdfFileHostPrefix D_003BD400
+#define sdfFileCdromName D_003BD410
+#define sdfFileCmdActiveHead D_003BD418
 #elif defined(SDF_DDS2)
-#define D_00551930 D_00438AF0
-#define D_00551940 D_00438B00
-#define D_00551948 D_00438B08
+#define sdfFileHostPrefix D_00438AF0
+#define sdfFileCdromName D_00438B00
+#define sdfFileCmdActiveHead D_00438B08
 #endif
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
-#define D_00551928 sdfDiscPathPrefix
-#define D_00551938 sdfPfsPathPrefix
+#define sdfFileCdromPrefix sdfDiscPathPrefix
+#define sdfFileHddPrefix sdfPfsPathPrefix
 #endif
 
-extern char D_00551928[];
+extern char sdfFileCdromPrefix[];
 
 extern char * strcpy(char *, const char *);
 
-extern sdfHostPrefix_t D_00551930[];
+extern sdfHostPrefix_t sdfFileHostPrefix[];
 
-extern u8 D_00551938[];
+extern u8 sdfFileHddPrefix[];
 
 void *sdfChipAllocDirect(s32 aSize);
 
 extern char * strchr(const char *, s32);
 
-extern char D_00551940[];
+extern char sdfFileCdromName[];
 
-extern s32 strncmp(const char *, const char *, u32);
+extern s32 strncmp(const char *, const char *, size_t);
 
 extern sdfFileDeviceCB_t sdfFileDeviceCB[];
 
 extern void EIntr(void);
 
-extern sdfFileCmdHandle_t *D_00551948;
+extern sdfFileCmdHandle_t *sdfFileCmdActiveHead;
 
 extern sdfFileCmdHandle_t *sdfFileCmdFreeList;
 
 extern s16 sdfFileCmdFreeCount;
 
-sdfFileCmdHandle_t *sdfFileCmdReadOpen(const char *path, void (*callback)(sdfFileCmdHandle_t *, s32, s32, s32, s32),
+sdfFileCmdHandle_t *sdfFileCmdReadOpen(const char *path, void (*callback)(sdfFileCmdHandle_t *, s32, saddr_t, s32, s32),
                         s32 callbackContext);
 
 s32 sdfFileCmdClearError(sdfFileCmd_t *aHandle);
@@ -194,7 +194,7 @@ s32 sdfCdImageCheckExist(const char *fname);
 /* Convert a relative disc path to the drive's uppercase backslash form with ;1 suffix. */
 void sdfFileSetCdFilename(char *aDst, char *aSrc) {
     s32 c;
-    memcpy(aDst, D_00551928, 8);
+    memcpy(aDst, sdfFileCdromPrefix, 8);
     aDst += 7;
     c = *aSrc++;
     while (c != 0) {
@@ -217,12 +217,12 @@ char *sdfFileSetHostFilename(char *aDst, char *aSrc) {
         strcpy(aDst, sdfFileHostRootPath);
         return strcat(aDst, aSrc);
     }
-    *(sdfHostPrefix_t *)aDst = D_00551930[0];
+    *(sdfHostPrefix_t *)aDst = sdfFileHostPrefix[0];
     return strcat(aDst, aSrc);
 }
 
 void sdfFileSetHddFilename(char *aDst, char *aSrc) {
-    memcpy(aDst, D_00551938, 6);
+    memcpy(aDst, sdfFileHddPrefix, 6);
     strcat(aDst, aSrc);
 }
 
@@ -250,7 +250,7 @@ char *sdfFileMakeFilename(char *aFilename) {
     if (strchr(aFilename, ':') != NULL) {
         memcpy(result, aFilename, length);
         result[length] = 0;
-        if (strncmp(result, D_00551940, 5) == 0) {
+        if (strncmp(result, sdfFileCdromName, 5) == 0) {
             cursor = result + 5;
             character = *cursor;
             while (character != 0) {
@@ -299,7 +299,7 @@ sdfFileCmdHandle_t *sdfFileOpen(const char *aFileName) {
     if (sdfFileSemaId < 0) {
         sdfFileSemaId = sdfCreateSema(0, 0x80, 0);
     }
-    state = sdfFileCmdReadOpen(aFileName, (void (*)(sdfFileCmdHandle_t *, s32, s32, s32, s32))sdfFileCallback, 0);
+    state = sdfFileCmdReadOpen(aFileName, (void (*)(sdfFileCmdHandle_t *, s32, saddr_t, s32, s32))sdfFileCallback, 0);
     WaitSema(sdfFileSemaId);
     sdfFileCmdClearError((sdfFileCmd_t *)state);
     return state;
@@ -347,8 +347,8 @@ u32 sdfFileSeek(void *aHandle, s32 aPos, s32 aWhence)
 /* Set the current device directory, ending in a slash; path is assumed nonempty. */
 void sdfFileSetHostRoot(char *aRootPath) {
     s32 length = strlen(aRootPath);
-    ((sdfDevicePrefix_t *)sdfFileHostRootPath)->head = ((sdfDevicePrefix_t *)D_00551930)->head;
-    ((sdfDevicePrefix_t *)sdfFileHostRootPath)->tail = ((sdfDevicePrefix_t *)D_00551930)->tail;
+    ((sdfDevicePrefix_t *)sdfFileHostRootPath)->head = ((sdfDevicePrefix_t *)sdfFileHostPrefix)->head;
+    ((sdfDevicePrefix_t *)sdfFileHostRootPath)->tail = ((sdfDevicePrefix_t *)sdfFileHostPrefix)->tail;
     memcpy(sdfFileHostRootPath + 6, aRootPath, length);
     if (aRootPath[length - 1] != '/') {
         sdfFileHostRootPath[length + 6] = '/';
@@ -391,7 +391,7 @@ void sdfFileCmdAllocHandle(sdfFileCmdHandle_t *state) {
     if (sdfFileCmdFreeList != NULL) {
         sdfFileCmdFreeList->next = state;
     } else {
-        D_00551948 = state;
+        sdfFileCmdActiveHead = state;
     }
     last = worker->last;
     sdfFileCmdFreeList = state;

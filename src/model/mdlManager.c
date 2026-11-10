@@ -3,25 +3,25 @@
 #include "motion.h"
 #include "draw3d.h"
 #include "ps2asm.h"
+#include "sdfFrame.h"
 
 #if defined(SDF_DDS1)
-#define D_0054F628 D_003BBB60
-#define D_0054F630 D_003BBB68
-#define D_0054F634 D_003BBB6C
-#define D_0054F638 D_003BBB70
-#define D_0054F640 D_003BBB78
-#define D_00551F04 D_003BD880
+#define mdlModelPathPrefix D_003BBB60
+#define mdlPackedBundleExt D_003BBB68
+#define mdlHddFileIndexHandle D_003BBB6C
+#define mdlHddFileListHandle D_003BBB70
+#define mdlWorkPathPrefix D_003BBB78
+#define mdlHddFileIndex D_003BD880
 #elif defined(SDF_DDS2)
-#define D_0054F628 D_00436FA0
-#define D_0054F630 D_00436FA8
-#define D_0054F634 D_00436FAC
-#define D_0054F638 D_00436FB0
-#define D_0054F640 D_00436FB8
-#define D_00551F04 D_00438F98
+#define mdlModelPathPrefix D_00436FA0
+#define mdlPackedBundleExt D_00436FA8
+#define mdlHddFileIndexHandle D_00436FAC
+#define mdlHddFileListHandle D_00436FB0
+#define mdlWorkPathPrefix D_00436FB8
+#define mdlHddFileIndex D_00438F98
 #define pacLoadEx fileCreatePacLoadWork
 #endif
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
-#define D_002FA240 sdfViewMatrix
 #define fileHandleFree fileRequestFreeIfComplete
 #define mdl_1DD9C0 mdlProjectPoints
 #endif
@@ -144,7 +144,7 @@ typedef struct
 extern char *strcpy(char *dst, const char *src);
 extern void pacFileHandleFree_(void *pacHandle);
 
-s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode);
+saddr_t mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode);
 void mdlFreeMotionCtrlr(mdlObj_t *aHandle, sdfMotionCtrlr_t *aCtrlr);
 
 
@@ -196,15 +196,15 @@ typedef struct
 
 extern mdlFileSlot_t modelFileTable[];
 extern mdlFileKindSlot_t modelFileKindTable[];
-extern dds3ModelFileIndex_t *D_00551F04;
+extern dds3ModelFileIndex_t *mdlHddFileIndex;
 extern dds3ModelFileTable_t *mdlHddFileList;
 extern sdfMemHandle_t *sdfMemAllocDirect(u32 aSize);
 extern void *sdfMemLock(sdfMemHandle_t *aHandle);
 extern s32 strlen(const char *s);
 
 void mdlReleaseHddFileList(void);
-extern sdfMemHandle_t *D_0054F634;
-extern sdfMemHandle_t *D_0054F638;
+extern sdfMemHandle_t *mdlHddFileIndexHandle;
+extern sdfMemHandle_t *mdlHddFileListHandle;
 extern void sdfMemFreeHandleDirect(sdfMemHandle_t **aHandlePtr);
 
 typedef struct
@@ -267,23 +267,23 @@ typedef struct mdlPartTagRecord_t {
 
 
 struct mdlEffectDescriptor_t;
-extern const mdlPathPrefix_t D_0054F628[]; /* unit-owned eight-byte "/model/" copy */
-extern const char D_0054F630[]; /* padded unit-owned ".PB" suffix */
-extern const mdlWorkPrefix_t D_0054F640[]; /* padded unit-owned "work/" prefix */
+extern const mdlPathPrefix_t mdlModelPathPrefix[]; /* unit-owned eight-byte "/model/" copy */
+extern const char mdlPackedBundleExt[]; /* padded unit-owned ".PB" suffix */
+extern const mdlWorkPrefix_t mdlWorkPathPrefix[]; /* padded unit-owned "work/" prefix */
 extern mdlHddFileEntry_t *mdlHddFileCount; /* retail name: linked directory entries */
 extern u8 sdfHddValid;
 extern const char _ctype_[]; /* newlib character classes: EOF slot, then 256 bytes */
 extern s32 sceDopen(const char *name);
 extern s32 sceDread(s32 handle, mdlDirectoryEntry_t *entry);
 extern s32 sceDclose(s32 handle);
-extern s32 memcmp(const void *first, const void *second, u32 size);
-extern void *memcpy(void *a, const void *b, u32 c);
-extern void *memset(void *a, s32 b, u32 c);
+extern s32 memcmp(const void *first, const void *second, size_t size);
+extern void *memcpy(void *a, const void *b, size_t c);
+extern void *memset(void *a, s32 b, size_t c);
 extern char *strcat(char *dst, const char *src);
 extern char *strrchr(const char *text, s32 character);
 extern s32 strcasecmp(const char *first, const char *second);
 extern void sdfDummyFunc(void);
-extern fileRequest_t *fileLoadEx(const char *filename, s32 headOrTail, u32 endCallback, u32 callbackParm);
+extern fileRequest_t *fileLoadEx(const char *filename, s32 headOrTail, addr_t endCallback, addr_t callbackParm);
 extern void sdfModelCopyStat(sdfModelRootNode_t *aDstRoot, sdfModelRootNode_t *aSrcRoot);
 extern void sdfMotionChangeBlend(sdfMotionCtrlr_t *aCtrlr, s32 aCutNum, s32 aType, f32 aPreFrame, f32 aBlendLeng);
 extern void mdlStopEffect(mdlObj_t *aHandle, s32 aPlayGroup);
@@ -291,7 +291,7 @@ extern u16 mdlPibGetEffectCount(mdlPibRecord_t *record);
 extern u16 mdlPibGetMotionCount(mdlPibRecord_t *record);
 extern s32 mdlPibGetVersion(mdlPibRecord_t *record);
 extern sdfPacDecodeResrc_t *sdfPacFreeResrc(sdfPacDecodeResrc_t *resrc);
-extern sdfMatrix4_t D_002FA240;
+extern sdfMatrix4_t sdfViewMatrix;
 extern sdf3DScreenParam_t dds3ScreenParam;
 extern void MultMatrixRev(sdfMatrix4_t *aMatrix);
 extern void MultMatrixRevNoArg(void);
@@ -679,11 +679,11 @@ void AbLoadCallback(fileRequest_t *fileHandle, mdlManager_mdlTbMbAbLoadCb_t *par
 }
 
 char *mdlSetFileName(char *buff, const char *fname) {
-    *(mdlPathPrefix_t *)buff = *(mdlPathPrefix_t *)D_0054F628;
+    *(mdlPathPrefix_t *)buff = *(mdlPathPrefix_t *)mdlModelPathPrefix;
     return strcat(buff, fname);
 }
 
-s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
+saddr_t mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
     char requestPath[0x80];
     dds3ModelResrc_t *entity;
     dds3ModelFileIndex_t *selection;
@@ -696,12 +696,12 @@ s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
     entity = mdlSearchResrc(aMajor, aMinor);
     if (entity != NULL) {
         SignalSema(mdlManagerWork);
-        return (s32)entity;
+        return EE_ADDR_S(entity);
     }
     if (mdlCheckLoading(aMajor, aMinor)) {
         SignalSema(mdlManagerWork);
         if (aBlockMode != 0) {
-            return (s32)mdlWaitLoadEnd(aMajor, aMinor);
+            return EE_ADDR_S(mdlWaitLoadEnd(aMajor, aMinor));
         }
         return -1;
     }
@@ -711,7 +711,7 @@ s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
     packedBundle = 0;
     extension = strrchr(paths->modelFile, '.');
     if (extension != NULL) {
-        packedBundle = strcasecmp(extension, D_0054F630) == 0;
+        packedBundle = strcasecmp(extension, mdlPackedBundleExt) == 0;
     }
     mdlRegLoading(aMajor, aMinor);
     SignalSema(mdlManagerWork);
@@ -730,25 +730,25 @@ s32 mdlPrepare(s32 aMajor, s32 aMinor, s32 aBlockMode) {
         if (paths->texFile != NULL) {
             request->resourceListRequested = 1;
             mdlSetFileName(requestPath, paths->texFile);
-            fileLoadEx(requestPath, 0, (u32)TbLoadCallback, (u32)request);
+            fileLoadEx(requestPath, 0, EE_ADDR(TbLoadCallback), EE_ADDR(request));
         }
         request->itemsRequested = 1;
         mdlSetFileName(requestPath, paths->modelFile);
-        fileLoadEx(requestPath, 0, (u32)MbLoadCallback, (u32)request);
+        fileLoadEx(requestPath, 0, EE_ADDR(MbLoadCallback), EE_ADDR(request));
         if (paths->motionFile != NULL) {
             mdlSetFileName(requestPath, paths->motionFile);
-            fileLoadEx(requestPath, 0, (u32)AbLoadCallback, (u32)request);
+            fileLoadEx(requestPath, 0, EE_ADDR(AbLoadCallback), EE_ADDR(request));
         }
     }
     if (aBlockMode != 0) {
-        return (s32)mdlWaitLoadEnd(aMajor, aMinor);
+        return EE_ADDR_S(mdlWaitLoadEnd(aMajor, aMinor));
     }
     return 0;
 }
 
 dds3ModelResrc_t *mdlLoadPrepare(u32 group, u32 id)
 {
-    return (dds3ModelResrc_t *)mdlPrepare(group, id, 1);
+    return EE_ADDR_AS(dds3ModelResrc_t *, mdlPrepare(group, id, 1));
 }
 
 void mdlUnlinkResrc(mdlObj_t *aHandle)
@@ -800,9 +800,9 @@ void mdlSetBlur(mdlObj_t *aHandle, s32 interval, s32 count,
         aHandle->devList = deviceList;
         deviceList->spawnCount = count;
         deviceList->count = count;
-        deviceList->interval = interval;
+        deviceList->interval = SDF_FRAMES(interval);
         /* Final argument use: see docs/idioms.md, "Final argument use: mdlSetBlur". */
-        deviceList->keepCount = count * interval;
+        deviceList->keepCount = count * SDF_FRAMES(interval);
         inverseSpan = 1.0f / deviceList->keepCount;
         startCarrier[0] = endColor;
         EE_MMI_RGBA_UNPACK(startCarrier, 0.0078125f);
@@ -844,7 +844,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
     sdfModelRootNode_t *original = ctx->inner;
     dds3ModelBlurInstance_t *slot;
     sdfModelRootNode_t *model;
-    f32 tint[4];
+    sdfVector4_t tint;
     s32 remaining;
     u32 color;
 
@@ -861,7 +861,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
         list->instants = slot;
     }
     UnpackRGBAWordFloat(original->color, 1.0f / 128.0f);
-    SDF_VU0_STOREVECTOR(tint);
+    SDF_VU0_STOREVECTOR(&tint);
     slot = list->instants;
     while (slot != NULL) {
         remaining = slot->keepCount;
@@ -877,7 +877,7 @@ void mdlLinkBlur(mdlObj_t *ctx, struct sdfGrOt_t **surfaces) {
         slot->keepCount = remaining;
         SDF_VU0_LOADVECTOR_BARRIER(list->colorBase);
         SDF_VU0_LOADVECTOR_B(list->colorDelta);
-        SDF_VU0_LOADVECTOR_C(tint);
+        SDF_VU0_LOADVECTOR_C(&tint);
         color = PackDevSlotColor(remaining - 1, 128.0f);
         model->color = color;
         sdfModelLinkOt(surfaces, model);
@@ -892,7 +892,7 @@ mdlObj_t *mdlLoad(u32 aMajor, u32 aMinor)
     mdlObj_t *head;
     sdfModelRootNode_t *inner;
     f32 modelScale;
-    f32 scale[4];
+    sdfVector4_t scale;
     s32 searchId;
 
     node = mdlLoadPrepare(aMajor, aMinor);
@@ -908,11 +908,11 @@ mdlObj_t *mdlLoad(u32 aMajor, u32 aMinor)
     inner = sdfModelMake(sdfTexListDup(node->texList), node->modelDefPtr);
     modelScale = node->scale;
     ctx->inner = inner;
-    scale[0] = modelScale;
-    scale[1] = modelScale;
-    scale[2] = modelScale;
-    scale[3] = 1.0f;
-    SDF_VU0_COPYVECTOR(&inner->scale, scale);
+    scale.x = modelScale;
+    scale.y = modelScale;
+    scale.z = modelScale;
+    scale.w = 1.0f;
+    SDF_VU0_COPYVECTOR(&inner->scale, &scale);
     ctx->objectRadius = node->radius;
     ctx->current.h.id = -1;
     ctx->current.h.motionIndex = -1;
@@ -1318,7 +1318,7 @@ void mdlSetEffectScale(mdlObj_t *aHandle, f32 aScale)
 /* vu0 routine: project the point through the view and model matrices into vf10. */
 void mdlGetScreenOffset(mdlObj_t *aHandle, void *aOfs)
 {
-    SDF_VU0_LOADMATRIX(&D_002FA240);
+    SDF_VU0_LOADMATRIX(&sdfViewMatrix);
     MultMatrixRev(&dds3ScreenParam.TM);
     SDF_VU0_COPYMATRIX_A_TO_B();
     SDF_VU0_LOADMATRIX(&aHandle->inner->tm);
@@ -1341,7 +1341,7 @@ void mdl_1DD9C0(mdlObj_t *ctx, f32 (*inputPoints)[4], f32 (*outputPoints)[4], s3
     SDF_VU0_LOADMATRIX(&ctx->inner->tm);
     SDF_VU0_LOADVECTOR_BARRIER(&ctx->inner->scale);
     SDF_VU0_SCALE_XYZ();
-    MultMatrixRev(&D_002FA240);
+    MultMatrixRev(&sdfViewMatrix);
     MultMatrixRev(&dds3ScreenParam.TM);
     for (pointIndex = 0; pointIndex < pointCount; pointIndex++) {
         SDF_VU0_LOADVECTOR_BARRIER(inputPoints[pointIndex]);
@@ -1706,8 +1706,8 @@ void mdlReleaseHddFileList(void)
     modelFileKindTable[5].count = 0;
     modelFileTable[5].entries = NULL;
     modelFileTable[5].count = 0;
-    sdfMemFreeHandleDirect(&D_0054F634);
-    sdfMemFreeHandleDirect(&D_0054F638);
+    sdfMemFreeHandleDirect(&mdlHddFileIndexHandle);
+    sdfMemFreeHandleDirect(&mdlHddFileListHandle);
 }
 
 void mdlMakeHddFileListDummy(void)
@@ -1717,14 +1717,14 @@ void mdlMakeHddFileListDummy(void)
     s32 i;
 
     mdlReleaseHddFileList();
-    D_0054F634 = sdfMemAllocDirect(sizeof(dds3ModelFileIndex_t));
-    D_00551F04 = sdfMemLock(D_0054F634);
-    D_00551F04->major = 5;
-    D_00551F04->minor = 0;
-    D_00551F04->scale = 0x1000;
-    D_00551F04->radius = 1000;
-    D_0054F638 = sdfMemAllocDirect(sizeof(dds3ModelFileTable_t));
-    mdlHddFileList = sdfMemLock(D_0054F638);
+    mdlHddFileIndexHandle = sdfMemAllocDirect(sizeof(dds3ModelFileIndex_t));
+    mdlHddFileIndex = sdfMemLock(mdlHddFileIndexHandle);
+    mdlHddFileIndex->major = 5;
+    mdlHddFileIndex->minor = 0;
+    mdlHddFileIndex->scale = 0x1000;
+    mdlHddFileIndex->radius = 1000;
+    mdlHddFileListHandle = sdfMemAllocDirect(sizeof(dds3ModelFileTable_t));
+    mdlHddFileList = sdfMemLock(mdlHddFileListHandle);
     for (i = 0; i != 3; i++)
     {
         switch (i)
@@ -1758,7 +1758,7 @@ void mdlMakeHddFileListDummy(void)
             break;
         }
     }
-    modelFileKindTable[5].entries = D_00551F04;
+    modelFileKindTable[5].entries = mdlHddFileIndex;
     modelFileKindTable[5].count = 1;
     modelFileTable[5].entries = mdlHddFileList;
     modelFileTable[5].count = 1;
@@ -1841,27 +1841,27 @@ void mdlMakeHddFileList(void) {
         }
         if (count != 0) {
             index = 0;
-            D_0054F634 = sdfMemAllocDirect(count * sizeof(dds3ModelFileIndex_t));
-            D_00551F04 = sdfMemLock(D_0054F634);
-            D_0054F638 = sdfMemAllocDirect(count * sizeof(dds3ModelFileTable_t));
-            mdlHddFileList = sdfMemLock(D_0054F638);
+            mdlHddFileIndexHandle = sdfMemAllocDirect(count * sizeof(dds3ModelFileIndex_t));
+            mdlHddFileIndex = sdfMemLock(mdlHddFileIndexHandle);
+            mdlHddFileListHandle = sdfMemAllocDirect(count * sizeof(dds3ModelFileTable_t));
+            mdlHddFileList = sdfMemLock(mdlHddFileListHandle);
             memset(mdlHddFileList, 0, count * sizeof(dds3ModelFileTable_t));
             file = mdlHddFileCount;
             while (file != NULL) {
                 const char *name = file->name;
                 s32 kind;
 
-                D_00551F04[index].major = 5;
-                D_00551F04[index].minor = index;
-                D_00551F04[index].scale = 0x1000;
-                D_00551F04[index].radius = 1000;
+                mdlHddFileIndex[index].major = 5;
+                mdlHddFileIndex[index].minor = index;
+                mdlHddFileIndex[index].scale = 0x1000;
+                mdlHddFileIndex[index].radius = 1000;
                 length = strlen(name);
                 end = length + 5;
                 for (kind = 0; kind != 3; kind++) {
                     if (file->available[kind]) {
                         char *path = sdfChipAllocDirect(length + 8);
 
-                        *(mdlWorkPrefix_t *)path = D_0054F640[0];
+                        *(mdlWorkPrefix_t *)path = mdlWorkPathPrefix[0];
                         memcpy(path + 5, name, length);
                         path[end] = file->extension[kind][0];
                         path[end + 1] = file->extension[kind][1];
@@ -1882,7 +1882,7 @@ void mdlMakeHddFileList(void) {
                 file = file->next;
                 index++;
             }
-            modelFileKindTable[5].entries = D_00551F04;
+            modelFileKindTable[5].entries = mdlHddFileIndex;
             modelFileKindTable[5].count = count;
             modelFileTable[5].entries = mdlHddFileList;
             modelFileTable[5].count = count;
@@ -1912,15 +1912,15 @@ s32 mdlSetViewerSlotResourceHandles(s32 aMajor, s32 aMinor, char *aTexFile, char
 #endif
 
 #ifdef SDF_SMT3
-INCLUDE_SDATA(const s32, "model/mdlManager", D_0054F628);
+INCLUDE_SDATA(const s32, "model/mdlManager", mdlModelPathPrefix);
 
-INCLUDE_SDATA(const s32, "model/mdlManager", D_0054F630);
+INCLUDE_SDATA(const s32, "model/mdlManager", mdlPackedBundleExt);
 
-INCLUDE_SDATA(const s32, "model/mdlManager", D_0054F634);
+INCLUDE_SDATA(const s32, "model/mdlManager", mdlHddFileIndexHandle);
 
-INCLUDE_SDATA(const s32, "model/mdlManager", D_0054F638);
+INCLUDE_SDATA(const s32, "model/mdlManager", mdlHddFileListHandle);
 
-INCLUDE_SDATA(const s32, "model/mdlManager", D_0054F640);
+INCLUDE_SDATA(const s32, "model/mdlManager", mdlWorkPathPrefix);
 #elif defined(SDF_DDS1)
 INCLUDE_SDATA(const s32, "model/mdlManager", D_003BBB60);
 

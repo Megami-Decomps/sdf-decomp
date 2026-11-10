@@ -82,7 +82,7 @@ typedef struct sdfCorePacketFaceDivParm_t {
 
 #define SDF_VU_TEXTURED_FLAG 0x10
 
-extern u32 corePktCurrLight;
+extern addr_t corePktCurrLight;
 
 extern u128 *corePktFaceList[][3];
 
@@ -96,12 +96,11 @@ extern f32 corePktZBias;
 
 extern f32 sdf3DEyeOffset[4];
 
+/* Shared byte-storage view: the local screen structs are not compatible C types. */
 extern u8 sdf3DScreenParam[];
 
 
 extern u8 corePktWorldLightMtxCache[];
-
-#define SDF_DMA_ADDRESS_MASK 0x0FFFFFFF
 
 /* Native 0xA0-byte draw-entry block allocated by SDF_ASSET_DRAW_ENTRY_BYTES. */
 typedef struct sdfMatPacket_t {
@@ -140,7 +139,7 @@ extern void corePktXfmUV(void *vertices, s32 count, void *uv, void *transform);
 
 extern void corePktApplyFaceDivColor(sdfCorePacketCb_t *cb, void *parameters);
 
-extern void sdfGrClosePacketBuff(u32 aBuffPtr);
+extern void sdfGrClosePacketBuff(addr_t aBuffPtr);
 
 void corePktEmitTexTrisCtx2(sdfCorePacketCb_t *cb, u64 samplingState, u64 textureState,
                           u64 clampState, u64 alphaState, s32 clearPrimitiveFlags);
@@ -186,7 +185,7 @@ static inline sdfCorePacketPointBuff_tag *AllocNode(sdfCorePacketCb_t *work) {
     return node;
 }
 
-extern s32 corePktPointBuff;
+extern saddr_t corePktPointBuff;
 
 extern void corePktRelightBackFaces(u32 cb, s32 count);
 
@@ -227,21 +226,21 @@ void corePktSetupPointBuff(sdfCorePacketCb_t *cb, s32 vertCount) {
     void *ringEnd = (u8 *)cb + 0x78;
     if (vertCount < 0x80) {
         cb->freePointCount = 0x80 - vertCount;
-        cb->extPointBuff = corePktPointBuff;
-        cb->freePointBuff = vertCount * 96 + SDF_SCRATCHPAD_POINT_BUFFER;
+        cb->extPointBuff = EE_ADDR_PTR(corePktPointBuff);
+        cb->freePointBuff = EE_ADDR_PTR(vertCount * 96 + SDF_SCRATCHPAD_POINT_BUFFER);
         cb->extPointCount = 0x2000;
         cb->pointBuff = SDF_SCRATCHPAD_POINT_BUFFER;
     } else if (vertCount == 0x80) {
         cb->pointBuff = SDF_SCRATCHPAD_POINT_BUFFER;
-        cb->freePointBuff = corePktPointBuff;
+        cb->freePointBuff = EE_ADDR_PTR(corePktPointBuff);
         cb->freePointCount = 0x2000;
         cb->extPointBuff = 0;
         cb->extPointCount = 0;
     } else {
         cb->freePointCount = 0x80;
         cb->pointBuff = corePktPointBuff;
-        cb->freePointBuff = SDF_SCRATCHPAD_POINT_BUFFER;
-        cb->extPointBuff = corePktPointBuff + vertCount * 96;
+        cb->freePointBuff = EE_ADDR_PTR(SDF_SCRATCHPAD_POINT_BUFFER);
+        cb->extPointBuff = EE_ADDR_PTR(corePktPointBuff + vertCount * 96);
         cb->extPointCount = 0x2000 - vertCount;
     }
     cb->extPointLink = ringEnd;
@@ -270,7 +269,7 @@ void corePktInitCb(sdfCorePacketCb_t *cb, u16 *packetHdr, u32 attrMask) {
 
 /* vu0 routine: rotate the basis at vectors+0x40 into vf24-vf26 and cache the original vectors. */
 void corePktLoadWorldLightMtx(void *vectors) {
-    void *m = (void *)corePktCurrLight;
+    void *m = EE_ADDR_AS(void *, corePktCurrLight);
     VU0_ROTATE_BASIS_AND_CACHE(vectors, m, corePktWorldLightMtxCache);
 }
 
@@ -442,6 +441,9 @@ INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktLoadVerts);
 
 /* NON_MATCHING: reference implementation, not a match candidate. The retail
  * body is assembly: two unaligned ldr/ldl pairs per entry and pcpyld. */
+/* NON_MATCHING. Behaviour checked against retail: 6 PCSX2 call vectors give the same return and memory,
+ * field underground facility, field unknown realm savestates, covering only the paths those calls took.
+ * (sdfport bc29478, tools/funcvec, tests/funcvec.sh). */
 #ifdef NON_MATCHING
 void corePktLoadVertsNorms(sdfCorePacketPointBuff_tag *dst, s32 count, const u32 *vert,
                            const u32 *norm)
@@ -528,6 +530,9 @@ INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktMorphVerts);
  * 1.0 the engine keeps there, and vrsqrt clamps where a C division would turn a
  * zero normal into NaN. vmulq is xyz only, so the fourth word survives. The C
  * draft this replaced is below in comment form. */
+/* NON_MATCHING. Behaviour checked against retail: 6 PCSX2 call vectors give the same return and memory,
+ * field underground facility, field unknown realm savestates, covering only the paths those calls took.
+ * (sdfport bc29478, tools/funcvec, tests/funcvec.sh). */
 #ifdef NON_MATCHING
 void corePktNormalizeNorms(sdfCorePacketPointBuff_tag *dst, s32 count)
 {
@@ -736,7 +741,7 @@ INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktXfmLightClipUVPB);
 #ifdef NON_MATCHING
 void corePktRelightBackFaces(u32 pointBuff, s32 count)
 {
-    sdfCorePacketPointBuff_tag *dst = (sdfCorePacketPointBuff_tag *)pointBuff;
+    sdfCorePacketPointBuff_tag *dst = EE_ADDR_AS(sdfCorePacketPointBuff_tag *, pointBuff);
 
     /* The position and its clip flags are left alone; only the normal is
      * flipped and the shade and the over/under bits recomputed from it. */
@@ -960,7 +965,7 @@ void corePktLerpUVColorChain(sdfCorePacketPointBuff_tag *node) {
 void corePktApplyFaceDivColor(sdfCorePacketCb_t *cb, void *parameters)
 {
     const sdfCorePacketFaceDivParm_t *parm = parameters;
-    sdfCorePacketPointBuff_tag *point = (sdfCorePacketPointBuff_tag *)cb->pointBuff;
+    sdfCorePacketPointBuff_tag *point = EE_ADDR_AS(sdfCorePacketPointBuff_tag *, cb->pointBuff);
     sdfCorePacketPointBuff_tag *node;
     s32 count = cb->pointCount;
 
@@ -1003,7 +1008,7 @@ void corePktSetConstColor(sdfCorePacketCb_t *cb, u32 color) {
     EE_MMI_RGBA_MULTIPLY_VECTOR(scaledColor, cb->color, color, colorScale);
 
     remaining = cb->pointCount;
-    node = (sdfCorePacketPointBuff_tag *)cb->pointBuff;
+    node = EE_ADDR_AS(sdfCorePacketPointBuff_tag *, cb->pointBuff);
     if (remaining != 0) {
         do {
             remaining--;
@@ -1044,7 +1049,7 @@ void corePktClipFace(sdfCorePacketCb_t *cb) {
     scale = cb->backfaceSign;
     acceptAll = corePktSoftenBias;
     triangles = (u16 *)cb->facePtr;
-    nodes = (sdfCorePacketPointBuff_tag *)cb->pointBuff;
+    nodes = EE_ADDR_AS(sdfCorePacketPointBuff_tag *, cb->pointBuff);
     for (i = 0; i != triangleCount; i++) {
         u16 *triangle = triangles;
         sdfCorePacketPointBuff_tag *a = nodes + triangle[0];
@@ -1200,7 +1205,7 @@ void corePktBuildFaceList(sdfCorePacketCb_t *cb) {
     acceptAll = corePktSoftenBias;
     out = corePktFaceList;
     triangles = (u16 *)cb->facePtr;
-    nodes = (sdfCorePacketPointBuff_tag *)cb->pointBuff;
+    nodes = EE_ADDR_AS(sdfCorePacketPointBuff_tag *, cb->pointBuff);
     for (; triangleCount != 0; triangleCount--) {
         u16 *triangle = triangles;
         sdfCorePacketPointBuff_tag *a = nodes + triangle[0];
@@ -1351,7 +1356,7 @@ void corePktBuildBackFaceList(sdfCorePacketCb_t *cb) {
     remaining = cb->backfaceCount;
     indices = corePktBackFaceList;
     triangles = (u16 *)cb->facePtr;
-    nodes = (sdfCorePacketPointBuff_tag *)cb->pointBuff;
+    nodes = EE_ADDR_AS(sdfCorePacketPointBuff_tag *, cb->pointBuff);
     out = (u128 *(*)[3])corePktFaceList;
     if (remaining != 0) {
         do {
@@ -1478,7 +1483,7 @@ void corePktEmitTexTris(work)
         do {
             s32 chunk = (remaining <= 0x10) ? remaining : 0x10;
             remaining -= chunk;
-            while (((u32)cursor & 0xC) != 4) {
+            while ((EE_ADDR(cursor) & 0xC) != 4) {
                 *cursor++ = 0;
             }
             if (first) {
@@ -1544,7 +1549,7 @@ void corePktEmitTexTrisCtx2(sdfCorePacketCb_t *cb, u64 samplingState, u64 textur
         do {
             s32 batchTriangles = (remainingTriangles <= 0x10) ? remainingTriangles : 0x10;
             remainingTriangles -= batchTriangles;
-            while (((u32)packetCursor & 0xC) != 4) {
+            while ((EE_ADDR(packetCursor) & 0xC) != 4) {
                 *packetCursor++ = 0;
             }
             if (firstBatch) {
@@ -1617,7 +1622,7 @@ void corePktEmitTris(work)
         do {
             s32 batchTriangles = (remainingTriangles <= 0x18) ? remainingTriangles : 0x18;
             remainingTriangles -= batchTriangles;
-            while (((u32)packetCursor & 0xC) != 4) {
+            while ((EE_ADDR(packetCursor) & 0xC) != 4) {
                 *packetCursor++ = 0;
             }
             *packetCursor++ = 0x6501C000;
@@ -1660,7 +1665,7 @@ void corePktEmitMultiTexPass(sdfCorePacketCb_t *cb) {
     u32 secondaryColor;
     u32 primaryStateWordSecond;
 
-    corePktXfmUV((void *)cb->pointBuff, cb->pointCount, cb->uv2Ptr,
+    corePktXfmUV(EE_ADDR_AS(void *, cb->pointBuff), cb->pointCount, cb->uv2Ptr,
                   (u8 *)cb->matPacketPtr + 0x80);
     corePktLerpUVChain(cb->extPointTop);
     node = cb->matPacketPtr;
@@ -1694,8 +1699,8 @@ extern u64 sdf3DRefMapParam;
 
 void corePktEmitRefMapPass(sdfCorePacketCb_t *work)
 {
-    sdf3DLightParallelPacket_t *light = (sdf3DLightParallelPacket_t *)corePktCurrLight;
-    sdfCorePacketPointBuff_tag *point = (sdfCorePacketPointBuff_tag *)work->pointBuff;
+    sdf3DLightParallelPacket_t *light = EE_ADDR_AS(sdf3DLightParallelPacket_t *, corePktCurrLight);
+    sdfCorePacketPointBuff_tag *point = EE_ADDR_AS(sdfCorePacketPointBuff_tag *, work->pointBuff);
     u32 count = (u16)work->pointCount;
     u32 materialColor = work->matPacketPtr->primaryStateWordThird;
     u64 scale = 0x3C0000003C000000ULL;
@@ -1735,11 +1740,11 @@ void corePktEmitAllPasses(sdfCorePacketCb_t *cb) {
 void corePktOpenAndEmit(sdfCorePacketCb_t *cb) {
     u32 packetStart = sdfGrOpenPacketBuff();
     u32 alignedStart = (packetStart + 0x3F) & ~0x3F;
-    u32 ringAddress = EE_UNCACHED_RING((alignedStart + 0x40) & SDF_DMA_ADDRESS_MASK);
+    u32 ringAddress = EE_UNCACHED_RING(EE_PHYSICAL(alignedStart + 0x40));
     cb->packetOpenPtr = packetStart;
     cb->packetTopPtr = alignedStart + 0x30;
-    cb->packetStartPtr = (u32 *)ringAddress;
-    cb->packetPtr = (u32 *)ringAddress;
+    cb->packetStartPtr = EE_ADDR_AS(u32 *, ringAddress);
+    cb->packetPtr = EE_ADDR_AS(u32 *, ringAddress);
     if ((cb->attrBits & 0x4000) != 0) {
         u8 savedVectors[0x30];
         VU0_STORE_VF24_VF25_VF26(savedVectors);
@@ -1757,8 +1762,8 @@ void corePktOpenAndEmit(sdfCorePacketCb_t *cb) {
 }
 
 u64 *corePktClosePacket(sdfCorePacketCb_t *cb) {
-    u32 cursor;
-    u32 start;
+    addr_t cursor;
+    addr_t start;
     s32 quadwords;
     u32 descriptor;
     u64 gifTag;
@@ -1768,26 +1773,26 @@ u64 *corePktClosePacket(sdfCorePacketCb_t *cb) {
         return NULL;
     }
 
-    cursor = (u32)cb->packetPtr;
-    start = (u32)cb->packetStartPtr;
+    cursor = EE_ADDR(cb->packetPtr);
+    start = EE_ADDR(cb->packetStartPtr);
     if (cursor == start) {
         sdfGrClosePacketBuff(cb->packetOpenPtr);
         return NULL;
     }
 
     while (((u32)cursor & 0xC) != 0) {
-        *(u32 *)cursor = 0;
+        *EE_ADDR_AS(u32 *, cursor) = 0;
         cursor += 4;
     }
     quadwords = (s32)(cursor - start) >> 4;
 
     while (((u32)cursor & 0x30) != 0) {
-        QUAD_ZERO(*(u128 *)cursor);
+        QUAD_ZERO(*EE_ADDR_AS(u128 *, cursor));
         cursor += 0x10;
     }
 
-    sdfGrClosePacketBuff(cursor & 0x0FFFFFFF);
-    header = (u64 *)cb->packetTopPtr;
+    sdfGrClosePacketBuff(EE_PHYSICAL(cursor));
+    header = EE_ADDR_AS(u64 *, cb->packetTopPtr);
     descriptor = 0x20000000 | (quadwords & 0xFFFF);
     gifTag = 0x1100000000000000ULL;
     header[0] = descriptor;
@@ -1799,7 +1804,7 @@ u64 *corePktClosePacket(sdfCorePacketCb_t *cb) {
 u8 *corePktVu0Run(sdfCorePacketPointBuff_tag *output, const void *source, s32 count,
                   s32 transferCount, s32 transferStride)
 {
-    u32 input = (u32)source;
+    addr_t input = EE_ADDR(source);
     s32 done = 0;
     s32 batch, i, qwc;
 
@@ -1809,7 +1814,7 @@ u8 *corePktVu0Run(sdfCorePacketPointBuff_tag *output, const void *source, s32 co
         done += batch;
         qwc = (s32)((u32)transferStride * (u32)batch + (u32)transferCount + 15) >> 4;
         HW_WRITE(D0_QWC, qwc);
-        HW_WRITE(D0_MADR, input & SDF_DMA_ADDRESS_MASK);
+        HW_WRITE(D0_MADR, EE_PHYSICAL(input));
         input += (u32)qwc << 4;
         HW_WRITE(D0_CHCR, 0x101);
         while ((HW_READ(D0_CHCR) & 0x100) != 0 || (HW_READ(VIF0_STAT) & 0x0F000003) != 0) { }
@@ -1819,7 +1824,7 @@ u8 *corePktVu0Run(sdfCorePacketPointBuff_tag *output, const void *source, s32 co
             output++;
         }
     }
-    return (u8 *)input;
+    return EE_ADDR_AS(u8 *, input);
 }
 #else
 INCLUDE_ASM(const s32, "sdf/sdfVu1", corePktVu0Run);

@@ -2,6 +2,9 @@
 #include "sdf_types.h"
 #include "sdf_resource.h"
 
+/* Declared here because no header carries these. */
+extern sdfMemHandle_t *sdfMemAllocDirect(s32 aSize);
+
 struct sdfMemHandle_t;
 
 #define SDF_QWORD_ALIGNMENT_MASK 0xF
@@ -19,11 +22,11 @@ u32 sdfMemLock(struct sdfMemHandle_t *aHandle);
 
 extern s32 sdfGrPacketBuffSize;
 
-/* DDS names the buffer pair; SMT3 has no name for it yet. */
+/* DDS's name for the buffer pair. */
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
-#define D_00551870 sdfPacketBuffers
+#define sdfGrPacketBuffBase sdfPacketBuffers
 #endif
-extern s32 D_00551870[2];
+extern s32 sdfGrPacketBuffBase[2];
 
 extern s32 sdfGrPacketBuffPtr;
 
@@ -51,7 +54,7 @@ void sdfGrSetupPacketBuff(s32 aFrameId);
 
 s32 sdfGrAllocPacketBuff(s32 aSize);
 
-void sdfGrClosePacketBuff(s32 aBuffPtr);
+void sdfGrClosePacketBuff(saddr_t aBuffPtr);
 
 void sdfGrMakePacketBuff(s32 aPacketBuffSize) {
     s32 allocationAddress;
@@ -63,13 +66,13 @@ void sdfGrMakePacketBuff(s32 aPacketBuffSize) {
     sdfGrPacketBuffSize = aPacketBuffSize;
     sdfGrPacketBuffHandle = sdfMemAllocDirect(aPacketBuffSize * SDF_PACKET_BUFFER_COUNT);
     allocationAddress = sdfMemLock(sdfGrPacketBuffHandle);
-    D_00551870[0] = allocationAddress;
-    D_00551870[1] = allocationAddress + aPacketBuffSize;
+    sdfGrPacketBuffBase[0] = allocationAddress;
+    sdfGrPacketBuffBase[1] = allocationAddress + aPacketBuffSize;
 }
 
 void sdfGrSetupPacketBuff(s32 aFrameId) {
-    sdfGrPacketBuffPtr = D_00551870[aFrameId];
-    sdfGrPacketBuffLimit = D_00551870[aFrameId] + sdfGrPacketBuffSize;
+    sdfGrPacketBuffPtr = sdfGrPacketBuffBase[aFrameId];
+    sdfGrPacketBuffLimit = sdfGrPacketBuffBase[aFrameId] + sdfGrPacketBuffSize;
 }
 
 s32 sdfGrGetPacketBuffRemain(void) {
@@ -88,7 +91,7 @@ s32 sdfGrOpenPacketBuff(void) {
     return sdfGrPacketBuffPtr;
 }
 
-void sdfGrClosePacketBuff(s32 aBuffPtr) {
+void sdfGrClosePacketBuff(saddr_t aBuffPtr) {
     sdfGrPacketBuffPtr = (aBuffPtr + SDF_QWORD_ALIGNMENT_MASK) & ~SDF_QWORD_ALIGNMENT_MASK;
 }
 

@@ -52,17 +52,17 @@ enum sdf_stream_playback {
     SDF_STREAM_PLAYBACK_CADENCED = 2
 };
 
-extern void *memcpy(void *, const void *, unsigned int);
+extern void *memcpy(void *, const void *, size_t);
 
 void *sdfChipAllocDirect(s32 aSize);
 
 #if defined(SDF_DDS1)
-#define D_00549878 D_003B4690
+#define sdfDev9ResidentFailMsg D_003B4690
 #elif defined(SDF_DDS2)
-#define D_00549878 D_0042E3A0
+#define sdfDev9ResidentFailMsg D_0042E3A0
 #endif
 
-extern char D_00549878[];
+extern char sdfDev9ResidentFailMsg[];
 
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
 #define sdf_2BFE08 sdfDecimalToPackedDigits
@@ -91,7 +91,7 @@ void sdfDev9LoadModule(void) {
             return;
         }
         if (resident != 0) {
-            printf(D_00549878);
+            printf(sdfDev9ResidentFailMsg);
             return;
         }
         sdfDev9Ready = 1;
@@ -100,28 +100,28 @@ void sdfDev9LoadModule(void) {
 }
 
 #ifdef NON_MATCHING
-extern void *memset(void *dst, s32 value, u32 size);
+extern void *memset(void *dst, s32 value, size_t size);
 
 u64 sdf_2BFC58(void *dst, s32 size)
 {
-    u32 address = (u32)dst;
+    addr_t address = EE_ADDR(dst);
     s32 index, i, counter;
     u32 entry;
 
     if (size <= 0) return (u64)(s64)size | address;
-    if (((address | (u32)size) & 15) != 0) return (u32)memset(dst, 0, size);
+    if (((address | (u32)size) & 15) != 0) return EE_ADDR(memset(dst, 0, size));
 
     /* Retail overwrites the aligned-path counter with its jump-table address. */
     index = (-(size >> 8)) & 7;
     counter = 0x002BFCAC;
     entry = (u32)counter + (u32)index * 4;
     for (i = 7 - index; i >= 0; i--) {
-        PS2_STORE_ZERO_QUAD((void *)(address + (u32)i * 16));
+        PS2_STORE_ZERO_QUAD(EE_ADDR_AS(void *, address + (u32)i * 16));
     }
     while ((counter -= 8) >= 0) {
         address += 0x80;
         for (i = 7; i >= 0; i--) {
-            PS2_STORE_ZERO_QUAD((void *)(address + (u32)i * 16));
+            PS2_STORE_ZERO_QUAD(EE_ADDR_AS(void *, address + (u32)i * 16));
         }
     }
     return entry;
@@ -212,6 +212,6 @@ INCLUDE_RODATA(const s32, "sdf/sdfDev9", D_003B4690);
 #elif defined(SDF_DDS2)
 INCLUDE_RODATA(const s32, "sdf/sdfDev9", D_0042E3A0);
 #else
-INCLUDE_RODATA(const s32, "sdf/sdfDev9", D_00549878);
+INCLUDE_RODATA(const s32, "sdf/sdfDev9", sdfDev9ResidentFailMsg);
 #endif
 

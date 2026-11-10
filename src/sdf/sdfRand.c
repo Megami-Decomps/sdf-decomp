@@ -40,7 +40,7 @@ typedef struct sdfFileCmdHandle_t {
     s32 errorCode;
     s32 currentOffset;
     u8 remainder[4];
-    void (*callback)(struct sdfFileCmdHandle_t *, s32, s32, s32, s32);
+    void (*callback)(struct sdfFileCmdHandle_t *, s32, saddr_t, s32, s32);
     s32 userData;
 } sdfFileCmdHandle_t;
 
@@ -120,28 +120,28 @@ typedef union { f32 quaternion[4]; u16 monthDays[20]; } sdfMathConstants_t;
 
 /* Placeholders in all three games. */
 #if defined(SDF_DDS1)
-#define D_00529BB0 D_00398910
-#define D_005519B8 D_003BD488
+#define sdfMathConstants D_00398910
+#define sdfCdClockCache D_003BD488
 #elif defined(SDF_DDS2)
-#define D_00529BB0 D_0040BAC0
-#define D_005519B8 D_00438B78
+#define sdfMathConstants D_0040BAC0
+#define sdfCdClockCache D_00438B78
 #endif
 
-extern sdfMathConstants_t D_00529BB0;
+extern sdfMathConstants_t sdfMathConstants;
 
 extern s8 sdfPrintIopFlag;
 
-extern char D_00551908[];
+extern char sdfPrintStrFmt[];
 
-extern char D_00551928[];
+extern char sdfFileCdromPrefix[];
 
-extern sdfHostPrefix_t D_00551930[];
+extern sdfHostPrefix_t sdfFileHostPrefix[];
 
-extern u8 D_00551938[];
+extern u8 sdfFileHddPrefix[];
 
-extern char D_00551940[];
+extern char sdfFileCdromName[];
 
-extern sdfFileCmdHandle_t *D_00551948;
+extern sdfFileCmdHandle_t *sdfFileCmdActiveHead;
 
 extern sdfFileCmdHandle_t *sdfFileCmdFreeList;
 
@@ -149,15 +149,15 @@ extern s16 sdfFileCmdFreeCount;
 
 extern s16 sdfFileCmdCount;
 
-extern sdfFileCmdHandle_t *D_00551954;
+extern sdfFileCmdHandle_t *sdfFileCmdCacheHead;
 
-extern sdfFileCmdHandle_t *D_00551958;
+extern sdfFileCmdHandle_t *sdfFileCmdCacheTail;
 
-extern char D_00551968[];
+extern char sdfFileCmdCdromPrefix[];
 
-extern char D_00551970[];
+extern char sdfFileCmdHostPrefix[];
 
-extern char D_00551978[];
+extern char sdfFileCmdPfsPrefix[];
 
 extern u16 sdfFileCmdDefaultCreateMode;
 
@@ -173,9 +173,9 @@ extern u8 sdfCdClock;
 
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
 /* DDS defines the clock cache in this unit. */
-sdfClock_t D_005519B8 = {0};
+sdfClock_t sdfCdClockCache = {0};
 #else
-extern sdfClock_t D_005519B8;
+extern sdfClock_t sdfCdClockCache;
 #endif
 
 extern s32 (*p2sdSmgBuf)(void);
@@ -206,7 +206,7 @@ void sdfRandomizeByTime(sdfRandCB_t *aCB) {
     sdfClock_t now;
     s32 secondsSinceEpoch;
     sdfGetCdClock(&now);
-    secondsSinceEpoch = now.year * 0x16E + now.day + D_00529BB0.monthDays[now.month + 7] + 0xFFF4FF83;
+    secondsSinceEpoch = now.year * 0x16E + now.day + sdfMathConstants.monthDays[now.month + 7] + 0xFFF4FF83;
     secondsSinceEpoch = secondsSinceEpoch * 0x18 + now.hour;
     secondsSinceEpoch = secondsSinceEpoch * 0x3C + now.min;
     sdfRandomize(aCB, secondsSinceEpoch * 0x3C + now.sec);
@@ -220,18 +220,18 @@ s32 sdfGetCdClock(sdfClock_t *now) {
         sceCdReadClock(&clock);
         result = -1;
         if ((clock.status & 0x103) == 0) {
-            D_005519B8.sec = sdfBcdToDecimal(clock.second);
-            D_005519B8.min = sdfBcdToDecimal(clock.minute);
-            D_005519B8.hour = sdfBcdToDecimal(clock.hour);
-            D_005519B8.day = sdfBcdToDecimal(clock.day);
-            D_005519B8.month = sdfBcdToDecimal(clock.month);
+            sdfCdClockCache.sec = sdfBcdToDecimal(clock.second);
+            sdfCdClockCache.min = sdfBcdToDecimal(clock.minute);
+            sdfCdClockCache.hour = sdfBcdToDecimal(clock.hour);
+            sdfCdClockCache.day = sdfBcdToDecimal(clock.day);
+            sdfCdClockCache.month = sdfBcdToDecimal(clock.month);
             /* Retail reuses the month byte as the two-digit year input. */
             year = sdfBcdToDecimal(clock.month);
             result = 0;
-            D_005519B8.year = year + (year < 70 ? 2000 : 1900);
+            sdfCdClockCache.year = year + (year < 70 ? 2000 : 1900);
         }
         sdfCdClock = 20;
     }
-    *now = D_005519B8;
+    *now = sdfCdClockCache;
     return result;
 }

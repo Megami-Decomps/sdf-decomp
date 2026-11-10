@@ -53,12 +53,12 @@ enum sdf_stream_playback {
     SDF_STREAM_PLAYBACK_CADENCED = 2
 };
 
-/* DDS names the asin table; SMT3 has no name for it yet. */
+/* DDS's name for the asin table. */
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
-#define D_0052D944 sdfNormalizedAsinSamples
+#define sdfAsinTable sdfNormalizedAsinSamples
 #endif
 
-extern f32 D_0052D944[];
+extern f32 sdfAsinTable[];
 
 extern s32 (*p2sdSmgBuf)(void);
 
@@ -172,7 +172,7 @@ f32 sdfAsin(f32 aX) {
     } else {
         inputSign = 1.0f;
     }
-    angleMagnitude = aX >= 1.0f ? 1.5707963f : sdfTableInterpolation(aX, D_0052D944, 128) * 1.5707963f;
+    angleMagnitude = aX >= 1.0f ? 1.5707963f : sdfTableInterpolation(aX, sdfAsinTable, 128) * 1.5707963f;
     return angleMagnitude * inputSign;
 }
 
@@ -190,7 +190,7 @@ f32 sdfAcos(f32 aX) {
     }
     angleMagnitude = 0.0f;
     if (!(aX >= 1.0f)) {
-        angleMagnitude = (1.0f - sdfTableInterpolation(aX, D_0052D944, 128)) * 1.5707963f;
+        angleMagnitude = (1.0f - sdfTableInterpolation(aX, sdfAsinTable, 128)) * 1.5707963f;
     }
     return angleMagnitude * inputSign;
 }

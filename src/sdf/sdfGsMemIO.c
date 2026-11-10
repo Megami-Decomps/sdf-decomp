@@ -1,6 +1,7 @@
 #include "common.h"
 #include "sdf_types.h"
 #include "sdf_resource.h"
+#include "eeregs.h"
 
 struct sdfPreDrawHook_t;
 
@@ -22,11 +23,9 @@ struct sdfPreDrawTag_t;
 
 /* The frame worker passes the node and queued buffer index. The registered
  * handlers project the node into their distinct complete packet owners. */
-typedef void (*SdfPacketPatchCallback)();
+typedef void (*SdfPacketPatchCallback)(void *, s32);
 
 #define SDF_DMA_QWC_MASK 0xFFFF
-
-#define SDF_DMA_ADDRESS_MASK 0x0FFFFFFF
 
 #define SDF_PATCHABLE_PACKET_BYTES 0x100
 
@@ -81,8 +80,8 @@ typedef struct sdfGrFrameSet_t {
 } sdfGrFrameSet_t;
 
 
-void sdfDrawTagLink2(struct sdfDrawTag_t *aTag, u32 aHeadPacket,
-                          u32 aTailPacket);
+void sdfDrawTagLink2(struct sdfDrawTag_t *aTag, addr_t aHeadPacket,
+                          addr_t aTailPacket);
 
 /* Resource upload payload and its terminal primitive-reset tag (0xF0). */
 typedef struct sdfStoreImagePacket_t {
@@ -110,12 +109,12 @@ typedef struct sdfPreDrawTag_t {
 } sdfPreDrawTag_t;
 
 #if defined(SDF_DDS1)
-#define D_00529388 D_003980E0
+#define sdfGrFrameSet D_003980E0
 #elif defined(SDF_DDS2)
-#define D_00529388 D_0040B290
+#define sdfGrFrameSet D_0040B290
 #endif
 
-extern sdfGrFrameSet_t D_00529388;
+extern sdfGrFrameSet_t sdfGrFrameSet;
 
 s32 sdfGetTexelBitCount(u32 aFormat);
 
@@ -139,7 +138,7 @@ void sdfSetStoreImage(sdfStoreImagePacket_t *aPacket, sdfGsMemSlice_t *aGsHandle
     s32 aSrcX, s32 aSrcY, s32 aWidth, s32 aHeight, u32 aBuffer, u32 aCallback, u32 aCallbackParam);
 
 void sdfLinkStoreImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle, s32 aSrcX,
-                   s32 aSrcY, s32 aWidth, s32 aHeight, s32 aBuffer, s32 aCallback,
+                   s32 aSrcY, s32 aWidth, s32 aHeight, saddr_t aBuffer, s32 aCallback,
                    s32 aCallbackParam, s32 (*aAllocator)(s32));
 
 void sdfLinkStoreFrameImagePredraw(sdfStoreFrameImagePacket_t *aPre, s32 aEvenOdd);
@@ -154,7 +153,7 @@ void sdfSetLoadImage(sdfLoadImagePacket_t *aPacket, sdfGsMemSlice_t *aGsHandle,
 
 void sdfLinkLoadImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle,
                    s32 aDstX, s32 aDstY, s32 aWidth, s32 aHeight,
-                   s32 aBuffer, s32 (*aAllocator)(s32));
+                   saddr_t aBuffer, s32 (*aAllocator)(s32));
 
 s32 sdfGrAllocPacketBuff(s32 aSize);
 
@@ -179,7 +178,7 @@ void sdfSetStoreImage(sdfStoreImagePacket_t *aPacket, sdfGsMemSlice_t *aGsHandle
     aPacket->header[7] = 0xE;
     aPacket->header[8] = 0;
     aPacket->header[9] = 0x61;
-    aPacket->header[10] = ((u64)((u32)aPacket->tail & SDF_DMA_ADDRESS_MASK) << 32) | 0xA0000005ULL;
+    aPacket->header[10] = SDF_DMA_TAG(EE_ADDR(aPacket->tail), 0xA0000005ULL);
     aPacket->header[11] = 0x5000000500000000ULL;
     aPacket->header[12] = 0x1000000000000004ULL;
     aPacket->header[13] = 0xE;
@@ -200,7 +199,7 @@ void sdfSetStoreImage(sdfStoreImagePacket_t *aPacket, sdfGsMemSlice_t *aGsHandle
 }
 
 void sdfLinkStoreImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle, s32 aSrcX,
-                   s32 aSrcY, s32 aWidth, s32 aHeight, s32 aBuffer, s32 aCallback,
+                   s32 aSrcY, s32 aWidth, s32 aHeight, saddr_t aBuffer, s32 aCallback,
                    s32 aCallbackParam, s32 (*aAllocator)(s32)) {
     s32 packetAddress;
 
@@ -208,7 +207,7 @@ void sdfLinkStoreImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle, s32 a
         aAllocator = sdfGrAllocPacketBuff;
     }
     packetAddress = aAllocator(0xf0);
-    sdfSetStoreImage((sdfStoreImagePacket_t *)packetAddress, aGsHandle,
+    sdfSetStoreImage(EE_ADDR_AS(sdfStoreImagePacket_t *, packetAddress), aGsHandle,
         aSrcX, aSrcY, aWidth, aHeight, aBuffer, aCallback, aCallbackParam);
     sdfDrawTagLink2(aDrawTag, packetAddress, packetAddress + 0xc0);
 }
@@ -216,7 +215,7 @@ void sdfLinkStoreImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle, s32 a
 void sdfLinkStoreFrameImagePredraw(sdfStoreFrameImagePacket_t *aPre, s32 aEvenOdd) {
     aPre->packet.bitblt.bitbltbuf.data =
         (aPre->packet.bitblt.bitbltbuf.data & ~0x3FFF) |
-        (u64)(u32)(D_00529388.buffers[aEvenOdd]->addr >> 6);
+        (u64)(u32)(sdfGrFrameSet.buffers[aEvenOdd]->addr >> 6);
 }
 
 void sdfLinkStoreFrameImage(sdfDrawTag_t *aDrawTag, sdfPreDrawTag_t *aPreDrawTag, s32 aSrcX, s32 aSrcY,
@@ -227,14 +226,14 @@ void sdfLinkStoreFrameImage(sdfDrawTag_t *aDrawTag, sdfPreDrawTag_t *aPreDrawTag
     if (aAllocator == NULL) {
         aAllocator = sdfGrAllocPacketBuff;
     }
-    packet = (sdfStoreFrameImagePacket_t *)aAllocator(SDF_PATCHABLE_PACKET_BYTES);
+    packet = EE_ADDR_AS(sdfStoreFrameImagePacket_t *, aAllocator(SDF_PATCHABLE_PACKET_BYTES));
     packet->worker.predrawFunc = sdfLinkStoreFrameImagePredraw;
     sdfSetStoreImage(&packet->packet,
-        D_00529388.buffers[0], aSrcX, aSrcY, aWidth, aHeight,
+        sdfGrFrameSet.buffers[0], aSrcX, aSrcY, aWidth, aHeight,
         aBuffer, aCallback, aCallbackParam);
     sdfPreDrawTagLink(aPreDrawTag, &packet->worker);
-    sdfDrawTagLink2(aDrawTag, (u32)&packet->packet,
-        (u32)packet + SDF_PATCHABLE_PACKET_TAIL_OFFSET);
+    sdfDrawTagLink2(aDrawTag, EE_ADDR(&packet->packet),
+        EE_ADDR(packet) + SDF_PATCHABLE_PACKET_TAIL_OFFSET);
 }
 
 void sdfSetLoadImage(sdfLoadImagePacket_t *aPacket, sdfGsMemSlice_t *aGsHandle,
@@ -253,8 +252,8 @@ void sdfSetLoadImage(sdfLoadImagePacket_t *aPacket, sdfGsMemSlice_t *aGsHandle,
     qwc = (sdfGetTexelBitCount(aGsHandle->pixelFormat) * aWidth * aHeight) >> 7;
     aPacket->imageReferenceTag = 0x0800000000000000 | qwc;
     aPacket->imageReferencePad = 0;
-    aPacket->imageGifTag0 = (u32)((qwc & SDF_DMA_QWC_MASK) | 0x30000000) |
-                           ((u64)(aBuffer & SDF_DMA_ADDRESS_MASK) << 32);
+    aPacket->imageGifTag0 = SDF_DMA_TAG_WORD_FIRST(
+        (u32)((qwc & SDF_DMA_QWC_MASK) | 0x30000000), aBuffer);
     aPacket->imageGifTag1 = (u64)(0x51000000 | qwc) << 32;
     aPacket->flushTag0 = 0x20000002;
     aPacket->flushTag1 = 0x5000000200000000;
@@ -266,13 +265,13 @@ void sdfSetLoadImage(sdfLoadImagePacket_t *aPacket, sdfGsMemSlice_t *aGsHandle,
 
 void sdfLinkLoadImage(sdfDrawTag_t *aDrawTag, sdfGsMemSlice_t *aGsHandle,
                    s32 aDstX, s32 aDstY, s32 aWidth, s32 aHeight,
-                   s32 aBuffer, s32 (*aAllocator)(s32)) {
+                   saddr_t aBuffer, s32 (*aAllocator)(s32)) {
     s32 packetAddress;
     if (aAllocator == NULL) {
         aAllocator = sdfGrAllocPacketBuff;
     }
     packetAddress = aAllocator(SDF_DESCRIPTOR_PACKET_BYTES);
-    sdfSetLoadImage((sdfLoadImagePacket_t *)packetAddress, aGsHandle,
+    sdfSetLoadImage(EE_ADDR_AS(sdfLoadImagePacket_t *, packetAddress), aGsHandle,
                   aDstX, aDstY, aWidth, aHeight, aBuffer);
     sdfDrawTagLink2(aDrawTag, packetAddress, packetAddress + SDF_DESCRIPTOR_PACKET_TAIL_OFFSET);
 }
@@ -283,7 +282,7 @@ INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfGrPacketBuffHandle);
 
 INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfGrPacketBuffSize);
 
-INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", D_00551870);
+INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfGrPacketBuffBase);
 
 INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfGrPacketBuffPtr);
 
@@ -297,11 +296,11 @@ INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfDrawSyncFlag);
 
 INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfDrawFrameCounter);
 
-INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", D_00551888);
+INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfDrawPublishFlag);
 
 INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfGrDrawFrameId);
 
-INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", D_0055188A);
+INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfGrBufferSlot);
 
 INCLUDE_SDATA(const s32, "sdf/sdfGsMemIO", sdfReqDrawDelayCount);
 

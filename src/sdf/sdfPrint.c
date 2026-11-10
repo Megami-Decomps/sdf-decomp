@@ -64,25 +64,25 @@ enum sdf_stream_playback {
     SDF_STREAM_PLAYBACK_CADENCED = 2
 };
 
-extern void *memcpy(void *, const void *, unsigned int);
+extern void *memcpy(void *, const void *, size_t);
 
 #include "sdk_libmrpc.h"
 
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
-#define D_0058F310 sdfDevRpcClient
+#define sdfPrintRpcClient sdfDevRpcClient
 #endif
 
-extern sifRpcClientContextView_t D_0058F310;
+extern sifRpcClientContextView_t sdfPrintRpcClient;
 
 extern s8 sdfPrintIopFlag;
 
 #if defined(SDF_DDS1)
-#define D_00551908 D_003BD3D0
+#define sdfPrintStrFmt D_003BD3D0
 #elif defined(SDF_DDS2)
-#define D_00551908 D_00438AC0
+#define sdfPrintStrFmt D_00438AC0
 #endif
 
-extern char D_00551908[];
+extern char sdfPrintStrFmt[];
 
 extern s32 scePrintf(const char *, ...);
 
@@ -94,7 +94,7 @@ extern s32 (*p2sdSmgBuf)(void);
 void *sdfPrintRpcFunc(s32 unused, sifCommand_t *packet) {
     s32 copyBytes = packet->end - packet->source;
     if (copyBytes > 0) {
-        memcpy(packet, (void *)packet->source, copyBytes);
+        memcpy(packet, EE_ADDR_AS(void *, packet->source), copyBytes);
         return packet;
     }
     return NULL;
@@ -125,14 +125,12 @@ struct sifPrintRpcServerData_t {
     sifRpcDataQueue_t *queue;
 };
 
-typedef char sifRpcDataQueue_size_must_be_0x20[
-    sizeof(sifRpcDataQueue_t) == 0x20 ? 1 : -1];
-typedef char sifPrintRpcServerData_size_must_be_0x44[
-    sizeof(sifPrintRpcServerData_t) == 0x44 ? 1 : -1];
+SIZE_CHECK(sifRpcDataQueue_size_must_be_0x20, sifRpcDataQueue_t, 0x20);
+SIZE_CHECK(sifPrintRpcServerData_size_must_be_0x44, sifPrintRpcServerData_t, 0x44);
 
 extern void *sdfPrintRpcFunc(s32 unused, sifCommand_t *packet);
 extern s32 GetThreadId(void);
-extern s32 sceSifSetRpcQueue(sifRpcDataQueue_t *queue, s32 threadId);
+extern void sceSifSetRpcQueue(sifRpcDataQueue_t *queue, s32 threadId);
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
 #define SDK_SKIP_sceSifSetRpcQueue
 #define SDK_SKIP_sceSifRpcLoop
@@ -154,7 +152,7 @@ void sdfPrintRpcThread(void)
 }
 
 
-extern char D_005495C8[];
+extern char sdfPrintIopBindErrMsg[];
 
 #include "sdk_libc.h"
 
@@ -173,8 +171,8 @@ void sdfPrintIopInit(void)
     s32 startTicks;
 
     _StartThread(sdfCreateThreadWithStack(sdfPrintRpcThread, 0x1000, 0x4C), 0);
-    while (sceSifMBindRpc(&D_0058F310.client, 0x646E7270, 0) >= 0) {
-        if (D_0058F310.client.server != NULL) {
+    while (sceSifMBindRpc(&sdfPrintRpcClient.client, 0x646E7270, 0) >= 0) {
+        if (sdfPrintRpcClient.client.server != NULL) {
             sdfPrintIopFlag = 1;
             break;
         }
@@ -192,11 +190,11 @@ void sdfPrintIopInit(void)
     threadId = sdfCreateThreadWithStack(sdfPrintRpcThread, 0x1000, 0x4C);
     _StartThread(threadId, 0);
     while (1) {
-        if (sceSifMBindRpc(&D_0058F310.client, 0x646E7270, 0) < 0) {
-            printf(D_005495C8);
+        if (sceSifMBindRpc(&sdfPrintRpcClient.client, 0x646E7270, 0) < 0) {
+            printf(sdfPrintIopBindErrMsg);
             return;
         }
-        if (D_0058F310.client.server != NULL) {
+        if (sdfPrintRpcClient.client.server != NULL) {
             break;
         }
         startTicks = sdfGetRunTimeCountBase();
@@ -215,12 +213,12 @@ void sdfPuts(const char *str) {
     if (sdfPrintIopFlag != 0) {
         length = strlen(str);
         if (length != 0) {
-            alignedBuffer = (u8 *)(((u32)&buffer[0x3F]) & ~0x3F);
+            alignedBuffer = EE_ADDR_AS(u8 *, ((EE_ADDR(&buffer[0x3F])) & ~0x3F));
             memcpy(alignedBuffer, str, length);
-            sceSifMCallRpc((sceSifMClientData *)&D_0058F310.client, 0x7D1, 0, alignedBuffer, length, NULL, 0, NULL, NULL);
+            sceSifMCallRpc((sceSifMClientData *)&sdfPrintRpcClient.client, 0x7D1, 0, alignedBuffer, length, NULL, 0, NULL, NULL);
         }
     } else {
-        scePrintf(D_00551908, str);
+        scePrintf(sdfPrintStrFmt, str);
     }
 }
 
@@ -234,15 +232,15 @@ s32 sdfPrintf(const char *str, ...) {
     return length;
 }
 #ifdef SDF_SMT3
-INCLUDE_RODATA(const s32, "sdf/sdfPrint", D_005495C8);
+INCLUDE_RODATA(const s32, "sdf/sdfPrint", sdfPrintIopBindErrMsg);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfPrintIopFlag);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551901);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551908);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfPrintStrFmt);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551910);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfCdDirectPrefix);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfCdTrayMode);
 
@@ -254,15 +252,15 @@ INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551921);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileSemaId);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551928);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCdromPrefix);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551930);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileHostPrefix);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551938);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileHddPrefix);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551940);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCdromName);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551948);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdActiveHead);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdFreeList);
 
@@ -270,9 +268,9 @@ INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdCount);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551952);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551954);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdCacheHead);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551958);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdCacheTail);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdFreeCount);
 
@@ -282,27 +280,25 @@ INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdThreadPrioCheckCounter);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdThreadPrio);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551962);
-
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdDefaultCreateMode);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551966);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551968);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdCdromPrefix);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551970);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdHostPrefix);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551978);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdPfsPrefix);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551980);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdMoviePath);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551988);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfFileCmdCdimgPrefix);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551990);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfHddDevPfs);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551998);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfHddDevHdd);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_005519A0);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfHddMountPoint);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfDev9Ready);
 
@@ -312,9 +308,7 @@ INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfCdClock);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_005519B1);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_005519B8);
-
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_005519B9);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfCdClockCache);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", p2sdSmgHandle);
 
@@ -326,7 +320,7 @@ INCLUDE_SDATA(const s32, "sdf/sdfPrint", p2sdPcmBusy);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfSndSendCmd_cmd_id);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_005519D4);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfSifRpcThreadId);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", p2sdSmgBuf);
 
@@ -348,25 +342,25 @@ INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551A10);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551A18);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551A20);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfDumpAddrFmt);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551A28);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfDumpPadStr);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551A30);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfDumpMidGapStr);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551A38);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfDumpByteSepStr);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551A40);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfDumpByteFmt);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfDumpLineBuf);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551A4A);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551A50);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfDumpEndStr);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551A58);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfVifMaskedName);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551A60);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfVifXferOkName);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551A68);
 
@@ -410,9 +404,9 @@ INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551B00);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551B08);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551B10);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfDumpIndentStr);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551B18);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfDumpWordFmt);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551B20);
 
@@ -422,7 +416,7 @@ INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551B30);
 
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551B38);
 
-INCLUDE_SDATA(const s32, "sdf/sdfPrint", D_00551B40);
+INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfGsMemTypeFmt);
 #else
 INCLUDE_SDATA(const s32, "sdf/sdfPrint", sdfPrintIopFlag);
 

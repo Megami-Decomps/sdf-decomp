@@ -41,7 +41,7 @@ typedef struct sdfFileCmdHandle_t {
     s32 errorCode;
     s32 currentOffset;
     u8 remainder[4];
-    void (*callback)(struct sdfFileCmdHandle_t *, s32, s32, s32, s32);
+    void (*callback)(struct sdfFileCmdHandle_t *, s32, saddr_t, s32, s32);
     s32 userData;
 } sdfFileCmdHandle_t;
 
@@ -106,7 +106,7 @@ u32 sdfMemLock(sdfMemHandle_t *aHandle);
 #include "sdk_libc.h"
 
 #ifdef SDF_SMT3
-extern char D_0054A2D8[];
+extern char sdfDevLoadMsgFmt[];
 #endif
 
 void sdfMemUnlock(sdfMemHandle_t *aHandle);
@@ -136,7 +136,7 @@ void *sdfDevLoadFile(const char *name, u32 *outData, u32 *outSize, s32 extra) {
     s32 size = sdfFileLength(state);
     sdfMemHandle_t *handle = sdfMemAllocDirect(size + extra);
     u32 address = sdfMemLock(handle);
-    sdfFileRead(state, (void *)address, size);
+    sdfFileRead(state, EE_ADDR_AS(void *, address), size);
     sdfFileClose(state);
     if (outData != NULL) {
         *outData = address;
@@ -160,10 +160,10 @@ sdfTexHandle_t *sdfDevLoadTex(const char *aFilename) {
     sdfTexHandle_t *texture;
 
 #ifdef SDF_SMT3
-    printf(D_0054A2D8, aFilename);
+    printf(sdfDevLoadMsgFmt, aFilename);
 #endif
     allocation = sdfDevLoadFileEx(aFilename, &dataAddress, 0);
-    texture = sdfTexSet((void *)dataAddress);
+    texture = sdfTexSet(EE_ADDR_AS(void *, dataAddress));
     sdfMemFreeDirect(allocation);
     return texture;
 }
@@ -191,10 +191,10 @@ sdfItemArray_t *sdfDevLoadTexList(const char *aFilename) {
     sdfItemArray_t *texture;
 
 #ifdef SDF_SMT3
-    printf(D_0054A2D8, aFilename);
+    printf(sdfDevLoadMsgFmt, aFilename);
 #endif
     allocation = sdfDevLoadFileEx(aFilename, &dataAddress, 0);
-    texture = sdfTexSetTB((void *)dataAddress);
+    texture = sdfTexSetTB(EE_ADDR_AS(void *, dataAddress));
     sdfMemFreeDirect(allocation);
     return texture;
 }
@@ -212,10 +212,10 @@ void *sdfDevLoadModel(const char *aFilename, void **aOutBody) {
     sdfMemHandle_t *allocation;
 
 #ifdef SDF_SMT3
-    printf(D_0054A2D8, aFilename);
+    printf(sdfDevLoadMsgFmt, aFilename);
 #endif
     allocation = sdfDevLoadFileEx(aFilename, &dataAddress, 0);
-    *aOutBody = sdfFixupModelBinary((sdfBinaryHeader_t *)dataAddress);
+    *aOutBody = sdfFixupModelBinary(EE_ADDR_AS(sdfBinaryHeader_t *, dataAddress));
     return allocation;
 }
 
@@ -232,14 +232,14 @@ void *sdfDevLoadMotion(const char *aFilename, void **aOutBody) {
     sdfMemHandle_t *allocation;
 
 #ifdef SDF_SMT3
-    printf(D_0054A2D8, aFilename);
+    printf(sdfDevLoadMsgFmt, aFilename);
 #endif
     allocation = sdfDevLoadFileEx(aFilename, &dataAddress, 0);
-    *aOutBody = sdfFixupMotionBinary((sdfBinaryHeader_t *)dataAddress);
+    *aOutBody = sdfFixupMotionBinary(EE_ADDR_AS(sdfBinaryHeader_t *, dataAddress));
     return allocation;
 }
 
 #ifdef SDF_SMT3
-INCLUDE_RODATA(const s32, "sdf/sdfDevFile", D_0054A2D8);
+INCLUDE_RODATA(const s32, "sdf/sdfDevFile", sdfDevLoadMsgFmt);
 #endif
 

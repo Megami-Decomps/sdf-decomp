@@ -13,16 +13,16 @@
 #define func_001AC3D8 effEvaluateSlotBezierPosition
 #define func_001AC4C8 effInitSlotTail
 #define func_001AC4F0 effGetSlotAt
-#define D_0056B050 effTriangleVertexScratch
+#define effDebugTriPositions effTriangleVertexScratch
 #endif
 #if defined(SDF_DDS1)
-#define D_003201C0 D_00355870
-#define D_0054F270 D_003BB068
-#define D_0054F274 D_003BB06C
+#define effDebugTriColors D_00355870
+#define effDebugSelectCursorMat D_003BB068
+#define effDebugSelectCursorAngle D_003BB06C
 #elif defined(SDF_DDS2)
-#define D_003201C0 D_003B21A0
-#define D_0054F270 D_00436458
-#define D_0054F274 D_0043645C
+#define effDebugTriColors D_003B21A0
+#define effDebugSelectCursorMat D_00436458
+#define effDebugSelectCursorAngle D_0043645C
 #endif
 
 /* The debug overlay's OT slots; DDS has more slots before them. */
@@ -77,21 +77,21 @@ typedef struct
     f32 depth;
 } effDebugPolyParams_t;
 
-extern sdfMat_t *D_0054F270;
-extern f32 D_0054F274;
-extern f32 D_0056B050[4][4];
-extern u32 D_003201C0[4];
+extern sdfMat_t *effDebugSelectCursorMat;
+extern f32 effDebugSelectCursorAngle;
+extern f32 effDebugTriPositions[4][4];
+extern u32 effDebugTriColors[4];
 f32 sdfCos(f32 aRadius);
 f32 sdfSin(f32 aRadius);
 void SetRotateMatrixX(f32 aAngle);
 void SetRotateMatrixY(f32 aAngle);
 void MultMatrixNoArg(void);
-void *effDebugDrawWireModel(f32 (*positions)[4], u32 *colors, u32 count, u32 mode);
+void *effDebugDrawWireModel(const sdfVector4_t *positions, u32 *colors, u32 count, u32 mode);
 sdfMat_t *sdfMatNew(void);
 void sdfMatSetConstant(sdfMat_t *aMat, f32 aRatio);
 void sdf3DPrimLinkTm(void *aTag, void *aAllocator);
 void sdf3DPrimLinkMat(void *aTag, sdfMat_t *aMat, void *aAllocator);
-void *memset(void *a, s32 b, u32 c);
+void *memset(void *a, s32 b, size_t c);
 void *effPkt3DPrimMakePoly(effDebugPolyParams_t *aParm);
 
 /* Allocate contiguous slots followed by their count and allocation handle. */
@@ -124,7 +124,7 @@ void dds3_1AC138(effArrHdr_t *header) {
 s32 func_001AC150(effArrHdr_t *table, s32 index, f32 *out) {
     effBezierCurve_t *slot = &((effBezierCurve_t *)table->slots)[index];
     u32 pointIndex = slot->pointIndex;
-    f32 weights[4];
+    sdfVector4_t weights;
     f32 t;
     f32 u;
     effBezierPoint_t *controlPoints;
@@ -135,13 +135,13 @@ s32 func_001AC150(effArrHdr_t *table, s32 index, f32 *out) {
     t = slot->t;
     u = 1.0f - t;
     controlPoints = &slot->controlPoints[pointIndex];
-    weights[0] = u * u * u;
-    weights[1] = t * (u * u) * 3.0f;
-    weights[2] = t * t * u * 3.0f;
-    weights[3] = t * t * t;
-    out[0] = controlPoints[0].x * weights[0] + controlPoints[1].x * weights[1] + controlPoints[2].x * weights[2] + controlPoints[3].x * weights[3];
-    out[1] = controlPoints[0].y * weights[0] + controlPoints[1].y * weights[1] + controlPoints[2].y * weights[2] + controlPoints[3].y * weights[3];
-    out[2] = controlPoints[0].z * weights[0] + controlPoints[1].z * weights[1] + controlPoints[2].z * weights[2] + controlPoints[3].z * weights[3];
+    weights.x = u * u * u;
+    weights.y = t * (u * u) * 3.0f;
+    weights.z = t * t * u * 3.0f;
+    weights.w = t * t * t;
+    out[0] = controlPoints[0].x * weights.x + controlPoints[1].x * weights.y + controlPoints[2].x * weights.z + controlPoints[3].x * weights.w;
+    out[1] = controlPoints[0].y * weights.x + controlPoints[1].y * weights.y + controlPoints[2].y * weights.z + controlPoints[3].y * weights.w;
+    out[2] = controlPoints[0].z * weights.x + controlPoints[1].z * weights.y + controlPoints[2].z * weights.z + controlPoints[3].z * weights.w;
     out[3] = 1.0f;
     t += slot->parameterStep;
     if (t > 1.0f) {
@@ -155,19 +155,19 @@ s32 func_001AC150(effArrHdr_t *table, s32 index, f32 *out) {
 
 /* Carry excess t across the first segment; the second finishes after sampling its entry t. */
 s32 effPCPBezierEval(effBezierCurve_t *slot, f32 *out) {
-    f32 weights[4];
+    sdfVector4_t weights;
     u32 pointIndex = slot->pointIndex;
     f32 t = slot->t;
     effBezierPoint_t *controlPoints = &slot->controlPoints[pointIndex];
     f32 u = 1.0f - t;
 
-    weights[0] = u * u * u;
-    weights[1] = t * (u * u) * 3.0f;
-    weights[2] = t * t * u * 3.0f;
-    weights[3] = t * t * t;
-    out[0] = controlPoints[0].x * weights[0] + controlPoints[1].x * weights[1] + controlPoints[2].x * weights[2] + controlPoints[3].x * weights[3];
-    out[1] = controlPoints[0].y * weights[0] + controlPoints[1].y * weights[1] + controlPoints[2].y * weights[2] + controlPoints[3].y * weights[3];
-    out[2] = controlPoints[0].z * weights[0] + controlPoints[1].z * weights[1] + controlPoints[2].z * weights[2] + controlPoints[3].z * weights[3];
+    weights.x = u * u * u;
+    weights.y = t * (u * u) * 3.0f;
+    weights.z = t * t * u * 3.0f;
+    weights.w = t * t * t;
+    out[0] = controlPoints[0].x * weights.x + controlPoints[1].x * weights.y + controlPoints[2].x * weights.z + controlPoints[3].x * weights.w;
+    out[1] = controlPoints[0].y * weights.x + controlPoints[1].y * weights.y + controlPoints[2].y * weights.z + controlPoints[3].y * weights.w;
+    out[2] = controlPoints[0].z * weights.x + controlPoints[1].z * weights.y + controlPoints[2].z * weights.z + controlPoints[3].z * weights.w;
     out[3] = 1.0f;
     t += slot->parameterStep;
     if (t > 1.0f) {
@@ -189,16 +189,16 @@ void func_001AC3D8(effBezierCurve_t *slot, f32 *out) {
     effBezierPoint_t *controlPoints = &slot->controlPoints[slot->pointIndex];
     f32 t = slot->t;
     f32 u = 1.0f - t;
-    f32 w[4];
+    sdfVector4_t w;
 
-    w[0] = u * u * u;
-    w[1] = t * (u * u) * 3.0f;
-    w[2] = t * t * u * 3.0f;
-    w[3] = t * t * t;
+    w.x = u * u * u;
+    w.y = t * (u * u) * 3.0f;
+    w.z = t * t * u * 3.0f;
+    w.w = t * t * t;
 
-    out[0] = controlPoints[0].x * w[0] + controlPoints[1].x * w[1] + controlPoints[2].x * w[2] + controlPoints[3].x * w[3];
-    out[1] = controlPoints[0].y * w[0] + controlPoints[1].y * w[1] + controlPoints[2].y * w[2] + controlPoints[3].y * w[3];
-    out[2] = controlPoints[0].z * w[0] + controlPoints[1].z * w[1] + controlPoints[2].z * w[2] + controlPoints[3].z * w[3];
+    out[0] = controlPoints[0].x * w.x + controlPoints[1].x * w.y + controlPoints[2].x * w.z + controlPoints[3].x * w.w;
+    out[1] = controlPoints[0].y * w.x + controlPoints[1].y * w.y + controlPoints[2].y * w.z + controlPoints[3].y * w.w;
+    out[2] = controlPoints[0].z * w.x + controlPoints[1].z * w.y + controlPoints[2].z * w.z + controlPoints[3].z * w.w;
     out[3] = 1.0f;
 }
 
@@ -327,11 +327,11 @@ void effDebugStringDraw(s32 x, s32 y, s32 commandIndex, const char *format) {
 void effDebugWireframeSphereDraw(const f32 *center, u32 color, f32 radius) {
     f32 point[4] __attribute__((aligned(16)));
     f32 matrix[4][4] __attribute__((aligned(16)));
-    f32 vertices[40][4] __attribute__((aligned(16)));
+    sdfVector4_t vertices[40];
     u32 colors[40];
     sdfDrawTag_t *list;
     sdfGrOt_t *surface;
-    f32 (*out)[4];
+    sdfVector4_t *out;
     f32 latitude;
     f32 longitude;
     f32 ringRadius;
@@ -366,7 +366,7 @@ void effDebugWireframeSphereDraw(const f32 *center, u32 color, f32 radius) {
             SDF_VU0_ADDVECTOR();
 
             for (segment = 0; segment < 20; segment++) {
-                SDF_VU0_STOREVECTOR( *out);
+                SDF_VU0_STOREVECTOR(out);
                 out++;
                 longitude += 0.31415924429893494f;
                 point[0] = sdfCos(longitude) * ringRadius;
@@ -376,7 +376,7 @@ void effDebugWireframeSphereDraw(const f32 *center, u32 color, f32 radius) {
                 SDF_VU0_VECTOR_W_SET_ZERO();
                 SDF_VU0_APPLYMATRIX();
                 SDF_VU0_ADDVECTOR();
-                SDF_VU0_STOREVECTOR( *out);
+                SDF_VU0_STOREVECTOR(out);
                 out++;
             }
             sdfDrawTagLink(list, effDebugDrawWireModel(vertices, colors, 40, 0x80));
@@ -392,44 +392,44 @@ void effDebugWireframeSphereDraw(const f32 *center, u32 color, f32 radius) {
 
 /* vu0 routine: build and submit the debug geometry. */
 void effDebugSelectCursorDraw(f32 *position) {
-    sdfMat_t *asset = D_0054F270;
+    sdfMat_t *asset = effDebugSelectCursorMat;
     sdfDrawTag_t *list;
     effDebugPolyParams_t packet;
     sdfGrOt_t *surface;
 
     if (asset == NULL) {
         asset = sdfMatNew();
-        D_0054F270 = asset;
+        effDebugSelectCursorMat = asset;
         sdfMatSetConstant(asset, 1.0f);
     }
 
     list = (sdfDrawTag_t *)sdfGrAllocPacketBuff(0x20);
     sdfDrawTagInit(list);
-    SetRotateMatrixY(D_0054F274);
-    D_0054F274 += 0.10471974313259125f;
+    SetRotateMatrixY(effDebugSelectCursorAngle);
+    effDebugSelectCursorAngle += 0.10471974313259125f;
     SDF_VU0_LOADVECTOR( position);
     VU0_ADD_VF31_VF10_XYZ();
     sdf3DPrimLinkTm(list, NULL);
     memset(&packet, 0, 0x2C);
     packet.primitive = 0x4000;
-    D_0056B050[2][2] = 0.0f;
-    packet.colors = D_003201C0;
+    effDebugTriPositions[2][2] = 0.0f;
+    packet.colors = effDebugTriColors;
     packet.color = 0x80808080;
 
-    D_0056B050[0][0] = 0.0f;
-    D_0056B050[0][1] = 0.0f;
-    D_0056B050[0][2] = 0.0f;
-    D_0056B050[1][0] = 15.0f;
-    D_0056B050[1][1] = -30.0f;
-    D_0056B050[1][2] = 0.0f;
-    D_0056B050[2][0] = -15.0f;
-    D_0056B050[2][1] = -30.0f;
+    effDebugTriPositions[0][0] = 0.0f;
+    effDebugTriPositions[0][1] = 0.0f;
+    effDebugTriPositions[0][2] = 0.0f;
+    effDebugTriPositions[1][0] = 15.0f;
+    effDebugTriPositions[1][1] = -30.0f;
+    effDebugTriPositions[1][2] = 0.0f;
+    effDebugTriPositions[2][0] = -15.0f;
+    effDebugTriPositions[2][1] = -30.0f;
 
     packet.parameterCount = 1;
     packet.vertexCount = 3;
-    packet.positions = (u128 *)D_0056B050;
+    packet.positions = (u128 *)effDebugTriPositions;
     packet.texcoords = NULL;
-    sdf3DPrimLinkMat(list, D_0054F270, NULL);
+    sdf3DPrimLinkMat(list, effDebugSelectCursorMat, NULL);
     sdfDrawTagLink(list, effPkt3DPrimMakePoly(&packet));
     surface = &sdfGrOtTable[39];
     ((void (*)(sdfGrOt_t *, void *))surface->regFunc)(surface, list);
@@ -437,11 +437,11 @@ void effDebugSelectCursorDraw(f32 *position) {
 
 /* vu0 routine: build and submit the debug geometry. */
 void effDebugWireframeCylinderDraw(const f32 *center, u32 color, f32 radius, f32 height) {
-    f32 point[4]; /* The line provider consumes xyz; preserve the untouched w lane. */
-    f32 vertices[40][4];
+    sdfVector4_t point; /* The line provider consumes xyz; preserve the untouched w lane. */
+    sdfVector4_t vertices[40];
     u32 colors[40];
     sdfDrawTag_t *list;
-    f32 (*out)[4];
+    sdfVector4_t *out;
     sdfGrOt_t *surface;
     u32 ring;
     u32 segment;
@@ -462,22 +462,22 @@ void effDebugWireframeCylinderDraw(const f32 *center, u32 color, f32 radius, f32
     for (ring = 0; ring < 20; ring++) {
         angle = 0.0f;
         out = vertices;
-        point[0] = radius;
-        point[1] = y;
-        point[2] = 0.0f;
+        point.x = radius;
+        point.y = y;
+        point.z = 0.0f;
         SDF_VU0_LOADVECTOR_B( center);
-        SDF_VU0_LOADVECTOR( point);
+        SDF_VU0_LOADVECTOR( &point);
         SDF_VU0_ADDVECTOR();
         for (segment = 0; segment < 20; segment++) {
-            SDF_VU0_STOREVECTOR( *out);
+            SDF_VU0_STOREVECTOR(out);
             out++;
             angle += angleStep;
-            point[0] = sdfCos(angle) * radius;
-            point[1] = y;
-            point[2] = sdfSin(angle) * radius;
-            SDF_VU0_LOADVECTOR( point);
+            point.x = sdfCos(angle) * radius;
+            point.y = y;
+            point.z = sdfSin(angle) * radius;
+            SDF_VU0_LOADVECTOR( &point);
             SDF_VU0_ADDVECTOR();
-            SDF_VU0_STOREVECTOR( *out);
+            SDF_VU0_STOREVECTOR(out);
             out++;
         }
         sdfDrawTagLink(list, effDebugDrawWireModel(vertices, colors, 40, 0x80));
@@ -488,19 +488,19 @@ void effDebugWireframeCylinderDraw(const f32 *center, u32 color, f32 radius, f32
     SDF_VU0_LOADVECTOR_B( center);
     angle = 0.0f;
     for (segment = 0; segment < 20; segment++) {
-        point[0] = sdfCos(angle) * radius;
-        point[1] = -height * 0.5f;
-        point[2] = sdfSin(angle) * radius;
-        SDF_VU0_LOADVECTOR( point);
+        point.x = sdfCos(angle) * radius;
+        point.y = -height * 0.5f;
+        point.z = sdfSin(angle) * radius;
+        SDF_VU0_LOADVECTOR( &point);
         SDF_VU0_ADDVECTOR();
-        SDF_VU0_STOREVECTOR( *out);
+        SDF_VU0_STOREVECTOR(out);
         out++;
-        point[0] = sdfCos(angle) * radius;
-        point[1] = height * 0.5f;
-        point[2] = sdfSin(angle) * radius;
-        SDF_VU0_LOADVECTOR( point);
+        point.x = sdfCos(angle) * radius;
+        point.y = height * 0.5f;
+        point.z = sdfSin(angle) * radius;
+        SDF_VU0_LOADVECTOR( &point);
         SDF_VU0_ADDVECTOR();
-        SDF_VU0_STOREVECTOR( *out);
+        SDF_VU0_STOREVECTOR(out);
         out++;
         angle += angleStep;
     }
@@ -510,20 +510,20 @@ void effDebugWireframeCylinderDraw(const f32 *center, u32 color, f32 radius, f32
     SDF_VU0_LOADVECTOR_B( center);
     angle = 0.0f;
     for (segment = 0; segment < 10; segment++) {
-        point[0] = sdfCos(angle) * radius;
-        point[1] = -height * 0.5f;
-        point[2] = sdfSin(angle) * radius;
-        SDF_VU0_LOADVECTOR( point);
+        point.x = sdfCos(angle) * radius;
+        point.y = -height * 0.5f;
+        point.z = sdfSin(angle) * radius;
+        SDF_VU0_LOADVECTOR( &point);
         SDF_VU0_ADDVECTOR();
-        SDF_VU0_STOREVECTOR( *out);
+        SDF_VU0_STOREVECTOR(out);
         out++;
         oppositeAngle = angle + 3.1415926f;
-        point[0] = sdfCos(oppositeAngle) * radius;
-        point[1] = -height * 0.5f;
-        point[2] = sdfSin(oppositeAngle) * radius;
-        SDF_VU0_LOADVECTOR( point);
+        point.x = sdfCos(oppositeAngle) * radius;
+        point.y = -height * 0.5f;
+        point.z = sdfSin(oppositeAngle) * radius;
+        SDF_VU0_LOADVECTOR( &point);
         SDF_VU0_ADDVECTOR();
-        SDF_VU0_STOREVECTOR( *out);
+        SDF_VU0_STOREVECTOR(out);
         out++;
         angle += angleStep;
     }
@@ -533,20 +533,20 @@ void effDebugWireframeCylinderDraw(const f32 *center, u32 color, f32 radius, f32
     SDF_VU0_LOADVECTOR_B( center);
     angle = 0.0f;
     for (segment = 0; segment < 10; segment++) {
-        point[0] = sdfCos(angle) * radius;
-        point[1] = height * 0.5f;
-        point[2] = sdfSin(angle) * radius;
-        SDF_VU0_LOADVECTOR( point);
+        point.x = sdfCos(angle) * radius;
+        point.y = height * 0.5f;
+        point.z = sdfSin(angle) * radius;
+        SDF_VU0_LOADVECTOR( &point);
         SDF_VU0_ADDVECTOR();
-        SDF_VU0_STOREVECTOR( *out);
+        SDF_VU0_STOREVECTOR(out);
         out++;
         oppositeAngle = angle + 3.1415926f;
-        point[0] = sdfCos(oppositeAngle) * radius;
-        point[1] = height * 0.5f;
-        point[2] = sdfSin(oppositeAngle) * radius;
-        SDF_VU0_LOADVECTOR( point);
+        point.x = sdfCos(oppositeAngle) * radius;
+        point.y = height * 0.5f;
+        point.z = sdfSin(oppositeAngle) * radius;
+        SDF_VU0_LOADVECTOR( &point);
         SDF_VU0_ADDVECTOR();
-        SDF_VU0_STOREVECTOR( *out);
+        SDF_VU0_STOREVECTOR(out);
         out++;
         angle += angleStep;
     }
@@ -567,9 +567,9 @@ void effDebugWindowDraw(s32 x, s32 y, s32 width, s32 height, s32 fillColor, s32 
 }
 
 #ifdef SDF_SMT3
-INCLUDE_SDATA(const s32, "effect/effDebug", D_0054F270);
+INCLUDE_SDATA(const s32, "effect/effDebug", effDebugSelectCursorMat);
 
-INCLUDE_SDATA(const s32, "effect/effDebug", D_0054F274);
+INCLUDE_SDATA(const s32, "effect/effDebug", effDebugSelectCursorAngle);
 #elif defined(SDF_DDS1)
 INCLUDE_SDATA(const s32, "effect/effDebug", D_003BB068);
 

@@ -1,6 +1,10 @@
 #include "common.h"
 #include "sdf_types.h"
 
+/* Declared here because no header carries these. */
+extern s32 SignalSema(s32 aSemaId);
+extern s32 WaitSema(s32 sema);
+
 #define SDF_PENDING_LAST_SLOT 1
 
 struct sdfDelayedResrcCB_t;
@@ -11,7 +15,7 @@ typedef struct sdfDelayedResrcChunk_t sdfDelayedResrcChunk_t;
 
 /* Deferred handlers share one address-word argument at the native dispatch
  * boundary, while their C consumers interpret that word as different owners. */
-typedef void (*SdfPendingCallback)();
+typedef void (*SdfPendingCallback)(void *);
 
 void sdfChipFreeDirect(void *aPtr);
 
@@ -39,11 +43,7 @@ void *sdfChipAllocDirect(s32 aSize);
 
 extern s32 EIntr(void);
 
-/* DDS names the pending slots; SMT3 has no name for them yet. */
-#if defined(SDF_DDS1) || defined(SDF_DDS2)
-#define D_005520A8 sdfPendingQueueSlots
-#endif
-extern s32 D_005520A8[2];
+extern saddr_t sdfPendingQueueSlots[2];
 
 extern s32 DIntr(void);
 
@@ -175,18 +175,18 @@ void sdfDelayedResrcProc(void) {
 
     sdfDelayedResrcFlag = 1;
     WaitSema(sdfDelayedResrcSemaId);
-    sdfDelayedResrcRelease((sdfDelayedResrcChunk_t *)D_005520A8[0]);
+    sdfDelayedResrcRelease(EE_ADDR_AS(sdfDelayedResrcChunk_t *, sdfPendingQueueSlots[0]));
     for (slotIndex = 0; slotIndex < SDF_PENDING_LAST_SLOT; slotIndex++) {
-        D_005520A8[slotIndex] = D_005520A8[slotIndex + 1];
+        sdfPendingQueueSlots[slotIndex] = sdfPendingQueueSlots[slotIndex + 1];
     }
-    D_005520A8[SDF_PENDING_LAST_SLOT] = (s32)sdfDelayedResrcClose();
+    sdfPendingQueueSlots[SDF_PENDING_LAST_SLOT] = EE_ADDR_S(sdfDelayedResrcClose());
     SignalSema(sdfDelayedResrcSemaId);
     sdfDelayedResrcFlag = 0;
 }
 
 u64 sdfDelayedResrcCheckFunc(void) {
     u32 slotIndex;
-    s32 *slotCursor;
+    saddr_t *slotCursor;
     if (sdfDelayedResrcFlag != 0) {
         return 1;
     }
@@ -194,7 +194,7 @@ u64 sdfDelayedResrcCheckFunc(void) {
         return 1;
     }
     slotIndex = 0;
-    slotCursor = D_005520A8;
+    slotCursor = sdfPendingQueueSlots;
     do {
         if (*slotCursor != 0) {
             return 1;

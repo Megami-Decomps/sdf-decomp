@@ -158,7 +158,7 @@ void SetRotateMatrixZ(f32 aAngle) {
 }
 
 void StoreRotateMatrixAxis(f32 aAngle, const sdfVector3_t *aAxis, sdfMatrix4_t *aMtx) {
-    f32 normalizedAxis[4];
+    sdfVector4_t normalizedAxis;
     f32 x;
     f32 y;
     f32 z;
@@ -167,11 +167,11 @@ void StoreRotateMatrixAxis(f32 aAngle, const sdfVector3_t *aAxis, sdfMatrix4_t *
 
     SDF_VU0_LOADVECTOR(aAxis);
     SDF_VU0_NORMALIZE();
-    SDF_VU0_STOREVECTOR(normalizedAxis);
+    SDF_VU0_STOREVECTOR(&normalizedAxis);
 
-    x = normalizedAxis[0];
-    y = normalizedAxis[1];
-    z = normalizedAxis[2];
+    x = normalizedAxis.x;
+    y = normalizedAxis.y;
+    z = normalizedAxis.z;
 
     aMtx->m[0] = x * x + (1.0f - x * x) * cosine;
     aMtx->m[1] = x * y * (1.0f - cosine) + z * sine;
@@ -354,13 +354,13 @@ void LookAtMatrix(const void *aTarget, const void *aEye, const void *aDown) {
     ReverseMatrix();
 }
 #ifdef SDF_SMT3
-INCLUDE_SDATA(const s32, "sdf/sdfVu0", D_005518B8);
+INCLUDE_SDATA(const s32, "sdf/sdfVu0", sdf3DSlot2Tex);
 
 INCLUDE_SDATA(const s32, "sdf/sdfVu0", sdf3DSpecularTex);
 
 INCLUDE_SDATA(const s32, "sdf/sdfVu0", sdf3DRefMapParam);
 
-INCLUDE_SDATA(const s32, "sdf/sdfVu0", D_005518C8);
+INCLUDE_SDATA(const s32, "sdf/sdfVu0", sdf3DSlot1Tex);
 
 INCLUDE_SDATA(const s32, "sdf/sdfVu0", sdfPadPortSlotPairs);
 
@@ -368,9 +368,9 @@ INCLUDE_SDATA(const s32, "sdf/sdfVu0", sdfPadManagerMode);
 
 INCLUDE_SDATA(const s32, "sdf/sdfVu0", D_005518D5);
 
-INCLUDE_SDATA(const s32, "sdf/sdfVu0", D_005518D8);
+INCLUDE_SDATA(const s32, "sdf/sdfVu0", sdfPadButtons);
 
-INCLUDE_SDATA(const s32, "sdf/sdfVu0", D_005518E0);
+INCLUDE_SDATA(const s32, "sdf/sdfVu0", sdfPadAnalogSticks);
 
 INCLUDE_SDATA(const s32, "sdf/sdfVu0", D_005518E1);
 

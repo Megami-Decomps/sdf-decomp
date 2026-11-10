@@ -1,4 +1,5 @@
 #include "common.h"
+#include "sdfFrame.h"
 #ifdef SDF_SMT3
 #include "newbattle.h"
 #include "kernel.h"
@@ -127,7 +128,7 @@ s32 dds3_1B09C0(sdfVector4_t *pVertex, dds3Spline_t *pSpline)
     s32 running = 1;
 
     func_001B0A60(pVertex, pSpline, index, t);
-    t += pSpline->unk28;
+    t += SDF_FRAME_STEP(pSpline->unk28);
     if (t > 1.0f) {
         t -= 1.0f;
         index++;
@@ -169,7 +170,7 @@ void func_001B0A60(sdfVector4_t *vertex, dds3Spline_t *primitive, s32 recordInde
 /* vu0 routine: sample the curve into vf10. */
 void func_001B0B90(dds3Spline_t *primitive, s32 recordIndex, f32 t)
 {
-    f32 vertex[4];
+    sdfVector4_t vertex;
     f32 *a;
     f32 *b;
     f32 *c;
@@ -180,18 +181,18 @@ void func_001B0B90(dds3Spline_t *primitive, s32 recordIndex, f32 t)
         b = primitive->coefB + recordIndex * 3;
         c = primitive->coefC + recordIndex * 3;
         d = (f32 *)primitive->points + recordIndex * 3;
-        vertex[0] = ((a[0] * t + b[0]) * t + c[0]) * t + d[0];
-        vertex[1] = ((a[1] * t + b[1]) * t + c[1]) * t + d[1];
-        vertex[2] = ((a[2] * t + b[2]) * t + c[2]) * t + d[2];
-        vertex[3] = 1.0f;
+        vertex.x = ((a[0] * t + b[0]) * t + c[0]) * t + d[0];
+        vertex.y = ((a[1] * t + b[1]) * t + c[1]) * t + d[1];
+        vertex.z = ((a[2] * t + b[2]) * t + c[2]) * t + d[2];
+        vertex.w = 1.0f;
     } else {
         a = (f32 *)primitive->points + recordIndex * 3;
         b = a + 3;
-        vertex[0] = a[0] + (b[0] - a[0]) * t;
-        vertex[1] = a[1] + (b[1] - a[1]) * t;
-        vertex[2] = a[2] + (b[2] - a[2]) * t;
+        vertex.x = a[0] + (b[0] - a[0]) * t;
+        vertex.y = a[1] + (b[1] - a[1]) * t;
+        vertex.z = a[2] + (b[2] - a[2]) * t;
     }
-    SDF_VU0_LOADVECTOR_MEMOPS(*(u128 *)vertex);
+    SDF_VU0_LOADVECTOR_MEMOPS(*(u128 *)&vertex);
 }
 
 void func_001B0CC0(dds3Spline_t *pSpline)
@@ -356,7 +357,7 @@ s32 dds3_1B12D0(void *vertex, dds3SplineWalk_t *channel) {
     u32 recordIndex = channel->index;
 
     func_001B1370(vertex, channel, recordIndex, position);
-    position += channel->step;
+    position += SDF_FRAME_STEP(channel->step);
     if (position > 1.0f) {
         position -= 1.0f;
         recordIndex += 3;
@@ -372,20 +373,20 @@ s32 dds3_1B12D0(void *vertex, dds3SplineWalk_t *channel) {
 }
 
 void func_001B1370(sdfVector4_t *vertex, dds3SplineWalk_t *channel, s32 recordIndex, f32 t) {
-    f32 weights[4];
+    sdfVector4_t weights;
     f32 oneMinusT = 1.0f - t;
     f32 *p0 = channel->points + recordIndex * 3;
     f32 *p1 = p0 + 3;
     f32 *p2 = p0 + 6;
     f32 *p3 = p0 + 9;
 
-    weights[0] = oneMinusT * oneMinusT * oneMinusT;
-    weights[1] = t * (oneMinusT * oneMinusT) * 3.0f;
-    weights[2] = t * t * oneMinusT * 3.0f;
-    weights[3] = t * t * t;
-    vertex->x = p0[0] * weights[0] + p1[0] * weights[1] + p2[0] * weights[2] + p3[0] * weights[3];
-    vertex->y = p0[1] * weights[0] + p1[1] * weights[1] + p2[1] * weights[2] + p3[1] * weights[3];
-    vertex->z = p0[2] * weights[0] + p1[2] * weights[1] + p2[2] * weights[2] + p3[2] * weights[3];
+    weights.x = oneMinusT * oneMinusT * oneMinusT;
+    weights.y = t * (oneMinusT * oneMinusT) * 3.0f;
+    weights.z = t * t * oneMinusT * 3.0f;
+    weights.w = t * t * t;
+    vertex->x = p0[0] * weights.x + p1[0] * weights.y + p2[0] * weights.z + p3[0] * weights.w;
+    vertex->y = p0[1] * weights.x + p1[1] * weights.y + p2[1] * weights.z + p3[1] * weights.w;
+    vertex->z = p0[2] * weights.x + p1[2] * weights.y + p2[2] * weights.z + p3[2] * weights.w;
     vertex->w = 1.0f;
 }
 
@@ -402,6 +403,8 @@ void func_001B1488(dds3SplineWalk_t *pWalk, f32 step)
 /* SMT3's sdata in this span is the battle camera's; DDS has none here. */
 #ifdef SDF_SMT3
 INCLUDE_SDATA(const s32, "effect/effSpline", D_0054F370);
+
+INCLUDE_SDATA(const s32, "effect/effSpline", D_0054F371);
 
 INCLUDE_SDATA(const s32, "effect/effSpline", D_0054F374);
 
@@ -454,8 +457,6 @@ INCLUDE_SDATA(const s32, "effect/effSpline", nbCameraBoss_BSBERU_E915_Rate);
 INCLUDE_SDATA(const s32, "effect/effSpline", D_0054F3C8);
 
 INCLUDE_SDATA(const s32, "effect/effSpline", nbCameraBoss_BSLUSI_Type);
-
-INCLUDE_SDATA(const s32, "effect/effSpline", D_0054F3D0);
 
 INCLUDE_SDATA(const s32, "effect/effSpline", D_0054F3D4);
 

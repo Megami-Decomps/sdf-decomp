@@ -5,6 +5,11 @@
 #include "newdata.h"
 #include "ps2asm.h"
 #include "motion.h"
+#include "sdfFrame.h"
+
+/* Declared here because no header carries these. */
+extern void *dds3GetProcessData(dds3ProcessID_t *id);
+extern u32 dds3GetKernelCount(void);
 
 
 typedef struct mdlBillboard_t mdlBillboard_t;
@@ -171,7 +176,7 @@ typedef struct { u8 hasAudio, stereo, loopMode, playbackCadenceStep; } mdlIpuPar
 
 struct mdlEffectResrc_IPU_t
 {
-    u32 data; /* EE byte address handed to the IPU stream initializer. */
+    addr_t data; /* EE byte address handed to the IPU stream initializer. */
     sdfMemHandle_t *dataMemHandle;
     u8 inUse, playing;
     u8 unk0A[6];
@@ -206,15 +211,15 @@ extern sdfGrOt_t sdfGrOtTable[];
 
 extern s8 dds3PadButtonState[];
 
-extern s8 D_005298D8[16];
+extern s8 dds3PadBitTable[];
 
-extern f32 D_002FA240[16];
+extern f32 sdfViewMatrix[16];
 
 extern u8 aViewEye[];
 
 extern mdlLightParams_t dds3LightParam;
 
-extern mdlDebugLight_t D_0032C530;
+extern mdlDebugLight_t mdlDebugLightWork;
 
 extern mdlDebugScale_t mdlDebugScaleWork;
 
@@ -222,17 +227,17 @@ extern mdlDebugEntry_t mdlDebugEntryTable[];
 
 extern mdlDebugOption_t softenBiasWork;
 
-extern mdlDebugLabel_t D_0032C4E0[4], D_0032C548, D_0032C5B8[4];
-extern u16 D_0032C510[], D_0032C5E8[4] __attribute__((section(".data")));
+extern mdlDebugLabel_t mdlDebugLightLabels[4], mdlDebugScaleFogLabel, softenBiasLabels[4];
+extern u16 mdlDebugLightCursorY[], softenBiasCursorY[4] __attribute__((section(".data")));
 extern u8 corePktSoftenBias __attribute__((section(".sdata")));
 
 extern f32 sdfFaceDivSoften, sdfFaceDivBias;
 
-extern char *D_0032C4D0[];
+extern char *mdlColorChannelLabels[];
 
-extern u8 D_0032C4C8[];
+extern u8 mdlColorChannelStyle[];
 
-extern u16 D_0032C498[];
+extern u16 mdlPibTrackRowOffset[];
 
 extern void *sdfChipAllocZeroDirect(u32 aSize);
 
@@ -240,7 +245,7 @@ extern void sdfChipFreeDirect(void *aPtr);
 
 extern void sdfMemFreeDirect(sdfMemHandle_t *aHandle);
 
-extern void *dds3BillboardCreate(s32, u32);
+extern void *dds3BillboardCreate(s32, addr_t);
 
 extern void dds3BillboardDelete(mdlBillboard_t *);
 
@@ -292,7 +297,7 @@ extern void dds3EffectSetScale(mdlEffect_t *, f32);
 
 extern void *sdfDevPrintf(s32, s32, s32, s32, const char *, ...);
 
-extern void sdfDrawTagLink(sdfDrawTag_t *, u32);
+extern void sdfDrawTagLink(sdfDrawTag_t *, addr_t);
 
 extern void *dds3PrimFrameRect(s32, s32, s32, s32, s32, u32, u32);
 
@@ -332,29 +337,29 @@ typedef enum PIB_CHUNK_TYPE {
     PIB_CHUNK_TYPE_END = 0xFFFF
 } PIB_CHUNK_TYPE;
 
-extern char D_0054F648[];
+extern char mdlPibLabelP2A[];
 
-extern char D_0054F650[];
+extern char mdlPibLabelD3P[];
 
-extern char D_0054F678[];
+extern char mdlColorByteFormat[];
 
-extern char D_0054F680[];
+extern char mdlPibCursorMark[];
 
-extern char D_0054F6A0[];
+extern char mdlDebugLightCursor[];
 
-extern char D_0054F6A8[];
+extern char mdlDebugLightFormat[];
 
-extern char D_0054F6E0[];
+extern char mdlDebugScaleCursor[];
 
-extern char D_0054F700[];
+extern char softenBiasCursor[];
 
-extern char D_0054F708[];
+extern char softenBiasValueFormat[];
 
-extern char D_0054F710[];
+extern char softenBiasAdjustFormat[];
 
-extern char D_0054F718[];
+extern char softenBiasLabelOn[];
 
-extern char D_0054F720[];
+extern char softenBiasLabelOff[];
 
 #define MDL_RECORD_LIST_HEADER_BYTES 8
 
@@ -407,7 +412,7 @@ pibHeaderChunk_t *mdlPibGetChunk(mdlObj_t *handle, s32 group) {
     remainingRecords = mdlPibGetChunkCount(recordCursor);
     do {
         remainingRecords--;
-        recordCursor = (pibHeaderChunk_t *)((s32)recordCursor + recordCursor->nextOffset);
+        recordCursor = EE_ADDR_AS(pibHeaderChunk_t *, (EE_ADDR_S(recordCursor) + recordCursor->nextOffset));
         if (remainingRecords == -1) {
             return NULL;
         }
@@ -427,7 +432,7 @@ pibHeaderChunk_t *mdlPibGetFirstChunkItem(pibHeaderChunk_t *data) {
 
 /* A terminal kind returns NULL; the link is a byte offset, not a pointer. */
 pibHeaderChunk_t *mdlPibGetNextChunkItem(pibHeaderChunk_t *data) {
-    pibHeaderChunk_t *nextRecord = (pibHeaderChunk_t *)((s32)data + data->nextOffset);
+    pibHeaderChunk_t *nextRecord = EE_ADDR_AS(pibHeaderChunk_t *, (EE_ADDR_S(data) + data->nextOffset));
 
     if (nextRecord->group == MDL_RECORD_END_KIND) {
         nextRecord = NULL;
@@ -471,37 +476,37 @@ void mdlPibDrawEffectInfo(sdfDrawTag_t *tag, s32 x, s32 y, s32 z, s32 attr, pibH
         switch (data->group) {
         case PIB_CHUNK_TYPE_P2A:
         case PIB_CHUNK_TYPE_D3P: {
-            char *label = data->group == PIB_CHUNK_TYPE_P2A ? D_0054F648 : D_0054F650;
+            char *label = data->group == PIB_CHUNK_TYPE_P2A ? mdlPibLabelP2A : mdlPibLabelD3P;
 
             if (data->parameter.part.count == 1) {
-                sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
+                sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(x, y, z, attr,
                                                                     "%s %d,%d", label, data->payload.word,
                                                                     data->parameter.part.partIndex)));
                 return;
             }
-            sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
+            sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(x, y, z, attr,
                                                                 "%s %d~%d,%d", label, data->payload.word,
                                                                 data->payload.word + data->parameter.part.count - 1,
                                                                 data->parameter.part.partIndex)));
             return;
         }
         case PIB_CHUNK_TYPE_TRACK:
-            sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
+            sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(x, y, z, attr,
                                                                 "TRACK %d~%d", data->payload.word,
                                                                 data->parameter.word)));
             return;
         case PIB_CHUNK_TYPE_BLUR:
-            sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
+            sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(x, y, z, attr,
                                                                 "BLUR %d,%d", data->payload.stream.selectorA,
                                                                 data->payload.stream.selectorB)));
             return;
         case IPU:
-            sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
+            sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(x, y, z, attr,
                                                                 "IPU %08x", data->payload.word)));
             return;
         }
     } else {
-        sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y, z, attr,
+        sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(x, y, z, attr,
                                                             "UNKNOWN[%3d]", data->group)));
     }
 }
@@ -514,26 +519,26 @@ void mdlPibDrawTrackInfo(sdfDrawTag_t *tag, s32 x, s32 y, s32 z, mdlTrackParams_
     s32 colorIndex;
     s32 channelIndex;
 
-    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y, z, 0, "MARK0:%d", data->mark0)));
-    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y + 0x60, z, 0, "MARK1:%d", data->mark1)));
-    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y + 0xC0, z, 0, "START:%d", data->start)));
-    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y + 0x120, z, 0, "END  :%d", data->end)));
-    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y + 0x180, z, 0, "ITRVL:%d", data->interval)));
-    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y + 0x1E0, z, 0, "FACE :%d", data->face)));
-    sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, y + 0x240, z, 0, "BLEND:%d", data->blend)));
+    sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(labelX, y, z, 0, "MARK0:%d", data->mark0)));
+    sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(labelX, y + 0x60, z, 0, "MARK1:%d", data->mark1)));
+    sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(labelX, y + 0xC0, z, 0, "START:%d", data->start)));
+    sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(labelX, y + 0x120, z, 0, "END  :%d", data->end)));
+    sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(labelX, y + 0x180, z, 0, "ITRVL:%d", data->interval)));
+    sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(labelX, y + 0x1E0, z, 0, "FACE :%d", data->face)));
+    sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(labelX, y + 0x240, z, 0, "BLEND:%d", data->blend)));
     for (colorIndex = 0; colorIndex != MDL_MARK_COLOR_COUNT; colorIndex++) {
         packedColor = data->colors[colorIndex];
-        sdfDrawTagLink(tag, (u32)(dds3PrimFrameRect(x + 0x480, colorY, z, 0x300, 0x180, (packedColor & 0xFFFFFF) | 0x80000000, 0x60404040)));
+        sdfDrawTagLink(tag, EE_ADDR(dds3PrimFrameRect(x + 0x480, colorY, z, 0x300, 0x180, (packedColor & 0xFFFFFF) | 0x80000000, 0x60404040)));
         for (channelIndex = 0; channelIndex != MDL_COLOR_CHANNEL_COUNT; channelIndex++) {
-            sdfDrawTagLink(tag, (u32)(sdfDevPrintf(labelX, colorY, z, D_0032C4C8[channelIndex], D_0032C4D0[channelIndex])));
-            sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x + 0x240, colorY, z, 0, D_0054F678, packedColor & MDL_COLOR_BYTE_MASK)));
+            sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(labelX, colorY, z, mdlColorChannelStyle[channelIndex], mdlColorChannelLabels[channelIndex])));
+            sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(x + 0x240, colorY, z, 0, mdlColorByteFormat, packedColor & MDL_COLOR_BYTE_MASK)));
             packedColor >>= MDL_COLOR_BYTE_BITS;
             colorY += 0x60;
         }
         colorY += 0x60;
     }
     if (cursor >= 0) {
-        sdfDrawTagLink(tag, (u32)(sdfDevPrintf(x, y + D_0032C498[cursor], z, 0, D_0054F680)));
+        sdfDrawTagLink(tag, EE_ADDR(sdfDevPrintf(x, y + mdlPibTrackRowOffset[cursor], z, 0, mdlPibCursorMark)));
     }
 }
 
@@ -596,7 +601,7 @@ void mdlCreateEffectResrc_P2A(sdfItemArray_t *partList, void *descriptor) {
 
     partEntry->count = 0;
     partEntry->type = MDL_PART_BILLBOARD;
-    partEntry->handle = dds3BillboardCreate(1, (u32)descriptor);
+    partEntry->handle = dds3BillboardCreate(1, EE_ADDR(descriptor));
     partList->count += 1;
 }
 
@@ -615,7 +620,7 @@ void mdlCreateEffectResrc_IPU(sdfItemArray_t *list, u8 *sourceAddress, sdfMemHan
     mdlEffectResrcItem_t *entry = &((mdlEffectResrcItem_t *)list->items)[list->count];
 
     node->dataSize = sourceSize;
-    node->data = (u32)sourceAddress;
+    node->data = EE_ADDR(sourceAddress);
     node->dataMemHandle = backingAllocation;
     entry->type = MDL_PART_OBJECT;
     entry->count = 0;
@@ -634,7 +639,7 @@ void mdlDeleteEffectResrc_IPU(mdlEffectResrc_IPU_t *ipu) {
 void mdlStartEffectResrc_IPU(mdlEffectResrc_IPU_t *ipu, sdfTexHandle_t *tex, mdlIpuParams_t *parm) {
     if (ipu->playing == 0) {
         ipu->playing = 1;
-        sdfIpuSetOutputTex(&ipu->ipuState, parm, (u8 *)ipu->data, ipu->dataSize, tex);
+        sdfIpuSetOutputTex(&ipu->ipuState, parm, EE_ADDR_AS(u8 *, ipu->data), ipu->dataSize, tex);
     }
 }
 
@@ -888,20 +893,20 @@ void mdlEffect_P2A_D3P_GetPos(sdfModelRootNode_t *model, dds3ModelEffectCtrlr_t 
 /* Update anchored billboard/effect positions, tracked polygons, or deferred object initialization by type. */
 void mdlLinkEffect(mdlObj_t *owner, dds3ModelEffectCtrlr_t *anchorRecord) {
     sdfModelRootNode_t *model = owner->inner;
-    f32 position[4];
+    sdfVector4_t position;
     void *resourceInstance;
 
     switch (anchorRecord->type) {
     case dds3ModelEffectType_P2A:
-        mdlEffect_P2A_D3P_GetPos(model, anchorRecord, position);
+        mdlEffect_P2A_D3P_GetPos(model, anchorRecord, &position.x);
         resourceInstance = anchorRecord->payload.part.instance;
-        dds3BillboardSetPosition(resourceInstance, position);
+        dds3BillboardSetPosition(resourceInstance, &position);
         dds3BillboardDraw((mdlBillboard_t *)resourceInstance);
         break;
     case dds3ModelEffectType_D3P:
-        mdlEffect_P2A_D3P_GetPos(model, anchorRecord, position);
+        mdlEffect_P2A_D3P_GetPos(model, anchorRecord, &position.x);
         resourceInstance = anchorRecord->payload.part.instance;
-        dds3EffectSetPosition((mdlEffect_t *)resourceInstance, position);
+        dds3EffectSetPosition((mdlEffect_t *)resourceInstance, &position);
         dds3EffectDraw((mdlEffect_t *)resourceInstance);
         break;
     case dds3ModelEffectType_TRACK:
@@ -941,7 +946,7 @@ void mdlSetEffectScaleSub(mdlObj_t *aHandle, dds3ModelEffectCtrlr_t *aEffect, fl
 void mdlSetDebugMatrix(mdlDebugLight_t *context, f32 *position)
 {
     if (context->pad->stepUpA != 0) {
-        SDF_VU0_LOADVECTOR_MTXCOL(D_002FA240 + 1);
+        SDF_VU0_LOADVECTOR_MTXCOL(sdfViewMatrix + 1);
         FromRotation(2.0f * 3.14159265f / 180.0f);
         ToMatrix();
         SDF_VU0_LOADVECTOR( position);
@@ -949,7 +954,7 @@ void mdlSetDebugMatrix(mdlDebugLight_t *context, f32 *position)
         SDF_VU0_VECTOR_W_SET_ONE();
         SDF_VU0_STOREVECTOR( position);
     } else if (context->pad->stepDownA != 0) {
-        SDF_VU0_LOADVECTOR_MTXCOL(D_002FA240 + 1);
+        SDF_VU0_LOADVECTOR_MTXCOL(sdfViewMatrix + 1);
         FromRotation(-2.0f * 3.14159265f / 180.0f);
         ToMatrix();
         SDF_VU0_LOADVECTOR( position);
@@ -958,7 +963,7 @@ void mdlSetDebugMatrix(mdlDebugLight_t *context, f32 *position)
         SDF_VU0_STOREVECTOR( position);
     }
     if (context->pad->stepUpB != 0) {
-        SDF_VU0_LOADVECTOR_MTXCOL(D_002FA240);
+        SDF_VU0_LOADVECTOR_MTXCOL(sdfViewMatrix);
         FromRotation(-2.0f * 3.14159265f / 180.0f);
         ToMatrix();
         SDF_VU0_LOADVECTOR( position);
@@ -966,7 +971,7 @@ void mdlSetDebugMatrix(mdlDebugLight_t *context, f32 *position)
         SDF_VU0_VECTOR_W_SET_ONE();
         SDF_VU0_STOREVECTOR( position);
     } else if (context->pad->stepDownB != 0) {
-        SDF_VU0_LOADVECTOR_MTXCOL(D_002FA240);
+        SDF_VU0_LOADVECTOR_MTXCOL(sdfViewMatrix);
         FromRotation(2.0f * 3.14159265f / 180.0f);
         ToMatrix();
         SDF_VU0_LOADVECTOR( position);
@@ -991,11 +996,11 @@ s32 mdlDebugPrintEffectScale(dds3ProcessID_t *task) {
     s32 directionY;
     f32 *color;
 
-    if ((u32)state == 0) {
-        state = &D_0032C530;
+    if (EE_ADDR(state) == 0) {
+        state = &mdlDebugLightWork;
         state->pad = (mdlDebugPad_t *)(dds3PadButtonState + 0x10);
-    } else if ((u32)state == 1) {
-        state = &D_0032C530;
+    } else if (EE_ADDR(state) == 1) {
+        state = &mdlDebugLightWork;
         state->pad = (mdlDebugPad_t *)dds3PadButtonState;
     }
     if (state->pad == NULL) {
@@ -1058,24 +1063,24 @@ s32 mdlDebugPrintEffectScale(dds3ProcessID_t *task) {
                               0.0f, 2.0f, 0.1f, 0.01f);
         }
     }
-    state->blinkTick++;
+    state->blinkTick += SDF_FRAME_DUE(dds3GetKernelCount());
     if (state->blinkTick == 30) {
         state->blinkTick = 0;
     }
     sdfDrawTagLink(state->packetList,
-                    (u32)dds3PrimFrameRect(0x8650, 0x79A8, 0xFF007F, 0x8A0, 0xAB0,
-                                  0x60000000, 0x40806020));
-    label = D_0032C4E0;
+                    EE_ADDR(dds3PrimFrameRect(0x8650, 0x79A8, 0xFF007F, 0x8A0, 0xAB0,
+                                  0x60000000, 0x40806020)));
+    label = mdlDebugLightLabels;
     for (labelIndex = 0; labelIndex != 4; labelIndex++, label++) {
         sdfDrawTagLink(state->packetList,
-                        (u32)sdfDevPrintf(label->x, label->y,
+                        EE_ADDR(sdfDevPrintf(label->x, label->y,
                                                          0xFF0080, label->style,
-                                                         label->format));
+                                                         label->format)));
     }
     if (state->editing == 0 && state->blinkTick < 20) {
         sdfDrawTagLink(state->packetList,
-                        (u32)sdfDevPrintf(0x8680, D_0032C510[state->selection],
-                                                         0xFF0080, 0, D_0054F6A0));
+                        EE_ADDR(sdfDevPrintf(0x8680, mdlDebugLightCursorY[state->selection],
+                                                         0xFF0080, 0, mdlDebugLightCursor)));
     }
     selected = state->selection;
     y = 0x7A20;
@@ -1089,11 +1094,11 @@ s32 mdlDebugPrintEffectScale(dds3ProcessID_t *task) {
                 directionStyle = selected == 3;
             }
             sdfDrawTagLink(state->packetList,
-                            (u32)dds3PrimLine3D(0x88C0, directionY, 0xFF0080, directionStyle));
+                            EE_ADDR(dds3PrimLine3D(0x88C0, directionY, 0xFF0080, directionStyle)));
             for (j = 0; j != 3; j++) {
                 sdfDrawTagLink(state->packetList,
-                                (u32)sdfDevPrintf(0x8A40, y + 0x120 + j * 0x60, 0xFF0080,
-                                                                 0, D_0054F6A8, light[1][j]));
+                                EE_ADDR(sdfDevPrintf(0x8A40, y + 0x120 + j * 0x60, 0xFF0080,
+                                                                 0, mdlDebugLightFormat, light[1][j])));
             }
             color = light[0];
         } else {
@@ -1211,13 +1216,13 @@ s32 mdlDebugPrintEffectScale2(dds3ProcessID_t *task) {
     s32 i;
 
     if (dds3GetProcessData(task) == 0) {
-        pad = D_005298D8;
+        pad = dds3PadBitTable + 16;
     } else {
         pad = dds3PadButtonState;
     }
     state->pad = (mdlDebugPad_t *)pad;
     mdlDebugScaleWork.packetList = dds3FontReqAllocDrawTag();
-    if (++mdlDebugScaleWork.blinkTick == 30) {
+    if ((mdlDebugScaleWork.blinkTick += SDF_FRAME_DUE(dds3GetKernelCount())) == 30) {
         mdlDebugScaleWork.blinkTick = 0;
     }
     if (mdlDebugScaleWork.editing == 0) {
@@ -1262,9 +1267,9 @@ s32 mdlDebugPrintEffectScale2(dds3ProcessID_t *task) {
         }
     }
     sdfDrawTagLink(mdlDebugScaleWork.packetList,
-                    (u32)dds3PrimFrameRect(0x8590, 0x79A8, 0xFF007F, 0x960, 0x570, 0x60000000, 0x40806020));
+                    EE_ADDR(dds3PrimFrameRect(0x8590, 0x79A8, 0xFF007F, 0x960, 0x570, 0x60000000, 0x40806020)));
     sdfDrawTagLink(mdlDebugScaleWork.packetList,
-                    (u32)sdfDevPrintf(D_0032C548.x, D_0032C548.y, 0xFF0080, D_0032C548.style, D_0032C548.format));
+                    EE_ADDR(sdfDevPrintf(mdlDebugScaleFogLabel.x, mdlDebugScaleFogLabel.y, 0xFF0080, mdlDebugScaleFogLabel.style, mdlDebugScaleFogLabel.format)));
     if (mdlDebugScaleWork.editing == 0 && mdlDebugScaleWork.blinkTick < 0x14) {
         s32 y;
 
@@ -1273,17 +1278,17 @@ s32 mdlDebugPrintEffectScale2(dds3ProcessID_t *task) {
         } else {
             y = mdlDebugScaleWork.selection * 0x60 + 0x7AE0;
         }
-        sdfDrawTagLink(mdlDebugScaleWork.packetList, (u32)sdfDevPrintf(0x85C0, y, 0xFF0080, 0, D_0054F6E0));
+        sdfDrawTagLink(mdlDebugScaleWork.packetList, EE_ADDR(sdfDevPrintf(0x85C0, y, 0xFF0080, 0, mdlDebugScaleCursor)));
     }
     for (i = 0; i != 4; i++) {
         s32 y = mdlDebugEntryTable[i].y;
 
-        sdfDrawTagLink(mdlDebugScaleWork.packetList, (u32)sdfDevPrintf(0x8680, y, 0xFF0080, 0, mdlDebugEntryTable[i].label));
+        sdfDrawTagLink(mdlDebugScaleWork.packetList, EE_ADDR(sdfDevPrintf(0x8680, y, 0xFF0080, 0, mdlDebugEntryTable[i].label)));
         value = *mdlDebugEntryTable[i].target + 0.5f;
         sdfDrawTagLink(mdlDebugScaleWork.packetList,
-                        (u32)sdfDevPrintf(0x8A40, y, 0xFF0080,
+                        EE_ADDR(sdfDevPrintf(0x8A40, y, 0xFF0080,
                                                           (mdlDebugScaleWork.editing == 1 && mdlDebugScaleWork.selection == i) ? 6 : 0,
-                                                          mdlDebugEntryTable[i].format, value));
+                                                          mdlDebugEntryTable[i].format, value)));
     }
     mdlDebugTextBox(0x8680, 0x7C60, dds3LightParam.fogColor, mdlDebugScaleWork.selection - 4);
     { sdfGrOt_t *ot = &sdfGrOtTable[81]; ((mdlOtRegFunc_t)ot->regFunc)(ot, mdlDebugScaleWork.packetList); }
@@ -1304,7 +1309,7 @@ s32 soften_bias_Process(dds3ProcessID_t *task) {
     const char *format;
 
     if (dds3GetProcessData(task) == 0) {
-        pad = D_005298D8;
+        pad = dds3PadBitTable + 16;
     } else {
         pad = dds3PadButtonState;
     }
@@ -1314,7 +1319,7 @@ s32 soften_bias_Process(dds3ProcessID_t *task) {
     softenBiasWork.value = value;
     softenBiasWork.adjustment = adjustment;
     softenBiasWork.packetList = dds3FontReqAllocDrawTag();
-    softenBiasWork.control.fields.blink++;
+    softenBiasWork.control.fields.blink += SDF_FRAME_DUE(dds3GetKernelCount());
     if (softenBiasWork.control.fields.blink == 30) {
         softenBiasWork.control.fields.blink = 0;
     }
@@ -1373,102 +1378,102 @@ s32 soften_bias_Process(dds3ProcessID_t *task) {
     }
 
     sdfDrawTagLink(softenBiasWork.packetList,
-                    (u32)dds3PrimFrameRect(0x84D0, 0x79A8, 0xFF007F, 0xA20, 0x270,
-                                  0x60000000, 0x40806020));
-    label = D_0032C5B8;
+                    EE_ADDR(dds3PrimFrameRect(0x84D0, 0x79A8, 0xFF007F, 0xA20, 0x270,
+                                  0x60000000, 0x40806020)));
+    label = softenBiasLabels;
     for (i = 0; i != 4; i++, label++) {
         sdfDrawTagLink(softenBiasWork.packetList,
-                        (u32)sdfDevPrintf(label->x, label->y,
+                        EE_ADDR(sdfDevPrintf(label->x, label->y,
                                                          0xFF0080, label->style,
-                                                         label->format));
+                                                         label->format)));
     }
     if (softenBiasWork.control.fields.active == 0 && softenBiasWork.control.fields.blink < 20) {
         sdfDrawTagLink(softenBiasWork.packetList,
-                        (u32)sdfDevPrintf(0x8500,
-                                                         D_0032C5E8[softenBiasWork.control.fields.cursor],
-                                                         0xFF0080, 0, D_0054F700));
+                        EE_ADDR(sdfDevPrintf(0x8500,
+                                                         softenBiasCursorY[softenBiasWork.control.fields.cursor],
+                                                         0xFF0080, 0, softenBiasCursor)));
     }
 
     /* Ignore the blink byte when testing the active mode and selected row. */
     valueStyle = (softenBiasWork.control.packed & 0xFFFF00FF) == 1 ? 6 : 0;
     sdfDrawTagLink(softenBiasWork.packetList,
-                    (u32)sdfDevPrintf(0x8B00, 0x7A80, 0xFF0080,
-                                                     valueStyle, D_0054F708, softenBiasWork.value));
+                    EE_ADDR(sdfDevPrintf(0x8B00, 0x7A80, 0xFF0080,
+                                                     valueStyle, softenBiasValueFormat, softenBiasWork.value)));
     adjustmentStyle = (softenBiasWork.control.packed & 0xFFFF00FF) == 0x10001 ? 6 : 0;
     sdfDrawTagLink(softenBiasWork.packetList,
-                    (u32)sdfDevPrintf(0x8B00, 0x7AE0, 0xFF0080,
-                                                     adjustmentStyle, D_0054F710, softenBiasWork.adjustment));
-    format = corePktSoftenBias == 0 ? D_0054F718 : D_0054F720;
+                    EE_ADDR(sdfDevPrintf(0x8B00, 0x7AE0, 0xFF0080,
+                                                     adjustmentStyle, softenBiasAdjustFormat, softenBiasWork.adjustment)));
+    format = corePktSoftenBias == 0 ? softenBiasLabelOn : softenBiasLabelOff;
     sdfDrawTagLink(softenBiasWork.packetList,
-                    (u32)sdfDevPrintf(0x8B00, 0x7BA0, 0xFF0080,
-                                                     0, format));
+                    EE_ADDR(sdfDevPrintf(0x8B00, 0x7BA0, 0xFF0080,
+                                                     0, format)));
     { sdfGrOt_t *ot = &sdfGrOtTable[81]; ((mdlOtRegFunc_t)ot->regFunc)(ot, softenBiasWork.packetList); }
     sdfFaceDivSoften = softenBiasWork.value;
     sdfFaceDivBias = softenBiasWork.adjustment;
     return 0;
 }
 
-INCLUDE_RODATA(const s32, "model/mdlEffect", D_0053A788);
+INCLUDE_RODATA(const s32, "model/mdlEffect", mdlDebugLabelAmbient);
 
-INCLUDE_RODATA(const s32, "model/mdlEffect", D_0053A798);
+INCLUDE_RODATA(const s32, "model/mdlEffect", softenBiasTitle);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F648);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlPibLabelP2A);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F650);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlPibLabelD3P);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F658);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlColorLabelA);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F660);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlColorLabelB);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F668);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlColorLabelG);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F670);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlColorLabelR);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F678);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlColorByteFormat);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F680);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlPibCursorMark);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F688);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlDebugLabelLight2);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F690);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlDebugLabelLight1);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F698);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlDebugLabelLight0);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6A0);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlDebugLightCursor);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6A8);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlDebugLightFormat);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6B0);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlDebugLabelFog);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6B8);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlDebugLabelFar);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6C0);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlDebugLabelMin);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6C8);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlDebugLabelNear);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6D0);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlDebugIntFormat);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6D8);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlDebugLabelMax);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6E0);
+INCLUDE_SDATA(const s32, "model/mdlEffect", mdlDebugScaleCursor);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6E8);
+INCLUDE_SDATA(const s32, "model/mdlEffect", softenBiasLabelDivide);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6F0);
+INCLUDE_SDATA(const s32, "model/mdlEffect", softenBiasLabelBias);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F6F8);
+INCLUDE_SDATA(const s32, "model/mdlEffect", softenBiasLabelSoften);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F700);
+INCLUDE_SDATA(const s32, "model/mdlEffect", softenBiasCursor);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F708);
+INCLUDE_SDATA(const s32, "model/mdlEffect", softenBiasValueFormat);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F710);
+INCLUDE_SDATA(const s32, "model/mdlEffect", softenBiasAdjustFormat);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F718);
+INCLUDE_SDATA(const s32, "model/mdlEffect", softenBiasLabelOn);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F720);
+INCLUDE_SDATA(const s32, "model/mdlEffect", softenBiasLabelOff);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F728);
+INCLUDE_SDATA(const s32, "model/mdlEffect", dds3BitEditorRowBase);
 
 INCLUDE_SDATA(const s32, "model/mdlEffect", dds3BitEditorTable);
 
@@ -1476,11 +1481,11 @@ INCLUDE_SDATA(const s32, "model/mdlEffect", dds3BitEditorTable2);
 
 INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F734);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F738);
+INCLUDE_SDATA(const s32, "model/mdlEffect", dds3BitEditorGlyphTemplate);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F740);
+INCLUDE_SDATA(const s32, "model/mdlEffect", dds3BitEditorColumnFormat);
 
-INCLUDE_SDATA(const s32, "model/mdlEffect", D_0054F748);
+INCLUDE_SDATA(const s32, "model/mdlEffect", dds3BitEditorRowFormat);
 
 INCLUDE_SDATA(const s32, "model/mdlEffect", evtNextEventNo);
 

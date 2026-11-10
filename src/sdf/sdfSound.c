@@ -25,14 +25,14 @@ typedef void *(*sceSifRpcFunc)(s32 function, void *request, s32 size);
 #endif
 
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
-#define D_0054A088 sdfGsMemoryDumpHeader
-#define D_0054A100 sdfGsMemoryDumpRowFormat
-#define D_00551B40 sdfGsMemoryTypeFormat
-#define D_005907C0 sndCommandThreadParameters
-#define D_005907F0 sndCachedListenerState
-#define D_00590840 sndCommandRing
-#define D_00591840 sndCommandThreadStack
-#define D_00592880 sndRpcServerThreadStack
+#define sdfGsMemInfoTitle sdfGsMemoryDumpHeader
+#define sdfGsMemNodeFmt sdfGsMemoryDumpRowFormat
+#define sdfGsMemTypeFmt sdfGsMemoryTypeFormat
+#define sdfSndCmdThreadParam sndCommandThreadParameters
+#define sdfSndListenerPrevState sndCachedListenerState
+#define sdfSndCmdPacketRing sndCommandRing
+#define sdfSndCmdThreadStack sndCommandThreadStack
+#define sdfSifRpcThreadStack sndRpcServerThreadStack
 #define sdfSndMakeFilename mnuBuildSoundResourcePath
 #define p2sd_2C1788 sndQueueNoPayloadCommand210
 #define p2sd_2C17D8 sndDispatchCommandWithoutPayload
@@ -56,55 +56,53 @@ typedef void *(*sceSifRpcFunc)(s32 function, void *request, s32 size);
 #define sdf_2C27F8 sdfSoundGetTableEntry
 #endif
 #if defined(SDF_DDS1)
-#define D_00529BE8 D_00398948
-#define D_00529C68 D_003989C8
-#define D_00529C88 D_003989E8
-#define D_00529CC8 D_00398A28
-#define D_00529CD8 D_00398A38
-#define D_00549B50 D_003B4880
-#define D_00549B70 D_003B48A0
-#define D_00549B88 D_003B48B8
-#define D_00549BB0 D_003B48E0
-#define D_005519D4 D_003BD4A4
-#define D_00551A20 D_003BD4F0
-#define D_00551A28 D_003BD4F8
-#define D_00551A30 D_003BD500
-#define D_00551A38 D_003BD508
-#define D_00551A40 D_003BD510
-#define D_00551A50 D_003BD520
-#define D_00551A58 D_003BD528
-#define D_00551A60 D_003BD530
-#define D_00551B10 D_003BD5E0
-#define D_00551B18 D_003BD5E8
-#define D_00552120 D_003BDA70
-#define D_0055213C D_003BDA8C
-#define D_00593890 D_003FE0D0
-#define D_00593E20 D_003FE990
+#define sdfSndPcmFileName D_00398948
+#define sdfGrVifUnpackNames D_003989C8
+#define sdfGrVifUnpackBits D_003989E8
+#define sdfGsMemTypeNames D_00398A28
+#define sdfGsMemTypeNamesTail D_00398A38
+#define sdfDmaDumpStartFmt D_003B4880
+#define sdfDmaNotQwordFmt D_003B48A0
+#define sdfDmaTagLineFmt D_003B48B8
+#define sdfDmaNestOverflowMsg D_003B48E0
+#define sdfSifRpcThreadId D_003BD4A4
+#define sdfDumpAddrFmt D_003BD4F0
+#define sdfDumpPadStr D_003BD4F8
+#define sdfDumpMidGapStr D_003BD500
+#define sdfDumpByteSepStr D_003BD508
+#define sdfDumpByteFmt D_003BD510
+#define sdfDumpEndStr D_003BD520
+#define sdfVifMaskedName D_003BD528
+#define sdfVifXferOkName D_003BD530
+#define sdfDumpIndentStr D_003BD5E0
+#define sdfDumpWordFmt D_003BD5E8
+#define sdfSndPcmBufferAddr D_003BDA70
+#define sdfSndIopWorkAddr D_003BDA8C
+#define sdfSndPcmRequest D_003FE990
 #elif defined(SDF_DDS2)
-#define D_00529BE8 D_0040BAF8
-#define D_00529C68 D_0040BB78
-#define D_00529C88 D_0040BB98
-#define D_00529CC8 D_0040BBD8
-#define D_00529CD8 D_0040BBE8
-#define D_00549B50 D_0042E590
-#define D_00549B70 D_0042E5B0
-#define D_00549B88 D_0042E5C8
-#define D_00549BB0 D_0042E5F0
-#define D_005519D4 D_00438B94
-#define D_00551A20 D_00438BE0
-#define D_00551A28 D_00438BE8
-#define D_00551A30 D_00438BF0
-#define D_00551A38 D_00438BF8
-#define D_00551A40 D_00438C00
-#define D_00551A50 D_00438C10
-#define D_00551A58 D_00438C18
-#define D_00551A60 D_00438C20
-#define D_00551B10 D_00438CD0
-#define D_00551B18 D_00438CD8
-#define D_00552120 D_004391D0
-#define D_0055213C D_004391EC
-#define D_00593890 D_0047AA50
-#define D_00593E20 D_0047B310
+#define sdfSndPcmFileName D_0040BAF8
+#define sdfGrVifUnpackNames D_0040BB78
+#define sdfGrVifUnpackBits D_0040BB98
+#define sdfGsMemTypeNames D_0040BBD8
+#define sdfGsMemTypeNamesTail D_0040BBE8
+#define sdfDmaDumpStartFmt D_0042E590
+#define sdfDmaNotQwordFmt D_0042E5B0
+#define sdfDmaTagLineFmt D_0042E5C8
+#define sdfDmaNestOverflowMsg D_0042E5F0
+#define sdfSifRpcThreadId D_00438B94
+#define sdfDumpAddrFmt D_00438BE0
+#define sdfDumpPadStr D_00438BE8
+#define sdfDumpMidGapStr D_00438BF0
+#define sdfDumpByteSepStr D_00438BF8
+#define sdfDumpByteFmt D_00438C00
+#define sdfDumpEndStr D_00438C10
+#define sdfVifMaskedName D_00438C18
+#define sdfVifXferOkName D_00438C20
+#define sdfDumpIndentStr D_00438CD0
+#define sdfDumpWordFmt D_00438CD8
+#define sdfSndPcmBufferAddr D_004391D0
+#define sdfSndIopWorkAddr D_004391EC
+#define sdfSndPcmRequest D_0047B310
 #endif
 
 struct sdfGsMemSlice_t;
@@ -141,21 +139,23 @@ typedef struct
     u16 unk6;
 } p2sdLoadEntry_t;
 
-extern p2sdLoadEntry_t LastLoad[];
 
 s32 sdfSndSendCmd(s32 aCmd, s32 aParam, void *aExDataPtr, s32 aExDataSize);
 
 extern s32 SignalSema(s32 aSemaId);
 
+/* The PCM fill hook, held as an address and called through a cast. */
+typedef u8 *(*p2sdPcmFunc_t)(s32);
+
 extern u32 p2sdPcmCallback;
 
 extern u32 sdfSndMap[];
+#define LastLoad ((p2sdLoadEntry_t *)((u8 *)sdfSndMap + 0x190))
 
 extern u32 p2sdPcmState;
 
 extern u32 p2sdPcmBusy;
 
-extern u8 D_00593890[];
 
 enum SdfFileIOCmdStat {
     SDF_FILE_CMD_STAT_INIT = 0,
@@ -299,14 +299,14 @@ enum sdf_stream_playback {
 
 extern void sdfSndTransToIOP(s32 aIOPAddr, void *aEEAddr, s32 aSize);
 
-extern void *memcpy(void *, const void *, unsigned int);
+extern void *memcpy(void *, const void *, size_t);
 
-extern void sdfDelayThread(s32 delay);
+extern void sdfDelayThread(u32 delay);
 
 extern char * strcpy(char *, const char *);
 
 
-extern sndRingPacket_t D_00590840[32];
+extern sndRingPacket_t sdfSndCmdPacketRing[32];
 
 extern u32 sdfSndSendCmd_cmd_id;
 
@@ -320,7 +320,7 @@ extern s32 WakeupThread(s32 thread);
 
 extern void FlushCache(s32);
 
-extern sndListenerState_t D_005907F0;
+extern sndListenerState_t sdfSndListenerPrevState;
 
 char *sdfSndMakeFilename(char *aDstName, const char *aSrcName);
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
@@ -333,35 +333,35 @@ extern s32 p2sdSmgHandle;
 
 #include "sdk_libc.h"
 
-extern sndFileRequestState_t D_00593E20;
+extern sndFileRequestState_t sdfSndPcmRequest;
 
-extern s32 D_00552120;
+extern s32 sdfSndPcmBufferAddr;
 
-extern char D_00529BE8[];
+extern char sdfSndPcmFileName[];
 
 extern s32 sifRpcServerSema;
 
-extern char D_00551A20[];
+extern char sdfDumpAddrFmt[];
 
-extern char D_00551A28[];
+extern char sdfDumpPadStr[];
 
-extern char D_00551A30[];
+extern char sdfDumpMidGapStr[];
 
-extern char D_00551A38[];
+extern char sdfDumpByteSepStr[];
 
-extern char D_00551A40[];
+extern char sdfDumpByteFmt[];
 
 extern char sdfDumpLineBuf[];
 
-extern char D_00551A50[];
+extern char sdfDumpEndStr[];
 
-extern char D_00549B50[];
+extern char sdfDmaDumpStartFmt[];
 
-extern char D_00549B70[];
+extern char sdfDmaNotQwordFmt[];
 
-extern char D_00549B88[];
+extern char sdfDmaTagLineFmt[];
 
-extern char D_00549BB0[];
+extern char sdfDmaNestOverflowMsg[];
 #if defined(SDF_DDS1)
 extern char D_003B4900[];
 #elif defined(SDF_DDS2)
@@ -373,17 +373,17 @@ extern char *sdfDmaTagNameTable[];
 
 sdfGsMemSlice_t *sdfGsMemGetLinkHead(void);
 
-extern char D_0054A088[];
+extern char sdfGsMemInfoTitle[];
 
-extern char D_0054A100[];
+extern char sdfGsMemNodeFmt[];
 
-extern char D_00551B40[];
+extern char sdfGsMemTypeFmt[];
 
-extern char *D_00529CC8[];
+extern char *sdfGsMemTypeNames[];
 
 sdfGsMemSlice_t *sdfGsMemGetLinkTail(void);
 
-extern char *D_00529CD8[];
+extern char *sdfGsMemTypeNamesTail[];
 
 void sdfMemGetInfo(sdfMemInfo_t *aInfo);
 
@@ -404,13 +404,12 @@ extern s32 sdfFileRpcCmdState;
 extern u32 sdfFileRpcQueue[];
 /* The first cell stores the PCM base pointer. This unsized view keeps the
  * non-small-data address form; see docs/levers/addressing-and-types.md. */
-extern u8 *p2sdPcmBuffer[];
 extern sdfMemHandle_t *sdfMemAllocDirect(s32 size);
 extern void *sdfMemLock(sdfMemHandle_t *handle);
 extern void sdfMemFreeDirect(sdfMemHandle_t *handle);
 extern sdfFileCmdHandle_t *sdfFileCmdReadOpen(
     const char *path,
-    void (*callback)(sdfFileCmdHandle_t *, s32, s32, s32, s32),
+    void (*callback)(sdfFileCmdHandle_t *, s32, saddr_t, s32, s32),
     s32 callbackContext);
 extern s32 sdfFileCmdClearError(sdfFileCmd_t *handle);
 extern s32 sdfFileCmdFree(sdfFileCmd_t *handle);
@@ -459,7 +458,7 @@ s32 sdfSndCmdTrans(void)
     if (current == tail) {
         return 1;
     }
-    packet = &D_00590840[current];
+    packet = &sdfSndCmdPacketRing[current];
     result = sceSifSendCmd(0, packet, ((u8 *)packet)[0xF] & 0xF0,
                            NULL, NULL, 0);
     if (result == 0) {
@@ -479,7 +478,7 @@ s32 sdfSndCmdTrans(void)
     if (current == (s16)sdfSndCmdTailIndex) {
         return 1;
     }
-    packet = &D_00590840[current];
+    packet = &sdfSndCmdPacketRing[current];
     if (sceSifSendCmd(0, packet, (packet->command >> 24) & 0xF0, NULL, NULL, 0) == 0) {
         return 1;
     }
@@ -511,10 +510,10 @@ typedef struct sdfSndInitThreadParam_t {
     u8 reserved[0x18];
 } sdfSndInitThreadParam_t;
 
-extern sdfSndInitThreadParam_t D_005907C0;
-extern u8 D_00591840[];
-extern u8 D_00592880[];
-extern s32 D_005519D4;
+extern sdfSndInitThreadParam_t sdfSndCmdThreadParam;
+extern u8 sdfSndCmdThreadStack[];
+extern u8 sdfSifRpcThreadStack[];
+extern s32 sdfSifRpcThreadId;
 extern s32 _gp;
 extern s32 sceSifGetSreg(s32 index);
 extern s32 CreateThread(sdfSndInitThreadParam_t *parameter);
@@ -535,19 +534,19 @@ void sdfSndInitCmdIF(void)
             retries = 0;
         }
     }
-    D_005907C0.entry = sdfSndCmdIFThread;
-    D_005907C0.stack = D_00591840;
-    D_005907C0.stackSize = 0x1000;
+    sdfSndCmdThreadParam.entry = sdfSndCmdIFThread;
+    sdfSndCmdThreadParam.stack = sdfSndCmdThreadStack;
+    sdfSndCmdThreadParam.stackSize = 0x1000;
     /* Same descriptor order as CreateThreadSimple in sdfSystem.c. */
-    D_005907C0.priority = 0x42;
-    D_005907C0.gp = &_gp;
+    sdfSndCmdThreadParam.priority = 0x42;
+    sdfSndCmdThreadParam.gp = &_gp;
     sdfSndCmdIndex = 0;
     sdfSndCmdTailIndex = 0;
-    threadId = CreateThread(&D_005907C0);
+    threadId = CreateThread(&sdfSndCmdThreadParam);
     sdfSndCmdBuf = threadId;
     _StartThread(threadId, 0);
-    threadId = CreateThreadSimple(SifRpcServerThreadProc, D_00592880, 0x1000, 0x43);
-    D_005519D4 = threadId;
+    threadId = CreateThreadSimple(SifRpcServerThreadProc, sdfSifRpcThreadStack, 0x1000, 0x43);
+    sdfSifRpcThreadId = threadId;
     _StartThread(threadId, 0);
 }
 #else
@@ -557,18 +556,18 @@ s32 sdfSndInitCmdIF(void)
 
     while (sceSifGetSreg(0x1F) == 0) {
     }
-    D_005907C0.entry = sdfSndCmdIFThread;
-    D_005907C0.stack = D_00591840;
-    D_005907C0.stackSize = 0x1000;
-    D_005907C0.priority = 0x42;
-    D_005907C0.gp = &_gp;
+    sdfSndCmdThreadParam.entry = sdfSndCmdIFThread;
+    sdfSndCmdThreadParam.stack = sdfSndCmdThreadStack;
+    sdfSndCmdThreadParam.stackSize = 0x1000;
+    sdfSndCmdThreadParam.priority = 0x42;
+    sdfSndCmdThreadParam.gp = &_gp;
     sdfSndCmdIndex = 0;
     sdfSndCmdTailIndex = 0;
-    threadId = CreateThread(&D_005907C0);
+    threadId = CreateThread(&sdfSndCmdThreadParam);
     sdfSndCmdBuf = threadId;
     _StartThread(threadId, 0);
-    threadId = CreateThreadSimple(SifRpcServerThreadProc, D_00592880, 0x1000, 0x43);
-    D_005519D4 = threadId;
+    threadId = CreateThreadSimple(SifRpcServerThreadProc, sdfSifRpcThreadStack, 0x1000, 0x43);
+    sdfSifRpcThreadId = threadId;
     return _StartThread(threadId, 0);
 }
 #endif
@@ -590,7 +589,7 @@ s32 sdfSndSendCmd(s32 aCmd, s32 aParam, void *aExDataPtr, s32 aExDataSize) {
         }
         return 0;
     }
-    entry = &D_00590840[(s16)sdfSndCmdTailIndex];
+    entry = &sdfSndCmdPacketRing[(s16)sdfSndCmdTailIndex];
     entry->sequence = sdfSndSendCmd_cmd_id;
     if (aExDataSize != 0) {
         memcpy(entry->payload, aExDataPtr, aExDataSize);
@@ -641,7 +640,7 @@ void sdfSndTransToIOP(s32 aIOPAddr, void *aEEAddr, s32 aSize)
     s32 dmaId;
     s32 delay;
 
-    sdfSndTransBuf.source = (u32)aEEAddr;
+    sdfSndTransBuf.source = EE_ADDR(aEEAddr);
     sdfSndTransBuf.destination = aIOPAddr;
     sdfSndTransBuf.size = aSize;
     sdfSndTransBuf.attributes = 0;
@@ -678,8 +677,10 @@ void sdfSndLoadIRXModules(void) {
     SdfIopFileRpc(module, 0, NULL, NULL);
 }
 
-extern char D_00549A48[]; /* "SDF_SND_IOP_SIZE\n" */
-extern char D_00549A60[]; /* "sdfSndSeqMapInit\n" */
+extern char sdfSndIopSizeMsg[]; /* "SDF_SND_IOP_SIZE\n" */
+extern char sdfSndSeqMapInitMsg[]; /* "sdfSndSeqMapInit\n" */
+
+void sdfSndVoiceMapInit(char *aVoiceInfo, s32 aVoiceCount);
 
 #if defined(SDF_DDS1) || defined(SDF_DDS2)
 void sdfSndVoiceMapInit(char *aVoiceInfo, s32 aVoiceCount)
@@ -725,7 +726,7 @@ void sdfSndVoiceMapInit(char *aVoiceInfo, s32 aVoiceCount)
         sdfSndWork.channels[i].unk4 = 0;
         sdfSndWork.channels[i].unkC = 0;
     }
-    printf(D_00549A48);
+    printf(sdfSndIopSizeMsg);
     address = sdfSndIopAlloc(0x24E00);
     sdfSndWork.opaque1D0 = 0;
     sdfSndWork.opaque1D4 = 0;
@@ -767,7 +768,7 @@ void sdfSndSeqMapInit(u32 *aSequenceInfo, s32 aSequenceCount)
         i++;
     }
 #ifdef SDF_SMT3
-    printf(D_00549A60);
+    printf(sdfSndSeqMapInitMsg);
 #endif
     iopAddress = sdfSndIopAlloc(total);
     i = 0;
@@ -783,10 +784,10 @@ void sdfSndSeqMapInit(u32 *aSequenceInfo, s32 aSequenceCount)
 
 
 extern s32 sceSifInitIopHeap(void);
-extern s32 D_0055213C;
+extern s32 sdfSndIopWorkAddr;
 
 #ifdef SDF_SMT3
-INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549A60);
+INCLUDE_RODATA(const s32, "sdf/sdfSound", sdfSndSeqMapInitMsg);
 
 void sdfSndInit(char *aVoiceInfo, s32 aVoiceCount, char *aSequenceInfo, s32 aSequenceCount)
 {
@@ -803,11 +804,11 @@ void sdfSndInit(char *aVoiceInfo, s32 aVoiceCount, char *aSequenceInfo, s32 aSeq
     sdfSndSeqMapInit((u32 *)aSequenceInfo, aSequenceCount);
     printf("sizeof(sdfSndMap)\n");
     iopAddress = sdfSndIopAlloc(0x5A0);
-    sdfSndMap[0x72] = (u32)sdfSndMap;
+    sdfSndMap[0x72] = EE_ADDR(sdfSndMap);
     sdfSndMap[0x73] = 0x5A0;
-    D_0055213C = iopAddress;
+    sdfSndIopWorkAddr = iopAddress;
     sdfSndTransToIOP(iopAddress, sdfSndMap, 0x5A0);
-    sdfSndSendSyncCmd(0, 0, &D_0055213C, 4);
+    sdfSndSendSyncCmd(0, 0, &sdfSndIopWorkAddr, 4);
     sdfSndBurstReqMode = 0;
 }
 #else
@@ -821,11 +822,11 @@ void sdfSndInit(char *aVoiceInfo, s32 aVoiceCount, char *aSequenceInfo, s32 aSeq
     sdfSndWork.iopBufferBytes = 0x4000;
     sdfSndVoiceMapInit(aVoiceInfo, aVoiceCount);
     sdfSndSeqMapInit((u32 *)aSequenceInfo, aSequenceCount);
-    D_0055213C = sdfSndIopAlloc(sizeof(sndMergedWork_t));
+    sdfSndIopWorkAddr = sdfSndIopAlloc(sizeof(sndMergedWork_t));
     sdfSndWork.eeWorkAddress = &sdfSndWork;
     sdfSndWork.eeWorkByteCount = sizeof(sndMergedWork_t);
-    sdfSndTransToIOP(D_0055213C, &sdfSndWork, sizeof(sndMergedWork_t));
-    sdfSndSendSyncCmd(0, 0, &D_0055213C, 4);
+    sdfSndTransToIOP(sdfSndIopWorkAddr, &sdfSndWork, sizeof(sndMergedWork_t));
+    sdfSndSendSyncCmd(0, 0, &sdfSndIopWorkAddr, 4);
     sdfSndBurstReqMode = 0;
 }
 #endif
@@ -966,11 +967,11 @@ void p2sdSetStandPos(f32 Cposx, f32 Cposy, f32 Cposz,
     state.scaledValues[3] = Pposx * 0.1f;
     state.scaledValues[4] = Pposy * 0.1f;
     state.scaledValues[5] = Pposz * 0.1f;
-    if (D_005907F0.scaledValues[0] != state.scaledValues[0] || D_005907F0.scaledValues[1] != state.scaledValues[1] ||
-        D_005907F0.scaledValues[2] != state.scaledValues[2] || D_005907F0.scaledValues[3] != state.scaledValues[3] ||
-        D_005907F0.scaledValues[4] != state.scaledValues[4] || D_005907F0.scaledValues[5] != state.scaledValues[5]) {
+    if (sdfSndListenerPrevState.scaledValues[0] != state.scaledValues[0] || sdfSndListenerPrevState.scaledValues[1] != state.scaledValues[1] ||
+        sdfSndListenerPrevState.scaledValues[2] != state.scaledValues[2] || sdfSndListenerPrevState.scaledValues[3] != state.scaledValues[3] ||
+        sdfSndListenerPrevState.scaledValues[4] != state.scaledValues[4] || sdfSndListenerPrevState.scaledValues[5] != state.scaledValues[5]) {
         sdfSndSendSyncCmd(0x160, 0, &state, 0x20);
-        D_005907F0 = state;
+        sdfSndListenerPrevState = state;
     }
 }
 
@@ -1023,13 +1024,13 @@ u64 p2sd_2C1D78(const char *aName)
     return sdfSndSendSyncCmd(0xA0, 0, (void *)aName, strlen(aName));
 }
 
-void p2sdSetPcmBuffer(s32 data, s32 size) {
+void p2sdSetPcmBuffer(saddr_t data, s32 size) {
     s32 *packet;
-    D_00593E20.size = size;
-    D_00593E20.pending = 1;
-    D_00593E20.data = data;
+    sdfSndPcmRequest.size = size;
+    sdfSndPcmRequest.pending = 1;
+    sdfSndPcmRequest.data = data;
     if (data != 0 && size > 0) {
-        packet = &D_00552120;
+        packet = &sdfSndPcmBufferAddr;
         *packet = data;
         sdfSndSendSyncCmd(0x1B0, 0, packet, 4);
     }
@@ -1085,7 +1086,7 @@ s32 p2sd_2C1F28(s32 aIndex)
 
 u8 *p2sd_2C1F50(void)
 {
-    return D_00593890;
+    return (u8 *)sdfSndMap + 0x10;
 }
 
 p2sdLoadEntry_t *p2sd_2C1F60(void)
@@ -1164,7 +1165,7 @@ s32 p2sdLoadPcmFile(const char *name, u8 channel) {
     if (p2sdPcmState != 0) {
         return 1;
     }
-    strcpy(D_00529BE8, name);
+    strcpy(sdfSndPcmFileName, name);
     sdfSndSendSyncCmd((channel >> 3) | 0xF0, 0, 0, 0);
     return 0;
 }
@@ -1194,7 +1195,7 @@ s32 p2sd_2C21D8(u32 aCh)
     return sdfSndSendSyncCmd((aCh - 1) | 0x1D0, 0, NULL, 0);
 }
 
-u32 p2sdSetPcmCallback(u32 aCallback)
+u32 p2sdSetPcmCallback(addr_t aCallback)
 {
     if (p2sdPcmBusy != 0) {
         return 0;
@@ -1253,9 +1254,7 @@ s32 sdfFileRpcCallback(s32 unused, u32 event) {
 }
 
 /* Handle sound-file and PCM-buffer RPC commands. */
-#ifdef NON_MATCHING
 extern s32 WaitSema(s32 sema);
-#endif
 
 void *sdfFileRpcHandleCmd(s32 function, void *requestData, s32 requestSize)
 {
@@ -1267,18 +1266,18 @@ void *sdfFileRpcHandleCmd(s32 function, void *requestData, s32 requestSize)
     case 0: {
         sdfFileCmdHandle_t *state;
 
-        if (D_00529BE8[0] == 0) {
+        if (sdfSndPcmFileName[0] == 0) {
             sdfFileRpcQueue[0] = 0;
             break;
         }
         p2sdPcmState = 1;
 #ifdef SDF_SMT3
-        sdfSndMakeFilename(path, D_00529BE8);
+        sdfSndMakeFilename(path, sdfSndPcmFileName);
 #else
-        mnuBuildVoiceResourcePath(path, D_00529BE8);
+        mnuBuildVoiceResourcePath(path, sdfSndPcmFileName);
 #endif
         state = sdfFileCmdReadOpen(path,
-            (void (*)(sdfFileCmdHandle_t *, s32, s32, s32, s32))sdfFileRpcCallback, 0);
+            (void (*)(sdfFileCmdHandle_t *, s32, saddr_t, s32, s32))sdfFileRpcCallback, 0);
         sdfFileRpcArg = state;
         if (state != NULL) {
             WaitSema(sifRpcServerSema);
@@ -1290,7 +1289,7 @@ void *sdfFileRpcHandleCmd(s32 function, void *requestData, s32 requestSize)
                 state = NULL;
             }
         }
-        sdfFileRpcQueue[0] = (u32)state;
+        sdfFileRpcQueue[0] = EE_ADDR(state);
         break;
     }
     case 1: {
@@ -1327,7 +1326,7 @@ void *sdfFileRpcHandleCmd(s32 function, void *requestData, s32 requestSize)
         s32 bytes;
 
         sdfFileRpcResult = request;
-        sdfSndTransToIOP(request->destination, p2sdPcmBuffer[0] + sdfFileRpcCmdState,
+        sdfSndTransToIOP(request->destination, (u8 *)sdfSndPcmRequest.data + sdfFileRpcCmdState,
                          request->byteCount);
         bytes = sdfFileRpcResult->byteCount;
         sdfFileRpcQueue[0] = bytes;
@@ -1350,7 +1349,7 @@ void *sdfFileRpcHandleCmd(s32 function, void *requestData, s32 requestSize)
         void *buffer;
 
         sdfFileRpcResult = request;
-        buffer = ((u8 *(*)(s32))p2sdPcmCallback)(request->byteCount);
+        buffer = EE_ADDR_AS(p2sdPcmFunc_t, p2sdPcmCallback)(request->byteCount);
         if (buffer != NULL) {
             sdfSndTransToIOP(sdfFileRpcResult->destination, buffer,
                              sdfFileRpcResult->byteCount);
@@ -1428,7 +1427,7 @@ void sdf_2C2618(u32 kind, const u8 *data)
         }
         break;
     }
-    sdfSndTransToIOP(D_0055213C, &sdfSndWork, sizeof(sndMergedWork_t));
+    sdfSndTransToIOP(sdfSndIopWorkAddr, &sdfSndWork, sizeof(sndMergedWork_t));
     sdfSndSendSyncCmd(0x1F0, 0, 0, 0);
 }
 
@@ -1574,7 +1573,7 @@ void sdf_2C2618(u32 kind, const u8 *src)
         }
         break;
     }
-    sdfSndTransToIOP(D_0055213C, &sdfSndWork, sizeof(sndMergedWork_t));
+    sdfSndTransToIOP(sdfSndIopWorkAddr, &sdfSndWork, sizeof(sndMergedWork_t));
     sdfSndSendSyncCmd(0x1F0, 0, 0, 0);
 }
 
@@ -1687,17 +1686,17 @@ void sdfDumpHexLine(const u8 *data, s32 size) {
     s32 i;
     while (size > 0) {
         if (column == 0) {
-            sdfPrintf(D_00551A20, data);
-            column = (u32)data & 0xF;
+            sdfPrintf(sdfDumpAddrFmt, data);
+            column = EE_ADDR(data) & 0xF;
             for (i = column; i > 0; i--) {
-                sdfPrintf(D_00551A28);
+                sdfPrintf(sdfDumpPadStr);
             }
         } else if (column == 8) {
-            sdfPrintf(D_00551A30);
+            sdfPrintf(sdfDumpMidGapStr);
         } else {
-            sdfPrintf(D_00551A38);
+            sdfPrintf(sdfDumpByteSepStr);
         }
-        sdfPrintf(D_00551A40, *data++);
+        sdfPrintf(sdfDumpByteFmt, *data++);
         column++;
         if (column == 0x10) {
             column = 0;
@@ -1708,18 +1707,18 @@ void sdfDumpHexLine(const u8 *data, s32 size) {
     if (column == 0) {
         sdfPrintf(sdfDumpLineBuf);
     } else {
-        sdfPrintf(D_00551A50);
+        sdfPrintf(sdfDumpEndStr);
     }
 }
 
 #ifdef SDF_SMT3
-INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549B50);
+INCLUDE_RODATA(const s32, "sdf/sdfSound", sdfDmaDumpStartFmt);
 
-INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549B70);
+INCLUDE_RODATA(const s32, "sdf/sdfSound", sdfDmaNotQwordFmt);
 
-INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549B88);
+INCLUDE_RODATA(const s32, "sdf/sdfSound", sdfDmaTagLineFmt);
 
-INCLUDE_RODATA(const s32, "sdf/sdfSound", D_00549BB0);
+INCLUDE_RODATA(const s32, "sdf/sdfSound", sdfDmaNestOverflowMsg);
 #elif defined(SDF_DDS1)
 INCLUDE_RODATA(const s32, "sdf/sdfSound", D_003B4880);
 
@@ -1751,18 +1750,18 @@ void sdfDumpDmaChain(sdfDmaDumpTag_t *source) {
     s32 tagCount;
     s32 depth = 0;
     s32 done = 0;
-    sdfPrintf(D_00549B50, source);
+    sdfPrintf(sdfDmaDumpStartFmt, source);
     cursor = source;
     for (;;) {
-        if ((u32)cursor & 0xF) {
-            sdfPrintf(D_00549B70, cursor);
+        if (EE_ADDR(cursor) & 0xF) {
+            sdfPrintf(sdfDmaNotQwordFmt, cursor);
             return;
         }
         tag = cursor->control;
         tagAddress = cursor->address;
         tagType = (tag >> 28) & 7;
         tagCount = tag & 0xFFFF;
-        sdfPrintf(D_00549B88, cursor, sdfDmaTagNameTable[tagType], tag, tagAddress, cursor->vifCode0, cursor->vifCode1);
+        sdfPrintf(sdfDmaTagLineFmt, cursor, sdfDmaTagNameTable[tagType], tag, tagAddress, cursor->vifCode0, cursor->vifCode1);
         cursor++;
         switch (tagType) {
         case 0:
@@ -1772,18 +1771,18 @@ void sdfDumpDmaChain(sdfDmaDumpTag_t *source) {
             cursor += tagCount;
             break;
         case 2:
-            cursor = (sdfDmaDumpTag_t *)tagAddress;
+            cursor = EE_ADDR_AS(sdfDmaDumpTag_t *, tagAddress);
             break;
         case 3:
         case 4:
             break;
         case 5:
             if (depth == 2) {
-                sdfPrintf(D_00549BB0);
+                sdfPrintf(sdfDmaNestOverflowMsg);
                 return;
             }
             callStack[depth++] = cursor;
-            cursor = (sdfDmaDumpTag_t *)tagAddress;
+            cursor = EE_ADDR_AS(sdfDmaDumpTag_t *, tagAddress);
             break;
         case 6:
             if (depth == 0) {
@@ -1810,12 +1809,12 @@ void sdfDumpDmaChain(sdfDmaDumpTag_t *source) {
     }
 }
 
-extern char *D_00529C68[];
-extern s32 D_00529C88[];
-extern char D_00551A58[];
-extern char D_00551A60[];
-extern char D_00551B10[];
-extern char D_00551B18[];
+extern char *sdfGrVifUnpackNames[];
+extern s32 sdfGrVifUnpackBits[];
+extern char sdfVifMaskedName[];
+extern char sdfVifXferOkName[];
+extern char sdfDumpIndentStr[];
+extern char sdfDumpWordFmt[];
 
 void sdfGrFlushOtChain(u32 *source) {
     u32 *returnStack[2];
@@ -1846,8 +1845,8 @@ void sdfGrFlushOtChain(u32 *source) {
             switch (phase) {
             case 0: {
                 u32 tag;
-                if ((u32)cursor & 0xF) {
-                    sdfPrintf(D_00549B70, cursor);
+                if (EE_ADDR(cursor) & 0xF) {
+                    sdfPrintf(sdfDmaNotQwordFmt, cursor);
                     return;
                 }
                 tag = cursor[0];
@@ -1868,7 +1867,7 @@ void sdfGrFlushOtChain(u32 *source) {
                 case 0:
                 case 3:
                 case 4:
-                    wordCursor = (u32 *)tagAddress;
+                    wordCursor = EE_ADDR_AS(u32 *, tagAddress);
                     break;
                 default:
                     wordCursor = cursor;
@@ -1886,7 +1885,7 @@ void sdfGrFlushOtChain(u32 *source) {
                     cursor += qwc * 4;
                     break;
                 case 2:
-                    cursor = (u32 *)tagAddress;
+                    cursor = EE_ADDR_AS(u32 *, tagAddress);
                     break;
                 case 3:
                 case 4:
@@ -1897,7 +1896,7 @@ void sdfGrFlushOtChain(u32 *source) {
                         return;
                     }
                     returnStack[depth++] = cursor + qwc * 4;
-                    cursor = (u32 *)tagAddress;
+                    cursor = EE_ADDR_AS(u32 *, tagAddress);
                     break;
                 case 6:
                     if (depth == 0) {
@@ -1924,7 +1923,7 @@ void sdfGrFlushOtChain(u32 *source) {
                 s32 format;
                 s32 unpackFormat;
 
-                sdfPrintf("%08X %c%08X : ", (u32)(wordCursor - 1),
+                sdfPrintf("%08X %c%08X : ", EE_ADDR((wordCursor - 1)),
                                            interrupt, value);
                 switch (opcode) {
                 case 0x00:
@@ -1948,7 +1947,7 @@ void sdfGrFlushOtChain(u32 *source) {
                     break;
                 case 0x06:
                     sdfPrintf("VIF MSKPATH3 (%s)\n",
-                                    (immediate & 0x8000) ? D_00551A58 : D_00551A60);
+                                    (immediate & 0x8000) ? sdfVifMaskedName : sdfVifXferOkName);
                     break;
                 case 0x07:
                     sdfPrintf("VIF MARK   (%04X)\n", immediate);
@@ -2021,10 +2020,10 @@ void sdfGrFlushOtChain(u32 *source) {
                         format = (((s32)immediate >> 13) & 6) | (((s32)opcode >> 4) & 1);
                         dataMode = 7;
                         sdfPrintf("VIF UNPACK%s %s,%04X,%04X\n",
-                                                   D_00529C68[format],
+                                                   sdfGrVifUnpackNames[format],
                                                    ((char **)((u8 *)sdfDmaTagNameTable + 0x20))[unpackFormat],
                                                    immediate & 0x3FF, num);
-                        bits = D_00529C88[unpackFormat];
+                        bits = sdfGrVifUnpackBits[unpackFormat];
                         n = (bits * (s32)num + 0x1F) >> 5;
                     } else {
                         sdfPrintf("unkown vif command\n");
@@ -2059,12 +2058,12 @@ void sdfGrFlushOtChain(u32 *source) {
                 break;
             case 5:
                 if (directRow == 0) {
-                    sdfPrintf(D_00551B10);
+                    sdfPrintf(sdfDumpIndentStr);
                 } else {
-                    sdfPrintf(D_00551A38);
+                    sdfPrintf(sdfDumpByteSepStr);
                 }
                 directRow++;
-                sdfPrintf(D_00551B18, value);
+                sdfPrintf(sdfDumpWordFmt, value);
                 if (directRow == 4) {
                     directRow = 0;
                     sdfPrintf(sdfDumpLineBuf);
@@ -2101,17 +2100,17 @@ void sdfDumpGsMemory(void) {
     sdfGsMemSlice_t *node;
     sdfGsMemSlice_t *walk;
     char *name;
-    sdfPrintf(D_0054A088);
+    sdfPrintf(sdfGsMemInfoTitle);
     head = sdfGsMemGetLinkHead();
     node = head;
     while (node != 0) {
         if ((u32)node->type < SDF_TEX_RESOURCE_KNOWN_MODE_COUNT) {
-            name = D_00529CC8[node->type];
+            name = sdfGsMemTypeNames[node->type];
         } else {
-            sdfPrintf(buf, D_00551B40, node->type);
+            sdfPrintf(buf, sdfGsMemTypeFmt, node->type);
             name = buf;
         }
-        sdfPrintf(D_0054A100, node, node->prev, node->next, name, node->addr, node->size);
+        sdfPrintf(sdfGsMemNodeFmt, node, node->prev, node->next, name, node->addr, node->size);
         walk = head;
         while (walk != node) {
             walk = walk->next;
@@ -2126,17 +2125,17 @@ void sdfDumpGsMemory2(void) {
     sdfGsMemSlice_t *node;
     sdfGsMemSlice_t *walk;
     char *name;
-    sdfPrintf(D_0054A088);
+    sdfPrintf(sdfGsMemInfoTitle);
     head = sdfGsMemGetLinkTail();
     node = head;
     while (node != 0) {
         if ((u32)node->type < SDF_TEX_RESOURCE_KNOWN_MODE_COUNT) {
-            name = D_00529CD8[node->type];
+            name = sdfGsMemTypeNamesTail[node->type];
         } else {
-            sdfPrintf(buf, D_00551B40, node->type);
+            sdfPrintf(buf, sdfGsMemTypeFmt, node->type);
             name = buf;
         }
-        sdfPrintf(D_0054A100, node, node->prev, node->next, name, node->addr, node->size);
+        sdfPrintf(sdfGsMemNodeFmt, node, node->prev, node->next, name, node->addr, node->size);
         walk = head;
         while (walk != node) {
             walk = walk->prev;
@@ -2146,9 +2145,9 @@ void sdfDumpGsMemory2(void) {
 }
 
 #ifdef SDF_SMT3
-INCLUDE_RODATA(const s32, "sdf/sdfSound", D_0054A088);
+INCLUDE_RODATA(const s32, "sdf/sdfSound", sdfGsMemInfoTitle);
 
-INCLUDE_RODATA(const s32, "sdf/sdfSound", D_0054A100);
+INCLUDE_RODATA(const s32, "sdf/sdfSound", sdfGsMemNodeFmt);
 #elif defined(SDF_DDS1)
 INCLUDE_RODATA(const s32, "sdf/sdfSound", sdfGsMemoryDumpHeader);
 
