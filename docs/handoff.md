@@ -61,14 +61,56 @@
   plan in `docs/handoff-stage8.md`), effBlur_Filter, mdlEffect. `mc/slMain` and `script/scrParameterCommand` are game code and
   stay per game.
 
+## SMT3 refresh (2026-11-10)
+
+- sdf-decomp carries smt3-decomp origin/main 7255c2d6 (271cf55, with 2b43425
+  adding `sdfFrame.h`). Each file was three-way merged from the smt3-decomp
+  revision it was last taken from; SMT3's 6614 address renames
+  (`symbol_addrs.txt`, b9136570 to 7255c2d6) were applied to the whole file
+  first, so DDS alias `#define`s now name SMT3's new symbol on the left.
+- Verified in `~/.local/state/dds-port-work/smt3-consume/smt3-decomp`: 7255c2d6
+  plus the refreshed consume patch and the `git rm` below, `[248/249] check
+  config/smt3/checksum.sha1`, ninja exit 0, SHA-1 5facfbf7..., image mtime
+  after the build start. `tools/test_*.py` and `check_nonmatching.py` pass. The
+  patch gave one conflict on 7255c2d6 (`check_nonmatching.py` now also checks
+  FIX_BUGS builds); applying it plus the `git rm` gives the verified tree.
+- DDS builds were not run. DDS text is to be regenerated from dds-decomp's
+  `sdf-conform` branch. Until then these DDS branches are stale or changed
+  meaning:
+  - 39 units had DDS alias `#define`s renamed on the left (SMT3 `D_` name to
+    SMT3's new name): effDebug effMath effPacket effPart effPCPFlash
+    effPCPNeedle effPCPScatter parManager polyManager fileManager mdlManager
+    sdf3D sdfCd sdf_Decomp sdfDefaultMain sdfDelayedResrc sdfDev9 sdfDraw
+    sdfFile sdfFileIO sdfGraph sdfGsMemIO sdfHdd sdfImageSet sdfIpu sdfMat
+    sdfMath sdfModel sdfMotion sdfMovie sdfPacketBuff sdf_PadManager sdfPrim
+    sdfPrint sdfQuat sdfRand sdfSound sdfSystem sdfTmx. The right-hand DDS
+    names are unchanged and unchecked.
+  - Aliases whose DDS name now equals SMT3's were deleted: mdlManager,
+    effMath (`sdfViewMatrix`), sdfSystem (`sdfTickCallback`), sdf_PadManager
+    (`sdfPadAnalogSticks`, `sdfPadPortBuffers`), effPCPScatter
+    (`effScatterTriangleIndices`), effPacket (`kwlnHeldTexture*Vector`),
+    sdfDelayedResrc (`sdfPendingQueueSlots`).
+  - sdfSound: `p2sd_2C1F50` returns `sdfSndMap + 0x10`; DDS's `D_00593890`
+    aliases (DDS1 `D_003FE0D0`, DDS2 `D_0047AA50`) were removed unchecked.
+  - sdf_Decomp: the DDS `sdfDrawFaceListParam` macro went; SMT3 now reads
+    `sdf3DScreenParam` directly, as the DDS branch did.
+  - polyManager: DDS's `PS2_SYMBOL_AT` became `SYMBOL_AT` (smt3-decomp dropped
+    the prefix).
+  - polyManager, effPart and sdfMotion now define their `.data` in C, shared
+    and unconditional. DDS still takes that data from its asm split, so DDS
+    will define it twice until those blocks get DDS branches or DDS moves its
+    data to C.
+- Scripts: `/home/wsl/projects/sdf-decomp-work/refresh/` (`renames.py`,
+  `premerge.py`, `merge.sh`, `resolve.py`, `pick.py`, `stale.py`). `stale.py`
+  lists DDS-only identifiers that smt3-decomp had at the seed and has nowhere
+  now; it is empty after the refresh.
+
 ## Next
 
-- Land the patch in smt3-decomp (a session there), after sdf-decomp has a remote.
-  First replay into sdf-decomp the smt3-decomp commits since the seed that
-  touch moved files. As of origin/main on 2026-11-02: 58da2042 (sdfVu1 inline
-  asm into ps2asm.h macros), db882c2f (rotate comment signs in sdfVu0),
-  cfd84fef (movieMemcpy at file scope under NON_MATCHING). Recheck with
-  `git log b9136570..origin/main -- src/smt3/sdf <moved headers>`.
+- Land the patch in smt3-decomp (a session there). sdf-decomp has smt3-decomp's
+  shared-file changes through 7255c2d6; recheck with
+  `git log 7255c2d6..origin/main -- src/smt3/sdf <moved units> <moved headers>`
+  and carry anything newer first.
 - `sdfGrOtTable` (0x002F5F18): splat declares 0xAA0, emits 0x5A0; smt3-port
   lost an interior alias at +0x600 to it. Size is being settled in
   smt3-port; the symbol stays in smt3-decomp's config, but the C that
@@ -81,18 +123,18 @@
 ## Applying the patch in smt3-decomp
 
 The patch holds everything but the deletions, which would make it 1.1 MB.
-From smt3-decomp at b9136570 or later, with sdf-decomp reachable at `../sdf-decomp`
+From smt3-decomp at 7255c2d6 or later, with sdf-decomp reachable at `../sdf-decomp`
 relative to smt3-decomp's remote (on GitHub: Megami-Decomps/sdf-decomp):
 
 ```sh
 git am /path/to/sdf-decomp/docs/smt3-decomp-consume.patch
-git rm -r -q src/smt3/sdf src/smt3/mc/mcManager.c src/smt3/model src/smt3/file/fileManager.c src/smt3/script/scrScriptProcess.c src/smt3/script/scrTraceCode.c src/smt3/script/scrCommonCommand.c src/smt3/effect/effPCPNeedle.c src/smt3/effect/polyManager.c src/smt3/effect/effPart.c src/smt3/effect/effPCPFlash.c src/smt3/effect/effPCPScatter.c src/smt3/effect/parManager.c src/smt3/effect/effMath.c src/smt3/effect/effPacket.c src/smt3/effect/effDebug.c src/smt3/effect/effSpline.c include/{libsdf.h,sdf_types.h,sdf_resource.h,sdf_lighting.h,sdf_movie_types.h,sdfGsMemIO.h,sdfDevCons.h,sdfCorePacketCb_t.h,sdfCorePacketPointBuff_tag.h,model.h,motion.h,draw.h,draw3d.h,billboard.h,fileManager.h,scr.h,effPCPData.h,effect.h}
+git rm -r -q src/smt3/sdf src/smt3/mc/mcManager.c src/smt3/model src/smt3/file/fileManager.c src/smt3/script/scrScriptProcess.c src/smt3/script/scrTraceCode.c src/smt3/script/scrCommonCommand.c src/smt3/effect/effPCPNeedle.c src/smt3/effect/polyManager.c src/smt3/effect/effPart.c src/smt3/effect/effPCPFlash.c src/smt3/effect/effPCPScatter.c src/smt3/effect/parManager.c src/smt3/effect/effMath.c src/smt3/effect/effPacket.c src/smt3/effect/effDebug.c src/smt3/effect/effSpline.c include/{libsdf.h,sdf_types.h,sdf_resource.h,sdf_lighting.h,sdf_movie_types.h,sdfGsMemIO.h,sdfDevCons.h,sdfCorePacketCb_t.h,sdfCorePacketPointBuff_tag.h,model.h,motion.h,draw.h,draw3d.h,billboard.h,fileManager.h,scr.h,effPCPData.h,effect.h,sdfFrame.h}
 git commit --amend --no-edit
 git submodule update --init
 ```
 
 Then bump `external/sdf-decomp` to the pushed sdf-decomp tip (the patch pins
-65666fc, a local hash). If smt3-decomp has changed `src/smt3/sdf` or those
+271cf55). If smt3-decomp has changed `src/smt3/sdf` or those
 headers since b9136570, those commits must first land in sdf-decomp. The
 `.gitmodules` URL is relative (`../sdf-decomp`), so a local clone of
 smt3-decomp finds `/home/wsl/projects/sdf-decomp` and GitHub finds the sibling

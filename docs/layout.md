@@ -31,6 +31,7 @@ repo if it is toolchain, SDK or game layer, and the game repo puts its own
 |---|---|
 | `libsdf.h` | core engine types, includes `sdf_types.h`, `sdf_resource.h` |
 | `sdf_types.h` | vectors, matrices, basic engine types |
+| `sdfFrame.h` | frame timer macros (`SDF_FRAMES` and the rest), added from smt3-decomp 7255c2d6 |
 | `sdf_resource.h` | resource and memory handles |
 | `sdf_lighting.h` | parallel light packet |
 | `sdf_movie_types.h` | sdfIpu and sdfMovie control blocks |

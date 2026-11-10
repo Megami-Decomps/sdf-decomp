@@ -1,4 +1,4 @@
-From e648659891f0cf6d21553835b8f8496568f8562d Mon Sep 17 00:00:00 2001
+From 07b3a285aa721e2b1b36d9033fd6d4040bf0811a Mon Sep 17 00:00:00 2001
 From: tge-was-taken <tge-was-taken@outlook.com>
 Date: Mon, 2 Nov 2026 04:16:42 +0100
 Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
@@ -13,7 +13,7 @@ Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
  tools/cc.sh                    |   5 +-
  tools/check_drift.py           |   5 +-
  tools/check_inline_asm.py      |   6 +-
- tools/check_nonmatching.py     |  19 ++--
+ tools/check_nonmatching.py     |  20 ++--
  tools/check_unit.py            |  25 +++--
  tools/include_rodata.py        |  22 ++--
  tools/include_sdata.py         |  30 ++++--
@@ -26,7 +26,7 @@ Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
  tools/test_sources.py          |  76 ++++++++++++++
  tools/test_vuas.py             |   3 +-
  tools/vu_include.py            |   5 +-
- 22 files changed, 427 insertions(+), 68 deletions(-)
+ 22 files changed, 428 insertions(+), 68 deletions(-)
  create mode 100644 .gitmodules
  create mode 160000 external/sdf-decomp
  create mode 100644 tools/sources.py
@@ -34,7 +34,7 @@ Subject: [PATCH] Build the sdf units from the sdf-decomp submodule
  create mode 100755 tools/test_sources.py
 
 diff --git a/.github/workflows/build.yml b/.github/workflows/build.yml
-index 376a2d55..b4b5559d 100644
+index fd6f37ef..db93eda0 100644
 --- a/.github/workflows/build.yml
 +++ b/.github/workflows/build.yml
 @@ -24,6 +24,7 @@ jobs:
@@ -67,7 +67,7 @@ index 96026b29..e59c98d1 100644
  python tools/download_tools.py
  
 diff --git a/configure.py b/configure.py
-index 93f71648..6b8043d3 100755
+index 2046a95d..a225e114 100755
 --- a/configure.py
 +++ b/configure.py
 @@ -20,6 +20,7 @@ import sys
@@ -87,7 +87,7 @@ index 93f71648..6b8043d3 100755
  AS_FLAGS = "-EL -march=r5900 -mabi=eabi -G8 -Iinclude"
  # Retail was assembled with -g: GNU as then leaves `.set reorder` code where cc1
  # put it, so every delay slot cc1 did not fill keeps its `nop` (soft-double and
-@@ -215,7 +216,7 @@ def generated_footprint(version: str) -> list[Path]:
+@@ -218,7 +219,7 @@ def generated_footprint(version: str) -> list[Path]:
      return [
          ROOT / "asm" / version,
          ROOT / "assets" / version,
@@ -96,7 +96,7 @@ index 93f71648..6b8043d3 100755
          ROOT / "build" / version / f"{serial}.ld",
          *config.glob("undefined_*_auto.txt"),
      ]
-@@ -229,14 +230,15 @@ def source_matching_ownership(version: str) -> list[tuple[str, list[tuple[str, s
+@@ -232,14 +233,15 @@ def source_matching_ownership(version: str) -> list[tuple[str, list[tuple[str, s
      here would feed a split's source edits back into its own cache key.
      """
      return [
@@ -115,7 +115,7 @@ index 93f71648..6b8043d3 100755
      ]
  
  
-@@ -263,7 +265,7 @@ def run_splat(version: str, yaml: Path, force: bool) -> None:
+@@ -266,7 +268,7 @@ def run_splat(version: str, yaml: Path, force: bool) -> None:
      # splat never deletes files: a unit or rodata split that moved leaves stale
      # asm behind (and include_rodata.py would include it twice).
      shutil.rmtree(ROOT / "asm" / version, ignore_errors=True)
@@ -124,7 +124,7 @@ index 93f71648..6b8043d3 100755
      subprocess.run([sys.executable, "tools/resolve_jtbl_targets.py", f"asm/{version}"], cwd=ROOT, check=True)
      subprocess.run([sys.executable, "tools/include_rodata.py", version], cwd=ROOT, check=True)
      subprocess.run([sys.executable, "tools/include_sdata.py", version], cwd=ROOT, check=True)
-@@ -416,7 +418,7 @@ def vu_binaries(n, version: str) -> list[str]:
+@@ -419,7 +421,7 @@ def vu_binaries(n, version: str) -> list[str]:
      """Assemble each VU listing in src/<version>/sdf/vu, and name what it wrote."""
      out = []
      for name in VU_SOURCES:
@@ -133,7 +133,7 @@ index 93f71648..6b8043d3 100755
          if not (ROOT / src).exists():
              continue
          binary = Path("build") / version / "vu" / f"{name}.bin"
-@@ -431,7 +433,7 @@ def source_for(obj: Path, version: str) -> tuple[str, Path]:
+@@ -434,7 +436,7 @@ def source_for(obj: Path, version: str) -> tuple[str, Path]:
      stem = Path(str(rel)[: -len(".o")])
      for kind, suffix in (("c", ".c"), ("s", ".s")):
          candidate = Path(f"{stem}{suffix}")
@@ -142,7 +142,7 @@ index 93f71648..6b8043d3 100755
              return kind, candidate
      if rel.parts[0] == "assets":
          return "bin", Path(f"{stem}.bin")
-@@ -583,7 +585,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+@@ -586,7 +588,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
              elif kind == "bin":
                  n.build(str(obj), "bin", str(src))
              else:
@@ -152,7 +152,7 @@ index 93f71648..6b8043d3 100755
                  nonmatchings = Path("asm") / version / "nonmatchings"
                  asm_files = list(dict.fromkeys(
                      str(nonmatchings / folder / f"{name}.s")
-@@ -593,7 +596,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+@@ -596,7 +599,8 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
                  if asm_files:
                      n.build(eeasm, "eeasm", asm_files, implicit=["tools/eeas_compat.py"],
                              variables={"unit": str(src)})
@@ -162,7 +162,7 @@ index 93f71648..6b8043d3 100755
                  unit = src.relative_to(Path("src") / version).with_suffix("").as_posix()
                  flags = unit_cflags(version).get(unit, "")
                  chain = TOOLCHAINS[unit_toolchain(version).get(unit, DEFAULT_TOOLCHAIN)]
-@@ -605,16 +609,16 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+@@ -608,16 +612,16 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
                             f"config/{version}/asflags.txt"]
                  # Instruction-emitting inline asm in the unit fails before it compiles.
                  asmcheck = Path("build") / version / "asmcheck" / src.with_suffix(".stamp")
@@ -182,7 +182,7 @@ index 93f71648..6b8043d3 100755
                          implicit=[str(asmcheck), *configs, "include/macro.inc",
                                    "tools/production_report.py"],
                          implicit_outputs=[str(base) + ".s", str(base) + ".proof.json"],
-@@ -659,7 +663,7 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
+@@ -662,7 +666,7 @@ def write_ninja(versions: list[str], args: argparse.Namespace) -> dict[str, list
      # ASM/C ownership. The ownership digest keeps body-only edits split-free.
      configure_inputs += [
          str(path.relative_to(ROOT)) for v in versions
@@ -191,7 +191,7 @@ index 93f71648..6b8043d3 100755
      ]
      for version in versions:
          alias_metadata = ROOT / "config" / version / "symbol_aliases.json"
-@@ -756,6 +760,11 @@ def main() -> None:
+@@ -759,6 +763,11 @@ def main() -> None:
              ap.error(f"{v}: orig/{v}/{VERSIONS[v]['serial']} missing; run tools/extract.py")
      if not versions:
          ap.error("no extracted versions; run tools/extract.py")
@@ -228,16 +228,16 @@ index 3e788386..3c9b4887 100644
  [TU recovery](tu-recovery.md).
 diff --git a/external/sdf-decomp b/external/sdf-decomp
 new file mode 160000
-index 00000000..0327a5c8
+index 00000000..271cf551
 --- /dev/null
 +++ b/external/sdf-decomp
 @@ -0,0 +1 @@
-+Subproject commit 0327a5c82438b46aef3a877306fac1f3d3e86352
++Subproject commit 271cf5519dba8da09ba49816169f597087dc7cba
 diff --git a/tools/cc.sh b/tools/cc.sh
-index c4fee6c8..7f94b807 100755
+index 60976ad9..88567902 100755
 --- a/tools/cc.sh
 +++ b/tools/cc.sh
-@@ -19,8 +19,10 @@ case $in in /*) ;; *) in="$PWD/$in" ;; esac
+@@ -21,8 +21,10 @@ case $in in /*) ;; *) in="$PWD/$in" ;; esac
  case $out in /*) ;; *) out="$PWD/$out" ;; esac
  version=${SMT3_VERSION:-smt3}
  canon=${SMT3_AS_UNIT:-}
@@ -248,7 +248,7 @@ index c4fee6c8..7f94b807 100755
  esac
  compiler=ee-gcc2.96
  if [ -n "$canon" ]; then
-@@ -94,7 +96,8 @@ run "$cc1" \
+@@ -121,7 +123,8 @@ runcc "$cc1" \
      -D__LANGUAGE_C -D_LANGUAGE_C -DLANGUAGE_C \
      "-D__SIZE_TYPE__=unsigned int" "-D__PTRDIFF_TYPE__=int" -D__LONG_MAX__=9223372036854775807L \
      -U__mips -D__mips=3 -D__mips64 -D__mips_eabi -D__mips_single_float \
@@ -310,10 +310,10 @@ index a13628a3..f07514b1 100644
          for line in violations(path):
              print(f"{path}:{line}: a C unit does not spell asm itself; emitted "
 diff --git a/tools/check_nonmatching.py b/tools/check_nonmatching.py
-index b6e20863..55439420 100644
+index 31b6bfdb..cc6df38b 100644
 --- a/tools/check_nonmatching.py
 +++ b/tools/check_nonmatching.py
-@@ -11,12 +11,14 @@ SKIP_ASM defined, which selects the drafts and drops the asm fallbacks.
+@@ -11,13 +11,15 @@ SKIP_ASM defined, which selects the drafts and drops the asm fallbacks.
  A failure means the draft needs updating, not that the repo is broken: the
  real build does not use it. Exit status is non-zero so CI still says so.
  """
@@ -321,6 +321,7 @@ index b6e20863..55439420 100644
  import re
  import subprocess
  import sys
+ import tempfile
  from pathlib import Path
  
 +sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -329,13 +330,14 @@ index b6e20863..55439420 100644
  ROOT = Path(__file__).resolve().parent.parent
  GUARD = "#ifdef NON_MATCHING"
  # A draft is a guarded block whose #else holds the asm fallback; the
-@@ -36,18 +38,16 @@ def draft_names(text: str) -> list[str]:
+@@ -63,18 +65,17 @@ def draft_names(text: str) -> list[str]:
  def units(args):
      if args:
          return [Path(a) for a in args]
 -    return [Path(p) for p in sorted(glob.glob(str(ROOT / "src/smt3/**/*.c"), recursive=True))
--            if GUARD in Path(p).read_text()]
-+    return [p for p in c_sources("smt3", ROOT) if GUARD in game_source(p.read_text(), "smt3")]
+-            if GUARD in (t := Path(p).read_text()) or "FIX_BUGS" in t]
++    return [p for p in c_sources("smt3", ROOT)
++            if GUARD in (t := game_source(p.read_text(), "smt3")) or "FIX_BUGS" in t]
  
  
  def draft_functions(version: str = "smt3") -> dict[str, set[str]]:
@@ -352,7 +354,7 @@ index b6e20863..55439420 100644
      return drafts
  
  
-@@ -63,8 +63,9 @@ def compile_unit(path: Path) -> str:
+@@ -94,8 +95,9 @@ def compile_unit(path: Path, fix_bugs: bool = False, asm_out: str = "/dev/null")
           "-D__LONG_MAX__=9223372036854775807L",
           "-U__mips", "-D__mips=3", "-D__mips64", "-D__mips_eabi",
           "-D__mips_single_float",
@@ -360,20 +362,20 @@ index b6e20863..55439420 100644
           "-I" + str(ROOT / "include"), "-I" + str(ROOT / "src"),
 -         "-DVERSION_SMT3", "-DSKIP_ASM", "-DNON_MATCHING",
 +         "-DVERSION_SMT3", "-DSDF_SMT3", "-DSKIP_ASM", "-DNON_MATCHING",
+          *(["-DFIX_BUGS"] if fix_bugs else []),
           # Old GCC needs this spelling; -Werror=... is silently ignored.
           "-Werror-implicit-function-declaration",
-          "-quiet", "-O2", str(path), "-o", "/dev/null"],
-@@ -89,7 +90,7 @@ if __name__ == "__main__":
-         sys.exit(0)
+@@ -193,7 +195,7 @@ if __name__ == "__main__":
+     known = symbol_extents()
      bad = 0
      for path in todo:
 -        text = path.read_text()
 +        text = game_source(path.read_text(), "smt3")
          names = draft_names(text)
-         err = compile_unit(path)
          rel = path.relative_to(ROOT) if path.is_absolute() else path
+         for fix_bugs in (False, True):
 diff --git a/tools/check_unit.py b/tools/check_unit.py
-index bbdd9ada..491c512b 100755
+index 0337651a..2aae0731 100755
 --- a/tools/check_unit.py
 +++ b/tools/check_unit.py
 @@ -23,6 +23,7 @@ from pathlib import Path
@@ -384,7 +386,7 @@ index bbdd9ada..491c512b 100755
  from symbol_aliases import load_symbol_aliases  # noqa: E402
  from resolved_code import (  # noqa: E402
      hi_lo_addend,
-@@ -829,9 +830,10 @@ def main():
+@@ -848,9 +849,10 @@ def main():
      args = ap.parse_args()
      unit = args.unit.resolve()
      source = args.source.resolve() if args.source else unit
@@ -398,7 +400,7 @@ index bbdd9ada..491c512b 100755
      syms = symbols(version)
      aliases = load_symbol_aliases(ROOT, version)
      syms.update({alias.name: alias.address for alias in aliases})
-@@ -853,7 +855,7 @@ def main():
+@@ -872,7 +874,7 @@ def main():
      with tempfile.TemporaryDirectory() as tmp:
          obj = Path(tmp) / "unit.o"
          # cc.sh compiles under the unit's own path (and flags) even for --source.
@@ -407,7 +409,7 @@ index bbdd9ada..491c512b 100755
          asm_text = Path(tmp) / "unit.s"
          env_s = dict(env, SMT3_KEEP_S=str(asm_text))
          extra = args.cflags.split()
-@@ -1535,7 +1537,7 @@ def main():
+@@ -1554,7 +1556,7 @@ def main():
          print(f"DATA {name}: 0x{size:X} bytes emitted by the unit; {why}")
      # Localized constraints are reviewable SMT3 aids, not automatic source
      # approval. Inspect --source when supplied, just as the compiler does.
@@ -416,7 +418,7 @@ index bbdd9ada..491c512b 100755
          bad += fatal
          print(message)
      # A C function whose code is mostly inline asm may be handwritten code in
-@@ -1548,7 +1550,7 @@ def main():
+@@ -1567,7 +1569,7 @@ def main():
          if (args.func and name != args.func) or asm < 8 or asm * 2 <= total:
              continue
          if re.search(rf"(?:libvu0|vu0 routine):[^\n]*\n(?:[^\n]*\n){{0,2}}[^\n]*\b{re.escape(name)}\s*\(",
@@ -425,7 +427,7 @@ index bbdd9ada..491c512b 100755
              continue
          print(f"ASMBODY {name}: {asm} of {total} instructions are inline asm; mark it as an SDK copy "
                "or VU0 routine, or keep it as INCLUDE_ASM (docs/CONTRIBUTING.md)")
-@@ -1557,7 +1559,7 @@ def main():
+@@ -1576,7 +1578,7 @@ def main():
      # owner, so their actual object offsets provide the ordering check instead.
      # (an implicit-int K&R definition starts with the function name itself)
      order = re.findall(r'^INCLUDE_ASM\([^\n]*\b(\w+)\);|^(?:[A-Za-z_][^;\n=]*?\b)?([A-Za-z_]\w*)\s*\([^;\n]*\)\s*\{?\s*$',
@@ -434,7 +436,7 @@ index bbdd9ada..491c512b 100755
      placed = [(0, address(a or b, syms), a or b) for a, b in order if address(a or b, syms) is not None]
      for (_, a, n), (_, b, m) in zip(placed, placed[1:]):
          if b < a:
-@@ -1572,7 +1574,7 @@ def main():
+@@ -1591,7 +1593,7 @@ def main():
      # Every retail function of the unit must still be there, as C or INCLUDE_ASM.
      full = ROOT / "asm" / version / f"{unit_name}.s"
      if full.exists() and not args.func:
@@ -443,7 +445,7 @@ index bbdd9ada..491c512b 100755
          for name in re.findall(r"^glabel (\w+)", full.read_text(), re.M):
              # A C definition may carry the retail name through an asm("") alias, which
              # is how a function called main avoids cc1's __main call.
-@@ -1584,7 +1586,7 @@ def main():
+@@ -1603,7 +1605,7 @@ def main():
      renamed = {f"func_{int(a, 16):08X}": n for n, a in re.findall(
          r"^\s*(\w+)\s*=\s*0x([0-9A-Fa-f]+)\s*;[^\n]*type:func", (ROOT / "config" / version / "symbol_addrs.txt").read_text(), re.M)
          if not n.startswith("func_")}
@@ -452,7 +454,7 @@ index bbdd9ada..491c512b 100755
          bad += 1
          print(f"STALE {old}: symbol_addrs names it {renamed[old]}; use that name")
      # A symbol the C references but nothing defines (symbol_addrs, the
-@@ -1599,9 +1601,10 @@ def main():
+@@ -1618,9 +1620,10 @@ def main():
          wanted -= set(subprocess.run(["grep", "-rhoE", rf"^\s*(glabel|dlabel|jlabel|nonmatching) ({alt})\b",
                                        str(ROOT / "asm" / version)], capture_output=True, text=True).stdout.split()[1::2])
      if wanted:
@@ -466,10 +468,10 @@ index bbdd9ada..491c512b 100755
                  rf"^(?!extern\b)[A-Za-z_][^;\n]*\b{n}\s*(\([^;]*$|(\[[^\]]*\])*\s*[=;])", source, re.M)}
          for name in sorted(wanted):
 diff --git a/tools/include_rodata.py b/tools/include_rodata.py
-index c1c59916..c10dc8ba 100755
+index 459db41d..babf5a0f 100644
 --- a/tools/include_rodata.py
 +++ b/tools/include_rodata.py
-@@ -27,7 +27,8 @@ import re
+@@ -31,7 +31,8 @@ import re
  import sys
  from pathlib import Path
  
@@ -479,7 +481,7 @@ index c1c59916..c10dc8ba 100755
  
  ROOT = Path(__file__).resolve().parent.parent
  INCLUDE = re.compile(r'^INCLUDE_(?:ASM|RODATA)\([^,]+,\s*"[^"]+",\s*(\w+)\);$', re.M)
-@@ -44,16 +45,16 @@ def rodata_part(path):
+@@ -48,16 +49,16 @@ def rodata_part(path):
  
  def place(version):
      added = 0
@@ -502,7 +504,7 @@ index c1c59916..c10dc8ba 100755
              continue
          # The unit's rodata as splat last split it; INCLUDE_RODATA lines and per-symbol
          # files for anything else are left over from an earlier split.
-@@ -66,7 +67,7 @@ def place(version):
+@@ -70,7 +71,7 @@ def place(version):
          for f in nonmatchings.glob("*.s"):
              if "glabel " in f.read_text():
                  owned -= {n for n, _ in LABEL.findall(rodata_part(f))}
@@ -511,7 +513,7 @@ index c1c59916..c10dc8ba 100755
          # Placed from scratch every time: once a function compiles its own
          # literal, the lines around it must move with it.
          text = re.sub(r'^INCLUDE_RODATA\([^,]+,\s*"[^"]+",\s*(\w+)\);\n\n?', "", text, flags=re.M)
-@@ -177,7 +178,7 @@ def place(version):
+@@ -211,7 +212,7 @@ def place(version):
              placed.append((pos, addr, sym, needed))
          positions = [pos for pos, *_ in sorted(placed, key=lambda p: p[1])]
          if positions != sorted(positions):
@@ -520,7 +522,7 @@ index c1c59916..c10dc8ba 100755
          inserts = {}
          for pos, addr, sym, needed in sorted(placed, key=lambda p: p[1]):
              if needed:
-@@ -188,7 +189,8 @@ def place(version):
+@@ -222,7 +223,8 @@ def place(version):
              added += len(inserts[pos])
          # One blank line before each included item, however often this reruns.
          text = re.sub(r"\n{3,}(?=INCLUDE_(?:RODATA|SDATA)\()", "\n\n", text)
